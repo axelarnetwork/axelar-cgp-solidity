@@ -4,5 +4,8 @@
   "env": {
     "es2020": true,
     "mocha": true
+  },
+  "rules": {
+    "no-unused-expressions": "off"
   }
 }
