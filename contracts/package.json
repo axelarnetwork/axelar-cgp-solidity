@@ -1,0 +1,38 @@
+{
+  "name": "ethereum-bridge-contracts",
+  "version": "1.0.0",
+  "description": "Ethereum Smart Contracts for Axelar Network",
+  "main": "index.js",
+  "scripts": {
+    "test": "waffle && mocha",
+    "build": "waffle",
+    "lint": "solhint 'contracts/**/*.sol'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/axelarnetwork/ethereum-bridge.git"
+  },
+  "keywords": [
+    "ethereum",
+    "axelar"
+  ],
+  "author": "axelar-network",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/axelarnetwork/ethereum-bridge/issues"
+  },
+  "homepage": "https://github.com/axelarnetwork/ethereum-bridge#readme",
+  "dependencies": {
+    "@openzeppelin/contracts": "^3.3.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "^10.1.0",
+    "eslint": "^7.17.0",
+    "eslint-config-richardpringle": "^2.0.0",
+    "ethereum-waffle": "^3.2.1",
+    "mocha": "^8.2.1",
+    "prettier": "^2.2.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.3",
+    "solhint": "^3.3.2"
+  }
+}

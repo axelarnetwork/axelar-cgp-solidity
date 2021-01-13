@@ -1,0 +1,8 @@
+{
+  "extends": "richardpringle",
+  "parser": "babel-eslint",
+  "env": {
+    "es2020": true,
+    "mocha": true
+  }
+}

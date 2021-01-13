@@ -1,0 +1,8 @@
+{
+  "extends": "solhint:recommended",
+  "plugins": [],
+  "rules": {
+    "quotes": ["error", "single"],
+    "compiler-version": ["off"]
+  }
+}
