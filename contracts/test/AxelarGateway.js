@@ -3,7 +3,7 @@
 const chai = require('chai');
 const {
   Contract,
-  utils: { defaultAbiCoder, id, arrayify, keccak256 },
+  utils: { defaultAbiCoder, id, arrayify, keccak256, formatBytes32String },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
@@ -187,9 +187,7 @@ describe('AxelarGateway', () => {
       });
 
       it('should mint tokens', async () => {
-        const addresses = [nonOwnerWallet.address];
         const amount = 9999;
-        const amounts = [amount];
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'bytes32', 'string', 'bytes'],
@@ -198,8 +196,12 @@ describe('AxelarGateway', () => {
               id('mintToken'),
               'mintToken',
               defaultAbiCoder.encode(
-                ['string', 'address[]', 'uint256[]'],
-                [symbol, addresses, amounts],
+                ['bytes32[]', 'address[]', 'uint256[]'],
+                [
+                  [formatBytes32String(symbol)],
+                  [nonOwnerWallet.address],
+                  [amount],
+                ],
               ),
             ],
           ),

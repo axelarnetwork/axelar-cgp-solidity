@@ -139,27 +139,28 @@ contract AxelarGateway {
 
     function _mintToken(bytes memory params) external onlySelf {
         (
-            string memory symbol,
+            bytes32[] memory symbols,
             address[] memory addresses,
             uint256[] memory amounts
-        ) = abi.decode(params, (string, address[], uint256[]));
-
-        address tokenAddress = _tokenAddresses[symbol];
-        require(
-            tokenAddress != address(0),
-            'AxelarGateway: token not deployed'
-        );
+        ) = abi.decode(params, (bytes32[], address[], uint256[]));
 
         require(
             addresses.length == amounts.length,
             'AxelarGateway: mint addresses and amounts length mismatch'
         );
 
-        BurnableMintableCappedERC20 token =
-            BurnableMintableCappedERC20(tokenAddress);
-
         for (uint256 i = 0; i < addresses.length; i++) {
-            token.mint(addresses[i], amounts[i]);
+            address tokenAddress =
+                _tokenAddresses[_bytes32ToString(symbols[i])];
+            require(
+                tokenAddress != address(0),
+                'AxelarGateway: token not deployed'
+            );
+
+            BurnableMintableCappedERC20(tokenAddress).mint(
+                addresses[i],
+                amounts[i]
+            );
         }
     }
 
@@ -182,5 +183,25 @@ contract AxelarGateway {
         }
 
         return id;
+    }
+
+    function _bytes32ToString(bytes32 _bytes32)
+        internal
+        pure
+        returns (string memory)
+    {
+        uint8 i = 0;
+
+        while (i < 32 && _bytes32[i] != 0) {
+            i++;
+        }
+
+        bytes memory bytesArray = new bytes(i);
+
+        for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+            bytesArray[i] = _bytes32[i];
+        }
+
+        return string(bytesArray);
     }
 }
