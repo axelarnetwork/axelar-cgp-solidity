@@ -3,4 +3,4 @@ FROM alpine:latest
 RUN apk add --update npm nodejs
 RUN npm install -g ganache-cli
 
-ENTRYPOINT ["ganache-cli", "--mnemonic", "invest cloud minimum mirror keen razor husband desert engine actual flower shop", "-p 8545"]
+ENTRYPOINT ["ganache-cli"]]
