@@ -4,4 +4,4 @@ docker-image:
 
 .PHONY: docker-image-ganache
 docker-image-ganache:
-	@docker build -t axelar/ganache-bridge -f ./Dockerfile-ganache .
+	@docker build -t axelar/ganache-bridge -f ./Dockerfile.ganache .
