@@ -1,0 +1,40 @@
+name: Build and push docker image
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy-to-eks:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-18.04
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - uses: prepor/action-aws-iam-authenticator@master
+
+      - uses: danielr1996/kubectl-action@1.0.0
+        name: Deploy
+        with:
+          kubeconfig: ${{ secrets.DEVNET_KUBE_CONFIG }}
+          args: get pod
+
+      # - name: Build docker image
+      #   run: make docker-image
+
+      # - name: Push to ECR
+      #   uses: jwalton/gh-ecr-push@v1
+      #   with:
+      #     access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     region: us-east-2
+      #     local-image: axelar/ethereum-bridge
+      #     image: ethereum-bridge:latest
