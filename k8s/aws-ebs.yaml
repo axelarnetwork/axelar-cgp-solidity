@@ -6,3 +6,4 @@ provisioner: kubernetes.io/aws-ebs
 parameters:
   type: gp2
 reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
