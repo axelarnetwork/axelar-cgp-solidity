@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.7.0 <0.8.0;
+pragma solidity >=0.8.0 <0.9.0;
 
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import '@openzeppelin/contracts/math/SafeMath.sol';
-
+import './ERC20.sol';
+import './SafeMath.sol';
 import './Ownable.sol';
 
 contract BurnableMintableCappedERC20 is ERC20, Ownable {
@@ -16,10 +15,10 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
         string memory name,
         string memory symbol,
         uint8 decimals,
-        uint256 cap
+        uint256 capacity
     ) ERC20(name, symbol) Ownable() {
         _setupDecimals(decimals);
-        _cap = cap;
+        _cap = capacity;
     }
 
     function mint(address account, uint256 amount) public onlyOwner {
