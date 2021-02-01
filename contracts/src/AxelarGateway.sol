@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.7.0 <0.8.0;
+pragma solidity >=0.8.0 <0.9.0;
 
-import '@openzeppelin/contracts/cryptography/ECDSA.sol';
-
+import './ECDSA.sol';
 import './BurnableMintableCappedERC20.sol';
 
 contract AxelarGateway {
@@ -176,7 +175,7 @@ contract AxelarGateway {
         _owner = newOwner;
     }
 
-    function _getChainID() internal pure returns (uint256) {
+    function _getChainID() internal view returns (uint256) {
         uint256 id;
         assembly {
             id := chainid()
