@@ -3,7 +3,7 @@
 const chai = require('chai');
 const {
   Contract,
-  utils: { defaultAbiCoder, id, arrayify, keccak256, formatBytes32String },
+  utils: { defaultAbiCoder, id, arrayify, keccak256 },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
@@ -53,8 +53,8 @@ describe('AxelarGateway', () => {
     it('should fail if chain Id mismatches', () => {
       const data = arrayify(
         defaultAbiCoder.encode(
-          ['uint256', 'bytes32', 'string', 'bytes'],
-          [CHAIN_ID + 1, id('commandId'), 'command', '0x1234'],
+          ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [CHAIN_ID + 1, [], [], []],
         ),
       );
 
@@ -66,36 +66,40 @@ describe('AxelarGateway', () => {
     });
 
     describe('command deployToken', () => {
-      it('should should fail if try to deploy the same token twice', () => {
+      it('should not deploy the duplicate token', () => {
         const name = 'An Awesome Token';
         const symbol = 'AAT';
         const decimals = 18;
         const cap = 10000;
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32', 'string', 'bytes'],
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              id('deployToken-1'),
-              'deployToken',
-              defaultAbiCoder.encode(
-                ['string', 'string', 'uint8', 'uint256'],
-                [name, symbol, decimals, cap],
-              ),
+              [id('deployToken-1')],
+              ['deployToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256'],
+                  [name, symbol, decimals, cap],
+                ),
+              ],
             ],
           ),
         );
         const secondTxData = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32', 'string', 'bytes'],
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              id('deployToken-2'),
-              'deployToken',
-              defaultAbiCoder.encode(
-                ['string', 'string', 'uint8', 'uint256'],
-                [name, symbol, decimals, cap],
-              ),
+              [id('deployToken-2')],
+              ['deployToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256'],
+                  [name, symbol, decimals, cap],
+                ),
+              ],
             ],
           ),
         );
@@ -119,15 +123,17 @@ describe('AxelarGateway', () => {
         const cap = 10000;
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32', 'string', 'bytes'],
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              id('deployToken'),
-              'deployToken',
-              defaultAbiCoder.encode(
-                ['string', 'string', 'uint8', 'uint256'],
-                [name, symbol, decimals, cap],
-              ),
+              [id('deployToken')],
+              ['deployToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256'],
+                  [name, symbol, decimals, cap],
+                ),
+              ],
             ],
           ),
         );
@@ -168,15 +174,17 @@ describe('AxelarGateway', () => {
       beforeEach(() => {
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32', 'string', 'bytes'],
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              id('deployToken'),
-              'deployToken',
-              defaultAbiCoder.encode(
-                ['string', 'string', 'uint8', 'uint256'],
-                [name, symbol, decimals, cap],
-              ),
+              [id('deployToken')],
+              ['deployToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256'],
+                  [name, symbol, decimals, cap],
+                ),
+              ],
             ],
           ),
         );
@@ -190,19 +198,17 @@ describe('AxelarGateway', () => {
         const amount = 9999;
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32', 'string', 'bytes'],
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              id('mintToken'),
-              'mintToken',
-              defaultAbiCoder.encode(
-                ['bytes32[]', 'address[]', 'uint256[]'],
-                [
-                  [formatBytes32String(symbol)],
-                  [nonOwnerWallet.address],
-                  [amount],
-                ],
-              ),
+              [id('mintToken')],
+              ['mintToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'address', 'uint256'],
+                  [symbol, nonOwnerWallet.address, amount],
+                ),
+              ],
             ],
           ),
         );
@@ -232,15 +238,15 @@ describe('AxelarGateway', () => {
     });
 
     describe('command transferOwnership', () => {
-      it('should fail if transfering ownership to address zero', () => {
+      it('should not transfering ownership to address zero', () => {
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32', 'string', 'bytes'],
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              id('transferOwnership'),
-              'transferOwnership',
-              defaultAbiCoder.encode(['address'], [ADDRESS_ZERO]),
+              [id('transferOwnership')],
+              ['transferOwnership'],
+              [defaultAbiCoder.encode(['address'], [ADDRESS_ZERO])],
             ],
           ),
         );
@@ -256,12 +262,12 @@ describe('AxelarGateway', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32', 'string', 'bytes'],
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              id('transferOwnership'),
-              'transferOwnership',
-              defaultAbiCoder.encode(['address'], [newOwner]),
+              [id('transferOwnership')],
+              ['transferOwnership'],
+              [defaultAbiCoder.encode(['address'], [newOwner])],
             ],
           ),
         );
@@ -272,6 +278,93 @@ describe('AxelarGateway', () => {
               .to.emit(contract, 'OwnershipTransferred')
               .withArgs(ownerWallet.address, newOwner),
           )
+          .then(() => contract.owner())
+          .then((actual) => {
+            expect(actual).to.eq(newOwner);
+          });
+      });
+    });
+
+    describe('batch commands', () => {
+      it('should batch execute multiple commands', () => {
+        const name = 'Bitcoin';
+        const symbol = 'BTC';
+        const decimals = 8;
+        const cap = 2100000000;
+        const amount1 = 10000;
+        const amount2 = 20000;
+        const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [
+                id('deployToken'),
+                id('mintToken1'),
+                id('mintToken2'),
+                id('transferOwnership'),
+              ],
+              ['deployToken', 'mintToken', 'mintToken', 'transferOwnership'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256'],
+                  [name, symbol, decimals, cap],
+                ),
+                defaultAbiCoder.encode(
+                  ['string', 'address', 'uint256'],
+                  [symbol, ownerWallet.address, amount1],
+                ),
+                defaultAbiCoder.encode(
+                  ['string', 'address', 'uint256'],
+                  [symbol, nonOwnerWallet.address, amount2],
+                ),
+                defaultAbiCoder.encode(['address'], [newOwner]),
+              ],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, ownerWallet)
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(contract, 'TokenDeployed')
+              .and.to.emit(contract, 'OwnershipTransferred')
+              .withArgs(ownerWallet.address, newOwner),
+          )
+          .then(() => contract.tokenAddresses(symbol))
+          .then((tokenAddress) => {
+            expect(tokenAddress).to.be.properAddress;
+
+            const tokenContract = new Contract(
+              tokenAddress,
+              BurnableMintableCappedERC20.abi,
+              ownerWallet,
+            );
+
+            return Promise.all([
+              tokenContract.name(),
+              tokenContract.symbol(),
+              tokenContract.decimals(),
+              tokenContract.cap().then(bigNumberToNumber),
+              tokenContract
+                .balanceOf(ownerWallet.address)
+                .then(bigNumberToNumber),
+              tokenContract
+                .balanceOf(nonOwnerWallet.address)
+                .then(bigNumberToNumber),
+            ]);
+          })
+          .then((actual) => {
+            expect(actual).to.deep.eq([
+              name,
+              symbol,
+              decimals,
+              cap,
+              amount1,
+              amount2,
+            ]);
+          })
           .then(() => contract.owner())
           .then((actual) => {
             expect(actual).to.eq(newOwner);
