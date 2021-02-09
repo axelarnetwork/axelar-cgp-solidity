@@ -3,7 +3,8 @@
 const chai = require('chai');
 const {
   Contract,
-  utils: { defaultAbiCoder, id, arrayify, keccak256 },
+  ContractFactory,
+  utils: { defaultAbiCoder, id, arrayify, keccak256, getCreate2Address },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
@@ -14,6 +15,7 @@ const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 const AxelarGateway = require('../build/AxelarGateway.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
+const Burner = require('../build/Burner.json');
 
 const bigNumberToNumber = (bigNumber) => bigNumber.toNumber();
 
@@ -233,6 +235,113 @@ describe('AxelarGateway', () => {
           )
           .then((actual) => {
             expect(actual).to.eq(amount);
+          });
+      });
+    });
+
+    describe('command burnToken', () => {
+      const name = 'An Awesome Token';
+      const symbol = 'AAT';
+      const decimals = 18;
+      const cap = 10000;
+      const amount = 10;
+
+      beforeEach(() => {
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('deployToken'), id('mintToken')],
+              ['deployToken', 'mintToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256'],
+                  [name, symbol, decimals, cap],
+                ),
+                defaultAbiCoder.encode(
+                  ['string', 'address', 'uint256'],
+                  [symbol, ownerWallet.address, amount],
+                ),
+              ],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, ownerWallet).then((input) =>
+          contract.execute(input),
+        );
+      });
+
+      it('should burn tokens', async () => {
+        const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
+        const salt = id(
+          `${destinationBtcAddress}-${ownerWallet.address}-${Date.now()}`,
+        );
+
+        const dataFirstBurn = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('burnToken1')],
+              ['burnToken'],
+              [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
+            ],
+          ),
+        );
+        const dataSecondBurn = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('burnToken2')],
+              ['burnToken'],
+              [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
+            ],
+          ),
+        );
+
+        const tokenAddress = await contract.tokenAddresses(symbol);
+        const tokenContract = new Contract(
+          tokenAddress,
+          BurnableMintableCappedERC20.abi,
+          ownerWallet,
+        );
+
+        const burnerFactory = new ContractFactory(Burner.abi, Burner.bytecode);
+        const { data: burnerInitCode } = burnerFactory.getDeployTransaction(
+          tokenAddress,
+          salt,
+        );
+        const burnerAddress = getCreate2Address(
+          contract.address,
+          salt,
+          keccak256(burnerInitCode),
+        );
+
+        const burnAmount = amount / 2;
+
+        return tokenContract
+          .transfer(burnerAddress, burnAmount)
+          .then(() => getSignedExecuteInput(dataFirstBurn, ownerWallet))
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(tokenContract, 'Transfer')
+              .withArgs(burnerAddress, ADDRESS_ZERO, burnAmount),
+          )
+          .then(() => tokenContract.transfer(burnerAddress, burnAmount))
+          .then(() => getSignedExecuteInput(dataSecondBurn, ownerWallet))
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(tokenContract, 'Transfer')
+              .withArgs(burnerAddress, ADDRESS_ZERO, burnAmount),
+          )
+          .then(() =>
+            tokenContract.balanceOf(burnerAddress).then(bigNumberToNumber),
+          )
+          .then((actual) => {
+            expect(actual).to.eq(0);
           });
       });
     });

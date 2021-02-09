@@ -5,11 +5,46 @@ pragma solidity >=0.8.0 <0.9.0;
 import './ERC20.sol';
 import './SafeMath.sol';
 import './Ownable.sol';
+import './Burner.sol';
 
 contract BurnableMintableCappedERC20 is ERC20, Ownable {
     using SafeMath for uint256;
 
     uint256 private _cap;
+
+    modifier onlyBurner(bytes32 salt) {
+        bytes memory burnerInitCode =
+            abi.encodePacked(
+                type(Burner).creationCode,
+                abi.encode(address(this)),
+                salt
+            );
+        bytes32 burnerInitCodeHash = keccak256(burnerInitCode);
+        /* Convert a hash which is bytes32 to an address which is 20-byte long
+        according to https://docs.soliditylang.org/en/v0.8.1/control-structures.html?highlight=create2#salted-contract-creations-create2 */
+        address burnerAddress =
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(
+                                bytes1(0xff),
+                                owner(),
+                                salt,
+                                burnerInitCodeHash
+                            )
+                        )
+                    )
+                )
+            );
+
+        require(
+            msg.sender == burnerAddress,
+            'BurnableMintableCappedERC20: sender not burner'
+        );
+
+        _;
+    }
 
     constructor(
         string memory name,
@@ -30,8 +65,10 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
         _mint(account, amount);
     }
 
-    function burn(address account, uint256 amount) public onlyOwner {
-        _burn(account, amount);
+    function burn(bytes32 salt) public onlyBurner(salt) {
+        address account = msg.sender;
+
+        _burn(account, balanceOf(account));
     }
 
     function cap() public view returns (uint256) {

@@ -4,6 +4,7 @@ pragma solidity >=0.8.0 <0.9.0;
 
 import './ECDSA.sol';
 import './BurnableMintableCappedERC20.sol';
+import './Burner.sol';
 
 contract AxelarGateway {
     event OwnershipTransferred(
@@ -49,12 +50,16 @@ contract AxelarGateway {
         _commandSelectors['mintToken'] = bytes4(
             keccak256(bytes('_mintToken(bytes)'))
         );
+        _commandSelectors['burnToken'] = bytes4(
+            keccak256(bytes('_burnToken(bytes)'))
+        );
         _commandSelectors['transferOwnership'] = bytes4(
             keccak256(bytes('_transferOwnership(bytes)'))
         );
 
         _commandAddresses['deployToken'] = address(this);
         _commandAddresses['mintToken'] = address(this);
+        _commandAddresses['burnToken'] = address(this);
         _commandAddresses['transferOwnership'] = address(this);
     }
 
@@ -159,6 +164,19 @@ contract AxelarGateway {
         );
 
         BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
+    }
+
+    function _burnToken(bytes memory params) external onlySelf {
+        (string memory symbol, bytes32 salt) =
+            abi.decode(params, (string, bytes32));
+
+        address tokenAddress = _tokenAddresses[symbol];
+        require(
+            tokenAddress != address(0),
+            'AxelarGateway: token not deployed'
+        );
+
+        new Burner{salt: salt}(tokenAddress, salt);
     }
 
     function _transferOwnership(bytes memory params) external onlySelf {
