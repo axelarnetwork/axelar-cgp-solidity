@@ -145,8 +145,14 @@ contract AxelarGateway {
             'AxelarGateway: token already deployed'
         );
 
+        bytes32 salt = keccak256(abi.encodePacked(symbol));
         BurnableMintableCappedERC20 token =
-            new BurnableMintableCappedERC20(name, symbol, decimals, cap);
+            new BurnableMintableCappedERC20{salt: salt}(
+                name,
+                symbol,
+                decimals,
+                cap
+            );
         address tokenAddress = address(token);
         _tokenAddresses[symbol] = tokenAddress;
 

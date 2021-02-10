@@ -140,6 +140,22 @@ describe('AxelarGateway', () => {
           ),
         );
 
+        const tokenFactory = new ContractFactory(
+          BurnableMintableCappedERC20.abi,
+          BurnableMintableCappedERC20.bytecode,
+        );
+        const { data: tokenInitCode } = tokenFactory.getDeployTransaction(
+          name,
+          symbol,
+          decimals,
+          cap,
+        );
+        const expectedTokenAddress = getCreate2Address(
+          contract.address,
+          id(symbol),
+          keccak256(tokenInitCode),
+        );
+
         return getSignedExecuteInput(data, ownerWallet)
           .then((input) =>
             expect(contract.execute(input)).to.emit(contract, 'TokenDeployed'),
@@ -147,6 +163,7 @@ describe('AxelarGateway', () => {
           .then(() => contract.tokenAddresses(symbol))
           .then((tokenAddress) => {
             expect(tokenAddress).to.be.properAddress;
+            expect(tokenAddress).to.eq(expectedTokenAddress);
 
             const tokenContract = new Contract(
               tokenAddress,
