@@ -122,11 +122,21 @@ contract AxelarGateway {
                 continue; /* Ignore if unknown command received */
             }
 
-            (bool success, ) =
+            (bool success, bytes memory result) =
                 commandAddress.call(
                     abi.encodeWithSelector(commandSelector, param)
                 );
-            require(success, 'AxelarGateway: command failed');
+
+            if (!success) {
+                revert(
+                    string(
+                        abi.encodePacked(
+                            'AxelarGateway: command failed with error: ',
+                            result
+                        )
+                    )
+                );
+            }
 
             _commandExecuted[commandId] = true;
         }

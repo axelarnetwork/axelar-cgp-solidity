@@ -2,5 +2,11 @@
   "compilerType": "solcjs",
   "compilerVersion": "0.8.1",
   "sourceDirectory": "./src",
-  "outputDirectory": "./build"
+  "outputDirectory": "./build",
+  "compilerOptions": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    }
+  }
 }
