@@ -112,9 +112,9 @@ describe('AxelarGateway', () => {
           )
           .then(() => getSignedExecuteInput(secondTxData, ownerWallet))
           .then((input) =>
-            expect(contract.execute(input)).to.be.revertedWith(
-              'AxelarGateway: command failed',
-            ),
+            expect(contract.execute(input))
+              .to.be.revertedWith('AxelarGateway: command failed')
+              .and.to.be.revertedWith('AxelarGateway: token already deployed'),
           );
       });
 
@@ -378,9 +378,11 @@ describe('AxelarGateway', () => {
         );
 
         return getSignedExecuteInput(data, ownerWallet).then((input) =>
-          expect(contract.execute(input)).to.be.revertedWith(
-            'AxelarGateway: command failed',
-          ),
+          expect(contract.execute(input))
+            .to.be.revertedWith('AxelarGateway: command failed')
+            .and.to.be.revertedWith(
+              'AxelarGateway: new owner is the zero address',
+            ),
         );
       });
 
