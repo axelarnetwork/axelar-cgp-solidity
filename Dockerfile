@@ -10,6 +10,8 @@ RUN git checkout "v${VERSION}" && make geth
 
 FROM alpine:latest as runner
 
+RUN apk add --no-cache curl
+
 ENV DATA_DIR /chain
 COPY --from=builder /go-ethereum/build/bin/geth /usr/local/bin/
 
