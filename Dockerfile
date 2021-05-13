@@ -1,6 +1,6 @@
 FROM golang:1.16-alpine as builder
 
-ENV VERSION 1.10.1
+ENV VERSION 1.10.3
 
 RUN apk add --no-cache make gcc musl-dev linux-headers git
 
