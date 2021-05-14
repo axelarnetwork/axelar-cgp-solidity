@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
-exec geth --ipcdisable --datadir $DATA_DIR "$@"
+exec openethereum "$@"

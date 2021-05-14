@@ -1,19 +1,26 @@
-FROM golang:1.16-alpine as builder
+FROM debian:stretch-slim as runner
 
-ENV VERSION 1.10.3
+ENV VERSION v3.2.6
+ENV SHA256SUM e13ef3145cb073c44bfb21f9880dda2d1afaf5476ee005115a85f7403061da00
+ENV FILE_NAME "openethereum-linux-${VERSION}"
 
-RUN apk add --no-cache make gcc musl-dev linux-headers git
+# show backtraces
+ENV RUST_BACKTRACE 1
 
-RUN git clone https://github.com/ethereum/go-ethereum.git /go-ethereum
-WORKDIR /go-ethereum
-RUN git checkout "v${VERSION}" && make geth
+RUN set -ex \
+  && apt-get update \
+  && apt-get install -qq --no-install-recommends ca-certificates wget curl unzip \
+  && rm -rf /var/lib/apt/lists/*
 
-FROM alpine:latest as runner
-
-RUN apk add --no-cache curl
+RUN set -ex \
+  && wget https://github.com/openethereum/openethereum/releases/download/${VERSION}/openethereum-linux-${VERSION}.zip \
+  && echo "${SHA256SUM} openethereum-linux-${VERSION}.zip" | sha256sum -c \
+  && unzip openethereum-linux-${VERSION}.zip \
+  && chmod u+x openethereum \
+  && mv openethereum /usr/local/bin/ \
+  && apt-get remove -qq wget unzip
 
 ENV DATA_DIR /chain
-COPY --from=builder /go-ethereum/build/bin/geth /usr/local/bin/
 
 RUN mkdir $DATA_DIR
 VOLUME $DATA_DIR
