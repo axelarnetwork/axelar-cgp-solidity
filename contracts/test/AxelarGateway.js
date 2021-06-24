@@ -409,7 +409,105 @@ describe('AxelarGateway', () => {
           .then(() => contract.owner())
           .then((actual) => {
             expect(actual).to.eq(newOwner);
+          })
+          .then(() => contract.prevOwner())
+          .then((actual) => {
+            expect(actual).to.eq(ownerWallet.address);
           });
+      });
+
+      it('should allow the previous owner to deploy token', () => {
+        const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('transferOwnership')],
+              ['transferOwnership'],
+              [defaultAbiCoder.encode(['address'], [newOwner])],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, ownerWallet)
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(contract, 'OwnershipTransferred')
+              .withArgs(ownerWallet.address, newOwner),
+          )
+          .then(() => {
+            const name = 'An Awesome Token';
+            const symbol = 'AAT';
+            const decimals = 18;
+            const cap = 10000;
+            const data = arrayify(
+              defaultAbiCoder.encode(
+                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                [
+                  CHAIN_ID,
+                  [id('deployToken')],
+                  ['deployToken'],
+                  [
+                    defaultAbiCoder.encode(
+                      ['string', 'string', 'uint8', 'uint256'],
+                      [name, symbol, decimals, cap],
+                    ),
+                  ],
+                ],
+              ),
+            );
+
+            return getSignedExecuteInput(data, ownerWallet);
+          })
+          .then((input) =>
+            expect(contract.execute(input)).to.emit(contract, 'TokenDeployed'),
+          );
+      });
+
+      it('should not allow the previous owner to transfer ownership', () => {
+        const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('transferOwnership1')],
+              ['transferOwnership'],
+              [defaultAbiCoder.encode(['address'], [newOwner])],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, ownerWallet)
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(contract, 'OwnershipTransferred')
+              .withArgs(ownerWallet.address, newOwner),
+          )
+          .then(() => {
+            const newOwner = '0x2e531e213004433c2f92592ABEf79228AACaedFa';
+            const data = arrayify(
+              defaultAbiCoder.encode(
+                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                [
+                  CHAIN_ID,
+                  [id('transferOwnership2')],
+                  ['transferOwnership'],
+                  [defaultAbiCoder.encode(['address'], [newOwner])],
+                ],
+              ),
+            );
+
+            return getSignedExecuteInput(data, ownerWallet);
+          })
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.be.revertedWith('AxelarGateway: command failed')
+              .and.to.be.revertedWith(
+                'AxelarGateway: only current owner can transfer ownership',
+              ),
+          );
       });
     });
 
