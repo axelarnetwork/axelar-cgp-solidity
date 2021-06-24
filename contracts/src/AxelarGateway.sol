@@ -13,6 +13,7 @@ contract AxelarGateway {
     );
     event TokenDeployed(string symbol, address tokenAddress);
 
+    address private _prevOwner;
     address private _owner;
 
     mapping(string => bytes4) private _commandSelectors;
@@ -20,14 +21,6 @@ contract AxelarGateway {
     mapping(bytes32 => bool) private _commandExecuted;
 
     mapping(string => address) private _tokenAddresses;
-
-    modifier onlySignedByOwner(bytes memory data, bytes memory sig) {
-        address signer =
-            ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), sig);
-        require(signer == _owner, 'AxelarGateway: signer is not owner');
-
-        _;
-    }
 
     modifier onlySelf() {
         require(
@@ -45,16 +38,16 @@ contract AxelarGateway {
         emit OwnershipTransferred(address(0), msgSender);
 
         _commandSelectors['deployToken'] = bytes4(
-            keccak256(bytes('_deployToken(bytes)'))
+            keccak256(bytes('_deployToken(address,bytes)'))
         );
         _commandSelectors['mintToken'] = bytes4(
-            keccak256(bytes('_mintToken(bytes)'))
+            keccak256(bytes('_mintToken(address,bytes)'))
         );
         _commandSelectors['burnToken'] = bytes4(
-            keccak256(bytes('_burnToken(bytes)'))
+            keccak256(bytes('_burnToken(address,bytes)'))
         );
         _commandSelectors['transferOwnership'] = bytes4(
-            keccak256(bytes('_transferOwnership(bytes)'))
+            keccak256(bytes('_transferOwnership(address,bytes)'))
         );
 
         _commandAddresses['deployToken'] = address(this);
@@ -65,6 +58,10 @@ contract AxelarGateway {
 
     function owner() public view returns (address) {
         return _owner;
+    }
+
+    function prevOwner() public view returns (address) {
+        return _prevOwner;
     }
 
     function tokenAddresses(string memory symbol)
@@ -82,10 +79,15 @@ contract AxelarGateway {
         _execute(data, sig);
     }
 
-    function _execute(bytes memory data, bytes memory sig)
-        internal
-        onlySignedByOwner(data, sig)
-    {
+    function _execute(bytes memory data, bytes memory sig) internal {
+        address signer =
+            ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), sig);
+
+        require(
+            signer == _owner || signer == _prevOwner,
+            'AxelarGateway: signer is not owner'
+        );
+
         (
             uint256 chainId,
             bytes32[] memory commandIds,
@@ -124,7 +126,7 @@ contract AxelarGateway {
 
             (bool success, bytes memory result) =
                 commandAddress.call(
-                    abi.encodeWithSelector(commandSelector, param)
+                    abi.encodeWithSelector(commandSelector, signer, param)
                 );
 
             if (!success) {
@@ -142,7 +144,7 @@ contract AxelarGateway {
         }
     }
 
-    function _deployToken(bytes memory params) external onlySelf {
+    function _deployToken(address, bytes memory params) external onlySelf {
         (
             string memory name,
             string memory symbol,
@@ -169,7 +171,7 @@ contract AxelarGateway {
         emit TokenDeployed(symbol, tokenAddress);
     }
 
-    function _mintToken(bytes memory params) external onlySelf {
+    function _mintToken(address, bytes memory params) external onlySelf {
         (string memory symbol, address account, uint256 amount) =
             abi.decode(params, (string, address, uint256));
 
@@ -182,7 +184,7 @@ contract AxelarGateway {
         BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
     }
 
-    function _burnToken(bytes memory params) external onlySelf {
+    function _burnToken(address, bytes memory params) external onlySelf {
         (string memory symbol, bytes32 salt) =
             abi.decode(params, (string, bytes32));
 
@@ -195,15 +197,24 @@ contract AxelarGateway {
         new Burner{salt: salt}(tokenAddress, salt);
     }
 
-    function _transferOwnership(bytes memory params) external onlySelf {
+    function _transferOwnership(address signer, bytes memory params)
+        external
+        onlySelf
+    {
         address newOwner = abi.decode(params, (address));
 
         require(
             newOwner != address(0),
             'AxelarGateway: new owner is the zero address'
         );
+        require(
+            signer == _owner,
+            'AxelarGateway: only current owner can transfer ownership'
+        );
 
         emit OwnershipTransferred(_owner, newOwner);
+
+        _prevOwner = _owner;
         _owner = newOwner;
     }
 
