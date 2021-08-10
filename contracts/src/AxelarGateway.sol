@@ -11,10 +11,16 @@ contract AxelarGateway {
         address indexed previousOwner,
         address indexed newOwner
     );
+    event OperatorshipTransferred(
+        address indexed previousOperator,
+        address indexed newOperator
+    );
     event TokenDeployed(string symbol, address tokenAddress);
 
     address private _prevOwner;
     address private _owner;
+    address private _operator;
+    address private _prevOperator;
 
     mapping(string => bytes4) private _commandSelectors;
     mapping(string => address) private _commandAddresses;
@@ -31,11 +37,12 @@ contract AxelarGateway {
         _;
     }
 
-    constructor() {
-        address msgSender = msg.sender;
-        _owner = msgSender;
+    constructor(address operatorAddr) {
+        _owner = msg.sender;
+        _operator = operatorAddr;
 
-        emit OwnershipTransferred(address(0), msgSender);
+        emit OwnershipTransferred(address(0), msg.sender);
+        emit OperatorshipTransferred(address(0), operatorAddr);
 
         _commandSelectors['deployToken'] = bytes4(
             keccak256(bytes('_deployToken(address,bytes)'))
@@ -49,11 +56,15 @@ contract AxelarGateway {
         _commandSelectors['transferOwnership'] = bytes4(
             keccak256(bytes('_transferOwnership(address,bytes)'))
         );
+        _commandSelectors['transferOperatorship'] = bytes4(
+            keccak256(bytes('_transferOperatorship(address,bytes)'))
+        );
 
         _commandAddresses['deployToken'] = address(this);
         _commandAddresses['mintToken'] = address(this);
         _commandAddresses['burnToken'] = address(this);
         _commandAddresses['transferOwnership'] = address(this);
+        _commandAddresses['transferOperatorship'] = address(this);
     }
 
     function owner() public view returns (address) {
@@ -62,6 +73,14 @@ contract AxelarGateway {
 
     function prevOwner() public view returns (address) {
         return _prevOwner;
+    }
+
+    function operator() public view returns (address) {
+        return _operator;
+    }
+
+    function prevOperator() public view returns (address) {
+        return _prevOperator;
     }
 
     function tokenAddresses(string memory symbol)
@@ -84,8 +103,11 @@ contract AxelarGateway {
             ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), sig);
 
         require(
-            signer == _owner || signer == _prevOwner,
-            'AxelarGateway: signer is not owner'
+            signer == _operator ||
+                signer == _owner ||
+                signer == _prevOperator ||
+                signer == _prevOwner,
+            'AxelarGateway: signer is not owner or operator'
         );
 
         (
@@ -144,7 +166,10 @@ contract AxelarGateway {
         }
     }
 
-    function _deployToken(address, bytes memory params) external onlySelf {
+    function _deployToken(address signer, bytes memory params)
+        external
+        onlySelf
+    {
         (
             string memory name,
             string memory symbol,
@@ -155,6 +180,10 @@ contract AxelarGateway {
         require(
             _tokenAddresses[symbol] == address(0),
             'AxelarGateway: token already deployed'
+        );
+        require(
+            signer == _owner || signer == _prevOwner,
+            'AxelarGateway: only owner can deploy token'
         );
 
         bytes32 salt = keccak256(abi.encodePacked(symbol));
@@ -216,6 +245,26 @@ contract AxelarGateway {
 
         _prevOwner = _owner;
         _owner = newOwner;
+    }
+
+    function _transferOperatorship(address signer, bytes memory params)
+        external
+        onlySelf
+    {
+        address newOperator = abi.decode(params, (address));
+        require(
+            newOperator != address(0),
+            'AxelarGateway: new operator is the zero address'
+        );
+        require(
+            signer == _owner,
+            'AxelarGateway: only current owner can transfer operatorship'
+        );
+
+        emit OperatorshipTransferred(_operator, newOperator);
+
+        _prevOperator = _operator;
+        _operator = newOperator;
     }
 
     function _getChainID() internal view returns (uint256) {

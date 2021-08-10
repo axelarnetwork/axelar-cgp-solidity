@@ -27,17 +27,30 @@ const getSignedExecuteInput = (data, wallet) =>
     );
 
 describe('AxelarGateway', () => {
-  const [ownerWallet, nonOwnerWallet] = new MockProvider().getWallets();
+  const [
+    ownerWallet,
+    nonOwnerWallet,
+    operatorWallet,
+  ] = new MockProvider().getWallets();
   let contract;
 
   beforeEach(async () => {
-    contract = await deployContract(ownerWallet, AxelarGateway);
+    contract = await deployContract(ownerWallet, AxelarGateway, [
+      operatorWallet.address,
+    ]);
   });
 
   describe('owner', () => {
     it('should get correct owner', () =>
       contract.owner().then((actual) => {
         expect(actual).to.eq(ownerWallet.address);
+      }));
+  });
+
+  describe('operator', () => {
+    it('should get correct operator', () =>
+      contract.operator().then((actual) => {
+        expect(actual).to.eq(operatorWallet.address);
       }));
   });
 
@@ -116,6 +129,37 @@ describe('AxelarGateway', () => {
               .to.be.revertedWith('AxelarGateway: command failed')
               .and.to.be.revertedWith('AxelarGateway: token already deployed'),
           );
+      });
+
+      it('should not allow the operator to deploy a token', () => {
+        const name = 'An Awesome Token';
+        const symbol = 'AAT';
+        const decimals = 18;
+        const cap = 10000;
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('deployToken')],
+              ['deployToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256'],
+                  [name, symbol, decimals, cap],
+                ),
+              ],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, operatorWallet).then((input) =>
+          expect(contract.execute(input))
+            .to.be.revertedWith('AxelarGateway: command failed')
+            .and.to.be.revertedWith(
+              'AxelarGateway: only owner can deploy token',
+            ),
+        );
       });
 
       it('should deploy a new token', () => {
@@ -213,7 +257,7 @@ describe('AxelarGateway', () => {
         );
       });
 
-      it('should mint tokens', async () => {
+      it('should allow the owner to mint tokens', async () => {
         const amount = 9999;
         const data = arrayify(
           defaultAbiCoder.encode(
@@ -240,6 +284,48 @@ describe('AxelarGateway', () => {
         );
 
         return getSignedExecuteInput(data, ownerWallet)
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(tokenContract, 'Transfer')
+              .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, amount),
+          )
+          .then(() =>
+            tokenContract
+              .balanceOf(nonOwnerWallet.address)
+              .then(bigNumberToNumber),
+          )
+          .then((actual) => {
+            expect(actual).to.eq(amount);
+          });
+      });
+
+      it('should allow the operator to mint tokens', async () => {
+        const amount = 9999;
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('mintToken')],
+              ['mintToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'address', 'uint256'],
+                  [symbol, nonOwnerWallet.address, amount],
+                ),
+              ],
+            ],
+          ),
+        );
+
+        const tokenAddress = await contract.tokenAddresses(symbol);
+        const tokenContract = new Contract(
+          tokenAddress,
+          BurnableMintableCappedERC20.abi,
+          ownerWallet,
+        );
+
+        return getSignedExecuteInput(data, operatorWallet)
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
@@ -290,7 +376,7 @@ describe('AxelarGateway', () => {
         );
       });
 
-      it('should burn tokens', async () => {
+      it('should allow the owner to burn tokens', async () => {
         const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
         const salt = id(
           `${destinationBtcAddress}-${ownerWallet.address}-${Date.now()}`,
@@ -361,6 +447,78 @@ describe('AxelarGateway', () => {
             expect(actual).to.eq(0);
           });
       });
+
+      it('should allow the operator to burn tokens', async () => {
+        const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
+        const salt = id(
+          `${destinationBtcAddress}-${ownerWallet.address}-${Date.now()}`,
+        );
+
+        const dataFirstBurn = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('burnToken1')],
+              ['burnToken'],
+              [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
+            ],
+          ),
+        );
+        const dataSecondBurn = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('burnToken2')],
+              ['burnToken'],
+              [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
+            ],
+          ),
+        );
+
+        const tokenAddress = await contract.tokenAddresses(symbol);
+        const tokenContract = new Contract(
+          tokenAddress,
+          BurnableMintableCappedERC20.abi,
+          ownerWallet,
+        );
+
+        const burnerFactory = new ContractFactory(Burner.abi, Burner.bytecode);
+        const { data: burnerInitCode } = burnerFactory.getDeployTransaction(
+          tokenAddress,
+          salt,
+        );
+        const burnerAddress = getCreate2Address(
+          contract.address,
+          salt,
+          keccak256(burnerInitCode),
+        );
+
+        const burnAmount = amount / 2;
+
+        return tokenContract
+          .transfer(burnerAddress, burnAmount)
+          .then(() => getSignedExecuteInput(dataFirstBurn, operatorWallet))
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(tokenContract, 'Transfer')
+              .withArgs(burnerAddress, ADDRESS_ZERO, burnAmount),
+          )
+          .then(() => tokenContract.transfer(burnerAddress, burnAmount))
+          .then(() => getSignedExecuteInput(dataSecondBurn, operatorWallet))
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(tokenContract, 'Transfer')
+              .withArgs(burnerAddress, ADDRESS_ZERO, burnAmount),
+          )
+          .then(() =>
+            tokenContract.balanceOf(burnerAddress).then(bigNumberToNumber),
+          )
+          .then((actual) => {
+            expect(actual).to.eq(0);
+          });
+      });
     });
 
     describe('command transferOwnership', () => {
@@ -382,6 +540,28 @@ describe('AxelarGateway', () => {
             .to.be.revertedWith('AxelarGateway: command failed')
             .and.to.be.revertedWith(
               'AxelarGateway: new owner is the zero address',
+            ),
+        );
+      });
+
+      it('should not allow the operator to transfer ownership', () => {
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('transferOwnership')],
+              ['transferOwnership'],
+              [defaultAbiCoder.encode(['address'], [operatorWallet.address])],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, operatorWallet).then((input) =>
+          expect(contract.execute(input))
+            .to.be.revertedWith('AxelarGateway: command failed')
+            .and.to.be.revertedWith(
+              'AxelarGateway: only current owner can transfer ownership',
             ),
         );
       });
@@ -508,6 +688,61 @@ describe('AxelarGateway', () => {
                 'AxelarGateway: only current owner can transfer ownership',
               ),
           );
+      });
+    });
+
+    describe('command transferOperatorship', () => {
+      it('should not allow the operator to transfer operatorship', () => {
+        const newOperator = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('transferOperatorship')],
+              ['transferOperatorship'],
+              [defaultAbiCoder.encode(['address'], [newOperator])],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, operatorWallet).then((input) =>
+          expect(contract.execute(input))
+            .to.be.revertedWith('AxelarGateway: command failed')
+            .and.to.be.revertedWith(
+              'AxelarGateway: only current owner can transfer operatorship',
+            ),
+        );
+      });
+
+      it('should allow the owner to transfer operatorship', () => {
+        const newOperator = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [id('transferOperatorship')],
+              ['transferOperatorship'],
+              [defaultAbiCoder.encode(['address'], [newOperator])],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, ownerWallet)
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(contract, 'OperatorshipTransferred')
+              .withArgs(operatorWallet.address, newOperator),
+          )
+          .then(() => contract.operator())
+          .then((actual) => {
+            expect(actual).to.eq(newOperator);
+          })
+          .then(() => contract.prevOperator())
+          .then((actual) => {
+            expect(actual).to.eq(operatorWallet.address);
+          });
       });
     });
 
