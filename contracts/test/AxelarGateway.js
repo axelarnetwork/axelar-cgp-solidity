@@ -58,10 +58,8 @@ describe('AxelarGateway', () => {
     it('should fail if data is not signed by owner', async () => {
       const data = arrayify('0x1234');
 
-      return getSignedExecuteInput(data, nonOwnerWallet).then((input) =>
-        expect(contract.execute(input)).to.be.revertedWith(
-          'AxelarGateway: signer is not owner',
-        ),
+      return getSignedExecuteInput(data, nonOwnerWallet).then(
+        (input) => expect(contract.execute(input)).to.be.reverted,
       );
     });
 
@@ -73,10 +71,8 @@ describe('AxelarGateway', () => {
         ),
       );
 
-      return getSignedExecuteInput(data, ownerWallet).then((input) =>
-        expect(contract.execute(input)).to.be.revertedWith(
-          'AxelarGateway: signed chain ID mismatch',
-        ),
+      return getSignedExecuteInput(data, ownerWallet).then(
+        (input) => expect(contract.execute(input)).to.be.reverted,
       );
     });
 
@@ -124,11 +120,7 @@ describe('AxelarGateway', () => {
             expect(contract.execute(input)).to.emit(contract, 'TokenDeployed'),
           )
           .then(() => getSignedExecuteInput(secondTxData, ownerWallet))
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.be.revertedWith('AxelarGateway: command failed')
-              .and.to.be.revertedWith('AxelarGateway: token already deployed'),
-          );
+          .then((input) => expect(contract.execute(input)).to.be.reverted);
       });
 
       it('should not allow the operator to deploy a token', () => {
@@ -153,12 +145,8 @@ describe('AxelarGateway', () => {
           ),
         );
 
-        return getSignedExecuteInput(data, operatorWallet).then((input) =>
-          expect(contract.execute(input))
-            .to.be.revertedWith('AxelarGateway: command failed')
-            .and.to.be.revertedWith(
-              'AxelarGateway: only owner can deploy token',
-            ),
+        return getSignedExecuteInput(data, operatorWallet).then(
+          (input) => expect(contract.execute(input)).to.be.reverted,
         );
       });
 
@@ -535,12 +523,8 @@ describe('AxelarGateway', () => {
           ),
         );
 
-        return getSignedExecuteInput(data, ownerWallet).then((input) =>
-          expect(contract.execute(input))
-            .to.be.revertedWith('AxelarGateway: command failed')
-            .and.to.be.revertedWith(
-              'AxelarGateway: new owner is the zero address',
-            ),
+        return getSignedExecuteInput(data, ownerWallet).then(
+          (input) => expect(contract.execute(input)).to.be.reverted,
         );
       });
 
@@ -557,12 +541,8 @@ describe('AxelarGateway', () => {
           ),
         );
 
-        return getSignedExecuteInput(data, operatorWallet).then((input) =>
-          expect(contract.execute(input))
-            .to.be.revertedWith('AxelarGateway: command failed')
-            .and.to.be.revertedWith(
-              'AxelarGateway: only current owner can transfer ownership',
-            ),
+        return getSignedExecuteInput(data, operatorWallet).then(
+          (input) => expect(contract.execute(input)).to.be.reverted,
         );
       });
 
@@ -681,13 +661,7 @@ describe('AxelarGateway', () => {
 
             return getSignedExecuteInput(data, ownerWallet);
           })
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.be.revertedWith('AxelarGateway: command failed')
-              .and.to.be.revertedWith(
-                'AxelarGateway: only current owner can transfer ownership',
-              ),
-          );
+          .then((input) => expect(contract.execute(input)).to.be.reverted);
       });
     });
 
@@ -706,12 +680,8 @@ describe('AxelarGateway', () => {
           ),
         );
 
-        return getSignedExecuteInput(data, operatorWallet).then((input) =>
-          expect(contract.execute(input))
-            .to.be.revertedWith('AxelarGateway: command failed')
-            .and.to.be.revertedWith(
-              'AxelarGateway: only current owner can transfer operatorship',
-            ),
+        return getSignedExecuteInput(data, operatorWallet).then(
+          (input) => expect(contract.execute(input)).to.be.reverted,
         );
       });
 
