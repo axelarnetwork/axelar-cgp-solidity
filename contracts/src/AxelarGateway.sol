@@ -11,22 +11,24 @@ contract AxelarGateway {
         address indexed previousOwner,
         address indexed newOwner
     );
+
     event OperatorshipTransferred(
         address indexed previousOperator,
         address indexed newOperator
     );
+
     event TokenDeployed(string symbol, address tokenAddress);
 
-    address private _prevOwner;
-    address private _owner;
-    address private _operator;
-    address private _prevOperator;
+    address public prevOwner;
+    address public owner;
+    address public operator;
+    address public prevOperator;
 
     mapping(string => bytes4) private _commandSelectors;
     mapping(string => address) private _commandAddresses;
     mapping(bytes32 => bool) private _commandExecuted;
 
-    mapping(string => address) private _tokenAddresses;
+    mapping(string => address) public tokenAddresses;
 
     modifier onlySelf() {
         require(
@@ -38,57 +40,23 @@ contract AxelarGateway {
     }
 
     constructor(address operatorAddr) {
-        _owner = msg.sender;
-        _operator = operatorAddr;
+        owner = msg.sender;
+        operator = operatorAddr;
 
         emit OwnershipTransferred(address(0), msg.sender);
         emit OperatorshipTransferred(address(0), operatorAddr);
 
-        _commandSelectors['deployToken'] = bytes4(
-            keccak256(bytes('_deployToken(address,bytes)'))
-        );
-        _commandSelectors['mintToken'] = bytes4(
-            keccak256(bytes('_mintToken(address,bytes)'))
-        );
-        _commandSelectors['burnToken'] = bytes4(
-            keccak256(bytes('_burnToken(address,bytes)'))
-        );
-        _commandSelectors['transferOwnership'] = bytes4(
-            keccak256(bytes('_transferOwnership(address,bytes)'))
-        );
-        _commandSelectors['transferOperatorship'] = bytes4(
-            keccak256(bytes('_transferOperatorship(address,bytes)'))
-        );
+        _commandSelectors['deployToken'] = AxelarGateway._deployToken.selector;
+        _commandSelectors['mintToken'] = AxelarGateway._mintToken.selector;
+        _commandSelectors['burnToken'] = AxelarGateway._burnToken.selector;
+        _commandSelectors['transferOwnership'] = AxelarGateway._transferOwnership.selector;
+        _commandSelectors['transferOperatorship'] = AxelarGateway._transferOperatorship.selector;
 
         _commandAddresses['deployToken'] = address(this);
         _commandAddresses['mintToken'] = address(this);
         _commandAddresses['burnToken'] = address(this);
         _commandAddresses['transferOwnership'] = address(this);
         _commandAddresses['transferOperatorship'] = address(this);
-    }
-
-    function owner() public view returns (address) {
-        return _owner;
-    }
-
-    function prevOwner() public view returns (address) {
-        return _prevOwner;
-    }
-
-    function operator() public view returns (address) {
-        return _operator;
-    }
-
-    function prevOperator() public view returns (address) {
-        return _prevOperator;
-    }
-
-    function tokenAddresses(string memory symbol)
-        public
-        view
-        returns (address)
-    {
-        return _tokenAddresses[symbol];
     }
 
     function execute(bytes memory input) public {
@@ -103,10 +71,10 @@ contract AxelarGateway {
             ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), sig);
 
         require(
-            signer == _operator ||
-                signer == _owner ||
-                signer == _prevOperator ||
-                signer == _prevOwner,
+            signer == operator ||
+            signer == owner ||
+            signer == prevOperator ||
+            signer == prevOwner,
             'AxelarGateway: signer is not owner or operator'
         );
 
@@ -126,14 +94,13 @@ contract AxelarGateway {
 
         require(
             commandsLength == commands.length &&
-                commandsLength == params.length,
+            commandsLength == params.length,
             'AxelarGateway: commands params length mismatch'
         );
 
         for (uint256 i = 0; i < commandsLength; i++) {
             bytes32 commandId = commandIds[i];
             string memory command = commands[i];
-            bytes memory param = params[i];
 
             if (_commandExecuted[commandId]) {
                 continue; /* Ignore if duplicate commandId received */
@@ -148,19 +115,18 @@ contract AxelarGateway {
 
             (bool success, bytes memory result) =
                 commandAddress.call(
-                    abi.encodeWithSelector(commandSelector, signer, param)
+                    abi.encodeWithSelector(commandSelector, signer, params[i])
                 );
 
-            if (!success) {
-                revert(
-                    string(
-                        abi.encodePacked(
-                            'AxelarGateway: command failed with error: ',
-                            result
-                        )
+            require(
+                success,
+                string(
+                    abi.encodePacked(
+                        'AxelarGateway: command failed with error: ',
+                        result
                     )
-                );
-            }
+                )
+            );
 
             _commandExecuted[commandId] = true;
         }
@@ -178,11 +144,12 @@ contract AxelarGateway {
         ) = abi.decode(params, (string, string, uint8, uint256));
 
         require(
-            _tokenAddresses[symbol] == address(0),
+            tokenAddresses[symbol] == address(0),
             'AxelarGateway: token already deployed'
         );
+
         require(
-            signer == _owner || signer == _prevOwner,
+            signer == owner || signer == prevOwner,
             'AxelarGateway: only owner can deploy token'
         );
 
@@ -194,17 +161,15 @@ contract AxelarGateway {
                 decimals,
                 cap
             );
-        address tokenAddress = address(token);
-        _tokenAddresses[symbol] = tokenAddress;
 
-        emit TokenDeployed(symbol, tokenAddress);
+        emit TokenDeployed(symbol, tokenAddresses[symbol] = address(token));
     }
 
     function _mintToken(address, bytes memory params) external onlySelf {
         (string memory symbol, address account, uint256 amount) =
             abi.decode(params, (string, address, uint256));
 
-        address tokenAddress = _tokenAddresses[symbol];
+        address tokenAddress = tokenAddresses[symbol];
         require(
             tokenAddress != address(0),
             'AxelarGateway: token not deployed'
@@ -217,7 +182,7 @@ contract AxelarGateway {
         (string memory symbol, bytes32 salt) =
             abi.decode(params, (string, bytes32));
 
-        address tokenAddress = _tokenAddresses[symbol];
+        address tokenAddress = tokenAddresses[symbol];
         require(
             tokenAddress != address(0),
             'AxelarGateway: token not deployed'
@@ -236,15 +201,16 @@ contract AxelarGateway {
             newOwner != address(0),
             'AxelarGateway: new owner is the zero address'
         );
+        
         require(
-            signer == _owner,
+            signer == owner,
             'AxelarGateway: only current owner can transfer ownership'
         );
 
-        emit OwnershipTransferred(_owner, newOwner);
+        emit OwnershipTransferred(owner, newOwner);
 
-        _prevOwner = _owner;
-        _owner = newOwner;
+        prevOwner = owner;
+        owner = newOwner;
     }
 
     function _transferOperatorship(address signer, bytes memory params)
@@ -252,27 +218,25 @@ contract AxelarGateway {
         onlySelf
     {
         address newOperator = abi.decode(params, (address));
+
         require(
             newOperator != address(0),
             'AxelarGateway: new operator is the zero address'
         );
         require(
-            signer == _owner,
+            signer == owner,
             'AxelarGateway: only current owner can transfer operatorship'
         );
 
-        emit OperatorshipTransferred(_operator, newOperator);
+        emit OperatorshipTransferred(operator, newOperator);
 
-        _prevOperator = _operator;
-        _operator = newOperator;
+        prevOperator = operator;
+        operator = newOperator;
     }
 
-    function _getChainID() internal view returns (uint256) {
-        uint256 id;
+    function _getChainID() internal view returns (uint256 id) {
         assembly {
             id := chainid()
         }
-
-        return id;
     }
 }
