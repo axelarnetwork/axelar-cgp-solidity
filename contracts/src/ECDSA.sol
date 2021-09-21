@@ -26,12 +26,10 @@ library ECDSA {
     function recover(bytes32 hash, bytes memory signature)
         internal
         pure
-        returns (address)
+        returns (address signer)
     {
         // Check the signature length
-        if (signature.length != 65) {
-            revert('ECDSA: invalid signature length');
-        }
+        require(signature.length == 65, 'ECDSA: invalid signature length');
 
         // Divide the signature in r, s and v variables
         bytes32 r;
@@ -61,13 +59,11 @@ library ECDSA {
                 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
             'ECDSA: invalid signature "s" value'
         );
+
         require(v == 27 || v == 28, 'ECDSA: invalid signature "v" value');
 
         // If the signature is valid (and not malleable), return the signer address
-        address signer = ecrecover(hash, v, r, s);
-        require(signer != address(0), 'ECDSA: invalid signature');
-
-        return signer;
+        require((signer = ecrecover(hash, v, r, s)) != address(0), 'ECDSA: invalid signature');
     }
 
     /**
