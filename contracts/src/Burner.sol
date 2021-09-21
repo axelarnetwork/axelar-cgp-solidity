@@ -2,7 +2,7 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import './BurnableMintableCappedERC20.sol';
+import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 
 contract Burner {
     constructor(address tokenAddress, bytes32 salt) {

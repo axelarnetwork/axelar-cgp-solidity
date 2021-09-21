@@ -11,7 +11,8 @@ abstract contract Ownable {
     );
 
     constructor() {
-        emit OwnershipTransferred(address(0), owner = msg.sender);
+        owner = msg.sender;
+        emit OwnershipTransferred(address(0), msg.sender);
     }
 
     modifier onlyOwner() {
@@ -25,6 +26,7 @@ abstract contract Ownable {
             'Ownable: new owner is the zero address'
         );
 
-        emit OwnershipTransferred(owner, owner = newOwner);
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
     }
 }

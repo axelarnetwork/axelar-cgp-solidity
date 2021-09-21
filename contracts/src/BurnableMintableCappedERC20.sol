@@ -2,9 +2,9 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import './ERC20.sol';
-import './Ownable.sol';
-import './Burner.sol';
+import { ERC20 } from './ERC20.sol';
+import { Ownable } from './Ownable.sol';
+import { Burner } from './Burner.sol';
 
 contract BurnableMintableCappedERC20 is ERC20, Ownable {
     uint256 public cap;

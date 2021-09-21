@@ -2,9 +2,9 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import './ECDSA.sol';
-import './BurnableMintableCappedERC20.sol';
-import './Burner.sol';
+import { ECDSA } from './ECDSA.sol';
+import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
+import { Burner } from './Burner.sol';
 
 contract AxelarGateway {
     event OwnershipTransferred(
@@ -162,7 +162,8 @@ contract AxelarGateway {
                 cap
             );
 
-        emit TokenDeployed(symbol, tokenAddresses[symbol] = address(token));
+        tokenAddresses[symbol] = address(token);
+        emit TokenDeployed(symbol, address(token));
     }
 
     function _mintToken(address, bytes memory params) external onlySelf {
@@ -223,6 +224,7 @@ contract AxelarGateway {
             newOperator != address(0),
             'AxelarGateway: new operator is the zero address'
         );
+
         require(
             signer == owner,
             'AxelarGateway: only current owner can transfer operatorship'
