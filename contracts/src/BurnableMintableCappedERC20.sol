@@ -3,13 +3,10 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import './ERC20.sol';
-import './SafeMath.sol';
 import './Ownable.sol';
 import './Burner.sol';
 
 contract BurnableMintableCappedERC20 is ERC20, Ownable {
-    using SafeMath for uint256;
-
     uint256 private _cap;
 
     modifier onlyBurner(bytes32 salt) {
@@ -58,7 +55,7 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
 
     function mint(address account, uint256 amount) public onlyOwner {
         require(
-            totalSupply().add(amount) <= _cap,
+            totalSupply() + amount <= _cap,
             'BurnableMintableCappedERC20: cap exceeded'
         );
 
