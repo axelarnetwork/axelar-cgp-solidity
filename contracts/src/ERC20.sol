@@ -2,8 +2,8 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import { Context } from './Context.sol';
-import { IERC20 } from './IERC20.sol';
+import {Context} from './Context.sol';
+import {IERC20} from './IERC20.sol';
 
 /**
  * @dev Implementation of the {IERC20} interface.
