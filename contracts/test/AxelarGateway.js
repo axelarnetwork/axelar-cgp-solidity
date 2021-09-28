@@ -1019,10 +1019,6 @@ describe('AxelarGateway', () => {
           .then((actual) => {
             expect(actual).to.eq(newOwner);
           })
-          .then(() => contract.prevOwner())
-          .then((actual) => {
-            expect(actual).to.eq(ownerWallet.address);
-          });
       });
 
       it('should allow the previous owner to deploy token', () => {
@@ -1166,10 +1162,6 @@ describe('AxelarGateway', () => {
           .then((actual) => {
             expect(actual).to.eq(newOperator);
           })
-          .then(() => contract.prevOperator())
-          .then((actual) => {
-            expect(actual).to.eq(operatorWallet.address);
-          });
       });
     });
 
