@@ -1,6 +1,6 @@
 {
   "compilerType": "solcjs",
-  "compilerVersion": "0.8.6",
+  "compilerVersion": "0.8.7",
   "sourceDirectory": "./src",
   "outputDirectory": "./build",
   "compilerOptions": {

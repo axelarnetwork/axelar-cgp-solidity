@@ -6,7 +6,8 @@
   "scripts": {
     "test": "mocha",
     "build": "rm -rf build && waffle",
-    "lint": "solhint 'src/**/*.sol' && eslint 'test/**/*.js'"
+    "lint": "solhint 'src/**/*.sol' && eslint 'test/**/*.js'",
+    "prettier": "prettier --write 'test/*.js' && prettier --write 'src/*.sol'"
   },
   "repository": {
     "type": "git",
