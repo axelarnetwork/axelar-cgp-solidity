@@ -2,14 +2,13 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import {ERC20} from './ERC20.sol';
-import {Ownable} from './Ownable.sol';
-import {Burner} from './Burner.sol';
-import {EternalStorage} from './EternalStorage.sol';
+import { ERC20 } from './ERC20.sol';
+import { Ownable } from './Ownable.sol';
+import { Burner } from './Burner.sol';
+import { EternalStorage } from './EternalStorage.sol';
 
 contract BurnableMintableCappedERC20 is ERC20, Ownable {
     uint256 public cap;
-    EternalStorage private _eternalStorage;
 
     bytes32 private constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
     bytes32 private constant PREFIX_ACCOUNT_BLACKLISTED =
@@ -65,10 +64,6 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
         cap = capacity;
     }
 
-    function setEternalStorage(address eternalStorageAddr) public onlyOwner {
-        _eternalStorage = EternalStorage(eternalStorageAddr);
-    }
-
     function mint(address account, uint256 amount) public onlyOwner {
         require(
             totalSupply + amount <= cap,
@@ -90,23 +85,23 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
         uint256
     ) internal view override {
         require(
-            !_eternalStorage.getBool(KEY_ALL_TOKENS_FROZEN),
+            !EternalStorage(owner).getBool(KEY_ALL_TOKENS_FROZEN),
             'BurnableMintableCappedERC20: all tokens are frozen'
         );
         require(
-            !_eternalStorage.getBool(
+            !EternalStorage(owner).getBool(
                 keccak256(abi.encodePacked(PREFIX_TOKEN_FROZEN, symbol))
             ),
             'BurnableMintableCappedERC20: token is frozen'
         );
         require(
-            !_eternalStorage.getBool(
+            !EternalStorage(owner).getBool(
                 keccak256(abi.encodePacked(PREFIX_ACCOUNT_BLACKLISTED, from))
             ),
             'BurnableMintableCappedERC20: from account is blacklisted'
         );
         require(
-            !_eternalStorage.getBool(
+            !EternalStorage(owner).getBool(
                 keccak256(abi.encodePacked(PREFIX_ACCOUNT_BLACKLISTED, to))
             ),
             'BurnableMintableCappedERC20: to account is blacklisted'

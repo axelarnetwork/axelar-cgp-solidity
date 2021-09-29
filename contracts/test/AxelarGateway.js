@@ -14,6 +14,7 @@ const { get } = require('lodash/fp');
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
+const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
 const AxelarGateway = require('../build/AxelarGateway.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 const Burner = require('../build/Burner.json');
@@ -58,12 +59,13 @@ describe('AxelarGateway', () => {
   let contract;
 
   beforeEach(async () => {
-    contract = await deployContract(ownerWallet, AxelarGateway, [
+    const proxy = await deployContract(ownerWallet, AxelarGatewayProxy, [
       adminWallets.map(get('address')),
       threshold,
       ownerWallet.address,
       operatorWallet.address,
     ]);
+    contract = new Contract(proxy.address, AxelarGateway.abi, ownerWallet);
   });
 
   describe('owner', () => {
@@ -100,6 +102,29 @@ describe('AxelarGateway', () => {
           expect(
             contract
               .connect(adminWallet3)
+              .setTokenDailyMintLimit(symbol, limit),
+          )
+            .to.emit(contract, 'TokenDailyMintLimitUpdated')
+            .withArgs(symbol, limit),
+        )
+        .then(() =>
+          expect(
+            contract
+              .connect(adminWallet4)
+              .setTokenDailyMintLimit(symbol, limit),
+          ).to.not.emit(contract, 'TokenDailyMintLimitUpdated'),
+        )
+        .then(() =>
+          expect(
+            contract
+              .connect(adminWallet5)
+              .setTokenDailyMintLimit(symbol, limit),
+          ).to.not.emit(contract, 'TokenDailyMintLimitUpdated'),
+        )
+        .then(() =>
+          expect(
+            contract
+              .connect(adminWallet6)
               .setTokenDailyMintLimit(symbol, limit),
           )
             .to.emit(contract, 'TokenDailyMintLimitUpdated')
@@ -350,13 +375,7 @@ describe('AxelarGateway', () => {
 
   describe('proposeUpdate and update', () => {
     it('should update to the next version after passing threshold and owner approval', async () => {
-      const newVersion = await deployContract(ownerWallet, AxelarGateway, [
-        adminWallets.map(get('address')),
-        threshold,
-        ownerWallet.address,
-        operatorWallet.address,
-      ]);
-      const account = ownerWallet.address;
+      const newVersion = await deployContract(ownerWallet, AxelarGateway, []);
 
       return expect(
         contract.connect(adminWallet1).proposeUpdate(newVersion.address),
@@ -390,22 +409,7 @@ describe('AxelarGateway', () => {
           return getSignedExecuteInput(data, ownerWallet).then((input) =>
             expect(contract.execute(input)).to.emit(contract, 'Updated'),
           );
-        })
-        .then(() =>
-          expect(
-            newVersion.connect(adminWallet4).whitelistAccount(account),
-          ).to.not.emit(newVersion, 'AccountWhitelisted'),
-        )
-        .then(() =>
-          expect(
-            newVersion.connect(adminWallet5).whitelistAccount(account),
-          ).to.not.emit(newVersion, 'AccountWhitelisted'),
-        )
-        .then(() =>
-          expect(newVersion.connect(adminWallet6).whitelistAccount(account))
-            .to.emit(newVersion, 'AccountWhitelisted')
-            .withArgs(account),
-        );
+        });
     });
   });
 
@@ -1018,7 +1022,7 @@ describe('AxelarGateway', () => {
           .then(() => contract.owner())
           .then((actual) => {
             expect(actual).to.eq(newOwner);
-          })
+          });
       });
 
       it('should allow the previous owner to deploy token', () => {
@@ -1161,7 +1165,7 @@ describe('AxelarGateway', () => {
           .then(() => contract.operator())
           .then((actual) => {
             expect(actual).to.eq(newOperator);
-          })
+          });
       });
     });
 

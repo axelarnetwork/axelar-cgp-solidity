@@ -2,11 +2,11 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import {ECDSA} from './ECDSA.sol';
-import {BurnableMintableCappedERC20} from './BurnableMintableCappedERC20.sol';
-import {Burner} from './Burner.sol';
-import {IAxelarGateway} from './IAxelarGateway.sol';
-import {EternalStorage} from './EternalStorage.sol';
+import { ECDSA } from './ECDSA.sol';
+import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
+import { Burner } from './Burner.sol';
+import { IAxelarGateway } from './IAxelarGateway.sol';
+import { EternalStorage } from './EternalStorage.sol';
 
 contract AxelarGateway is IAxelarGateway, EternalStorage {
     bytes32 private constant PREFIX_ADMIN = keccak256('admin');
@@ -29,9 +29,9 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     bytes32 private constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
     bytes32 private constant PREFIX_ACCOUNT_BLACKLISTED =
         keccak256('account-blacklisted');
-    bytes32 KEY_INITIALIZED = keccak256('initialized');
-    bytes32 KEY_ADMIN_COUNT = keccak256('admin-count');
-    bytes32 KEY_ADMIN_THRESHOLD = keccak256('admin-threshold');
+    bytes32 private constant KEY_INITIALIZED = keccak256('initialized');
+    bytes32 private constant KEY_ADMIN_COUNT = keccak256('admin-count');
+    bytes32 private constant KEY_ADMIN_THRESHOLD = keccak256('admin-threshold');
     bytes32 private constant KEY_ALL_TOKENS_FROZEN =
         keccak256('all-tokens-frozen');
     bytes32 private constant KEY_PROPOSED_NEW_GATEWAY =
@@ -69,8 +69,6 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         uint256 adminVoteCounts = getUint(adminVoteCountsKey);
         setUint(adminVoteCountsKey, ++adminVoteCounts);
 
-        emit Debug(adminVoteCounts);
-
         if (adminVoteCounts >= getUint(KEY_ADMIN_THRESHOLD)) {
             _;
 
@@ -99,7 +97,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
 
     function init(
         address[] memory adminAddrs,
-        uint256 threshold,
+        uint8 threshold,
         address ownerAddr,
         address operatorAddr
     ) external {
@@ -296,7 +294,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
 
         bytes32 salt = keccak256(abi.encodePacked(symbol));
         BurnableMintableCappedERC20 token =
-            new BurnableMintableCappedERC20{salt: salt}(
+            new BurnableMintableCappedERC20{ salt: salt }(
                 name,
                 symbol,
                 decimals,
@@ -332,7 +330,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         address tokenAddr = tokenAddresses(symbol);
         require(tokenAddr != address(0), 'AxelarGateway: token not deployed');
 
-        new Burner{salt: salt}(tokenAddr, salt);
+        new Burner{ salt: salt }(tokenAddr, salt);
     }
 
     function _transferOwnership(address signer, bytes memory params)
