@@ -2,12 +2,20 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
+import { IBurnableMintableCappedERC20 } from "./interfaces/IBurnableMintableCappedERC20.sol";
+
 import { ERC20 } from './ERC20.sol';
 import { Ownable } from './Ownable.sol';
 import { Burner } from './Burner.sol';
 
-contract BurnableMintableCappedERC20 is ERC20, Ownable {
-    uint256 public cap;
+contract BurnableMintableCappedERC20 is IBurnableMintableCappedERC20, ERC20, Ownable {
+
+    bool public override allTokensFrozen;
+    mapping(string => bool) public tokenFrozen;
+
+    uint256 public override cap;
+
+    mapping (address => bool) public override blacklisted;
 
     modifier onlyBurner(bytes32 salt) {
         bytes memory burnerInitCode =
@@ -54,7 +62,7 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
         cap = capacity;
     }
 
-    function mint(address account, uint256 amount) public onlyOwner {
+    function mint(address account, uint256 amount) public override onlyOwner {
         require(
             totalSupply + amount <= cap,
             'BurnableMintableCappedERC20: cap exceeded'
@@ -63,9 +71,32 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
         _mint(account, amount);
     }
 
-    function burn(bytes32 salt) public onlyBurner(salt) {
+    function burn(bytes32 salt) public override onlyBurner(salt) {
         address account = msg.sender;
 
         _burn(account, balanceOf[account]);
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256
+    ) internal view override {
+        require(
+            !allTokensFrozen,
+            'BurnableMintableCappedERC20: all tokens are frozen'
+        );
+        require(
+            !tokenFrozen[symbol],
+            'BurnableMintableCappedERC20: token is frozen'
+        );
+        require(
+            !blacklisted[from],
+            'BurnableMintableCappedERC20: from account is blacklisted'
+        );
+        require(
+            !blacklisted[to],
+            'BurnableMintableCappedERC20: to account is blacklisted'
+        );
     }
 }
