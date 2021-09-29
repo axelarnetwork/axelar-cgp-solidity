@@ -49,8 +49,12 @@ contract AxelarGateway {
         _commandSelectors['deployToken'] = AxelarGateway._deployToken.selector;
         _commandSelectors['mintToken'] = AxelarGateway._mintToken.selector;
         _commandSelectors['burnToken'] = AxelarGateway._burnToken.selector;
-        _commandSelectors['transferOwnership'] = AxelarGateway._transferOwnership.selector;
-        _commandSelectors['transferOperatorship'] = AxelarGateway._transferOperatorship.selector;
+        _commandSelectors['transferOwnership'] = AxelarGateway
+            ._transferOwnership
+            .selector;
+        _commandSelectors['transferOperatorship'] = AxelarGateway
+            ._transferOperatorship
+            .selector;
 
         _commandAddresses['deployToken'] = address(this);
         _commandAddresses['mintToken'] = address(this);
@@ -72,9 +76,9 @@ contract AxelarGateway {
 
         require(
             signer == operator ||
-            signer == owner ||
-            signer == prevOperator ||
-            signer == prevOwner,
+                signer == owner ||
+                signer == prevOperator ||
+                signer == prevOwner,
             'AxelarGateway: signer is not owner or operator'
         );
 
@@ -94,7 +98,7 @@ contract AxelarGateway {
 
         require(
             commandsLength == commands.length &&
-            commandsLength == params.length,
+                commandsLength == params.length,
             'AxelarGateway: commands params length mismatch'
         );
 
@@ -155,7 +159,7 @@ contract AxelarGateway {
 
         bytes32 salt = keccak256(abi.encodePacked(symbol));
         BurnableMintableCappedERC20 token =
-            new BurnableMintableCappedERC20{salt: salt}(
+            new BurnableMintableCappedERC20{ salt: salt }(
                 name,
                 symbol,
                 decimals,
@@ -189,7 +193,7 @@ contract AxelarGateway {
             'AxelarGateway: token not deployed'
         );
 
-        new Burner{salt: salt}(tokenAddress, salt);
+        new Burner{ salt: salt }(tokenAddress, salt);
     }
 
     function _transferOwnership(address signer, bytes memory params)
@@ -202,7 +206,7 @@ contract AxelarGateway {
             newOwner != address(0),
             'AxelarGateway: new owner is the zero address'
         );
-        
+
         require(
             signer == owner,
             'AxelarGateway: only current owner can transfer ownership'
