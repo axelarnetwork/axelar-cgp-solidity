@@ -19,15 +19,14 @@ contract AxelarGatewayProxy is EternalStorage {
         (bool success, ) =
             address(gateway).delegatecall(
                 abi.encodeWithSelector(
-                    AxelarGateway.init.selector,
-                    adminAddrs,
-                    threshold,
-                    ownerAddr,
-                    operatorAddr
+                    AxelarGateway.setup.selector,
+                    abi.encode(adminAddrs, threshold, ownerAddr, operatorAddr)
                 )
             );
         require(success, 'AxelarGatewayProxy: gateway initialization failed');
     }
+
+    function setup(bytes memory) external pure {}
 
     fallback() external payable {
         address implementation = getAddress(KEY_IMPLEMENTATION);

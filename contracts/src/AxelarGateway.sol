@@ -34,7 +34,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     bytes32 private constant KEY_ADMIN_THRESHOLD = keccak256('admin-threshold');
     bytes32 private constant KEY_ALL_TOKENS_FROZEN =
         keccak256('all-tokens-frozen');
-    bytes32 private constant KEY_PROPOSED_NEW_GATEWAY =
+    bytes32 private constant KEY_PROPOSED_UPDATE =
         keccak256('proposed-new-gateway');
     bytes32 private constant KEY_OWNER_COUNT = keccak256('owner-count');
     bytes32 private constant KEY_OPERATOR_COUNT = keccak256('operator-count');
@@ -95,16 +95,14 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         _;
     }
 
-    function init(
-        address[] memory adminAddrs,
-        uint8 threshold,
-        address ownerAddr,
-        address operatorAddr
-    ) external {
-        require(
-            !getBool(KEY_INITIALIZED),
-            'AxelarGateway: already initialized'
-        );
+    function setup(bytes memory params) external override {
+        (
+            address[] memory adminAddrs,
+            uint8 threshold,
+            address ownerAddr,
+            address operatorAddr
+        ) = abi.decode(params, (address[], uint8, address, address));
+
         require(
             adminAddrs.length >= threshold,
             'AxelarGateway: number of admins must be >=threshold'
@@ -130,8 +128,6 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
 
         emit OwnershipTransferred(address(0), ownerAddr);
         emit OperatorshipTransferred(address(0), operatorAddr);
-
-        setBool(KEY_INITIALIZED, true);
     }
 
     function setTokenDailyMintLimit(string memory symbol, uint256 limit)
@@ -192,13 +188,20 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         emit AccountWhitelisted(account);
     }
 
-    function proposeUpdate(address newVersion) external override onlyAdmins {
+    function proposeUpdate(address newVersion, bytes memory migrateData)
+        external
+        override
+        onlyAdmins
+    {
         require(
-            getAddress(KEY_PROPOSED_NEW_GATEWAY) == address(0),
+            getBytes(KEY_PROPOSED_UPDATE).length == 0,
             'AxelarAdmin: new gateway already proposed'
         );
 
-        setAddress(KEY_PROPOSED_NEW_GATEWAY, newVersion);
+        setBytes(
+            KEY_PROPOSED_UPDATE,
+            abi.encodePacked(newVersion, migrateData)
+        );
         emit UpdateProposed(address(this), newVersion);
     }
 
@@ -376,23 +379,36 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     }
 
     function _update(address signer, bytes memory params) external onlySelf {
-        address newVersion = abi.decode(params, (address));
+        (address newVersion, bytes memory setupParams) =
+            abi.decode(params, (address, bytes));
 
         require(
             signer == owner(),
             'AxelarGateway: only current owner can update'
         );
 
-        address proposedNewVersion = getAddress(KEY_PROPOSED_NEW_GATEWAY);
+        bytes memory proposedUpdate = getBytes(KEY_PROPOSED_UPDATE);
         require(
-            proposedNewVersion != address(0),
-            'AxelarGateway: no new version is proposed yet'
+            proposedUpdate.length != 0,
+            'AxelarGateway: no update is proposed yet'
         );
-        deleteAddress(KEY_PROPOSED_NEW_GATEWAY);
+        deleteBytes(KEY_PROPOSED_UPDATE);
 
-        if (proposedNewVersion != newVersion) {
+        if (
+            keccak256(proposedUpdate) !=
+            keccak256(abi.encodePacked(newVersion, setupParams))
+        ) {
             return;
         }
+
+        (bool success, ) =
+            newVersion.delegatecall(
+                abi.encodeWithSelector(
+                    IAxelarGateway.setup.selector,
+                    setupParams
+                )
+            );
+        require(success, 'AxelarGateway: setup failed');
 
         setAddress(KEY_IMPLEMENTATION, newVersion);
         emit Updated(address(this), newVersion);

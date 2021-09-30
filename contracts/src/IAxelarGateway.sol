@@ -25,6 +25,8 @@ interface IAxelarGateway {
     );
     event Updated(address indexed oldVersion, address indexed newVersion);
 
+    function setup(bytes memory params) external;
+
     function setTokenDailyMintLimit(string memory symbol, uint256 limit)
         external;
 
@@ -40,7 +42,8 @@ interface IAxelarGateway {
 
     function whitelistAccount(address account) external;
 
-    function proposeUpdate(address newVersion) external;
+    function proposeUpdate(address newVersion, bytes memory migrateData)
+        external;
 
     function execute(bytes memory input) external;
 

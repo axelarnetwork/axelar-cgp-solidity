@@ -376,19 +376,34 @@ describe('AxelarGateway', () => {
   describe('proposeUpdate and update', () => {
     it('should update to the next version after passing threshold and owner approval', async () => {
       const newVersion = await deployContract(ownerWallet, AxelarGateway, []);
+      const params = defaultAbiCoder.encode(
+        ['address[]', 'uint8', 'address', 'address'],
+        [
+          adminWallets.map(get('address')),
+          1,
+          ownerWallet.address,
+          operatorWallet.address,
+        ],
+      );
 
       return expect(
-        contract.connect(adminWallet1).proposeUpdate(newVersion.address),
+        contract
+          .connect(adminWallet1)
+          .proposeUpdate(newVersion.address, params),
       )
         .to.not.emit(contract, 'UpdateProposed')
         .then(() =>
           expect(
-            contract.connect(adminWallet2).proposeUpdate(newVersion.address),
+            contract
+              .connect(adminWallet2)
+              .proposeUpdate(newVersion.address, params),
           ).to.not.emit(contract, 'UpdateProposed'),
         )
         .then(() =>
           expect(
-            contract.connect(adminWallet3).proposeUpdate(newVersion.address),
+            contract
+              .connect(adminWallet3)
+              .proposeUpdate(newVersion.address, params),
           )
             .to.emit(contract, 'UpdateProposed')
             .withArgs(contract.address, newVersion.address),
@@ -401,7 +416,12 @@ describe('AxelarGateway', () => {
                 CHAIN_ID,
                 [getRandomID()],
                 ['update'],
-                [defaultAbiCoder.encode(['address'], [newVersion.address])],
+                [
+                  defaultAbiCoder.encode(
+                    ['address', 'bytes'],
+                    [newVersion.address, params],
+                  ),
+                ],
               ],
             ),
           );
@@ -409,7 +429,19 @@ describe('AxelarGateway', () => {
           return getSignedExecuteInput(data, ownerWallet).then((input) =>
             expect(contract.execute(input)).to.emit(contract, 'Updated'),
           );
-        });
+        })
+        .then(() =>
+          expect(contract.connect(adminWallet2).freezeAllTokens()).to.emit(
+            contract,
+            'AllTokensFrozen',
+          ),
+        )
+        .then(() =>
+          expect(contract.connect(adminWallet4).freezeAllTokens()).to.emit(
+            contract,
+            'AllTokensFrozen',
+          ),
+        );
     });
   });
 
