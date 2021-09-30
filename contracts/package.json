@@ -25,7 +25,8 @@
   "homepage": "https://github.com/axelarnetwork/ethereum-bridge#readme",
   "dependencies": {
     "@openzeppelin/contracts": "^3.3.0",
-    "ethereum-waffle": "^3.2.2"
+    "ethereum-waffle": "^3.2.2",
+    "lodash": "^4.17.21"
   },
   "devDependencies": {
     "babel-eslint": "^10.1.0",

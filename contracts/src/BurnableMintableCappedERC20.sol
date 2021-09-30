@@ -5,9 +5,19 @@ pragma solidity >=0.8.0 <0.9.0;
 import { ERC20 } from './ERC20.sol';
 import { Ownable } from './Ownable.sol';
 import { Burner } from './Burner.sol';
+import { EternalStorage } from './EternalStorage.sol';
 
 contract BurnableMintableCappedERC20 is ERC20, Ownable {
     uint256 public cap;
+
+    bytes32 private constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
+    bytes32 private constant PREFIX_ACCOUNT_BLACKLISTED =
+        keccak256('account-blacklisted');
+    bytes32 private constant KEY_ALL_TOKENS_FROZEN =
+        keccak256('all-tokens-frozen');
+
+    event Frozen(address indexed owner);
+    event Unfrozen(address indexed owner);
 
     modifier onlyBurner(bytes32 salt) {
         bytes memory burnerInitCode =
@@ -67,5 +77,34 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
         address account = msg.sender;
 
         _burn(account, balanceOf[account]);
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256
+    ) internal view override {
+        require(
+            !EternalStorage(owner).getBool(KEY_ALL_TOKENS_FROZEN),
+            'BurnableMintableCappedERC20: all tokens are frozen'
+        );
+        require(
+            !EternalStorage(owner).getBool(
+                keccak256(abi.encodePacked(PREFIX_TOKEN_FROZEN, symbol))
+            ),
+            'BurnableMintableCappedERC20: token is frozen'
+        );
+        require(
+            !EternalStorage(owner).getBool(
+                keccak256(abi.encodePacked(PREFIX_ACCOUNT_BLACKLISTED, from))
+            ),
+            'BurnableMintableCappedERC20: from account is blacklisted'
+        );
+        require(
+            !EternalStorage(owner).getBool(
+                keccak256(abi.encodePacked(PREFIX_ACCOUNT_BLACKLISTED, to))
+            ),
+            'BurnableMintableCappedERC20: to account is blacklisted'
+        );
     }
 }
