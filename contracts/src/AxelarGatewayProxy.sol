@@ -2,29 +2,10 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import { AxelarGateway } from './AxelarGateway.sol';
 import { EternalStorage } from './EternalStorage.sol';
 
 contract AxelarGatewayProxy is EternalStorage {
-    bytes32 private constant KEY_IMPLEMENTATION = keccak256('implementation');
-
-    constructor(
-        address[] memory adminAddrs,
-        uint8 threshold,
-        address ownerAddr,
-        address operatorAddr
-    ) {
-        AxelarGateway gateway = new AxelarGateway();
-        setAddress(KEY_IMPLEMENTATION, address(gateway));
-        (bool success, ) =
-            address(gateway).delegatecall(
-                abi.encodeWithSelector(
-                    AxelarGateway.setup.selector,
-                    abi.encode(adminAddrs, threshold, ownerAddr, operatorAddr)
-                )
-            );
-        require(success, 'AxelarGatewayProxy: gateway initialization failed');
-    }
+    bytes32 internal constant KEY_IMPLEMENTATION = keccak256('implementation');
 
     function setup(bytes memory) external pure {}
 
@@ -56,6 +37,6 @@ contract AxelarGatewayProxy is EternalStorage {
     }
 
     receive() external payable {
-        revert('AxelarGatewayProxy: does not take ether');
+        revert('NO_ETHER');
     }
 }

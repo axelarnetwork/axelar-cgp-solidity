@@ -29,7 +29,7 @@ library ECDSA {
         returns (address signer)
     {
         // Check the signature length
-        require(signature.length == 65, 'ECDSA: invalid signature length');
+        require(signature.length == 65, 'INV_LEN');
 
         // Divide the signature in r, s and v variables
         bytes32 r;
@@ -57,16 +57,13 @@ library ECDSA {
         require(
             uint256(s) <=
                 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
-            'ECDSA: invalid signature "s" value'
+            'INV_S'
         );
 
-        require(v == 27 || v == 28, 'ECDSA: invalid signature "v" value');
+        require(v == 27 || v == 28, 'INV_V');
 
         // If the signature is valid (and not malleable), return the signer address
-        require(
-            (signer = ecrecover(hash, v, r, s)) != address(0),
-            'ECDSA: invalid signature'
-        );
+        require((signer = ecrecover(hash, v, r, s)) != address(0), 'INV_SIG');
     }
 
     /**

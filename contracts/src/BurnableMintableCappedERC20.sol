@@ -11,8 +11,6 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
     uint256 public cap;
 
     bytes32 private constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
-    bytes32 private constant PREFIX_ACCOUNT_BLACKLISTED =
-        keccak256('account-blacklisted');
     bytes32 private constant KEY_ALL_TOKENS_FROZEN =
         keccak256('all-tokens-frozen');
 
@@ -47,10 +45,7 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
                 )
             );
 
-        require(
-            msg.sender == burnerAddress,
-            'BurnableMintableCappedERC20: sender not burner'
-        );
+        require(msg.sender == burnerAddress, 'NOT_BURNER');
 
         _;
     }
@@ -65,10 +60,7 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
     }
 
     function mint(address account, uint256 amount) public onlyOwner {
-        require(
-            totalSupply + amount <= cap,
-            'BurnableMintableCappedERC20: cap exceeded'
-        );
+        require(totalSupply + amount <= cap, 'CAP_EXCEEDED');
 
         _mint(account, amount);
     }
@@ -80,31 +72,19 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
     }
 
     function _beforeTokenTransfer(
-        address from,
-        address to,
+        address,
+        address,
         uint256
     ) internal view override {
         require(
             !EternalStorage(owner).getBool(KEY_ALL_TOKENS_FROZEN),
-            'BurnableMintableCappedERC20: all tokens are frozen'
+            'IS_FROZEN'
         );
         require(
             !EternalStorage(owner).getBool(
                 keccak256(abi.encodePacked(PREFIX_TOKEN_FROZEN, symbol))
             ),
-            'BurnableMintableCappedERC20: token is frozen'
-        );
-        require(
-            !EternalStorage(owner).getBool(
-                keccak256(abi.encodePacked(PREFIX_ACCOUNT_BLACKLISTED, from))
-            ),
-            'BurnableMintableCappedERC20: from account is blacklisted'
-        );
-        require(
-            !EternalStorage(owner).getBool(
-                keccak256(abi.encodePacked(PREFIX_ACCOUNT_BLACKLISTED, to))
-            ),
-            'BurnableMintableCappedERC20: to account is blacklisted'
+            'IS_FROZEN'
         );
     }
 }
