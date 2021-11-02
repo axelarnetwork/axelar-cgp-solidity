@@ -5,10 +5,7 @@ pragma solidity >=0.8.0 <0.9.0;
 abstract contract Ownable {
     address public owner;
 
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     constructor() {
         owner = msg.sender;
@@ -16,15 +13,12 @@ abstract contract Ownable {
     }
 
     modifier onlyOwner() {
-        require(owner == msg.sender, 'Ownable: caller is not the owner');
+        require(owner == msg.sender, 'NOT_OWNER');
         _;
     }
 
     function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(
-            newOwner != address(0),
-            'Ownable: new owner is the zero address'
-        );
+        require(newOwner != address(0), 'ZERO_ADDR');
 
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;

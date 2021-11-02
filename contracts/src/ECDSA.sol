@@ -23,13 +23,9 @@ library ECDSA {
      * this is by receiving a hash of the original message (which may otherwise
      * be too long), and then calling {toEthSignedMessageHash} on it.
      */
-    function recover(bytes32 hash, bytes memory signature)
-        internal
-        pure
-        returns (address signer)
-    {
+    function recover(bytes32 hash, bytes memory signature) internal pure returns (address signer) {
         // Check the signature length
-        require(signature.length == 65, 'ECDSA: invalid signature length');
+        require(signature.length == 65, 'INV_LEN');
 
         // Divide the signature in r, s and v variables
         bytes32 r;
@@ -54,19 +50,12 @@ library ECDSA {
         // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or
         // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept
         // these malleable signatures as well.
-        require(
-            uint256(s) <=
-                0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
-            'ECDSA: invalid signature "s" value'
-        );
+        require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, 'INV_S');
 
-        require(v == 27 || v == 28, 'ECDSA: invalid signature "v" value');
+        require(v == 27 || v == 28, 'INV_V');
 
         // If the signature is valid (and not malleable), return the signer address
-        require(
-            (signer = ecrecover(hash, v, r, s)) != address(0),
-            'ECDSA: invalid signature'
-        );
+        require((signer = ecrecover(hash, v, r, s)) != address(0), 'INV_SIG');
     }
 
     /**
@@ -77,16 +66,9 @@ library ECDSA {
      *
      * See {recover}.
      */
-    function toEthSignedMessageHash(bytes32 hash)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32) {
         // 32 is the length in bytes of hash,
         // enforced by the type signature above
-        return
-            keccak256(
-                abi.encodePacked('\x19Ethereum Signed Message:\n32', hash)
-            );
+        return keccak256(abi.encodePacked('\x19Ethereum Signed Message:\n32', hash));
     }
 }

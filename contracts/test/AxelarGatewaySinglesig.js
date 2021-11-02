@@ -14,27 +14,19 @@ const { get } = require('lodash/fp');
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
-const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
-const AxelarGateway = require('../build/AxelarGateway.json');
+const AxelarGatewayProxySinglesig = require('../build/AxelarGatewayProxySinglesig.json');
+const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 const Burner = require('../build/Burner.json');
+const {
+  bigNumberToNumber,
+  getSignedExecuteInput,
+  getRandomInt,
+  getRandomID,
+  tickBlockTime,
+} = require('./utils');
 
-const bigNumberToNumber = (bigNumber) => bigNumber.toNumber();
-
-const getSignedExecuteInput = (data, wallet) =>
-  wallet
-    .signMessage(arrayify(keccak256(data)))
-    .then((signature) =>
-      defaultAbiCoder.encode(['bytes', 'bytes'], [data, signature]),
-    );
-
-const getRandomInt = (max) => {
-  return Math.floor(Math.random() * max);
-};
-
-const getRandomID = () => id(getRandomInt(1e10).toString());
-
-describe('AxelarGateway', () => {
+describe('AxelarGatewaySingleSig', () => {
   const [
     ownerWallet,
     operatorWallet,
@@ -59,13 +51,27 @@ describe('AxelarGateway', () => {
   let contract;
 
   beforeEach(async () => {
-    const proxy = await deployContract(ownerWallet, AxelarGatewayProxy, [
-      adminWallets.map(get('address')),
-      threshold,
-      ownerWallet.address,
-      operatorWallet.address,
-    ]);
-    contract = new Contract(proxy.address, AxelarGateway.abi, ownerWallet);
+    const params = arrayify(
+      defaultAbiCoder.encode(
+        ['address[]', 'uint8', 'address', 'address'],
+        [
+          adminWallets.map(get('address')),
+          threshold,
+          ownerWallet.address,
+          operatorWallet.address,
+        ],
+      ),
+    );
+    const proxy = await deployContract(
+      ownerWallet,
+      AxelarGatewayProxySinglesig,
+      [params],
+    );
+    contract = new Contract(
+      proxy.address,
+      AxelarGatewaySinglesig.abi,
+      ownerWallet,
+    );
   });
 
   describe('owner', () => {
@@ -148,7 +154,7 @@ describe('AxelarGateway', () => {
           ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
           [
             CHAIN_ID,
-            [id('deployToken')],
+            [getRandomID()],
             ['deployToken'],
             [
               defaultAbiCoder.encode(
@@ -176,7 +182,7 @@ describe('AxelarGateway', () => {
               ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
               [
                 CHAIN_ID,
-                [id('mintToken')],
+                [getRandomID()],
                 ['mintToken'],
                 [
                   defaultAbiCoder.encode(
@@ -211,9 +217,7 @@ describe('AxelarGateway', () => {
           .then(() =>
             expect(
               tokenContract.transfer(ownerWallet.address, 1),
-            ).to.be.revertedWith(
-              'BurnableMintableCappedERC20: token is frozen',
-            ),
+            ).to.be.revertedWith('IS_FROZEN'),
           )
           .then(() =>
             expect(
@@ -255,9 +259,7 @@ describe('AxelarGateway', () => {
           .then(() =>
             expect(
               tokenContract.transfer(ownerWallet.address, amount),
-            ).to.be.revertedWith(
-              'BurnableMintableCappedERC20: all tokens are frozen',
-            ),
+            ).to.be.revertedWith('IS_FROZEN'),
           )
           .then(() =>
             expect(
@@ -281,105 +283,74 @@ describe('AxelarGateway', () => {
           );
       });
     });
-
-    describe('blacklistAccount and whitelistAccount', () => {
-      it('should blacklist the account for receiving after passing threshold', () => {
-        const account = ownerWallet.address;
-
-        return expect(contract.connect(adminWallet1).blacklistAccount(account))
-          .to.not.emit(contract, 'AccountBlacklisted')
-          .then(() =>
-            expect(
-              contract.connect(adminWallet2).blacklistAccount(account),
-            ).to.not.emit(contract, 'AccountBlacklisted'),
-          )
-          .then(() =>
-            expect(contract.connect(adminWallet3).blacklistAccount(account))
-              .to.emit(contract, 'AccountBlacklisted')
-              .withArgs(account),
-          )
-          .then(() =>
-            expect(
-              tokenContract.transfer(ownerWallet.address, amount),
-            ).to.be.revertedWith(
-              'BurnableMintableCappedERC20: to account is blacklisted',
-            ),
-          )
-          .then(() =>
-            expect(
-              contract.connect(adminWallet1).whitelistAccount(account),
-            ).to.not.emit(contract, 'AccountWhitelisted'),
-          )
-          .then(() =>
-            expect(
-              contract.connect(adminWallet2).whitelistAccount(account),
-            ).to.not.emit(contract, 'AccountWhitelisted'),
-          )
-          .then(() =>
-            expect(contract.connect(adminWallet3).whitelistAccount(account))
-              .to.emit(contract, 'AccountWhitelisted')
-              .withArgs(account),
-          )
-          .then(() =>
-            expect(tokenContract.transfer(ownerWallet.address, amount))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(nonOwnerWallet.address, ownerWallet.address, amount),
-          );
-      });
-
-      it('should blacklist the account for sending after passing threshold', () => {
-        const account = nonOwnerWallet.address;
-
-        return expect(contract.connect(adminWallet1).blacklistAccount(account))
-          .to.not.emit(contract, 'AccountBlacklisted')
-          .then(() =>
-            expect(
-              contract.connect(adminWallet2).blacklistAccount(account),
-            ).to.not.emit(contract, 'AccountBlacklisted'),
-          )
-          .then(() =>
-            expect(contract.connect(adminWallet3).blacklistAccount(account))
-              .to.emit(contract, 'AccountBlacklisted')
-              .withArgs(account),
-          )
-          .then(() =>
-            expect(
-              tokenContract.transfer(ownerWallet.address, 1),
-            ).to.be.revertedWith(
-              'BurnableMintableCappedERC20: from account is blacklisted',
-            ),
-          )
-          .then(() =>
-            expect(
-              contract.connect(adminWallet1).whitelistAccount(account),
-            ).to.not.emit(contract, 'AccountWhitelisted'),
-          )
-          .then(() =>
-            expect(
-              contract.connect(adminWallet2).whitelistAccount(account),
-            ).to.not.emit(contract, 'AccountWhitelisted'),
-          )
-          .then(() =>
-            expect(contract.connect(adminWallet3).whitelistAccount(account))
-              .to.emit(contract, 'AccountWhitelisted')
-              .withArgs(account),
-          )
-          .then(() =>
-            expect(tokenContract.transfer(ownerWallet.address, amount))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(nonOwnerWallet.address, ownerWallet.address, amount),
-          );
-      });
-    });
   });
 
   describe('proposeUpdate and update', () => {
-    it('should update to the next version after passing threshold and owner approval', async () => {
-      const newVersion = await deployContract(ownerWallet, AxelarGateway, []);
+    it('should allow admins to force updating to the proposed version after timeout', async () => {
+      const newVersion = await deployContract(
+        ownerWallet,
+        AxelarGatewaySinglesig,
+        [],
+      );
       const params = defaultAbiCoder.encode(
         ['address[]', 'uint8', 'address', 'address'],
         [
-          adminWallets.map(get('address')),
+          [ownerWallet.address, operatorWallet.address],
+          1,
+          ownerWallet.address,
+          operatorWallet.address,
+        ],
+      );
+
+      return expect(
+        contract
+          .connect(adminWallet1)
+          .proposeUpdate(newVersion.address, params),
+      )
+        .to.not.emit(contract, 'UpdateProposed')
+        .then(() =>
+          expect(
+            contract
+              .connect(adminWallet2)
+              .proposeUpdate(newVersion.address, params),
+          ).to.not.emit(contract, 'UpdateProposed'),
+        )
+        .then(() =>
+          expect(
+            contract
+              .connect(adminWallet3)
+              .proposeUpdate(newVersion.address, params),
+          )
+            .to.emit(contract, 'UpdateProposed')
+            .withArgs(contract.address, newVersion.address),
+        )
+        .then(() =>
+          expect(
+            contract
+              .connect(adminWallet4)
+              .forceUpdate(newVersion.address, params),
+          ).to.be.revertedWith('NO_TIMEOUT'),
+        )
+        .then(() => tickBlockTime(contract.provider, 86400))
+        .then(() =>
+          expect(
+            contract
+              .connect(adminWallet4)
+              .forceUpdate(newVersion.address, params),
+          ).to.emit(contract, 'Updated'),
+        );
+    });
+
+    it('should update to the next version after passing threshold and owner approval', async () => {
+      const newVersion = await deployContract(
+        ownerWallet,
+        AxelarGatewaySinglesig,
+        [],
+      );
+      const params = defaultAbiCoder.encode(
+        ['address[]', 'uint8', 'address', 'address'],
+        [
+          [ownerWallet.address, operatorWallet.address],
           1,
           ownerWallet.address,
           operatorWallet.address,
@@ -431,13 +402,13 @@ describe('AxelarGateway', () => {
           );
         })
         .then(() =>
-          expect(contract.connect(adminWallet2).freezeAllTokens()).to.emit(
+          expect(contract.connect(ownerWallet).freezeAllTokens()).to.emit(
             contract,
             'AllTokensFrozen',
           ),
         )
         .then(() =>
-          expect(contract.connect(adminWallet4).freezeAllTokens()).to.emit(
+          expect(contract.connect(operatorWallet).freezeAllTokens()).to.emit(
             contract,
             'AllTokensFrozen',
           ),
@@ -446,16 +417,6 @@ describe('AxelarGateway', () => {
   });
 
   describe('execute', () => {
-    it('should fail if data is not signed by owner', async () => {
-      const data = arrayify('0x1234');
-
-      return getSignedExecuteInput(data, nonOwnerWallet).then((input) =>
-        expect(contract.execute(input)).to.be.revertedWith(
-          'AxelarGateway: signer is not owner',
-        ),
-      );
-    });
-
     it('should fail if chain Id mismatches', () => {
       const data = arrayify(
         defaultAbiCoder.encode(
@@ -465,9 +426,7 @@ describe('AxelarGateway', () => {
       );
 
       return getSignedExecuteInput(data, ownerWallet).then((input) =>
-        expect(contract.execute(input)).to.be.revertedWith(
-          'AxelarGateway: signed chain ID mismatch',
-        ),
+        expect(contract.execute(input)).to.be.revertedWith('INV_CHAIN'),
       );
     });
 
@@ -482,7 +441,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('deployToken-1')],
+              [getRandomID()],
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
@@ -498,7 +457,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('deployToken-2')],
+              [getRandomID()],
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
@@ -533,7 +492,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('deployToken')],
+              [getRandomID()],
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
@@ -563,7 +522,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('deployToken')],
+              [getRandomID()],
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
@@ -631,7 +590,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('deployToken')],
+              [getRandomID()],
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
@@ -680,7 +639,7 @@ describe('AxelarGateway', () => {
                 ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                 [
                   CHAIN_ID,
-                  [id('mintToken-1')],
+                  [getRandomID()],
                   ['mintToken'],
                   [
                     defaultAbiCoder.encode(
@@ -704,7 +663,7 @@ describe('AxelarGateway', () => {
                 ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                 [
                   CHAIN_ID,
-                  [id('mintToken-2')],
+                  [getRandomID()],
                   ['mintToken'],
                   [
                     defaultAbiCoder.encode(
@@ -731,7 +690,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('mintToken')],
+              [getRandomID()],
               ['mintToken'],
               [
                 defaultAbiCoder.encode(
@@ -773,7 +732,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('mintToken')],
+              [getRandomID()],
               ['mintToken'],
               [
                 defaultAbiCoder.encode(
@@ -822,7 +781,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('deployToken'), id('mintToken')],
+              [getRandomID(), getRandomID()],
               ['deployToken', 'mintToken'],
               [
                 defaultAbiCoder.encode(
@@ -854,7 +813,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('burnToken1')],
+              [getRandomID()],
               ['burnToken'],
               [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
             ],
@@ -865,7 +824,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('burnToken2')],
+              [getRandomID()],
               ['burnToken'],
               [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
             ],
@@ -926,7 +885,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('burnToken1')],
+              [getRandomID()],
               ['burnToken'],
               [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
             ],
@@ -937,7 +896,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('burnToken2')],
+              [getRandomID()],
               ['burnToken'],
               [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
             ],
@@ -995,7 +954,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('transferOwnership')],
+              [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [ADDRESS_ZERO])],
             ],
@@ -1016,7 +975,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('transferOwnership')],
+              [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [operatorWallet.address])],
             ],
@@ -1038,7 +997,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('transferOwnership')],
+              [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [newOwner])],
             ],
@@ -1064,7 +1023,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('transferOwnership')],
+              [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [newOwner])],
             ],
@@ -1087,7 +1046,7 @@ describe('AxelarGateway', () => {
                 ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                 [
                   CHAIN_ID,
-                  [id('deployToken')],
+                  [getRandomID()],
                   ['deployToken'],
                   [
                     defaultAbiCoder.encode(
@@ -1113,7 +1072,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('transferOwnership1')],
+              [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [newOwner])],
             ],
@@ -1133,7 +1092,7 @@ describe('AxelarGateway', () => {
                 ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                 [
                   CHAIN_ID,
-                  [id('transferOwnership2')],
+                  [getRandomID()],
                   ['transferOwnership'],
                   [defaultAbiCoder.encode(['address'], [newOwner])],
                 ],
@@ -1159,7 +1118,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('transferOperatorship')],
+              [getRandomID()],
               ['transferOperatorship'],
               [defaultAbiCoder.encode(['address'], [newOperator])],
             ],
@@ -1181,7 +1140,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [id('transferOperatorship')],
+              [getRandomID()],
               ['transferOperatorship'],
               [defaultAbiCoder.encode(['address'], [newOperator])],
             ],
@@ -1215,12 +1174,7 @@ describe('AxelarGateway', () => {
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [
-                id('deployToken'),
-                id('mintToken1'),
-                id('mintToken2'),
-                id('transferOwnership'),
-              ],
+              [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
               ['deployToken', 'mintToken', 'mintToken', 'transferOwnership'],
               [
                 defaultAbiCoder.encode(

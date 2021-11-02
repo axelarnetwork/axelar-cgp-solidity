@@ -7,12 +7,12 @@ pragma solidity >=0.8.0 <0.9.0;
  * @dev This contract holds all the necessary state variables to carry out the storage of any contract.
  */
 contract EternalStorage {
-    mapping(bytes32 => uint256) uIntStorage;
-    mapping(bytes32 => string) stringStorage;
-    mapping(bytes32 => address) addressStorage;
-    mapping(bytes32 => bytes) bytesStorage;
-    mapping(bytes32 => bool) boolStorage;
-    mapping(bytes32 => int256) intStorage;
+    mapping(bytes32 => uint256) private uIntStorage;
+    mapping(bytes32 => string) private stringStorage;
+    mapping(bytes32 => address) private addressStorage;
+    mapping(bytes32 => bytes) private bytesStorage;
+    mapping(bytes32 => bool) private boolStorage;
+    mapping(bytes32 => int256) private intStorage;
 
     // *** Getter Methods ***
     function getUint(bytes32 key) public view returns (uint256) {
