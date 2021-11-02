@@ -15,14 +15,7 @@ contract AxelarGatewayProxy is EternalStorage {
         assembly {
             calldatacopy(0, 0, calldatasize())
 
-            let result := delegatecall(
-                gas(),
-                implementation,
-                0,
-                calldatasize(),
-                0,
-                0
-            )
+            let result := delegatecall(gas(), implementation, 0, calldatasize(), 0, 0)
 
             returndatacopy(0, 0, returndatasize())
 

@@ -11,10 +11,8 @@ contract AxelarGatewayProxySinglesig is AxelarGatewayProxy {
         IAxelarGateway gateway = new AxelarGatewaySinglesig();
 
         setAddress(KEY_IMPLEMENTATION, address(gateway));
-        (bool success, ) =
-            address(gateway).delegatecall(
-                abi.encodeWithSelector(IAxelarGateway.setup.selector, params)
-            );
+
+        (bool success, ) = address(gateway).delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, params));
         require(success, 'SETUP_FAILED');
     }
 }
