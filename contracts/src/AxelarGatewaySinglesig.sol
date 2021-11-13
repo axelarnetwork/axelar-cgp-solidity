@@ -8,10 +8,13 @@ import { ECDSA } from './ECDSA.sol';
 import { AxelarGateway } from './AxelarGateway.sol';
 
 contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
-    bytes32 internal constant PREFIX_OWNER = keccak256('owner');
-    bytes32 internal constant PREFIX_OPERATOR = keccak256('operator');
     bytes32 internal constant KEY_OWNER_EPOCH = keccak256('owner-epoch');
+
+    bytes32 internal constant PREFIX_OWNER = keccak256('owner');
+
     bytes32 internal constant KEY_OPERATOR_EPOCH = keccak256('operator-epoch');
+
+    bytes32 internal constant PREFIX_OPERATOR = keccak256('operator');
 
     /********************\
     |* Pure Key Getters *|
@@ -37,6 +40,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         return getAddress(_getOwnerKey(ownerEpoch));
     }
 
+    /// @dev Returns true if a `account` is owner within the last `OLD_KEY_RETENTION` owner epochs.
     function _isValidRecentOwner(address account) internal view returns (bool) {
         uint256 ownerEpoch = _ownerEpoch();
         uint256 lowerBoundOwnerEpoch = ownerEpoch > OLD_KEY_RETENTION ? ownerEpoch - OLD_KEY_RETENTION : uint256(0);
@@ -60,6 +64,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         return getAddress(_getOperatorKey(operatorEpoch));
     }
 
+    /// @dev Returns true if a `account` is operator within the last `OLD_KEY_RETENTION` operator epochs.
     function _isValidRecentOperator(address account) internal view returns (bool) {
         uint256 operatorEpoch = _operatorEpoch();
         uint256 lowerBoundOperatorEpoch =
@@ -221,6 +226,8 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             } else if (commandHash == SELECTOR_TRANSFER_OPERATORSHIP) {
                 commandSelector = AxelarGatewaySinglesig.transferOperatorship.selector;
             } else if (commandHash == SELECTOR_UPDATE) {
+                // AUDIT: If `update` is called is called within the context of _this_ implementation, and the `setup` performs `selfdestruct`,
+                //        it will result in the loss of _this_ implementation (thereby losing the gateway). Consider directly calling `execute`.
                 commandSelector = AxelarGatewaySinglesig.update.selector;
             } else {
                 continue; /* Ignore if unknown command received */

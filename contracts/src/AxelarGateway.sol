@@ -128,7 +128,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         uint256 _proposedUpdateTime = proposedUpdateTime();
 
-        // Require that the proposedUpdateTime exists, and that one day has elapsed without an action to update or cancel the update.
+        // Require that the `proposedUpdateTime` exists, and that one day has elapsed without an action to update or cancel the update.
         require((_proposedUpdateTime > 0) && (block.timestamp - _proposedUpdateTime >= 1 days), 'NO_TIMEOUT');
 
         _update(newVersion, setupParams);
@@ -187,6 +187,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         // NOTE: Any attempt to “incorrectly” update is the way to clear the pending update, since we return rather than revert.
         if (keccak256(_proposedUpdate) != keccak256(abi.encodePacked(newImplementation, setupParams))) return;
 
+        // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
+        //        if `_update` is entered within the context of _this_ implementation itself. Consider directly calling `forceUpdate`.
         (bool success, ) =
             newImplementation.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams));
         require(success, 'SETUP_FAILED');

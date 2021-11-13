@@ -69,13 +69,13 @@ contract AdminMultisigBase is EternalStorage {
     function _getAdminVotedKey(
         uint256 adminEpoch,
         bytes32 topic,
-        address admin
+        address account
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_ADMIN_VOTED, adminEpoch, topic, admin));
+        return keccak256(abi.encodePacked(PREFIX_ADMIN_VOTED, adminEpoch, topic, account));
     }
 
-    function _getIsAdminKey(uint256 adminEpoch, address admin) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_IS_ADMIN, adminEpoch, admin));
+    function _getIsAdminKey(uint256 adminEpoch, address account) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_IS_ADMIN, adminEpoch, account));
     }
 
     /***********\
@@ -105,13 +105,13 @@ contract AdminMultisigBase is EternalStorage {
     function _hasVoted(
         uint256 adminEpoch,
         bytes32 topic,
-        address admin
+        address account
     ) internal view returns (bool) {
-        return getBool(_getAdminVotedKey(adminEpoch, topic, admin));
+        return getBool(_getAdminVotedKey(adminEpoch, topic, account));
     }
 
-    function _isAdmin(uint256 adminEpoch, address admin) internal view returns (bool) {
-        return getBool(_getIsAdminKey(adminEpoch, admin));
+    function _isAdmin(uint256 adminEpoch, address account) internal view returns (bool) {
+        return getBool(_getIsAdminKey(adminEpoch, account));
     }
 
     /***********\
@@ -125,9 +125,9 @@ contract AdminMultisigBase is EternalStorage {
     function _setAdmin(
         uint256 adminEpoch,
         uint256 index,
-        address admin
+        address account
     ) internal {
-        _setAddress(_getAdminKey(adminEpoch, index), admin);
+        _setAddress(_getAdminKey(adminEpoch, index), account);
     }
 
     function _setAdminCount(uint256 adminEpoch, uint256 adminCount) internal {
@@ -136,10 +136,10 @@ contract AdminMultisigBase is EternalStorage {
 
     function _setAdmins(
         uint256 adminEpoch,
-        address[] memory admins,
+        address[] memory accounts,
         uint256 threshold
     ) internal {
-        uint256 adminLength = admins.length;
+        uint256 adminLength = accounts.length;
 
         require(adminLength >= threshold, 'INV_ADMINS');
         require(threshold > uint256(0), 'INV_ADMIN_THLD');
@@ -148,11 +148,14 @@ contract AdminMultisigBase is EternalStorage {
         _setAdminCount(adminEpoch, adminLength);
 
         for (uint256 i; i < adminLength; i++) {
-            address admin = admins[i];
-            require(!_isAdmin(adminEpoch, admin), 'DUP_ADMIN');
+            address account = accounts[i];
 
-            _setAdmin(adminEpoch, i, admin);
-            _setIsAdmin(adminEpoch, admin, true);
+            // Check that the account wasn't already set as an admin for this epoch.
+            require(!_isAdmin(adminEpoch, account), 'DUP_ADMIN');
+
+            // Set this account as the i-th admin in this epoch (needed to we can clear topic votes in `onlyAdmin`).
+            _setAdmin(adminEpoch, i, account);
+            _setIsAdmin(adminEpoch, account, true);
         }
     }
 
@@ -171,17 +174,17 @@ contract AdminMultisigBase is EternalStorage {
     function _setHasVoted(
         uint256 adminEpoch,
         bytes32 topic,
-        address admin,
+        address account,
         bool voted
     ) internal {
-        _setBool(_getAdminVotedKey(adminEpoch, topic, admin), voted);
+        _setBool(_getAdminVotedKey(adminEpoch, topic, account), voted);
     }
 
     function _setIsAdmin(
         uint256 adminEpoch,
-        address admin,
+        address account,
         bool isAdmin
     ) internal {
-        _setBool(_getIsAdminKey(adminEpoch, admin), isAdmin);
+        _setBool(_getIsAdminKey(adminEpoch, account), isAdmin);
     }
 }

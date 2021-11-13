@@ -56,8 +56,8 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return keccak256(abi.encodePacked(PREFIX_OWNER_THRESHOLD, ownerEpoch));
     }
 
-    function _getIsOwnerKey(uint256 ownerEpoch, address owner) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_IS_OWNER, ownerEpoch, owner));
+    function _getIsOwnerKey(uint256 ownerEpoch, address account) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_IS_OWNER, ownerEpoch, account));
     }
 
     /***********\
@@ -80,10 +80,11 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return getUint(_getOwnerThresholdKey(ownerEpoch));
     }
 
-    function _isOwner(uint256 ownerEpoch, address owner) internal view returns (bool) {
-        return getBool(_getIsOwnerKey(ownerEpoch, owner));
+    function _isOwner(uint256 ownerEpoch, address account) internal view returns (bool) {
+        return getBool(_getIsOwnerKey(ownerEpoch, account));
     }
 
+    /// @dev Returns true if a sufficient quantity of `accounts` are owners in the same `ownerEpoch`, within the last `OLD_KEY_RETENTION` owner epochs.
     function _areValidRecentOwners(address[] memory accounts) internal view returns (bool) {
         uint256 ownerEpoch = _ownerEpoch();
         uint256 lowerBoundOwnerEpoch = ownerEpoch > OLD_KEY_RETENTION ? ownerEpoch - OLD_KEY_RETENTION : uint256(0);
@@ -95,6 +96,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return false;
     }
 
+    /// @dev Returns true if a sufficient quantity of `accounts` are owners in the `ownerEpoch`.
     function _areValidOwnersInEpoch(uint256 ownerEpoch, address[] memory accounts) internal view returns (bool) {
         if (_containsDuplicates(accounts)) return false;
 
@@ -108,6 +110,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return false;
     }
 
+    /// @dev Returns the array of owners within the current `ownerEpoch`.
     function owners() public view override returns (address[] memory results) {
         uint256 ownerEpoch = _ownerEpoch();
         uint256 ownerCount = _getOwnerCount(ownerEpoch);
@@ -129,10 +132,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     function _setOwner(
         uint256 ownerEpoch,
         uint256 index,
-        address owner
+        address account
     ) internal {
-        // AUDIT: require(owner != address(0), 'ZERO_ADDR');
-        _setAddress(_getOwnerKey(ownerEpoch, index), owner);
+        // AUDIT: Should have `require(account != address(0), 'ZERO_ADDR');` like Singlesig?
+        _setAddress(_getOwnerKey(ownerEpoch, index), account);
     }
 
     function _setOwnerCount(uint256 ownerEpoch, uint256 ownerCount) internal {
@@ -154,8 +157,11 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         for (uint256 i; i < accountLength; i++) {
             address account = accounts[i];
+
+            // Check that the account wasn't already set as an owner for this ownerEpoch.
             require(!_isOwner(ownerEpoch, account), 'DUP_OWNER');
 
+            // Set this account as the i-th owner in this ownerEpoch (needed to we can get all the owners for `owners`).
             _setOwner(ownerEpoch, i, account);
             _setIsOwner(ownerEpoch, account, true);
         }
@@ -167,10 +173,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
     function _setIsOwner(
         uint256 ownerEpoch,
-        address owner,
+        address account,
         bool isOwner
     ) internal {
-        _setBool(_getIsOwnerKey(ownerEpoch, owner), isOwner);
+        _setBool(_getIsOwnerKey(ownerEpoch, account), isOwner);
     }
 
     /**************************\
@@ -193,8 +199,8 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return keccak256(abi.encodePacked(PREFIX_OPERATOR_THRESHOLD, operatorEpoch));
     }
 
-    function _getIsOperatorKey(uint256 operatorEpoch, address operator) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_IS_OPERATOR, operatorEpoch, operator));
+    function _getIsOperatorKey(uint256 operatorEpoch, address account) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_IS_OPERATOR, operatorEpoch, account));
     }
 
     /***********\
@@ -217,10 +223,11 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return getUint(_getOperatorThresholdKey(operatorEpoch));
     }
 
-    function _isOperator(uint256 operatorEpoch, address operator) internal view returns (bool) {
-        return getBool(_getIsOperatorKey(operatorEpoch, operator));
+    function _isOperator(uint256 operatorEpoch, address account) internal view returns (bool) {
+        return getBool(_getIsOperatorKey(operatorEpoch, account));
     }
 
+    /// @dev Returns true if a sufficient quantity of `accounts` are operator in the same `operatorEpoch`, within the last `OLD_KEY_RETENTION` operator epochs.
     function _areValidRecentOperators(address[] memory accounts) internal view returns (bool) {
         uint256 operatorEpoch = _operatorEpoch();
         uint256 lowerBoundOperatorEpoch =
@@ -233,6 +240,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return false;
     }
 
+    /// @dev Returns true if a sufficient quantity of `accounts` are operator in the `operatorEpoch`.
     function _areValidOperatorsInEpoch(uint256 operatorEpoch, address[] memory accounts) internal view returns (bool) {
         if (_containsDuplicates(accounts)) return false;
 
@@ -246,6 +254,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return false;
     }
 
+    /// @dev Returns the array of operators within the current `operatorEpoch`.
     function operators() public view override returns (address[] memory results) {
         uint256 operatorEpoch = _operatorEpoch();
         uint256 operatorCount = _getOperatorCount(operatorEpoch);
@@ -267,10 +276,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     function _setOperator(
         uint256 operatorEpoch,
         uint256 index,
-        address operator
+        address account
     ) internal {
-        // AUDIT: require(operator != address(0), 'ZERO_ADDR');
-        _setAddress(_getOperatorKey(operatorEpoch, index), operator);
+        // AUDIT: Should have `require(account != address(0), 'ZERO_ADDR');` like Singlesig?
+        _setAddress(_getOperatorKey(operatorEpoch, index), account);
     }
 
     function _setOperatorCount(uint256 operatorEpoch, uint256 operatorCount) internal {
@@ -292,8 +301,11 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         for (uint256 i; i < accountLength; i++) {
             address account = accounts[i];
+
+            // Check that the account wasn't already set as an operator for this operatorEpoch.
             require(!_isOperator(operatorEpoch, account), 'DUP_OPERATOR');
 
+            // Set this account as the i-th operator in this operatorEpoch (needed to we can get all the operators for `operators`).
             _setOperator(operatorEpoch, i, account);
             _setIsOperator(operatorEpoch, account, true);
         }
@@ -305,10 +317,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
     function _setIsOperator(
         uint256 operatorEpoch,
-        address operator,
+        address account,
         bool isOperator
     ) internal {
-        _setBool(_getIsOperatorKey(operatorEpoch, operator), isOperator);
+        _setBool(_getIsOperatorKey(operatorEpoch, account), isOperator);
     }
 
     /**********************\
@@ -447,6 +459,8 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             } else if (commandHash == SELECTOR_TRANSFER_OPERATORSHIP) {
                 commandSelector = AxelarGatewayMultisig.transferOperatorship.selector;
             } else if (commandHash == SELECTOR_UPDATE) {
+                // AUDIT: If `update` is called is called within the context of _this_ implementation, and the `setup` performs `selfdestruct`,
+                //        it will result in the loss of _this_ implementation (thereby losing the gateway). Consider directly calling `execute`.
                 commandSelector = AxelarGatewayMultisig.update.selector;
             } else {
                 continue; /* Ignore if unknown command received */
