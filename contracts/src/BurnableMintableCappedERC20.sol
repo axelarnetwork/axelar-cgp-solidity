@@ -47,9 +47,7 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
     }
 
     function burn(bytes32 salt) public onlyBurner(salt) {
-        address account = msg.sender;
-
-        _burn(account, balanceOf[account]);
+        _burn(msg.sender, balanceOf[msg.sender]);
     }
 
     function _beforeTokenTransfer(

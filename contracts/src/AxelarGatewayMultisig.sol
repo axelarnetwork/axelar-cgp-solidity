@@ -2,78 +2,421 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
+import { IAxelarGatewayMultisig } from './interfaces/IAxelarGatewayMultisig.sol';
+
 import { ECDSA } from './ECDSA.sol';
-import { IAxelarGatewayMultisig } from './IAxelarGatewayMultisig.sol';
 import { AxelarGateway } from './AxelarGateway.sol';
 
 contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
-    bytes32 internal constant PREFIX_OWNERS = keccak256('owners');
-    bytes32 internal constant PREFIX_OPERATORS = keccak256('operators');
-    bytes32 internal constant PREFIX_OWNERS_COUNT = keccak256('owners-count');
-    bytes32 internal constant PREFIX_OPERATORS_COUNT = keccak256('operators-count');
-    bytes32 internal constant PREFIX_OWNERS_THRESHOLD = keccak256('owner-threshold');
-    bytes32 internal constant PREFIX_OPERATORS_THRESHOLD = keccak256('operator-threshold');
+    // AUDIT: slot names should be prefixed with some standard string
+    // AUDIT: constants should be literal and their derivation should be in comments
+    bytes32 internal constant KEY_OWNER_EPOCH = keccak256('owner-epoch');
+
+    bytes32 internal constant PREFIX_OWNER = keccak256('owner');
+    bytes32 internal constant PREFIX_OWNER_COUNT = keccak256('owner-count');
+    bytes32 internal constant PREFIX_OWNER_THRESHOLD = keccak256('owner-threshold');
     bytes32 internal constant PREFIX_IS_OWNER = keccak256('is-owner');
+
+    bytes32 internal constant KEY_OPERATOR_EPOCH = keccak256('operator-epoch');
+
+    bytes32 internal constant PREFIX_OPERATOR = keccak256('operator');
+    bytes32 internal constant PREFIX_OPERATOR_COUNT = keccak256('operator-count');
+    bytes32 internal constant PREFIX_OPERATOR_THRESHOLD = keccak256('operator-threshold');
     bytes32 internal constant PREFIX_IS_OPERATOR = keccak256('is-operator');
 
-    bytes32 internal constant KEY_OWNERS_INDEX = keccak256('owners-index');
-    bytes32 internal constant KEY_OPERATORS_INDEX = keccak256('operators-index');
+    function _containsDuplicates(address[] memory accounts) internal pure returns (bool) {
+        uint256 count = accounts.length;
 
-    function owners() public view override returns (address[] memory) {
-        return _owners(_getOwnersIndex());
+        for (uint256 i; i < count; ++i) {
+            for (uint256 j = i + 1; j < count; ++j) {
+                if (accounts[i] == accounts[j]) return true;
+            }
+        }
+
+        return false;
     }
 
-    function _owners(uint256 ownersIndex) internal view returns (address[] memory results) {
-        uint256 ownerCount = getUint(keccak256(abi.encodePacked(PREFIX_OWNERS_COUNT, ownersIndex)));
+    /************************\
+    |* Owners Functionality *|
+    \************************/
+
+    /********************\
+    |* Pure Key Getters *|
+    \********************/
+
+    function _getOwnerKey(uint256 ownerEpoch, uint256 index) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OWNER, ownerEpoch, index));
+    }
+
+    function _getOwnerCountKey(uint256 ownerEpoch) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OWNER_COUNT, ownerEpoch));
+    }
+
+    function _getOwnerThresholdKey(uint256 ownerEpoch) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OWNER_THRESHOLD, ownerEpoch));
+    }
+
+    function _getIsOwnerKey(uint256 ownerEpoch, address owner) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_IS_OWNER, ownerEpoch, owner));
+    }
+
+    /***********\
+    |* Getters *|
+    \***********/
+
+    function _ownerEpoch() internal view returns (uint256) {
+        return getUint(KEY_OWNER_EPOCH);
+    }
+
+    function _getOwner(uint256 ownerEpoch, uint256 index) internal view returns (address) {
+        return getAddress(_getOwnerKey(ownerEpoch, index));
+    }
+
+    function _getOwnerCount(uint256 ownerEpoch) internal view returns (uint256) {
+        return getUint(_getOwnerCountKey(ownerEpoch));
+    }
+
+    function _getOwnerThreshold(uint256 ownerEpoch) internal view returns (uint256) {
+        return getUint(_getOwnerThresholdKey(ownerEpoch));
+    }
+
+    function _isOwner(uint256 ownerEpoch, address owner) internal view returns (bool) {
+        return getBool(_getIsOwnerKey(ownerEpoch, owner));
+    }
+
+    function _areValidRecentOwners(address[] memory accounts) internal view returns (bool) {
+        uint256 ownerEpoch = _ownerEpoch();
+        uint256 lowerBoundOwnerEpoch = ownerEpoch > OLD_KEY_RETENTION ? ownerEpoch - OLD_KEY_RETENTION : uint256(0);
+
+        while (ownerEpoch > lowerBoundOwnerEpoch) {
+            if (_areValidOwnersInEpoch(ownerEpoch--, accounts)) return true;
+        }
+
+        return false;
+    }
+
+    function _areValidOwnersInEpoch(uint256 ownerEpoch, address[] memory accounts) internal view returns (bool) {
+        if (_containsDuplicates(accounts)) return false;
+
+        uint256 threshold = _getOwnerThreshold(ownerEpoch);
+        uint256 validSignerCount;
+
+        for (uint256 i; i < accounts.length; i++) {
+            if (_isOwner(ownerEpoch, accounts[i]) && ++validSignerCount >= threshold) return true;
+        }
+
+        return false;
+    }
+
+    function owners() public view override returns (address[] memory results) {
+        uint256 ownerEpoch = _ownerEpoch();
+        uint256 ownerCount = _getOwnerCount(ownerEpoch);
         results = new address[](ownerCount);
 
-        for (uint8 i = 0; i < ownerCount; i++) {
-            results[i] = getAddress(keccak256(abi.encodePacked(PREFIX_OWNERS, ownersIndex, i)));
+        for (uint256 i; i < ownerCount; i++) {
+            results[i] = _getOwner(ownerEpoch, i);
         }
     }
 
-    function operators() public view override returns (address[] memory) {
-        return _operators(_getOperatorsIndex());
+    /***********\
+    |* Setters *|
+    \***********/
+
+    function _setOwnerEpoch(uint256 ownerEpoch) internal {
+        _setUint(KEY_OWNER_EPOCH, ownerEpoch);
     }
 
-    function _operators(uint256 operatorsIndex) internal view returns (address[] memory results) {
-        uint256 operatorCount = getUint(keccak256(abi.encodePacked(PREFIX_OPERATORS_COUNT, operatorsIndex)));
+    function _setOwner(
+        uint256 ownerEpoch,
+        uint256 index,
+        address owner
+    ) internal {
+        // AUDIT: require(owner != address(0), 'ZERO_ADDR');
+        _setAddress(_getOwnerKey(ownerEpoch, index), owner);
+    }
+
+    function _setOwnerCount(uint256 ownerEpoch, uint256 ownerCount) internal {
+        _setUint(_getOwnerCountKey(ownerEpoch), ownerCount);
+    }
+
+    function _setOwners(
+        uint256 ownerEpoch,
+        address[] memory accounts,
+        uint256 threshold
+    ) internal {
+        uint256 accountLength = accounts.length;
+
+        require(accountLength >= threshold, 'INV_OWNERS');
+        require(threshold > uint256(0), 'INV_OWNER_THLD');
+
+        _setOwnerThreshold(ownerEpoch, threshold);
+        _setOwnerCount(ownerEpoch, accountLength);
+
+        for (uint256 i; i < accountLength; i++) {
+            address account = accounts[i];
+            require(!_isOwner(ownerEpoch, account), 'DUP_OWNER');
+
+            _setOwner(ownerEpoch, i, account);
+            _setIsOwner(ownerEpoch, account, true);
+        }
+    }
+
+    function _setOwnerThreshold(uint256 ownerEpoch, uint256 ownerThreshold) internal {
+        _setUint(_getOwnerThresholdKey(ownerEpoch), ownerThreshold);
+    }
+
+    function _setIsOwner(
+        uint256 ownerEpoch,
+        address owner,
+        bool isOwner
+    ) internal {
+        _setBool(_getIsOwnerKey(ownerEpoch, owner), isOwner);
+    }
+
+    /**************************\
+    |* Operator Functionality *|
+    \**************************/
+
+    /********************\
+    |* Pure Key Getters *|
+    \********************/
+
+    function _getOperatorKey(uint256 operatorEpoch, uint256 index) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OPERATOR, operatorEpoch, index));
+    }
+
+    function _getOperatorCountKey(uint256 operatorEpoch) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OPERATOR_COUNT, operatorEpoch));
+    }
+
+    function _getOperatorThresholdKey(uint256 operatorEpoch) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OPERATOR_THRESHOLD, operatorEpoch));
+    }
+
+    function _getIsOperatorKey(uint256 operatorEpoch, address operator) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_IS_OPERATOR, operatorEpoch, operator));
+    }
+
+    /***********\
+    |* Getters *|
+    \***********/
+
+    function _operatorEpoch() internal view returns (uint256) {
+        return getUint(KEY_OPERATOR_EPOCH);
+    }
+
+    function _getOperator(uint256 operatorEpoch, uint256 index) internal view returns (address) {
+        return getAddress(_getOperatorKey(operatorEpoch, index));
+    }
+
+    function _getOperatorCount(uint256 operatorEpoch) internal view returns (uint256) {
+        return getUint(_getOperatorCountKey(operatorEpoch));
+    }
+
+    function _getOperatorThreshold(uint256 operatorEpoch) internal view returns (uint256) {
+        return getUint(_getOperatorThresholdKey(operatorEpoch));
+    }
+
+    function _isOperator(uint256 operatorEpoch, address operator) internal view returns (bool) {
+        return getBool(_getIsOperatorKey(operatorEpoch, operator));
+    }
+
+    function _areValidRecentOperators(address[] memory accounts) internal view returns (bool) {
+        uint256 operatorEpoch = _operatorEpoch();
+        uint256 lowerBoundOperatorEpoch =
+            operatorEpoch > OLD_KEY_RETENTION ? operatorEpoch - OLD_KEY_RETENTION : uint256(0);
+
+        while (operatorEpoch > lowerBoundOperatorEpoch) {
+            if (_areValidOperatorsInEpoch(operatorEpoch--, accounts)) return true;
+        }
+
+        return false;
+    }
+
+    function _areValidOperatorsInEpoch(uint256 operatorEpoch, address[] memory accounts) internal view returns (bool) {
+        if (_containsDuplicates(accounts)) return false;
+
+        uint256 threshold = _getOperatorThreshold(operatorEpoch);
+        uint256 validSignerCount;
+
+        for (uint256 i; i < accounts.length; i++) {
+            if (_isOperator(operatorEpoch, accounts[i]) && ++validSignerCount >= threshold) return true;
+        }
+
+        return false;
+    }
+
+    function operators() public view override returns (address[] memory results) {
+        uint256 operatorEpoch = _operatorEpoch();
+        uint256 operatorCount = _getOperatorCount(operatorEpoch);
         results = new address[](operatorCount);
 
-        for (uint8 i = 0; i < operatorCount; i++) {
-            results[i] = getAddress(keccak256(abi.encodePacked(PREFIX_OPERATORS, operatorsIndex, i)));
+        for (uint256 i; i < operatorCount; i++) {
+            results[i] = _getOperator(operatorEpoch, i);
         }
     }
+
+    /***********\
+    |* Setters *|
+    \***********/
+
+    function _setOperatorEpoch(uint256 operatorEpoch) internal {
+        _setUint(KEY_OPERATOR_EPOCH, operatorEpoch);
+    }
+
+    function _setOperator(
+        uint256 operatorEpoch,
+        uint256 index,
+        address operator
+    ) internal {
+        // AUDIT: require(operator != address(0), 'ZERO_ADDR');
+        _setAddress(_getOperatorKey(operatorEpoch, index), operator);
+    }
+
+    function _setOperatorCount(uint256 operatorEpoch, uint256 operatorCount) internal {
+        _setUint(_getOperatorCountKey(operatorEpoch), operatorCount);
+    }
+
+    function _setOperators(
+        uint256 operatorEpoch,
+        address[] memory accounts,
+        uint256 threshold
+    ) internal {
+        uint256 accountLength = accounts.length;
+
+        require(accountLength >= threshold, 'INV_OPERATORS');
+        require(threshold > uint256(0), 'INV_OPERATOR_THLD');
+
+        _setOperatorThreshold(operatorEpoch, threshold);
+        _setOperatorCount(operatorEpoch, accountLength);
+
+        for (uint256 i; i < accountLength; i++) {
+            address account = accounts[i];
+            require(!_isOperator(operatorEpoch, account), 'DUP_OPERATOR');
+
+            _setOperator(operatorEpoch, i, account);
+            _setIsOperator(operatorEpoch, account, true);
+        }
+    }
+
+    function _setOperatorThreshold(uint256 operatorEpoch, uint256 operatorThreshold) internal {
+        _setUint(_getOperatorThresholdKey(operatorEpoch), operatorThreshold);
+    }
+
+    function _setIsOperator(
+        uint256 operatorEpoch,
+        address operator,
+        bool isOperator
+    ) internal {
+        _setBool(_getIsOperatorKey(operatorEpoch, operator), isOperator);
+    }
+
+    /**********************\
+    |* Self Functionality *|
+    \**********************/
+
+    function deployToken(address[] memory signers, bytes memory params) external onlySelf {
+        (string memory name, string memory symbol, uint8 decimals, uint256 cap) =
+            abi.decode(params, (string, string, uint8, uint256));
+
+        require(_areValidRecentOwners(signers), 'INV_SIGNERS');
+
+        _deployToken(name, symbol, decimals, cap);
+    }
+
+    function mintToken(address[] memory signers, bytes memory params) external onlySelf {
+        (string memory symbol, address account, uint256 amount) = abi.decode(params, (string, address, uint256));
+
+        require(_areValidRecentOwners(signers) || _areValidRecentOperators(signers), 'INV_SIGNERS');
+
+        _mintToken(symbol, account, amount);
+    }
+
+    function burnToken(address[] memory signers, bytes memory params) external onlySelf {
+        (string memory symbol, bytes32 salt) = abi.decode(params, (string, bytes32));
+
+        require(_areValidRecentOwners(signers) || _areValidRecentOperators(signers), 'INV_SIGNERS');
+
+        _burnToken(symbol, salt);
+    }
+
+    function transferOwnership(address[] memory signers, bytes memory params) external onlySelf {
+        (address[] memory newOwners, uint256 newThreshold) = abi.decode(params, (address[], uint256));
+
+        uint256 ownerEpoch = _ownerEpoch();
+        require(_areValidOwnersInEpoch(ownerEpoch, signers), 'INV_SIGNERS');
+
+        emit OwnershipTransferred(owners(), _getOwnerThreshold(ownerEpoch), newOwners, newThreshold);
+
+        _setOwnerEpoch(ownerEpoch++);
+        _setOwners(ownerEpoch, newOwners, newThreshold);
+    }
+
+    function transferOperatorship(address[] memory signers, bytes memory params) external onlySelf {
+        (address[] memory newOperators, uint256 newThreshold) = abi.decode(params, (address[], uint256));
+
+        // NOTE: Should this be `_areValidOwnersInEpoch` or `_areValidOperatorsInEpoch`?
+        uint256 ownerEpoch = _ownerEpoch();
+        require(_areValidOwnersInEpoch(ownerEpoch, signers), 'INV_SIGNERS');
+
+        emit OperatorshipTransferred(operators(), _getOperatorThreshold(ownerEpoch), newOperators, newThreshold);
+
+        uint256 operatorEpoch = _operatorEpoch();
+        _setOperatorEpoch(operatorEpoch++);
+        _setOperators(operatorEpoch, newOperators, newThreshold);
+    }
+
+    function update(address[] memory signers, bytes memory params) external onlySelf {
+        (address newVersion, bytes memory setupParams) = abi.decode(params, (address, bytes));
+
+        require(_areValidOwnersInEpoch(_ownerEpoch(), signers), 'INV_SIGNERS');
+
+        _update(newVersion, setupParams);
+    }
+
+    /**************************\
+    |* External Functionality *|
+    \**************************/
 
     function setup(bytes memory params) external override {
         (
-            address[] memory adminAddrs,
-            uint8 adminThreshold,
-            address[] memory ownerAddrs,
-            uint8 ownerThreshold,
-            address[] memory operatorAddrs,
-            uint8 operatorThreshold
-        ) = abi.decode(params, (address[], uint8, address[], uint8, address[], uint8));
+            address[] memory adminAddresses,
+            uint256 adminThreshold,
+            address[] memory ownerAddresses,
+            uint256 ownerThreshold,
+            address[] memory operatorAddresses,
+            uint256 operatorThreshold
+        ) = abi.decode(params, (address[], uint256, address[], uint256, address[], uint256));
 
-        _setAdmins(adminAddrs, adminThreshold);
-        _setOwners(ownerAddrs, ownerThreshold);
-        _setOperators(operatorAddrs, operatorThreshold);
+        uint256 adminEpoch = _adminEpoch() + uint256(1);
+        _setAdminEpoch(adminEpoch);
+        _setAdmins(adminEpoch, adminAddresses, adminThreshold);
 
-        emit OwnershipTransferred(new address[](0), 0, ownerAddrs, ownerThreshold);
-        emit OperatorshipTransferred(new address[](0), 0, operatorAddrs, operatorThreshold);
+        uint256 ownerEpoch = _ownerEpoch() + uint256(1);
+        _setOwnerEpoch(ownerEpoch);
+        _setOwners(ownerEpoch, ownerAddresses, ownerThreshold);
+
+        uint256 operatorEpoch = _operatorEpoch() + uint256(1);
+        _setOperatorEpoch(operatorEpoch);
+        _setOperators(operatorEpoch, operatorAddresses, operatorThreshold);
+
+        emit OwnershipTransferred(new address[](uint256(0)), uint256(0), ownerAddresses, ownerThreshold);
+        emit OperatorshipTransferred(new address[](uint256(0)), uint256(0), operatorAddresses, operatorThreshold);
     }
 
     function execute(bytes memory input) external override {
-        (bytes memory data, bytes[] memory sigs) = abi.decode(input, (bytes, bytes[]));
+        (bytes memory data, bytes[] memory signatures) = abi.decode(input, (bytes, bytes[]));
 
-        _execute(data, sigs);
+        _execute(data, signatures);
     }
 
-    function _execute(bytes memory data, bytes[] memory sigs) internal {
-        address[] memory signers = new address[](sigs.length);
+    function _execute(bytes memory data, bytes[] memory signatures) internal {
+        uint256 signatureCount = signatures.length;
 
-        for (uint256 i = 0; i < sigs.length; i++) {
-            signers[i] = ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), sigs[i]);
+        address[] memory signers = new address[](signatureCount);
+
+        for (uint256 i; i < signatureCount; i++) {
+            signers[i] = ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), signatures[i]);
         }
 
         (uint256 chainId, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) =
@@ -85,14 +428,13 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         require(commandsLength == commands.length && commandsLength == params.length, 'INV_CMDS');
 
-        for (uint256 i = 0; i < commandsLength; i++) {
+        for (uint256 i; i < commandsLength; i++) {
             bytes32 commandId = commandIds[i];
-            string memory command = commands[i];
 
-            if (_isCommandExecuted(commandId)) continue; /* Ignore if duplicate commandId received */
+            if (isCommandExecuted(commandId)) continue; /* Ignore if duplicate commandId received */
 
             bytes4 commandSelector;
-            bytes32 commandHash = keccak256(abi.encodePacked(command));
+            bytes32 commandHash = keccak256(abi.encodePacked(commands[i]));
 
             if (commandHash == SELECTOR_DEPLOY_TOKEN) {
                 commandSelector = AxelarGatewayMultisig.deployToken.selector;
@@ -113,201 +455,5 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, signers, params[i]));
             _setCommandExecuted(commandId, success);
         }
-    }
-
-    function deployToken(address[] memory signers, bytes memory params) external onlySelf {
-        (string memory name, string memory symbol, uint8 decimals, uint256 cap) =
-            abi.decode(params, (string, string, uint8, uint256));
-
-        require(_areValidOwners(signers), 'INV_SIGNERS');
-
-        _deployToken(name, symbol, decimals, cap);
-    }
-
-    function mintToken(address[] memory signers, bytes memory params) external onlySelf {
-        (string memory symbol, address account, uint256 amount) = abi.decode(params, (string, address, uint256));
-
-        require(_areValidOwners(signers) || _areValidOperators(signers), 'INV_SIGNERS');
-
-        _mintToken(symbol, account, amount);
-    }
-
-    function burnToken(address[] memory signers, bytes memory params) external onlySelf {
-        (string memory symbol, bytes32 salt) = abi.decode(params, (string, bytes32));
-
-        require(_areValidOwners(signers) || _areValidOperators(signers), 'INV_SIGNERS');
-
-        _burnToken(symbol, salt);
-    }
-
-    function transferOwnership(address[] memory signers, bytes memory params) external onlySelf {
-        (address[] memory newOwners, uint8 newThreshold) = abi.decode(params, (address[], uint8));
-
-        uint256 ownersIndex = _getOwnersIndex();
-        require(_areValidOwners(ownersIndex, signers), 'INV_SIGNERS');
-
-        uint8 threshold = uint8(getUint(keccak256(abi.encodePacked(PREFIX_OWNERS_THRESHOLD, ownersIndex))));
-
-        emit OwnershipTransferred(owners(), threshold, newOwners, newThreshold);
-
-        _setOwners(newOwners, newThreshold);
-    }
-
-    function transferOperatorship(address[] memory signers, bytes memory params) external onlySelf {
-        (address[] memory newOperators, uint8 newThreshold) = abi.decode(params, (address[], uint8));
-
-        require(_areValidOwners(_getOwnersIndex(), signers), 'INV_SIGNERS');
-
-        uint8 threshold = uint8(getUint(keccak256(abi.encodePacked(PREFIX_OPERATORS_THRESHOLD, _getOperatorsIndex()))));
-
-        emit OperatorshipTransferred(operators(), threshold, newOperators, newThreshold);
-
-        _setOperators(newOperators, newThreshold);
-    }
-
-    function update(address[] memory signers, bytes memory params) external onlySelf {
-        (address newVersion, bytes memory setupParams) = abi.decode(params, (address, bytes));
-
-        require(_areValidOwners(_getOwnersIndex(), signers), 'INV_SIGNERS');
-
-        _update(newVersion, setupParams);
-    }
-
-    function _areValidOwners(address[] memory signers) internal view returns (bool) {
-        uint256 ownerIndex = _getOwnersIndex();
-
-        for (
-            uint256 i = ownerIndex;
-            (i > 0) && ((ownerIndex <= OLD_KEY_RETENTION) || (i >= ownerIndex - OLD_KEY_RETENTION));
-            i--
-        ) {
-            if (_areValidOwners(i, signers)) return true;
-        }
-
-        return false;
-    }
-
-    function _areValidOwners(uint256 index, address[] memory signers) internal view returns (bool) {
-        return _areValidSigners(index, signers, true);
-    }
-
-    function _areValidOperators(address[] memory signers) internal view returns (bool) {
-        uint256 operatorIndex = _getOperatorsIndex();
-
-        for (
-            uint256 i = operatorIndex;
-            (i > 0) && ((operatorIndex <= OLD_KEY_RETENTION) || (i >= operatorIndex - OLD_KEY_RETENTION));
-            i--
-        ) {
-            if (_areValidOperators(i, signers)) return true;
-        }
-
-        return false;
-    }
-
-    function _areValidOperators(uint256 index, address[] memory signers) internal view returns (bool) {
-        return _areValidSigners(index, signers, false);
-    }
-
-    function _areValidSigners(
-        uint256 index,
-        address[] memory signers,
-        bool areValidOwners
-    ) internal view returns (bool) {
-        bytes32 prefixThreshold;
-        bytes32 prefixIs;
-
-        if (areValidOwners) {
-            prefixThreshold = PREFIX_OWNERS_THRESHOLD;
-            prefixIs = PREFIX_IS_OWNER;
-        } else {
-            prefixThreshold = PREFIX_OPERATORS_THRESHOLD;
-            prefixIs = PREFIX_IS_OPERATOR;
-        }
-
-        uint256 threshold = getUint(keccak256(abi.encodePacked(prefixThreshold, index)));
-
-        if (signers.length < threshold) return false;
-
-        uint256 validSignerCount = 0;
-
-        for (uint8 i = 0; i < signers.length; i++) {
-            bool isDuplicate = false;
-
-            for (uint8 j = i + 1; j < signers.length; j++) {
-                if (signers[i] != signers[j]) continue;
-
-                isDuplicate = true;
-                break;
-            }
-
-            if (isDuplicate) continue;
-
-            bool isValidSigner = getBool(keccak256(abi.encodePacked(prefixIs, index, signers[i])));
-
-            if (isValidSigner && ++validSignerCount >= threshold) return true;
-        }
-
-        return false;
-    }
-
-    function _getOwnersIndex() internal view returns (uint256) {
-        return getUint(KEY_OWNERS_INDEX);
-    }
-
-    function _getOperatorsIndex() internal view returns (uint256) {
-        return getUint(KEY_OPERATORS_INDEX);
-    }
-
-    function _setOwners(address[] memory addrs, uint8 threshold) internal {
-        _setSigners(addrs, threshold, true);
-    }
-
-    function _setOperators(address[] memory addrs, uint8 threshold) internal {
-        _setSigners(addrs, threshold, false);
-    }
-
-    function _setSigners(
-        address[] memory addrs,
-        uint8 threshold,
-        bool isOwner
-    ) internal {
-        require(addrs.length >= threshold, 'INV_SIGNERS');
-        require(threshold > 0, 'INV_SIGNER_THLD');
-
-        uint256 signersIndex;
-        bytes32 isSignerPrefix;
-        bytes32 signersPrefix;
-        bytes32 signersCountPrefix;
-        bytes32 signersThresholdPrefix;
-        bytes32 signersIndexKey;
-
-        if (isOwner) {
-            signersIndex = _getOwnersIndex() + 1;
-            isSignerPrefix = PREFIX_IS_OWNER;
-            signersPrefix = PREFIX_OWNERS;
-            signersCountPrefix = PREFIX_OWNERS_COUNT;
-            signersThresholdPrefix = PREFIX_OWNERS_THRESHOLD;
-            signersIndexKey = KEY_OWNERS_INDEX;
-        } else {
-            signersIndex = _getOperatorsIndex() + 1;
-            isSignerPrefix = PREFIX_IS_OPERATOR;
-            signersPrefix = PREFIX_OPERATORS;
-            signersCountPrefix = PREFIX_OPERATORS_COUNT;
-            signersThresholdPrefix = PREFIX_OPERATORS_THRESHOLD;
-            signersIndexKey = KEY_OPERATORS_INDEX;
-        }
-
-        for (uint8 i = 0; i < addrs.length; i++) {
-            bytes32 isSignerKey = keccak256(abi.encodePacked(isSignerPrefix, signersIndex, addrs[i]));
-            require(!getBool(isSignerKey), 'DUP_SIGNER');
-
-            setAddress(keccak256(abi.encodePacked(signersPrefix, signersIndex, i)), addrs[i]);
-            setBool(isSignerKey, true);
-        }
-
-        setUint(keccak256(abi.encodePacked(signersCountPrefix, signersIndex)), addrs.length);
-        setUint(keccak256(abi.encodePacked(signersThresholdPrefix, signersIndex)), threshold);
-        setUint(signersIndexKey, signersIndex);
     }
 }

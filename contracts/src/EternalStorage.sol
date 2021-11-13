@@ -7,85 +7,85 @@ pragma solidity >=0.8.0 <0.9.0;
  * @dev This contract holds all the necessary state variables to carry out the storage of any contract.
  */
 contract EternalStorage {
-    mapping(bytes32 => uint256) private uIntStorage;
-    mapping(bytes32 => string) private stringStorage;
-    mapping(bytes32 => address) private addressStorage;
-    mapping(bytes32 => bytes) private bytesStorage;
-    mapping(bytes32 => bool) private boolStorage;
-    mapping(bytes32 => int256) private intStorage;
+    mapping(bytes32 => uint256) private _uintStorage;
+    mapping(bytes32 => string) private _stringStorage;
+    mapping(bytes32 => address) private _addressStorage;
+    mapping(bytes32 => bytes) private _bytesStorage;
+    mapping(bytes32 => bool) private _boolStorage;
+    mapping(bytes32 => int256) private _intStorage;
 
     // *** Getter Methods ***
     function getUint(bytes32 key) public view returns (uint256) {
-        return uIntStorage[key];
+        return _uintStorage[key];
     }
 
     function getString(bytes32 key) public view returns (string memory) {
-        return stringStorage[key];
+        return _stringStorage[key];
     }
 
     function getAddress(bytes32 key) public view returns (address) {
-        return addressStorage[key];
+        return _addressStorage[key];
     }
 
     function getBytes(bytes32 key) public view returns (bytes memory) {
-        return bytesStorage[key];
+        return _bytesStorage[key];
     }
 
     function getBool(bytes32 key) public view returns (bool) {
-        return boolStorage[key];
+        return _boolStorage[key];
     }
 
     function getInt(bytes32 key) public view returns (int256) {
-        return intStorage[key];
+        return _intStorage[key];
     }
 
     // *** Setter Methods ***
-    function setUint(bytes32 key, uint256 value) internal {
-        uIntStorage[key] = value;
+    function _setUint(bytes32 key, uint256 value) internal {
+        _uintStorage[key] = value;
     }
 
-    function setString(bytes32 key, string memory value) internal {
-        stringStorage[key] = value;
+    function _setString(bytes32 key, string memory value) internal {
+        _stringStorage[key] = value;
     }
 
-    function setAddress(bytes32 key, address value) internal {
-        addressStorage[key] = value;
+    function _setAddress(bytes32 key, address value) internal {
+        _addressStorage[key] = value;
     }
 
-    function setBytes(bytes32 key, bytes memory value) internal {
-        bytesStorage[key] = value;
+    function _setBytes(bytes32 key, bytes memory value) internal {
+        _bytesStorage[key] = value;
     }
 
-    function setBool(bytes32 key, bool value) internal {
-        boolStorage[key] = value;
+    function _setBool(bytes32 key, bool value) internal {
+        _boolStorage[key] = value;
     }
 
-    function setInt(bytes32 key, int256 value) internal {
-        intStorage[key] = value;
+    function _setInt(bytes32 key, int256 value) internal {
+        _intStorage[key] = value;
     }
 
     // *** Delete Methods ***
-    function deleteUint(bytes32 key) internal {
-        delete uIntStorage[key];
+    function _deleteUint(bytes32 key) internal {
+        delete _uintStorage[key];
     }
 
-    function deleteString(bytes32 key) internal {
-        delete stringStorage[key];
+    function _deleteString(bytes32 key) internal {
+        delete _stringStorage[key];
     }
 
-    function deleteAddress(bytes32 key) internal {
-        delete addressStorage[key];
+    function _deleteAddress(bytes32 key) internal {
+        delete _addressStorage[key];
     }
 
-    function deleteBytes(bytes32 key) internal {
-        delete bytesStorage[key];
+    function _deleteBytes(bytes32 key) internal {
+        delete _bytesStorage[key];
     }
 
-    function deleteBool(bytes32 key) internal {
-        delete boolStorage[key];
+    function _deleteBool(bytes32 key) internal {
+        delete _boolStorage[key];
     }
 
-    function deleteInt(bytes32 key) internal {
-        delete intStorage[key];
+    function _deleteInt(bytes32 key) internal {
+        delete _intStorage[key];
     }
 }
