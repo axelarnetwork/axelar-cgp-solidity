@@ -948,7 +948,7 @@ describe('AxelarGatewaySingleSig', () => {
     });
 
     describe('command transferOwnership', () => {
-      it('should not transfering ownership to address zero', () => {
+      it('should not transferring ownership to address zero', () => {
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
@@ -990,7 +990,7 @@ describe('AxelarGatewaySingleSig', () => {
         );
       });
 
-      it('should transfer ownership if transfering to a valid address', () => {
+      it('should transfer ownership if transferring to a valid address', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
         const data = arrayify(
           defaultAbiCoder.encode(

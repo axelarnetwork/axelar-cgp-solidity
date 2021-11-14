@@ -40,13 +40,14 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         return getAddress(_getOwnerKey(ownerEpoch));
     }
 
-    /// @dev Returns true if a `account` is owner within the last `OLD_KEY_RETENTION` owner epochs.
+    /// @dev Returns true if a `account` is owner within the last `OLD_KEY_RETENTION + 1` owner epochs.
     function _isValidRecentOwner(address account) internal view returns (bool) {
         uint256 ownerEpoch = _ownerEpoch();
-        uint256 lowerBoundOwnerEpoch = ownerEpoch > OLD_KEY_RETENTION ? ownerEpoch - OLD_KEY_RETENTION : uint256(0);
+        uint256 recentEpochs = OLD_KEY_RETENTION + uint256(1);
+        uint256 lowerBoundOwnerEpoch = ownerEpoch > recentEpochs ? ownerEpoch - recentEpochs : uint256(0);
 
         while (ownerEpoch > lowerBoundOwnerEpoch) {
-            if (account == _getOwner(ownerEpoch)) return true;
+            if (account == _getOwner(ownerEpoch--)) return true;
         }
 
         return false;
@@ -64,14 +65,14 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         return getAddress(_getOperatorKey(operatorEpoch));
     }
 
-    /// @dev Returns true if a `account` is operator within the last `OLD_KEY_RETENTION` operator epochs.
+    /// @dev Returns true if a `account` is operator within the last `OLD_KEY_RETENTION + 1` operator epochs.
     function _isValidRecentOperator(address account) internal view returns (bool) {
         uint256 operatorEpoch = _operatorEpoch();
-        uint256 lowerBoundOperatorEpoch =
-            operatorEpoch > OLD_KEY_RETENTION ? operatorEpoch - OLD_KEY_RETENTION : uint256(0);
+        uint256 recentEpochs = OLD_KEY_RETENTION + uint256(1);
+        uint256 lowerBoundOperatorEpoch = operatorEpoch > recentEpochs ? operatorEpoch - recentEpochs : uint256(0);
 
         while (operatorEpoch > lowerBoundOperatorEpoch) {
-            if (account == _getOperator(operatorEpoch)) return true;
+            if (account == _getOperator(operatorEpoch--)) return true;
         }
 
         return false;
@@ -140,7 +141,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
 
         emit OwnershipTransferred(currentOwner, newOwner);
 
-        _setOwnerEpoch(ownerEpoch++);
+        _setOwnerEpoch(++ownerEpoch);
         _setOwner(ownerEpoch, newOwner);
     }
 
@@ -153,7 +154,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         emit OperatorshipTransferred(operator(), newOperator);
 
         uint256 operatorEpoch = _operatorEpoch();
-        _setOperatorEpoch(operatorEpoch++);
+        _setOperatorEpoch(++operatorEpoch);
         _setOperator(operatorEpoch, newOperator);
     }
 

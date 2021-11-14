@@ -84,10 +84,11 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return getBool(_getIsOwnerKey(ownerEpoch, account));
     }
 
-    /// @dev Returns true if a sufficient quantity of `accounts` are owners in the same `ownerEpoch`, within the last `OLD_KEY_RETENTION` owner epochs.
+    /// @dev Returns true if a sufficient quantity of `accounts` are owners in the same `ownerEpoch`, within the last `OLD_KEY_RETENTION + 1` owner epochs.
     function _areValidRecentOwners(address[] memory accounts) internal view returns (bool) {
         uint256 ownerEpoch = _ownerEpoch();
-        uint256 lowerBoundOwnerEpoch = ownerEpoch > OLD_KEY_RETENTION ? ownerEpoch - OLD_KEY_RETENTION : uint256(0);
+        uint256 recentEpochs = OLD_KEY_RETENTION + uint256(1);
+        uint256 lowerBoundOwnerEpoch = ownerEpoch > recentEpochs ? ownerEpoch - recentEpochs : uint256(0);
 
         while (ownerEpoch > lowerBoundOwnerEpoch) {
             if (_areValidOwnersInEpoch(ownerEpoch--, accounts)) return true;
@@ -227,11 +228,11 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return getBool(_getIsOperatorKey(operatorEpoch, account));
     }
 
-    /// @dev Returns true if a sufficient quantity of `accounts` are operator in the same `operatorEpoch`, within the last `OLD_KEY_RETENTION` operator epochs.
+    /// @dev Returns true if a sufficient quantity of `accounts` are operator in the same `operatorEpoch`, within the last `OLD_KEY_RETENTION + 1` operator epochs.
     function _areValidRecentOperators(address[] memory accounts) internal view returns (bool) {
         uint256 operatorEpoch = _operatorEpoch();
-        uint256 lowerBoundOperatorEpoch =
-            operatorEpoch > OLD_KEY_RETENTION ? operatorEpoch - OLD_KEY_RETENTION : uint256(0);
+        uint256 recentEpochs = OLD_KEY_RETENTION + uint256(1);
+        uint256 lowerBoundOperatorEpoch = operatorEpoch > recentEpochs ? operatorEpoch - recentEpochs : uint256(0);
 
         while (operatorEpoch > lowerBoundOperatorEpoch) {
             if (_areValidOperatorsInEpoch(operatorEpoch--, accounts)) return true;
@@ -360,7 +361,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         emit OwnershipTransferred(owners(), _getOwnerThreshold(ownerEpoch), newOwners, newThreshold);
 
-        _setOwnerEpoch(ownerEpoch++);
+        _setOwnerEpoch(++ownerEpoch);
         _setOwners(ownerEpoch, newOwners, newThreshold);
     }
 
@@ -374,7 +375,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         emit OperatorshipTransferred(operators(), _getOperatorThreshold(ownerEpoch), newOperators, newThreshold);
 
         uint256 operatorEpoch = _operatorEpoch();
-        _setOperatorEpoch(operatorEpoch++);
+        _setOperatorEpoch(++operatorEpoch);
         _setOperators(operatorEpoch, newOperators, newThreshold);
     }
 
