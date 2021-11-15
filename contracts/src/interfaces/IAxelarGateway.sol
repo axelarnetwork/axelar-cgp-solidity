@@ -36,9 +36,9 @@ interface IAxelarGateway {
 
     function implementation() external view returns (address);
 
-    function proposedUpdate() external view returns (bytes memory);
+    function proposedUpgrade() external view returns (bytes memory);
 
-    function proposedUpdateTime() external view returns (uint256);
+    function proposedUpgradeTime() external view returns (uint256);
 
     function tokenAddresses(string memory symbol) external view returns (address);
 
@@ -64,9 +64,9 @@ interface IAxelarGateway {
 
     function unfreezeAllTokens() external;
 
-    function proposeUpdate(address newVersion, bytes memory setupParams) external;
+    function proposeUpgrade(address newVersion, bytes memory setupParams) external;
 
-    function forceUpdate(address newVersion, bytes memory setupParams) external;
+    function forceUpgrade(address newVersion, bytes memory setupParams) external;
 
     /**********************\
     |* External Functions *|

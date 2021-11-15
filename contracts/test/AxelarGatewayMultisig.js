@@ -788,8 +788,8 @@ describe('AxelarGatewayMultisig', () => {
       });
     });
 
-    describe('command update', () => {
-      it('should allow admins to force updating to the proposed version after timeout', async () => {
+    describe('command upgrade', () => {
+      it('should allow admins to force upgrading to the proposed version after timeout', async () => {
         const newVersion = await deployContract(
           wallets[0],
           AxelarGatewayMultisig,
@@ -810,14 +810,14 @@ describe('AxelarGatewayMultisig', () => {
         );
 
         return expect(
-          contract.connect(admins[0]).proposeUpdate(newVersion.address, params),
+          contract.connect(admins[0]).proposeUpgrade(newVersion.address, params),
         )
           .to.not.emit(contract, 'UpgradeProposed')
           .then(() =>
             expect(
               contract
                 .connect(admins[2])
-                .proposeUpdate(newVersion.address, params),
+                .proposeUpgrade(newVersion.address, params),
             )
               .to.emit(contract, 'UpgradeProposed')
               .withArgs(newVersion.address),
@@ -826,7 +826,7 @@ describe('AxelarGatewayMultisig', () => {
             expect(
               contract
                 .connect(admins[1])
-                .forceUpdate(newVersion.address, params),
+                .forceUpgrade(newVersion.address, params),
             ).to.be.revertedWith('NO_TIMEOUT'),
           )
           .then(() => tickBlockTime(contract.provider, 86400))
@@ -834,14 +834,14 @@ describe('AxelarGatewayMultisig', () => {
             expect(
               contract
                 .connect(admins[1])
-                .forceUpdate(newVersion.address, params),
+                .forceUpgrade(newVersion.address, params),
             )
               .to.emit(contract, 'Upgraded')
               .withArgs(newVersion.address),
           );
       });
 
-      it("should update to the next version after passing threshold and owners' approval", async () => {
+      it("should upgrade to the next version after passing threshold and owners' approval", async () => {
         const newVersion = await deployContract(
           wallets[0],
           AxelarGatewayMultisig,
@@ -862,14 +862,14 @@ describe('AxelarGatewayMultisig', () => {
         );
 
         return expect(
-          contract.connect(admins[0]).proposeUpdate(newVersion.address, params),
+          contract.connect(admins[0]).proposeUpgrade(newVersion.address, params),
         )
           .to.not.emit(contract, 'UpgradeProposed')
           .then(() =>
             expect(
               contract
                 .connect(admins[1])
-                .proposeUpdate(newVersion.address, params),
+                .proposeUpgrade(newVersion.address, params),
             ).to.emit(contract, 'UpgradeProposed'),
           )
           .then(() => {
@@ -879,7 +879,7 @@ describe('AxelarGatewayMultisig', () => {
                 [
                   CHAIN_ID,
                   [getRandomID()],
-                  ['update'],
+                  ['upgrade'],
                   [
                     defaultAbiCoder.encode(
                       ['address', 'bytes'],

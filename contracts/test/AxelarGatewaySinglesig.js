@@ -333,7 +333,7 @@ describe('AxelarGatewaySingleSig', () => {
     });
   });
 
-  describe('proposeUpdate and update', () => {
+  describe('proposeUpgrade and upgrade', () => {
     it('should allow admins to force updating to the proposed version after timeout', async () => {
       const newVersion = await deployContract(
         ownerWallet,
@@ -353,21 +353,21 @@ describe('AxelarGatewaySingleSig', () => {
       return expect(
         contract
           .connect(adminWallet1)
-          .proposeUpdate(newVersion.address, params),
+          .proposeUpgrade(newVersion.address, params),
       )
         .to.not.emit(contract, 'UpgradeProposed')
         .then(() =>
           expect(
             contract
               .connect(adminWallet2)
-              .proposeUpdate(newVersion.address, params),
+              .proposeUpgrade(newVersion.address, params),
           ).to.not.emit(contract, 'UpgradeProposed'),
         )
         .then(() =>
           expect(
             contract
               .connect(adminWallet3)
-              .proposeUpdate(newVersion.address, params),
+              .proposeUpgrade(newVersion.address, params),
           )
             .to.emit(contract, 'UpgradeProposed')
             .withArgs(newVersion.address),
@@ -376,7 +376,7 @@ describe('AxelarGatewaySingleSig', () => {
           expect(
             contract
               .connect(adminWallet4)
-              .forceUpdate(newVersion.address, params),
+              .forceUpgrade(newVersion.address, params),
           ).to.be.revertedWith('NO_TIMEOUT'),
         )
         .then(() => tickBlockTime(contract.provider, 86400))
@@ -384,14 +384,14 @@ describe('AxelarGatewaySingleSig', () => {
           expect(
             contract
               .connect(adminWallet4)
-              .forceUpdate(newVersion.address, params),
+              .forceUpgrade(newVersion.address, params),
           )
             .to.emit(contract, 'Upgraded')
             .withArgs(newVersion.address),
         );
     });
 
-    it('should update to the next version after passing threshold and owner approval', async () => {
+    it('should upgrade to the next version after passing threshold and owner approval', async () => {
       const newVersion = await deployContract(
         ownerWallet,
         AxelarGatewaySinglesig,
@@ -410,21 +410,21 @@ describe('AxelarGatewaySingleSig', () => {
       return expect(
         contract
           .connect(adminWallet1)
-          .proposeUpdate(newVersion.address, params),
+          .proposeUpgrade(newVersion.address, params),
       )
         .to.not.emit(contract, 'UpgradeProposed')
         .then(() =>
           expect(
             contract
               .connect(adminWallet2)
-              .proposeUpdate(newVersion.address, params),
+              .proposeUpgrade(newVersion.address, params),
           ).to.not.emit(contract, 'UpgradeProposed'),
         )
         .then(() =>
           expect(
             contract
               .connect(adminWallet3)
-              .proposeUpdate(newVersion.address, params),
+              .proposeUpgrade(newVersion.address, params),
           )
             .to.emit(contract, 'UpgradeProposed')
             .withArgs(newVersion.address),
@@ -436,7 +436,7 @@ describe('AxelarGatewaySingleSig', () => {
               [
                 CHAIN_ID,
                 [getRandomID()],
-                ['update'],
+                ['upgrade'],
                 [
                   defaultAbiCoder.encode(
                     ['address', 'bytes'],

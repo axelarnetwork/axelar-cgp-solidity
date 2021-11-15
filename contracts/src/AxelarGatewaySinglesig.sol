@@ -158,12 +158,12 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         _setOperator(operatorEpoch, newOperator);
     }
 
-    function update(address signer, bytes memory params) external onlySelf {
+    function upgrade(address signer, bytes memory params) external onlySelf {
         (address newVersion, bytes memory setupParams) = abi.decode(params, (address, bytes));
 
         require(signer == owner(), 'INV_SIGNER');
 
-        _update(newVersion, setupParams);
+        _upgrade(newVersion, setupParams);
     }
 
     /**************************\
@@ -226,10 +226,10 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
                 commandSelector = AxelarGatewaySinglesig.transferOwnership.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OPERATORSHIP) {
                 commandSelector = AxelarGatewaySinglesig.transferOperatorship.selector;
-            } else if (commandHash == SELECTOR_UPDATE) {
-                // AUDIT: If `update` is called is called within the context of _this_ implementation, and the `setup` performs `selfdestruct`,
+            } else if (commandHash == SELECTOR_UPGRADE) {
+                // AUDIT: If `upgrade` is called is called within the context of _this_ implementation, and the `setup` performs `selfdestruct`,
                 //        it will result in the loss of _this_ implementation (thereby losing the gateway). Consider directly calling `execute`.
-                commandSelector = AxelarGatewaySinglesig.update.selector;
+                commandSelector = AxelarGatewaySinglesig.upgrade.selector;
             } else {
                 continue; /* Ignore if unknown command received */
             }

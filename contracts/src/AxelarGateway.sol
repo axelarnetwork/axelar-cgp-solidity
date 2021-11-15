@@ -16,8 +16,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     // AUDIT: slot names should be prefixed with some standard string
     // AUDIT: constants should be literal and their derivation should be in comments
     bytes32 internal constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
-    bytes32 internal constant KEY_PROPOSED_UPDATE = keccak256('proposed-update');
-    bytes32 internal constant KEY_PROPOSED_UPDATE_TIME = keccak256('proposed-update-block-number');
+    bytes32 internal constant KEY_PROPOSED_UPGRADE = keccak256('proposed-upgrade');
+    bytes32 internal constant KEY_PROPOSED_UPGRADE_TIME = keccak256('proposed-upgrade-block-number');
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
@@ -30,7 +30,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant SELECTOR_MINT_TOKEN = keccak256('mintToken');
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
     bytes32 internal constant SELECTOR_TRANSFER_OWNERSHIP = keccak256('transferOwnership');
-    bytes32 internal constant SELECTOR_UPDATE = keccak256('update');
+    bytes32 internal constant SELECTOR_UPGRADE = keccak256('upgrade');
 
     uint8 internal constant OLD_KEY_RETENTION = 16;
 
@@ -52,12 +52,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getAddress(KEY_IMPLEMENTATION);
     }
 
-    function proposedUpdate() public view override returns (bytes memory) {
-        return getBytes(KEY_PROPOSED_UPDATE);
+    function proposedUpgrade() public view override returns (bytes memory) {
+        return getBytes(KEY_PROPOSED_UPGRADE);
     }
 
-    function proposedUpdateTime() public view override returns (uint256) {
-        return getUint(KEY_PROPOSED_UPDATE_TIME);
+    function proposedUpgradeTime() public view override returns (uint256) {
+        return getUint(KEY_PROPOSED_UPGRADE_TIME);
     }
 
     function tokenAddresses(string memory symbol) public view override returns (address) {
@@ -114,24 +114,24 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         emit AllTokensUnfrozen();
     }
 
-    function proposeUpdate(address newVersion, bytes memory setupParams) external override onlyAdmin {
-        require(proposedUpdate().length == uint256(0), 'PPS_EXIST');
+    function proposeUpgrade(address newVersion, bytes memory setupParams) external override onlyAdmin {
+        require(proposedUpgrade().length == uint256(0), 'PPS_EXIST');
 
-        _setProposedUpdate(newVersion, setupParams);
-        _setProposedUpdateTime(block.timestamp);
+        _setProposedUpgrade(newVersion, setupParams);
+        _setProposedUpgradeTime(block.timestamp);
 
         emit UpgradeProposed(newVersion);
     }
 
-    function forceUpdate(address newVersion, bytes memory setupParams) external override {
+    function forceUpgrade(address newVersion, bytes memory setupParams) external override {
         require(_isAdmin(_adminEpoch(), msg.sender), 'NOT_ADMIN');
 
-        uint256 _proposedUpdateTime = proposedUpdateTime();
+        uint256 _proposedUpgradeTime = proposedUpgradeTime();
 
-        // Require that the `proposedUpdateTime` exists, and that one day has elapsed without an action to update or cancel the update.
-        require((_proposedUpdateTime > 0) && (block.timestamp - _proposedUpdateTime >= 1 days), 'NO_TIMEOUT');
+        // Require that the `proposedUpgradeTime` exists, and that one day has elapsed without an action to upgrade or cancel the upgrade.
+        require((_proposedUpgradeTime > 0) && (block.timestamp - _proposedUpgradeTime >= 1 days), 'NO_TIMEOUT');
 
-        _update(newVersion, setupParams);
+        _upgrade(newVersion, setupParams);
     }
 
     /**********************\
@@ -177,18 +177,18 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         new Burner{ salt: salt }(tokenAddress, salt);
     }
 
-    function _update(address newImplementation, bytes memory setupParams) internal {
-        bytes memory _proposedUpdate = proposedUpdate();
-        require(_proposedUpdate.length != 0, 'NO_PPS');
+    function _upgrade(address newImplementation, bytes memory setupParams) internal {
+        bytes memory _proposedUpgrade = proposedUpgrade();
+        require(_proposedUpgrade.length != 0, 'NO_PPS');
 
-        _clearProposedUpdate();
-        _setProposedUpdateTime(uint256(0));
+        _clearProposedUpgrade();
+        _setProposedUpgradeTime(uint256(0));
 
-        // NOTE: Any attempt to “incorrectly” update is the way to clear the pending update, since we return rather than revert.
-        if (keccak256(_proposedUpdate) != keccak256(abi.encodePacked(newImplementation, setupParams))) return;
+        // NOTE: Any attempt to “incorrectly” upgrade is the way to clear the pending upgrade, since we return rather than revert.
+        if (keccak256(_proposedUpgrade) != keccak256(abi.encodePacked(newImplementation, setupParams))) return;
 
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
-        //        if `_update` is entered within the context of _this_ implementation itself. Consider directly calling `forceUpdate`.
+        //        if `_upgrade` is entered within the context of _this_ implementation itself. Consider directly calling `forceUpgrade`.
         (bool success, ) =
             newImplementation.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams));
         require(success, 'SETUP_FAILED');
@@ -248,19 +248,19 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setBool(_getIsCommandExecutedKey(commandId), executed);
     }
 
-    function _setProposedUpdate(address newVersion, bytes memory setupParams) internal {
-        _setBytes(KEY_PROPOSED_UPDATE, abi.encodePacked(newVersion, setupParams));
+    function _setProposedUpgrade(address newVersion, bytes memory setupParams) internal {
+        _setBytes(KEY_PROPOSED_UPGRADE, abi.encodePacked(newVersion, setupParams));
     }
 
-    function _setProposedUpdateTime(uint256 time) internal {
-        _setUint(KEY_PROPOSED_UPDATE_TIME, time);
+    function _setProposedUpgradeTime(uint256 time) internal {
+        _setUint(KEY_PROPOSED_UPGRADE_TIME, time);
     }
 
     function _setImplementation(address newImplementation) internal {
         _setAddress(KEY_IMPLEMENTATION, newImplementation);
     }
 
-    function _clearProposedUpdate() internal {
-        _deleteBytes(KEY_PROPOSED_UPDATE);
+    function _clearProposedUpgrade() internal {
+        _deleteBytes(KEY_PROPOSED_UPGRADE);
     }
 }
