@@ -120,7 +120,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setProposedUpdate(newVersion, setupParams);
         _setProposedUpdateTime(block.timestamp);
 
-        emit UpgradeProposed(address(this), newVersion);
+        emit UpgradeProposed(newVersion);
     }
 
     function forceUpdate(address newVersion, bytes memory setupParams) external override {

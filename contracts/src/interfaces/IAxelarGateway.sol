@@ -24,7 +24,7 @@ interface IAxelarGateway {
 
     event AccountWhitelisted(address indexed account);
 
-    event UpgradeProposed(address indexed oldVersion, address indexed newVersion);
+    event UpgradeProposed(address indexed implementation);
 
     event Upgraded(address indexed implementation);
 

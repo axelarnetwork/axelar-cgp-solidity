@@ -322,7 +322,7 @@ describe('AxelarGatewaySingleSig', () => {
               .proposeUpdate(newVersion.address, params),
           )
             .to.emit(contract, 'UpgradeProposed')
-            .withArgs(contract.address, newVersion.address),
+            .withArgs(newVersion.address),
         )
         .then(() =>
           expect(
@@ -377,7 +377,7 @@ describe('AxelarGatewaySingleSig', () => {
               .proposeUpdate(newVersion.address, params),
           )
             .to.emit(contract, 'UpgradeProposed')
-            .withArgs(contract.address, newVersion.address),
+            .withArgs(newVersion.address),
         )
         .then(() => {
           const data = arrayify(

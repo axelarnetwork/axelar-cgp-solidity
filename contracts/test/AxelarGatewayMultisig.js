@@ -820,7 +820,7 @@ describe('AxelarGatewayMultisig', () => {
                 .proposeUpdate(newVersion.address, params),
             )
               .to.emit(contract, 'UpgradeProposed')
-              .withArgs(contract.address, newVersion.address),
+              .withArgs(newVersion.address),
           )
           .then(() =>
             expect(
