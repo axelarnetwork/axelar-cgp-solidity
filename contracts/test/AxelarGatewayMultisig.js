@@ -812,14 +812,14 @@ describe('AxelarGatewayMultisig', () => {
         return expect(
           contract.connect(admins[0]).proposeUpdate(newVersion.address, params),
         )
-          .to.not.emit(contract, 'UpdateProposed')
+          .to.not.emit(contract, 'UpgradeProposed')
           .then(() =>
             expect(
               contract
                 .connect(admins[2])
                 .proposeUpdate(newVersion.address, params),
             )
-              .to.emit(contract, 'UpdateProposed')
+              .to.emit(contract, 'UpgradeProposed')
               .withArgs(contract.address, newVersion.address),
           )
           .then(() =>
@@ -835,7 +835,7 @@ describe('AxelarGatewayMultisig', () => {
               contract
                 .connect(admins[1])
                 .forceUpdate(newVersion.address, params),
-            ).to.emit(contract, 'Updated'),
+            ).to.emit(contract, 'Upgraded'),
           );
       });
 
@@ -862,13 +862,13 @@ describe('AxelarGatewayMultisig', () => {
         return expect(
           contract.connect(admins[0]).proposeUpdate(newVersion.address, params),
         )
-          .to.not.emit(contract, 'UpdateProposed')
+          .to.not.emit(contract, 'UpgradeProposed')
           .then(() =>
             expect(
               contract
                 .connect(admins[1])
                 .proposeUpdate(newVersion.address, params),
-            ).to.emit(contract, 'UpdateProposed'),
+            ).to.emit(contract, 'UpgradeProposed'),
           )
           .then(() => {
             const data = arrayify(
@@ -890,7 +890,7 @@ describe('AxelarGatewayMultisig', () => {
 
             return getSignedMultisigExecuteInput(data, owners)
               .then((input) =>
-                expect(contract.execute(input)).to.emit(contract, 'Updated'),
+                expect(contract.execute(input)).to.emit(contract, 'Upgraded'),
               )
               .then(() => contract.owners())
               .then((actual) => {

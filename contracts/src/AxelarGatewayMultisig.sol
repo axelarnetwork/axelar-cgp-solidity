@@ -135,7 +135,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         uint256 index,
         address account
     ) internal {
-        // AUDIT: Should have `require(account != address(0), 'ZERO_ADDR');` like Singlesig?
+        require(account != address(0), 'ZERO_ADDR');
         _setAddress(_getOwnerKey(ownerEpoch, index), account);
     }
 
@@ -368,7 +368,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     function transferOperatorship(address[] memory signers, bytes memory params) external onlySelf {
         (address[] memory newOperators, uint256 newThreshold) = abi.decode(params, (address[], uint256));
 
-        // NOTE: Should this be `_areValidOwnersInEpoch` or `_areValidOperatorsInEpoch`?
         uint256 ownerEpoch = _ownerEpoch();
         require(_areValidOwnersInEpoch(ownerEpoch, signers), 'INV_SIGNERS');
 

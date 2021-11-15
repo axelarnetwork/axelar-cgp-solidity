@@ -307,13 +307,13 @@ describe('AxelarGatewaySingleSig', () => {
           .connect(adminWallet1)
           .proposeUpdate(newVersion.address, params),
       )
-        .to.not.emit(contract, 'UpdateProposed')
+        .to.not.emit(contract, 'UpgradeProposed')
         .then(() =>
           expect(
             contract
               .connect(adminWallet2)
               .proposeUpdate(newVersion.address, params),
-          ).to.not.emit(contract, 'UpdateProposed'),
+          ).to.not.emit(contract, 'UpgradeProposed'),
         )
         .then(() =>
           expect(
@@ -321,7 +321,7 @@ describe('AxelarGatewaySingleSig', () => {
               .connect(adminWallet3)
               .proposeUpdate(newVersion.address, params),
           )
-            .to.emit(contract, 'UpdateProposed')
+            .to.emit(contract, 'UpgradeProposed')
             .withArgs(contract.address, newVersion.address),
         )
         .then(() =>
@@ -337,7 +337,7 @@ describe('AxelarGatewaySingleSig', () => {
             contract
               .connect(adminWallet4)
               .forceUpdate(newVersion.address, params),
-          ).to.emit(contract, 'Updated'),
+          ).to.emit(contract, 'Upgraded'),
         );
     });
 
@@ -362,13 +362,13 @@ describe('AxelarGatewaySingleSig', () => {
           .connect(adminWallet1)
           .proposeUpdate(newVersion.address, params),
       )
-        .to.not.emit(contract, 'UpdateProposed')
+        .to.not.emit(contract, 'UpgradeProposed')
         .then(() =>
           expect(
             contract
               .connect(adminWallet2)
               .proposeUpdate(newVersion.address, params),
-          ).to.not.emit(contract, 'UpdateProposed'),
+          ).to.not.emit(contract, 'UpgradeProposed'),
         )
         .then(() =>
           expect(
@@ -376,7 +376,7 @@ describe('AxelarGatewaySingleSig', () => {
               .connect(adminWallet3)
               .proposeUpdate(newVersion.address, params),
           )
-            .to.emit(contract, 'UpdateProposed')
+            .to.emit(contract, 'UpgradeProposed')
             .withArgs(contract.address, newVersion.address),
         )
         .then(() => {
@@ -398,7 +398,7 @@ describe('AxelarGatewaySingleSig', () => {
           );
 
           return getSignedExecuteInput(data, ownerWallet).then((input) =>
-            expect(contract.execute(input)).to.emit(contract, 'Updated'),
+            expect(contract.execute(input)).to.emit(contract, 'Upgraded'),
           );
         })
         .then(() =>
