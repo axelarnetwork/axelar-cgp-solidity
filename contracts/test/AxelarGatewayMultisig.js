@@ -835,7 +835,9 @@ describe('AxelarGatewayMultisig', () => {
               contract
                 .connect(admins[1])
                 .forceUpdate(newVersion.address, params),
-            ).to.emit(contract, 'Upgraded'),
+            )
+              .to.emit(contract, 'Upgraded')
+              .withArgs(newVersion.address),
           );
       });
 
@@ -890,7 +892,9 @@ describe('AxelarGatewayMultisig', () => {
 
             return getSignedMultisigExecuteInput(data, owners)
               .then((input) =>
-                expect(contract.execute(input)).to.emit(contract, 'Upgraded'),
+                expect(contract.execute(input))
+                  .to.emit(contract, 'Upgraded')
+                  .withArgs(newVersion.address),
               )
               .then(() => contract.owners())
               .then((actual) => {
