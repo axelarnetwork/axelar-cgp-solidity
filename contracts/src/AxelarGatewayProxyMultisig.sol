@@ -2,17 +2,19 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import { IAxelarGateway } from './IAxelarGateway.sol';
+import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
+
 import { AxelarGatewayProxy } from './AxelarGatewayProxy.sol';
 import { AxelarGatewayMultisig } from './AxelarGatewayMultisig.sol';
 
 contract AxelarGatewayProxyMultisig is AxelarGatewayProxy {
     constructor(bytes memory params) {
-        IAxelarGateway gateway = new AxelarGatewayMultisig();
+        // AUDIT: constructor contains entire AxelarGatewayMultisig bytecode. Consider passing in an AxelarGatewayMultisig address.
+        address gateway = address(new AxelarGatewayMultisig());
 
-        setAddress(KEY_IMPLEMENTATION, address(gateway));
+        _setAddress(KEY_IMPLEMENTATION, gateway);
 
-        (bool success, ) = address(gateway).delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, params));
+        (bool success, ) = gateway.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, params));
         require(success, 'SETUP_FAILED');
     }
 }

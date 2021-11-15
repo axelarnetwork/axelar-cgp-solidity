@@ -144,7 +144,7 @@ describe('AxelarGatewaySingleSig', () => {
     const symbol = 'AAT';
     const decimals = 18;
     const cap = 1e8;
-    const amount = 9999;
+    const amount = 10000;
 
     let tokenContract;
 
@@ -258,7 +258,7 @@ describe('AxelarGatewaySingleSig', () => {
           )
           .then(() =>
             expect(
-              tokenContract.transfer(ownerWallet.address, amount),
+              tokenContract.transfer(ownerWallet.address, amount / 2),
             ).to.be.revertedWith('IS_FROZEN'),
           )
           .then(() =>
@@ -277,15 +277,63 @@ describe('AxelarGatewaySingleSig', () => {
               .withArgs(),
           )
           .then(() =>
-            expect(tokenContract.transfer(ownerWallet.address, amount))
+            expect(tokenContract.transfer(ownerWallet.address, amount / 2))
               .to.emit(tokenContract, 'Transfer')
-              .withArgs(nonOwnerWallet.address, ownerWallet.address, amount),
+              .withArgs(
+                nonOwnerWallet.address,
+                ownerWallet.address,
+                amount / 2,
+              ),
+          )
+          .then(() =>
+            expect(
+              contract.connect(adminWallet1).freezeAllTokens(),
+            ).to.not.emit(contract, 'AllTokensFrozen'),
+          )
+          .then(() =>
+            expect(
+              contract.connect(adminWallet2).freezeAllTokens(),
+            ).to.not.emit(contract, 'AllTokensFrozen'),
+          )
+          .then(() =>
+            expect(contract.connect(adminWallet3).freezeAllTokens())
+              .to.emit(contract, 'AllTokensFrozen')
+              .withArgs(),
+          )
+          .then(() =>
+            expect(
+              tokenContract.transfer(ownerWallet.address, amount / 2),
+            ).to.be.revertedWith('IS_FROZEN'),
+          )
+          .then(() =>
+            expect(
+              contract.connect(adminWallet1).unfreezeAllTokens(),
+            ).to.not.emit(contract, 'AllTokensUnfrozen'),
+          )
+          .then(() =>
+            expect(
+              contract.connect(adminWallet2).unfreezeAllTokens(),
+            ).to.not.emit(contract, 'AllTokensUnfrozen'),
+          )
+          .then(() =>
+            expect(contract.connect(adminWallet3).unfreezeAllTokens())
+              .to.emit(contract, 'AllTokensUnfrozen')
+              .withArgs(),
+          )
+          .then(() =>
+            expect(tokenContract.transfer(ownerWallet.address, amount / 2))
+              .to.emit(tokenContract, 'Transfer')
+              .withArgs(
+                nonOwnerWallet.address,
+                ownerWallet.address,
+                amount / 2,
+              ),
           );
       });
     });
   });
 
-  describe('proposeUpdate and update', () => {
+  describe('proposeUpgrade and upgrade', () => {
     it('should allow admins to force updating to the proposed version after timeout', async () => {
       const newVersion = await deployContract(
         ownerWallet,
@@ -305,30 +353,30 @@ describe('AxelarGatewaySingleSig', () => {
       return expect(
         contract
           .connect(adminWallet1)
-          .proposeUpdate(newVersion.address, params),
+          .proposeUpgrade(newVersion.address, params),
       )
-        .to.not.emit(contract, 'UpdateProposed')
+        .to.not.emit(contract, 'UpgradeProposed')
         .then(() =>
           expect(
             contract
               .connect(adminWallet2)
-              .proposeUpdate(newVersion.address, params),
-          ).to.not.emit(contract, 'UpdateProposed'),
+              .proposeUpgrade(newVersion.address, params),
+          ).to.not.emit(contract, 'UpgradeProposed'),
         )
         .then(() =>
           expect(
             contract
               .connect(adminWallet3)
-              .proposeUpdate(newVersion.address, params),
+              .proposeUpgrade(newVersion.address, params),
           )
-            .to.emit(contract, 'UpdateProposed')
-            .withArgs(contract.address, newVersion.address),
+            .to.emit(contract, 'UpgradeProposed')
+            .withArgs(newVersion.address),
         )
         .then(() =>
           expect(
             contract
               .connect(adminWallet4)
-              .forceUpdate(newVersion.address, params),
+              .forceUpgrade(newVersion.address, params),
           ).to.be.revertedWith('NO_TIMEOUT'),
         )
         .then(() => tickBlockTime(contract.provider, 86400))
@@ -336,12 +384,14 @@ describe('AxelarGatewaySingleSig', () => {
           expect(
             contract
               .connect(adminWallet4)
-              .forceUpdate(newVersion.address, params),
-          ).to.emit(contract, 'Updated'),
+              .forceUpgrade(newVersion.address, params),
+          )
+            .to.emit(contract, 'Upgraded')
+            .withArgs(newVersion.address),
         );
     });
 
-    it('should update to the next version after passing threshold and owner approval', async () => {
+    it('should upgrade to the next version after passing threshold and owner approval', async () => {
       const newVersion = await deployContract(
         ownerWallet,
         AxelarGatewaySinglesig,
@@ -360,24 +410,24 @@ describe('AxelarGatewaySingleSig', () => {
       return expect(
         contract
           .connect(adminWallet1)
-          .proposeUpdate(newVersion.address, params),
+          .proposeUpgrade(newVersion.address, params),
       )
-        .to.not.emit(contract, 'UpdateProposed')
+        .to.not.emit(contract, 'UpgradeProposed')
         .then(() =>
           expect(
             contract
               .connect(adminWallet2)
-              .proposeUpdate(newVersion.address, params),
-          ).to.not.emit(contract, 'UpdateProposed'),
+              .proposeUpgrade(newVersion.address, params),
+          ).to.not.emit(contract, 'UpgradeProposed'),
         )
         .then(() =>
           expect(
             contract
               .connect(adminWallet3)
-              .proposeUpdate(newVersion.address, params),
+              .proposeUpgrade(newVersion.address, params),
           )
-            .to.emit(contract, 'UpdateProposed')
-            .withArgs(contract.address, newVersion.address),
+            .to.emit(contract, 'UpgradeProposed')
+            .withArgs(newVersion.address),
         )
         .then(() => {
           const data = arrayify(
@@ -386,7 +436,7 @@ describe('AxelarGatewaySingleSig', () => {
               [
                 CHAIN_ID,
                 [getRandomID()],
-                ['update'],
+                ['upgrade'],
                 [
                   defaultAbiCoder.encode(
                     ['address', 'bytes'],
@@ -398,7 +448,9 @@ describe('AxelarGatewaySingleSig', () => {
           );
 
           return getSignedExecuteInput(data, ownerWallet).then((input) =>
-            expect(contract.execute(input)).to.emit(contract, 'Updated'),
+            expect(contract.execute(input))
+              .to.emit(contract, 'Upgraded')
+              .withArgs(newVersion.address),
           );
         })
         .then(() =>
@@ -680,6 +732,31 @@ describe('AxelarGatewaySingleSig', () => {
                 contract.execute(input, { gasLimit: 2000000 }),
               ).to.not.emit(tokenContract, 'Transfer'),
             );
+          })
+          .then(() => tickBlockTime(contract.provider, 86400))
+          .then(() => {
+            const data = arrayify(
+              defaultAbiCoder.encode(
+                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                [
+                  CHAIN_ID,
+                  [getRandomID()],
+                  ['mintToken'],
+                  [
+                    defaultAbiCoder.encode(
+                      ['string', 'address', 'uint256'],
+                      [symbol, nonOwnerWallet.address, limit],
+                    ),
+                  ],
+                ],
+              ),
+            );
+
+            return getSignedExecuteInput(data, ownerWallet).then((input) =>
+              expect(contract.execute(input, { gasLimit: 2000000 }))
+                .to.emit(tokenContract, 'Transfer')
+                .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, limit),
+            );
           });
       });
 
@@ -948,7 +1025,7 @@ describe('AxelarGatewaySingleSig', () => {
     });
 
     describe('command transferOwnership', () => {
-      it('should not transfering ownership to address zero', () => {
+      it('should not transferring ownership to address zero', () => {
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
@@ -990,7 +1067,7 @@ describe('AxelarGatewaySingleSig', () => {
         );
       });
 
-      it('should transfer ownership if transfering to a valid address', () => {
+      it('should transfer ownership if transferring to a valid address', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
         const data = arrayify(
           defaultAbiCoder.encode(
