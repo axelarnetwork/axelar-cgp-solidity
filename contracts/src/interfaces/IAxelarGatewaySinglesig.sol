@@ -14,4 +14,14 @@ interface IAxelarGatewaySinglesig is IAxelarGateway {
 
     function operator() external view returns (address);
 
+    function deployToken(address signer, bytes memory params) external;
+
+    function mintToken(address signer, bytes memory params) external;
+
+    function burnToken(address signer, bytes memory params) external;
+
+    function transferOwnership(address signer, bytes memory params) external;
+
+    function transferOperatorship(address signer, bytes memory params) external;
+
 }

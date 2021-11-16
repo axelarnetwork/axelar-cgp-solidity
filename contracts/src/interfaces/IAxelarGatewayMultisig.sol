@@ -14,4 +14,14 @@ interface IAxelarGatewayMultisig is IAxelarGateway {
 
     function operators() external view returns (address[] memory);
 
+    function deployToken(address[] memory signers, bytes memory params) external;
+
+    function mintToken(address[] memory signers, bytes memory params) external;
+
+    function burnToken(address[] memory signers, bytes memory params) external;
+
+    function transferOwnership(address[] memory signers, bytes memory params) external;
+
+    function transferOperatorship(address[] memory signers, bytes memory params) external;
+
 }
