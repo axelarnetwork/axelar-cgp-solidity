@@ -3,7 +3,6 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 interface IAxelarGateway {
-
     /**********\
     |* Events *|
     \**********/
@@ -24,8 +23,6 @@ interface IAxelarGateway {
 
     event AccountWhitelisted(address indexed account);
 
-    event UpgradeProposed(address indexed implementation);
-
     event Upgraded(address indexed implementation);
 
     /***********\
@@ -35,10 +32,6 @@ interface IAxelarGateway {
     function allTokensFrozen() external view returns (bool);
 
     function implementation() external view returns (address);
-
-    function proposedUpgrade() external view returns (bytes memory);
-
-    function proposedUpgradeTime() external view returns (uint256);
 
     function tokenAddresses(string memory symbol) external view returns (address);
 
@@ -64,9 +57,7 @@ interface IAxelarGateway {
 
     function unfreezeAllTokens() external;
 
-    function proposeUpgrade(address newVersion, bytes memory setupParams) external;
-
-    function forceUpgrade(address newVersion, bytes memory setupParams) external;
+    function upgrade(address newImplementation, bytes memory setupParams) external;
 
     /**********************\
     |* External Functions *|
@@ -75,5 +66,4 @@ interface IAxelarGateway {
     function setup(bytes memory params) external;
 
     function execute(bytes memory input) external;
-
 }

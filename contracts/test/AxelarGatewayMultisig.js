@@ -23,7 +23,6 @@ const {
   getSignedMultisigExecuteInput,
   getRandomInt,
   getRandomID,
-  tickBlockTime,
 } = require('./utils');
 
 describe('AxelarGatewayMultisig', () => {
@@ -71,6 +70,43 @@ describe('AxelarGatewayMultisig', () => {
       contract.operators().then((actual) => {
         expect(actual).to.deep.eq(operators.map(get('address')));
       }));
+  });
+
+  describe('upgrade', () => {
+    it('should allow admins to upgrade implementation', async () => {
+      const newImplementation = await deployContract(
+        wallets[0],
+        AxelarGatewayMultisig,
+        [],
+      );
+      const params = arrayify(
+        defaultAbiCoder.encode(
+          ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
+          [
+            owners.map(get('address')),
+            threshold,
+            owners.slice(0, 2).map(get('address')),
+            threshold,
+            operators.slice(0, 2).map(get('address')),
+            threshold,
+          ],
+        ),
+      );
+
+      return expect(
+        contract.connect(admins[0]).upgrade(newImplementation.address, params),
+      )
+        .to.not.emit(contract, 'Upgraded')
+        .then(() =>
+          expect(
+            contract
+              .connect(admins[2])
+              .upgrade(newImplementation.address, params),
+          )
+            .to.emit(contract, 'Upgraded')
+            .withArgs(newImplementation.address),
+        );
+    });
   });
 
   describe('execute', () => {
@@ -784,130 +820,6 @@ describe('AxelarGatewayMultisig', () => {
             await expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
               .withArgs(burnerAddress, ADDRESS_ZERO, amount);
-          });
-      });
-    });
-
-    describe('command upgrade', () => {
-      it('should allow admins to force upgrading to the proposed version after timeout', async () => {
-        const newVersion = await deployContract(
-          wallets[0],
-          AxelarGatewayMultisig,
-          [],
-        );
-        const params = arrayify(
-          defaultAbiCoder.encode(
-            ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
-            [
-              owners.map(get('address')),
-              threshold,
-              owners.slice(0, 2).map(get('address')),
-              threshold,
-              operators.slice(0, 2).map(get('address')),
-              threshold,
-            ],
-          ),
-        );
-
-        return expect(
-          contract.connect(admins[0]).proposeUpgrade(newVersion.address, params),
-        )
-          .to.not.emit(contract, 'UpgradeProposed')
-          .then(() =>
-            expect(
-              contract
-                .connect(admins[2])
-                .proposeUpgrade(newVersion.address, params),
-            )
-              .to.emit(contract, 'UpgradeProposed')
-              .withArgs(newVersion.address),
-          )
-          .then(() =>
-            expect(
-              contract
-                .connect(admins[1])
-                .forceUpgrade(newVersion.address, params),
-            ).to.be.revertedWith('NO_TIMEOUT'),
-          )
-          .then(() => tickBlockTime(contract.provider, 86400))
-          .then(() =>
-            expect(
-              contract
-                .connect(admins[1])
-                .forceUpgrade(newVersion.address, params),
-            )
-              .to.emit(contract, 'Upgraded')
-              .withArgs(newVersion.address),
-          );
-      });
-
-      it("should upgrade to the next version after passing threshold and owners' approval", async () => {
-        const newVersion = await deployContract(
-          wallets[0],
-          AxelarGatewayMultisig,
-          [],
-        );
-        const params = arrayify(
-          defaultAbiCoder.encode(
-            ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
-            [
-              owners.map(get('address')),
-              threshold,
-              owners.slice(0, 2).map(get('address')),
-              threshold,
-              operators.slice(0, 2).map(get('address')),
-              threshold,
-            ],
-          ),
-        );
-
-        return expect(
-          contract.connect(admins[0]).proposeUpgrade(newVersion.address, params),
-        )
-          .to.not.emit(contract, 'UpgradeProposed')
-          .then(() =>
-            expect(
-              contract
-                .connect(admins[1])
-                .proposeUpgrade(newVersion.address, params),
-            ).to.emit(contract, 'UpgradeProposed'),
-          )
-          .then(() => {
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [
-                  CHAIN_ID,
-                  [getRandomID()],
-                  ['upgrade'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['address', 'bytes'],
-                      [newVersion.address, params],
-                    ),
-                  ],
-                ],
-              ),
-            );
-
-            return getSignedMultisigExecuteInput(data, owners)
-              .then((input) =>
-                expect(contract.execute(input))
-                  .to.emit(contract, 'Upgraded')
-                  .withArgs(newVersion.address),
-              )
-              .then(() => contract.owners())
-              .then((actual) => {
-                expect(actual).to.deep.eq(
-                  owners.slice(0, 2).map(get('address')),
-                );
-              })
-              .then(() => contract.operators())
-              .then((actual) => {
-                expect(actual).to.deep.eq(
-                  operators.slice(0, 2).map(get('address')),
-                );
-              });
           });
       });
     });
