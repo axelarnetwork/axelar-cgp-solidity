@@ -17,4 +17,6 @@ contract AxelarGatewayProxyMultisig is AxelarGatewayProxy {
         (bool success, ) = gateway.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, params));
         require(success, 'SETUP_FAILED');
     }
+
+    function setup(bytes memory params) external {}
 }

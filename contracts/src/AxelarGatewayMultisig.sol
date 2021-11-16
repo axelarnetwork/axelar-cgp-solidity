@@ -340,7 +340,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     function mintToken(address[] memory signers, bytes memory params) external onlySelf {
         (string memory symbol, address account, uint256 amount) = abi.decode(params, (string, address, uint256));
 
-        require(_areValidRecentOwners(signers) || _areValidRecentOperators(signers), 'INV_SIGNERS');
+        require(_areValidRecentOperators(signers) || _areValidRecentOwners(signers), 'INV_SIGNERS');
 
         _mintToken(symbol, account, amount);
     }
@@ -348,7 +348,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     function burnToken(address[] memory signers, bytes memory params) external onlySelf {
         (string memory symbol, bytes32 salt) = abi.decode(params, (string, bytes32));
 
-        require(_areValidRecentOwners(signers) || _areValidRecentOperators(signers), 'INV_SIGNERS');
+        require(_areValidRecentOperators(signers) || _areValidRecentOwners(signers), 'INV_SIGNERS');
 
         _burnToken(symbol, salt);
     }
@@ -383,6 +383,9 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     \**************************/
 
     function setup(bytes memory params) external override {
+        // Prevent setup from being called on a non-proxy (the implementation).
+        require(implementation() != address(0), 'NOT_PROXY');
+
         (
             address[] memory adminAddresses,
             uint256 adminThreshold,
