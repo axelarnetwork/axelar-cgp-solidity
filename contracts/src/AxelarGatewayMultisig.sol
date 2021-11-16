@@ -378,14 +378,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         _setOperators(operatorEpoch, newOperators, newThreshold);
     }
 
-    function upgrade(address[] memory signers, bytes memory params) external onlySelf {
-        (address newVersion, bytes memory setupParams) = abi.decode(params, (address, bytes));
-
-        require(_areValidOwnersInEpoch(_ownerEpoch(), signers), 'INV_SIGNERS');
-
-        _upgrade(newVersion, setupParams);
-    }
-
     /**************************\
     |* External Functionality *|
     \**************************/
@@ -458,10 +450,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
                 commandSelector = AxelarGatewayMultisig.transferOwnership.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OPERATORSHIP) {
                 commandSelector = AxelarGatewayMultisig.transferOperatorship.selector;
-            } else if (commandHash == SELECTOR_UPGRADE) {
-                // AUDIT: If `upgrade` is called is called within the context of _this_ implementation, and the `setup` performs `selfdestruct`,
-                //        it will result in the loss of _this_ implementation (thereby losing the gateway). Consider directly calling `execute`.
-                commandSelector = AxelarGatewayMultisig.upgrade.selector;
             } else {
                 continue; /* Ignore if unknown command received */
             }

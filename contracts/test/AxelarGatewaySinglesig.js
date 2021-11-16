@@ -333,9 +333,9 @@ describe('AxelarGatewaySingleSig', () => {
     });
   });
 
-  describe('proposeUpgrade and upgrade', () => {
-    it('should allow admins to force updating to the proposed version after timeout', async () => {
-      const newVersion = await deployContract(
+  describe('upgrade', () => {
+    it('should allow admins to upgrade implementation', async () => {
+      const newImplementation = await deployContract(
         ownerWallet,
         AxelarGatewaySinglesig,
         [],
@@ -353,117 +353,24 @@ describe('AxelarGatewaySingleSig', () => {
       return expect(
         contract
           .connect(adminWallet1)
-          .proposeUpgrade(newVersion.address, params),
+          .upgrade(newImplementation.address, params),
       )
-        .to.not.emit(contract, 'UpgradeProposed')
+        .to.not.emit(contract, 'Upgraded')
         .then(() =>
           expect(
             contract
               .connect(adminWallet2)
-              .proposeUpgrade(newVersion.address, params),
-          ).to.not.emit(contract, 'UpgradeProposed'),
+              .upgrade(newImplementation.address, params),
+          ).to.not.emit(contract, 'Upgraded'),
         )
         .then(() =>
           expect(
             contract
               .connect(adminWallet3)
-              .proposeUpgrade(newVersion.address, params),
-          )
-            .to.emit(contract, 'UpgradeProposed')
-            .withArgs(newVersion.address),
-        )
-        .then(() =>
-          expect(
-            contract
-              .connect(adminWallet4)
-              .forceUpgrade(newVersion.address, params),
-          ).to.be.revertedWith('NO_TIMEOUT'),
-        )
-        .then(() => tickBlockTime(contract.provider, 86400))
-        .then(() =>
-          expect(
-            contract
-              .connect(adminWallet4)
-              .forceUpgrade(newVersion.address, params),
+              .upgrade(newImplementation.address, params),
           )
             .to.emit(contract, 'Upgraded')
-            .withArgs(newVersion.address),
-        );
-    });
-
-    it('should upgrade to the next version after passing threshold and owner approval', async () => {
-      const newVersion = await deployContract(
-        ownerWallet,
-        AxelarGatewaySinglesig,
-        [],
-      );
-      const params = defaultAbiCoder.encode(
-        ['address[]', 'uint8', 'address', 'address'],
-        [
-          [ownerWallet.address, operatorWallet.address],
-          1,
-          ownerWallet.address,
-          operatorWallet.address,
-        ],
-      );
-
-      return expect(
-        contract
-          .connect(adminWallet1)
-          .proposeUpgrade(newVersion.address, params),
-      )
-        .to.not.emit(contract, 'UpgradeProposed')
-        .then(() =>
-          expect(
-            contract
-              .connect(adminWallet2)
-              .proposeUpgrade(newVersion.address, params),
-          ).to.not.emit(contract, 'UpgradeProposed'),
-        )
-        .then(() =>
-          expect(
-            contract
-              .connect(adminWallet3)
-              .proposeUpgrade(newVersion.address, params),
-          )
-            .to.emit(contract, 'UpgradeProposed')
-            .withArgs(newVersion.address),
-        )
-        .then(() => {
-          const data = arrayify(
-            defaultAbiCoder.encode(
-              ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-              [
-                CHAIN_ID,
-                [getRandomID()],
-                ['upgrade'],
-                [
-                  defaultAbiCoder.encode(
-                    ['address', 'bytes'],
-                    [newVersion.address, params],
-                  ),
-                ],
-              ],
-            ),
-          );
-
-          return getSignedExecuteInput(data, ownerWallet).then((input) =>
-            expect(contract.execute(input))
-              .to.emit(contract, 'Upgraded')
-              .withArgs(newVersion.address),
-          );
-        })
-        .then(() =>
-          expect(contract.connect(ownerWallet).freezeAllTokens()).to.emit(
-            contract,
-            'AllTokensFrozen',
-          ),
-        )
-        .then(() =>
-          expect(contract.connect(operatorWallet).freezeAllTokens()).to.emit(
-            contract,
-            'AllTokensFrozen',
-          ),
+            .withArgs(newImplementation.address),
         );
     });
   });
