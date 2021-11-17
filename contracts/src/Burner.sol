@@ -8,6 +8,6 @@ contract Burner {
     constructor(address tokenAddress, bytes32 salt) {
         BurnableMintableCappedERC20(tokenAddress).burn(salt);
 
-        selfdestruct(payable(msg.sender));
+        selfdestruct(payable(address(0)));
     }
 }
