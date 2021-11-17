@@ -163,6 +163,9 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     \**************************/
 
     function setup(bytes memory params) external override {
+        // Prevent setup from being called on a non-proxy (the implementation).
+        require(implementation() != address(0), 'NOT_PROXY');
+
         (address[] memory adminAddresses, uint256 adminThreshold, address ownerAddress, address operatorAddress) =
             abi.decode(params, (address[], uint256, address, address));
 
