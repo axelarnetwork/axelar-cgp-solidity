@@ -106,50 +106,41 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     |* Self Functionality *|
     \**********************/
 
-    function deployToken(address signer, bytes memory params) external onlySelf {
+    function deployToken(bytes calldata params) external onlySelf {
         (string memory name, string memory symbol, uint8 decimals, uint256 cap) =
             abi.decode(params, (string, string, uint8, uint256));
-
-        require(_isValidRecentOwner(signer), 'INV_SIGNER');
 
         _deployToken(name, symbol, decimals, cap);
     }
 
-    function mintToken(address signer, bytes memory params) external onlySelf {
+    function mintToken(bytes calldata params) external onlySelf {
         (string memory symbol, address account, uint256 amount) = abi.decode(params, (string, address, uint256));
-
-        require(_isValidRecentOwner(signer) || _isValidRecentOperator(signer), 'INV_SIGNER');
 
         _mintToken(symbol, account, amount);
     }
 
-    function burnToken(address signer, bytes memory params) external onlySelf {
+    function burnToken(bytes calldata params) external onlySelf {
         (string memory symbol, bytes32 salt) = abi.decode(params, (string, bytes32));
-
-        require(_isValidRecentOwner(signer) || _isValidRecentOperator(signer), 'INV_SIGNER');
 
         _burnToken(symbol, salt);
     }
 
-    function transferOwnership(address signer, bytes memory params) external onlySelf {
+    function transferOwnership(bytes calldata params) external onlySelf {
         address newOwner = abi.decode(params, (address));
         uint256 ownerEpoch = _ownerEpoch();
-        address currentOwner = _getOwner(ownerEpoch);
 
         require(newOwner != address(0), 'ZERO_ADDR');
-        require(signer == currentOwner, 'INV_SIGNER');
 
-        emit OwnershipTransferred(currentOwner, newOwner);
+        emit OwnershipTransferred(_getOwner(ownerEpoch), newOwner);
 
         _setOwnerEpoch(++ownerEpoch);
         _setOwner(ownerEpoch, newOwner);
     }
 
-    function transferOperatorship(address signer, bytes memory params) external onlySelf {
+    function transferOperatorship(bytes calldata params) external onlySelf {
         address newOperator = abi.decode(params, (address));
 
         require(newOperator != address(0), 'ZERO_ADDR');
-        require(signer == owner(), 'INV_SIGNER');
 
         emit OperatorshipTransferred(operator(), newOperator);
 
@@ -162,7 +153,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     |* External Functionality *|
     \**************************/
 
-    function setup(bytes memory params) external override {
+    function setup(bytes calldata params) external override {
         // Prevent setup from being called on a non-proxy (the implementation).
         require(implementation() != address(0), 'NOT_PROXY');
 
@@ -185,7 +176,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         emit OperatorshipTransferred(address(0), operatorAddress);
     }
 
-    function execute(bytes memory input) external override {
+    function execute(bytes calldata input) external override {
         (bytes memory data, bytes memory signature) = abi.decode(input, (bytes, bytes));
 
         _execute(data, signature);
@@ -203,6 +194,10 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
 
         require(commandsLength == commands.length && commandsLength == params.length, 'INV_CMDS');
 
+        bool isCurrentOwner = signer == owner();
+        bool isValidRecentOwner = isCurrentOwner || _isValidRecentOwner(signer);
+        bool isValidRecentOperator = _isValidRecentOperator(signer);
+
         for (uint256 i; i < commandsLength; i++) {
             bytes32 commandId = commandIds[i];
 
@@ -212,20 +207,30 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             bytes32 commandHash = keccak256(abi.encodePacked(commands[i]));
 
             if (commandHash == SELECTOR_DEPLOY_TOKEN) {
+                if (!isValidRecentOwner) continue;
+
                 commandSelector = AxelarGatewaySinglesig.deployToken.selector;
             } else if (commandHash == SELECTOR_MINT_TOKEN) {
+                if (!isValidRecentOperator && !isValidRecentOwner) continue;
+
                 commandSelector = AxelarGatewaySinglesig.mintToken.selector;
             } else if (commandHash == SELECTOR_BURN_TOKEN) {
+                if (!isValidRecentOperator && !isValidRecentOwner) continue;
+
                 commandSelector = AxelarGatewaySinglesig.burnToken.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OWNERSHIP) {
+                if (!isCurrentOwner) continue;
+
                 commandSelector = AxelarGatewaySinglesig.transferOwnership.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OPERATORSHIP) {
+                if (!isCurrentOwner) continue;
+
                 commandSelector = AxelarGatewaySinglesig.transferOperatorship.selector;
             } else {
                 continue; /* Ignore if unknown command received */
             }
 
-            (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, signer, params[i]));
+            (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i]));
             _setCommandExecuted(commandId, success);
         }
     }

@@ -18,5 +18,5 @@ contract AxelarGatewayProxyMultisig is AxelarGatewayProxy {
         require(success, 'SETUP_FAILED');
     }
 
-    function setup(bytes memory params) external {}
+    function setup(bytes calldata params) external {}
 }
