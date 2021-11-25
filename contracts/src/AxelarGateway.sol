@@ -103,6 +103,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     function upgrade(address newImplementation, bytes calldata setupParams) external override onlyAdmin {
+        emit Upgraded(newImplementation);
+
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
         //        if `upgrade` is entered within the context of _this_ implementation itself.
         (bool success, ) =
@@ -110,8 +112,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         require(success, 'SETUP_FAILED');
 
         _setImplementation(newImplementation);
-
-        emit Upgraded(newImplementation);
     }
 
     /**********************\
@@ -146,8 +146,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
-        BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
         _setTokenDailyMintAmount(symbol, mintAmount + amount);
+        BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
     }
 
     function _burnToken(string memory symbol, bytes32 salt) internal {
