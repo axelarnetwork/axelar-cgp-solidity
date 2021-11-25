@@ -16,21 +16,6 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
     event Frozen(address indexed owner);
     event Unfrozen(address indexed owner);
 
-    modifier onlyBurner(bytes32 salt) {
-        bytes memory burnerInitCode = abi.encodePacked(type(Burner).creationCode, abi.encode(address(this)), salt);
-
-        bytes32 burnerInitCodeHash = keccak256(burnerInitCode);
-
-        /* Convert a hash which is bytes32 to an address which is 20-byte long
-        according to https://docs.soliditylang.org/en/v0.8.1/control-structures.html?highlight=create2#salted-contract-creations-create2 */
-        address burnerAddress =
-            address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), owner, salt, burnerInitCodeHash)))));
-
-        require(msg.sender == burnerAddress, 'NOT_BURNER');
-
-        _;
-    }
-
     constructor(
         string memory name,
         string memory symbol,
@@ -40,14 +25,38 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
         cap = capacity;
     }
 
+    function depositAddress(bytes32 salt) public view returns (address) {
+        // This would be easier, cheaper, simpler, and result in  globally consistent deposit addresses for any salt (all chains, all tokens).
+        // return address(uint160(uint256(keccak256(abi.encodePacked(bytes32(0x000000000000000000000000000000000000000000000000000000000000dead), salt)))));
+
+        /* Convert a hash which is bytes32 to an address which is 20-byte long
+        according to https://docs.soliditylang.org/en/v0.8.1/control-structures.html?highlight=create2#salted-contract-creations-create2 */
+        return
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(
+                                bytes1(0xff),
+                                owner,
+                                salt,
+                                keccak256(abi.encodePacked(type(Burner).creationCode, abi.encode(address(this)), salt))
+                            )
+                        )
+                    )
+                )
+            );
+    }
+
     function mint(address account, uint256 amount) public onlyOwner {
         require(totalSupply + amount <= cap, 'CAP_EXCEEDED');
 
         _mint(account, amount);
     }
 
-    function burn(bytes32 salt) public onlyBurner(salt) {
-        _burn(msg.sender, balanceOf[msg.sender]);
+    function burn(bytes32 salt) public onlyOwner {
+        address account = depositAddress(salt);
+        _burn(account, balanceOf[account]);
     }
 
     function _beforeTokenTransfer(

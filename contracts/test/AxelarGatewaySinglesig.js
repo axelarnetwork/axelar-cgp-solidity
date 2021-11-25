@@ -833,6 +833,9 @@ describe('AxelarGatewaySingleSig', () => {
           keccak256(burnerInitCode),
         );
 
+        // This is simpler.
+        // const burnerAddress = await tokenContract.depositAddress(salt);
+
         const burnAmount = amount / 2;
 
         return tokenContract
@@ -904,6 +907,9 @@ describe('AxelarGatewaySingleSig', () => {
           salt,
           keccak256(burnerInitCode),
         );
+
+        // This is simpler.
+        // const burnerAddress = await tokenContract.depositAddress(salt);
 
         const burnAmount = amount / 2;
 

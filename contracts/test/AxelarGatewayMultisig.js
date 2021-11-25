@@ -403,6 +403,9 @@ describe('AxelarGatewayMultisig', () => {
           keccak256(burnerInitCode),
         );
 
+        // This is simpler.
+        // const burnerAddress = await tokenContract.depositAddress(salt);
+
         const burnAmount = amount / 2;
 
         return tokenContract
@@ -478,6 +481,9 @@ describe('AxelarGatewayMultisig', () => {
           salt,
           keccak256(burnerInitCode),
         );
+
+        // This is simpler.
+        // const burnerAddress = await tokenContract.depositAddress(salt);
 
         const burnAmount = amount / 2;
 
@@ -655,6 +661,9 @@ describe('AxelarGatewayMultisig', () => {
               keccak256(burnerInitCode),
             );
 
+            // This is simpler.
+            // const burnerAddress = await tokenContract.depositAddress(salt);
+
             await tokenContract.transfer(burnerAddress, amount);
             const input = await getSignedMultisigExecuteInput(
               data,
@@ -810,6 +819,9 @@ describe('AxelarGatewayMultisig', () => {
               salt,
               keccak256(burnerInitCode),
             );
+
+            // This is simpler.
+            // const burnerAddress = await tokenContract.depositAddress(salt);
 
             await tokenContract.transfer(burnerAddress, amount);
             const input = await getSignedMultisigExecuteInput(

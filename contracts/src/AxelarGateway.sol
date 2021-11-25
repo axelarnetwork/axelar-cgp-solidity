@@ -5,7 +5,6 @@ pragma solidity >=0.8.0 <0.9.0;
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
-import { Burner } from './Burner.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
 
 abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
@@ -155,7 +154,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
-        new Burner{ salt: salt }(tokenAddress, salt);
+        BurnableMintableCappedERC20(tokenAddress).burn(salt);
     }
 
     /********************\
