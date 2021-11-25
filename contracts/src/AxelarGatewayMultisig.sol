@@ -328,36 +328,29 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     |* Self Functionality *|
     \**********************/
 
-    function deployToken(address[] memory signers, bytes memory params) external onlySelf {
+    function deployToken(bytes calldata params) external onlySelf {
         (string memory name, string memory symbol, uint8 decimals, uint256 cap) =
             abi.decode(params, (string, string, uint8, uint256));
-
-        require(_areValidRecentOwners(signers), 'INV_SIGNERS');
 
         _deployToken(name, symbol, decimals, cap);
     }
 
-    function mintToken(address[] memory signers, bytes memory params) external onlySelf {
+    function mintToken(bytes calldata params) external onlySelf {
         (string memory symbol, address account, uint256 amount) = abi.decode(params, (string, address, uint256));
-
-        require(_areValidRecentOperators(signers) || _areValidRecentOwners(signers), 'INV_SIGNERS');
 
         _mintToken(symbol, account, amount);
     }
 
-    function burnToken(address[] memory signers, bytes memory params) external onlySelf {
+    function burnToken(bytes calldata params) external onlySelf {
         (string memory symbol, bytes32 salt) = abi.decode(params, (string, bytes32));
-
-        require(_areValidRecentOperators(signers) || _areValidRecentOwners(signers), 'INV_SIGNERS');
 
         _burnToken(symbol, salt);
     }
 
-    function transferOwnership(address[] memory signers, bytes memory params) external onlySelf {
+    function transferOwnership(bytes calldata params) external onlySelf {
         (address[] memory newOwners, uint256 newThreshold) = abi.decode(params, (address[], uint256));
 
         uint256 ownerEpoch = _ownerEpoch();
-        require(_areValidOwnersInEpoch(ownerEpoch, signers), 'INV_SIGNERS');
 
         emit OwnershipTransferred(owners(), _getOwnerThreshold(ownerEpoch), newOwners, newThreshold);
 
@@ -365,11 +358,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         _setOwners(ownerEpoch, newOwners, newThreshold);
     }
 
-    function transferOperatorship(address[] memory signers, bytes memory params) external onlySelf {
+    function transferOperatorship(bytes calldata params) external onlySelf {
         (address[] memory newOperators, uint256 newThreshold) = abi.decode(params, (address[], uint256));
 
         uint256 ownerEpoch = _ownerEpoch();
-        require(_areValidOwnersInEpoch(ownerEpoch, signers), 'INV_SIGNERS');
 
         emit OperatorshipTransferred(operators(), _getOperatorThreshold(ownerEpoch), newOperators, newThreshold);
 
@@ -382,7 +374,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     |* External Functionality *|
     \**************************/
 
-    function setup(bytes memory params) external override {
+    function setup(bytes calldata params) external override {
         // Prevent setup from being called on a non-proxy (the implementation).
         require(implementation() != address(0), 'NOT_PROXY');
 
@@ -411,7 +403,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         emit OperatorshipTransferred(new address[](uint256(0)), uint256(0), operatorAddresses, operatorThreshold);
     }
 
-    function execute(bytes memory input) external override {
+    function execute(bytes calldata input) external override {
         (bytes memory data, bytes[] memory signatures) = abi.decode(input, (bytes, bytes[]));
 
         _execute(data, signatures);
@@ -435,6 +427,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         require(commandsLength == commands.length && commandsLength == params.length, 'INV_CMDS');
 
+        bool areValidCurrentOwners = _areValidOwnersInEpoch(_ownerEpoch(), signers);
+        bool areValidRecentOwners = areValidCurrentOwners || _areValidRecentOwners(signers);
+        bool areValidRecentOperators = _areValidRecentOperators(signers);
+
         for (uint256 i; i < commandsLength; i++) {
             bytes32 commandId = commandIds[i];
 
@@ -444,20 +440,30 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             bytes32 commandHash = keccak256(abi.encodePacked(commands[i]));
 
             if (commandHash == SELECTOR_DEPLOY_TOKEN) {
+                if (!areValidRecentOwners) continue;
+
                 commandSelector = AxelarGatewayMultisig.deployToken.selector;
             } else if (commandHash == SELECTOR_MINT_TOKEN) {
+                if (!areValidRecentOperators && !areValidRecentOwners) continue;
+
                 commandSelector = AxelarGatewayMultisig.mintToken.selector;
             } else if (commandHash == SELECTOR_BURN_TOKEN) {
+                if (!areValidRecentOperators && !areValidRecentOwners) continue;
+
                 commandSelector = AxelarGatewayMultisig.burnToken.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OWNERSHIP) {
+                if (!areValidCurrentOwners) continue;
+
                 commandSelector = AxelarGatewayMultisig.transferOwnership.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OPERATORSHIP) {
+                if (!areValidCurrentOwners) continue;
+
                 commandSelector = AxelarGatewayMultisig.transferOperatorship.selector;
             } else {
                 continue; /* Ignore if unknown command received */
             }
 
-            (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, signers, params[i]));
+            (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i]));
             _setCommandExecuted(commandId, success);
         }
     }

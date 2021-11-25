@@ -103,7 +103,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         emit AllTokensUnfrozen();
     }
 
-    function upgrade(address newImplementation, bytes memory setupParams) external override onlyAdmin {
+    function upgrade(address newImplementation, bytes calldata setupParams) external override onlyAdmin {
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
         //        if `upgrade` is entered within the context of _this_ implementation itself.
         (bool success, ) =

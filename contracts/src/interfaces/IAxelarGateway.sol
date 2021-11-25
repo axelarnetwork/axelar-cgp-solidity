@@ -57,13 +57,13 @@ interface IAxelarGateway {
 
     function unfreezeAllTokens() external;
 
-    function upgrade(address newImplementation, bytes memory setupParams) external;
+    function upgrade(address newImplementation, bytes calldata setupParams) external;
 
     /**********************\
     |* External Functions *|
     \**********************/
 
-    function setup(bytes memory params) external;
+    function setup(bytes calldata params) external;
 
-    function execute(bytes memory input) external;
+    function execute(bytes calldata input) external;
 }
