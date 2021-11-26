@@ -230,6 +230,8 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
                 continue; /* Ignore if unknown command received */
             }
 
+            // Prevent a re-entrancy from executing this command before it can be marked as successful.
+            _setCommandExecuted(commandId, true);
             (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i]));
             _setCommandExecuted(commandId, success);
         }
