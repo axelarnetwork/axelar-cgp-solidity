@@ -4,6 +4,7 @@
   "sourceDirectory": "./src",
   "outputDirectory": "./build",
   "compilerOptions": {
+    "evmVersion": "london",
     "optimizer": {
       "enabled": true,
       "runs": 200
