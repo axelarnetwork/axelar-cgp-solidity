@@ -84,14 +84,14 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return getBool(_getIsOwnerKey(ownerEpoch, account));
     }
 
-    /// @dev Returns true if a sufficient quantity of `accounts` are owners in the same `ownerEpoch`, within the last `OLD_KEY_RETENTION + 1` owner epochs.
-    function _areValidRecentOwners(address[] memory accounts) internal view returns (bool) {
+    /// @dev Returns true if a sufficient quantity of `accounts` are owners within the last `OLD_KEY_RETENTION + 1` owner epochs (excluding the current one).
+    function _areValidPreviousOwners(address[] memory accounts) internal view returns (bool) {
         uint256 ownerEpoch = _ownerEpoch();
         uint256 recentEpochs = OLD_KEY_RETENTION + uint256(1);
         uint256 lowerBoundOwnerEpoch = ownerEpoch > recentEpochs ? ownerEpoch - recentEpochs : uint256(0);
 
         while (ownerEpoch > lowerBoundOwnerEpoch) {
-            if (_areValidOwnersInEpoch(ownerEpoch--, accounts)) return true;
+            if (_areValidOwnersInEpoch(--ownerEpoch, accounts)) return true;
         }
 
         return false;
@@ -429,7 +429,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         require(commandsLength == commands.length && commandsLength == params.length, 'INV_CMDS');
 
         bool areValidCurrentOwners = _areValidOwnersInEpoch(_ownerEpoch(), signers);
-        bool areValidRecentOwners = areValidCurrentOwners || _areValidRecentOwners(signers);
+        bool areValidRecentOwners = areValidCurrentOwners || _areValidPreviousOwners(signers);
         bool areValidRecentOperators = _areValidRecentOperators(signers);
 
         for (uint256 i; i < commandsLength; i++) {
