@@ -99,8 +99,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
     /// @dev Returns true if a sufficient quantity of `accounts` are owners in the `ownerEpoch`.
     function _areValidOwnersInEpoch(uint256 ownerEpoch, address[] memory accounts) internal view returns (bool) {
-        if (_containsDuplicates(accounts)) return false;
-
         uint256 threshold = _getOwnerThreshold(ownerEpoch);
         uint256 validSignerCount;
 
@@ -243,8 +241,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
     /// @dev Returns true if a sufficient quantity of `accounts` are operator in the `operatorEpoch`.
     function _areValidOperatorsInEpoch(uint256 operatorEpoch, address[] memory accounts) internal view returns (bool) {
-        if (_containsDuplicates(accounts)) return false;
-
         uint256 threshold = _getOperatorThreshold(operatorEpoch);
         uint256 validSignerCount;
 
@@ -426,6 +422,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         );
 
         require(chainId == _getChainID(), 'INV_CHAIN');
+        require(!_containsDuplicates(signers), 'DUP_SIGNERS');
 
         uint256 commandsLength = commandIds.length;
 
