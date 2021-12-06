@@ -90,8 +90,9 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         uint256 recentEpochs = OLD_KEY_RETENTION + uint256(1);
         uint256 lowerBoundOwnerEpoch = ownerEpoch > recentEpochs ? ownerEpoch - recentEpochs : uint256(0);
 
+        --ownerEpoch;
         while (ownerEpoch > lowerBoundOwnerEpoch) {
-            if (_areValidOwnersInEpoch(--ownerEpoch, accounts)) return true;
+            if (_areValidOwnersInEpoch(ownerEpoch--, accounts)) return true;
         }
 
         return false;
