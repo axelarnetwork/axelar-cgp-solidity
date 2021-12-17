@@ -329,8 +329,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     \**********************/
 
     function deployToken(bytes calldata params) external onlySelf {
-        (string memory name, string memory symbol, uint8 decimals, uint256 cap) =
-            abi.decode(params, (string, string, uint8, uint256));
+        (string memory name, string memory symbol, uint8 decimals, uint256 cap) = abi.decode(
+            params,
+            (string, string, uint8, uint256)
+        );
 
         _deployToken(name, symbol, decimals, cap);
     }
@@ -418,8 +420,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             signers[i] = ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), signatures[i]);
         }
 
-        (uint256 chainId, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) =
-            abi.decode(data, (uint256, bytes32[], string[], bytes[]));
+        (uint256 chainId, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) = abi.decode(
+            data,
+            (uint256, bytes32[], string[], bytes[])
+        );
 
         require(chainId == _getChainID(), 'INV_CHAIN');
 

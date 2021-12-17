@@ -107,8 +107,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
         //        if `upgrade` is entered within the context of _this_ implementation itself.
-        (bool success, ) =
-            newImplementation.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams));
+        (bool success, ) = newImplementation.delegatecall(
+            abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams)
+        );
         require(success, 'SETUP_FAILED');
 
         _setImplementation(newImplementation);
