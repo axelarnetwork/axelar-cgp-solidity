@@ -198,14 +198,12 @@ describe('AxelarGatewayMultisig', () => {
           ),
         );
 
-        return getSignedMultisigExecuteInput(
-          data,
-          operators.slice(1, 3),
-        ).then((input) =>
-          expect(contract.execute(input)).to.not.emit(
-            contract,
-            'TokenDeployed',
-          ),
+        return getSignedMultisigExecuteInput(data, operators.slice(1, 3)).then(
+          (input) =>
+            expect(contract.execute(input)).to.not.emit(
+              contract,
+              'TokenDeployed',
+            ),
         );
       });
     });
@@ -234,10 +232,9 @@ describe('AxelarGatewayMultisig', () => {
           ),
         );
 
-        return getSignedMultisigExecuteInput(
-          data,
-          owners.slice(1, 3),
-        ).then((input) => contract.execute(input));
+        return getSignedMultisigExecuteInput(data, owners.slice(1, 3)).then(
+          (input) => contract.execute(input),
+        );
       });
 
       it('should allow the owners to mint tokens', async () => {
@@ -350,10 +347,9 @@ describe('AxelarGatewayMultisig', () => {
           ),
         );
 
-        return getSignedMultisigExecuteInput(
-          data,
-          owners.slice(1, 3),
-        ).then((input) => contract.execute(input));
+        return getSignedMultisigExecuteInput(data, owners.slice(1, 3)).then(
+          (input) => contract.execute(input),
+        );
       });
 
       it('should allow the owners to burn tokens', async () => {

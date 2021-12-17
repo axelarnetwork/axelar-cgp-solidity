@@ -107,8 +107,10 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     \**********************/
 
     function deployToken(bytes calldata params) external onlySelf {
-        (string memory name, string memory symbol, uint8 decimals, uint256 cap) =
-            abi.decode(params, (string, string, uint8, uint256));
+        (string memory name, string memory symbol, uint8 decimals, uint256 cap) = abi.decode(
+            params,
+            (string, string, uint8, uint256)
+        );
 
         _deployToken(name, symbol, decimals, cap);
     }
@@ -157,8 +159,8 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         // Prevent setup from being called on a non-proxy (the implementation).
         require(implementation() != address(0), 'NOT_PROXY');
 
-        (address[] memory adminAddresses, uint256 adminThreshold, address ownerAddress, address operatorAddress) =
-            abi.decode(params, (address[], uint256, address, address));
+        (address[] memory adminAddresses, uint256 adminThreshold, address ownerAddress, address operatorAddress) = abi
+            .decode(params, (address[], uint256, address, address));
 
         uint256 adminEpoch = _adminEpoch() + uint256(1);
         _setAdminEpoch(adminEpoch);
@@ -185,8 +187,10 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     function _execute(bytes memory data, bytes memory sig) internal {
         address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), sig);
 
-        (uint256 chainId, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) =
-            abi.decode(data, (uint256, bytes32[], string[], bytes[]));
+        (uint256 chainId, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) = abi.decode(
+            data,
+            (uint256, bytes32[], string[], bytes[])
+        );
 
         require(chainId == _getChainID(), 'INV_CHAIN');
 
