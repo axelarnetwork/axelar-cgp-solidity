@@ -21,9 +21,7 @@ const Burner = require('../build/Burner.json');
 const {
   bigNumberToNumber,
   getSignedExecuteInput,
-  getRandomInt,
   getRandomID,
-  tickBlockTime,
 } = require('./utils');
 
 describe('AxelarGatewaySingleSig', () => {
@@ -86,57 +84,6 @@ describe('AxelarGatewaySingleSig', () => {
       contract.operator().then((actual) => {
         expect(actual).to.eq(operatorWallet.address);
       }));
-  });
-
-  describe('setTokenDailyMintLimit', () => {
-    it('should set token daily mint limit after passing threshold', () => {
-      const symbol = 'test-token';
-      const limit = getRandomInt(1e8);
-
-      return expect(
-        contract.connect(adminWallet1).setTokenDailyMintLimit(symbol, limit),
-      )
-        .to.not.emit(contract, 'TokenDailyMintLimitUpdated')
-        .then(() =>
-          expect(
-            contract
-              .connect(adminWallet2)
-              .setTokenDailyMintLimit(symbol, limit),
-          ).to.not.emit(contract, 'TokenDailyMintLimitUpdated'),
-        )
-        .then(() =>
-          expect(
-            contract
-              .connect(adminWallet3)
-              .setTokenDailyMintLimit(symbol, limit),
-          )
-            .to.emit(contract, 'TokenDailyMintLimitUpdated')
-            .withArgs(symbol, limit),
-        )
-        .then(() =>
-          expect(
-            contract
-              .connect(adminWallet4)
-              .setTokenDailyMintLimit(symbol, limit),
-          ).to.not.emit(contract, 'TokenDailyMintLimitUpdated'),
-        )
-        .then(() =>
-          expect(
-            contract
-              .connect(adminWallet5)
-              .setTokenDailyMintLimit(symbol, limit),
-          ).to.not.emit(contract, 'TokenDailyMintLimitUpdated'),
-        )
-        .then(() =>
-          expect(
-            contract
-              .connect(adminWallet6)
-              .setTokenDailyMintLimit(symbol, limit),
-          )
-            .to.emit(contract, 'TokenDailyMintLimitUpdated')
-            .withArgs(symbol, limit),
-        );
-    });
   });
 
   describe('token transfer', () => {
@@ -464,10 +411,9 @@ describe('AxelarGatewaySingleSig', () => {
         );
 
         return getSignedExecuteInput(data, operatorWallet).then((input) =>
-          expect(contract.execute(input)).to.not.emit(
-            contract,
-            'TokenDeployed',
-          ),
+          expect(contract.execute(input))
+            .to.not.emit(contract, 'TokenDeployed')
+            .and.to.not.emit(contract, 'Executed'),
         );
       });
 
@@ -476,12 +422,13 @@ describe('AxelarGatewaySingleSig', () => {
         const symbol = 'AAT';
         const decimals = 18;
         const cap = 10000;
+        const commandID = getRandomID();
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [getRandomID()],
+              [commandID],
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
@@ -511,7 +458,10 @@ describe('AxelarGatewaySingleSig', () => {
 
         return getSignedExecuteInput(data, ownerWallet)
           .then((input) =>
-            expect(contract.execute(input)).to.emit(contract, 'TokenDeployed'),
+            expect(contract.execute(input))
+              .to.emit(contract, 'TokenDeployed')
+              .and.to.emit(contract, 'Executed')
+              .withArgs(commandID),
           )
           .then(() => contract.tokenAddresses(symbol))
           .then((tokenAddress) => {
@@ -564,107 +514,6 @@ describe('AxelarGatewaySingleSig', () => {
         return getSignedExecuteInput(data, ownerWallet).then((input) =>
           contract.execute(input),
         );
-      });
-
-      it('should not allow tokens to be minted anymore after passing daily limit', async () => {
-        const limit = Math.floor(cap / 3);
-        const tokenAddress = await contract.tokenAddresses(symbol);
-        const tokenContract = new Contract(
-          tokenAddress,
-          BurnableMintableCappedERC20.abi,
-          ownerWallet,
-        );
-
-        return contract
-          .connect(adminWallet1)
-          .setTokenDailyMintLimit(symbol, limit)
-          .then(() =>
-            contract
-              .connect(adminWallet2)
-              .setTokenDailyMintLimit(symbol, limit),
-          )
-          .then(() =>
-            expect(
-              contract
-                .connect(adminWallet3)
-                .setTokenDailyMintLimit(symbol, limit),
-            )
-              .to.emit(contract, 'TokenDailyMintLimitUpdated')
-              .withArgs(symbol, limit),
-          )
-          .then(() => {
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [
-                  CHAIN_ID,
-                  [getRandomID()],
-                  ['mintToken'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['string', 'address', 'uint256'],
-                      [symbol, nonOwnerWallet.address, limit],
-                    ),
-                  ],
-                ],
-              ),
-            );
-
-            return getSignedExecuteInput(data, ownerWallet).then((input) =>
-              expect(contract.execute(input, { gasLimit: 2000000 }))
-                .to.emit(tokenContract, 'Transfer')
-                .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, limit),
-            );
-          })
-          .then(() => {
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [
-                  CHAIN_ID,
-                  [getRandomID()],
-                  ['mintToken'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['string', 'address', 'uint256'],
-                      [symbol, nonOwnerWallet.address, limit],
-                    ),
-                  ],
-                ],
-              ),
-            );
-
-            return getSignedExecuteInput(data, ownerWallet).then((input) =>
-              expect(
-                contract.execute(input, { gasLimit: 2000000 }),
-              ).to.not.emit(tokenContract, 'Transfer'),
-            );
-          })
-          .then(() => tickBlockTime(contract.provider, 86400))
-          .then(() => {
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [
-                  CHAIN_ID,
-                  [getRandomID()],
-                  ['mintToken'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['string', 'address', 'uint256'],
-                      [symbol, nonOwnerWallet.address, limit],
-                    ),
-                  ],
-                ],
-              ),
-            );
-
-            return getSignedExecuteInput(data, ownerWallet).then((input) =>
-              expect(contract.execute(input, { gasLimit: 2000000 }))
-                .to.emit(tokenContract, 'Transfer')
-                .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, limit),
-            );
-          });
       });
 
       it('should allow the owner to mint tokens', async () => {

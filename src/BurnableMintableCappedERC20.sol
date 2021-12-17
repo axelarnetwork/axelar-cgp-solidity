@@ -49,7 +49,8 @@ contract BurnableMintableCappedERC20 is ERC20, Ownable {
     }
 
     function mint(address account, uint256 amount) public onlyOwner {
-        require(totalSupply + amount <= cap, 'CAP_EXCEEDED');
+        uint256 capacity = cap;
+        require(capacity == 0 || totalSupply + amount <= capacity, 'CAP_EXCEEDED');
 
         _mint(account, amount);
     }

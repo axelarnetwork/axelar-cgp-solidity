@@ -471,6 +471,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             _setCommandExecuted(commandId, true);
             (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i]));
             _setCommandExecuted(commandId, success);
+
+            if (success) {
+                emit Executed(commandId);
+            }
         }
     }
 }

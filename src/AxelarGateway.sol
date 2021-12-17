@@ -18,8 +18,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
-    bytes32 internal constant PREFIX_TOKEN_DAILY_MINT_LIMIT = keccak256('token-daily-mint-limit');
-    bytes32 internal constant PREFIX_TOKEN_DAILY_MINT_AMOUNT = keccak256('token-daily-mint-amount');
     bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
 
     bytes32 internal constant SELECTOR_BURN_TOKEN = keccak256('burnToken');
@@ -52,14 +50,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getAddress(_getTokenAddressKey(symbol));
     }
 
-    function tokenDailyMintLimits(string memory symbol) public view override returns (uint256) {
-        return getUint(_getTokenDailyMintLimitKey(symbol));
-    }
-
-    function tokenDailyMintAmounts(string memory symbol) public view override returns (uint256) {
-        return getUint(_getTokenDailyMintAmountsKey(symbol, block.timestamp / 1 days));
-    }
-
     function tokenFrozen(string memory symbol) public view override returns (bool) {
         return getBool(_getFreezeTokenKey(symbol));
     }
@@ -71,12 +61,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /*******************\
     |* Admin Functions *|
     \*******************/
-
-    function setTokenDailyMintLimit(string memory symbol, uint256 limit) external override onlyAdmin {
-        _setUint(_getTokenDailyMintLimitKey(symbol), limit);
-
-        emit TokenDailyMintLimitUpdated(symbol, limit);
-    }
 
     function freezeToken(string memory symbol) external override onlyAdmin {
         _setBool(_getFreezeTokenKey(symbol), true);
@@ -140,14 +124,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address account,
         uint256 amount
     ) internal {
-        uint256 mintLimit = tokenDailyMintLimits(symbol);
-        uint256 mintAmount = tokenDailyMintAmounts(symbol);
-        require((mintLimit == uint256(0)) || (mintLimit >= mintAmount + amount), 'EXCEED_LIMIT');
-
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
-        _setTokenDailyMintAmount(symbol, mintAmount + amount);
         BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
     }
 
@@ -162,20 +141,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Pure Key Getters *|
     \********************/
 
-    function _getTokenDailyMintLimitKey(string memory symbol) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_TOKEN_DAILY_MINT_LIMIT, symbol));
-    }
-
     function _getFreezeTokenKey(string memory symbol) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(PREFIX_TOKEN_FROZEN, symbol));
     }
 
     function _getTokenAddressKey(string memory symbol) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(PREFIX_TOKEN_ADDRESS, symbol));
-    }
-
-    function _getTokenDailyMintAmountsKey(string memory symbol, uint256 day) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_TOKEN_DAILY_MINT_AMOUNT, symbol, day));
     }
 
     function _getIsCommandExecutedKey(bytes32 commandId) internal pure returns (bytes32) {
@@ -195,10 +166,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /********************\
     |* Internal Setters *|
     \********************/
-
-    function _setTokenDailyMintAmount(string memory symbol, uint256 amount) internal {
-        _setUint(_getTokenDailyMintAmountsKey(symbol, block.timestamp / 1 days), amount);
-    }
 
     function _setTokenAddress(string memory symbol, address tokenAddr) internal {
         _setAddress(_getTokenAddressKey(symbol), tokenAddr);
