@@ -116,12 +116,13 @@ describe('AxelarGatewayMultisig', () => {
         const symbol = 'AAT';
         const decimals = 18;
         const cap = 10000;
+        const commandID = getRandomID();
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
-              [getRandomID()],
+              [commandID],
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
@@ -151,7 +152,10 @@ describe('AxelarGatewayMultisig', () => {
 
         return getSignedMultisigExecuteInput(data, owners.slice(1, 3))
           .then((input) =>
-            expect(contract.execute(input)).to.emit(contract, 'TokenDeployed'),
+            expect(contract.execute(input))
+              .to.emit(contract, 'TokenDeployed')
+              .and.to.emit(contract, 'Executed')
+              .withArgs(commandID),
           )
           .then(() => contract.tokenAddresses(symbol))
           .then((tokenAddress) => {

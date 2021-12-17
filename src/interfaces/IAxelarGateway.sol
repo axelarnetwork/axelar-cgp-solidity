@@ -7,9 +7,9 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenDeployed(string symbol, address tokenAddresses);
+    event Executed(bytes32 indexed commandId);
 
-    event TokenDailyMintLimitUpdated(string indexed symbol, uint256 limit);
+    event TokenDeployed(string symbol, address tokenAddresses);
 
     event TokenFrozen(string indexed symbol);
 
@@ -35,10 +35,6 @@ interface IAxelarGateway {
 
     function tokenAddresses(string memory symbol) external view returns (address);
 
-    function tokenDailyMintLimits(string memory symbol) external view returns (uint256);
-
-    function tokenDailyMintAmounts(string memory symbol) external view returns (uint256);
-
     function tokenFrozen(string memory symbol) external view returns (bool);
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
@@ -46,8 +42,6 @@ interface IAxelarGateway {
     /*******************\
     |* Admin Functions *|
     \*******************/
-
-    function setTokenDailyMintLimit(string memory symbol, uint256 limit) external;
 
     function freezeToken(string memory symbol) external;
 
