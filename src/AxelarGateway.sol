@@ -3,8 +3,10 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
+import { IERC20 } from './interfaces/IERC20.sol';
 
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
+import { Burner } from './Burner.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
 
 abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
@@ -18,6 +20,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
+    bytes32 internal constant PREFIX_IS_TOKEN_EXTERNAL = keccak256('is-token-external');
+    bytes32 internal constant PREFIX_IS_TOKEN_DEPLOYED = keccak256('is-token-deployed');
     bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
 
     bytes32 internal constant SELECTOR_BURN_TOKEN = keccak256('burnToken');
@@ -107,16 +111,23 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         string memory name,
         string memory symbol,
         uint8 decimals,
-        uint256 cap
+        uint256 cap,
+        address tokenAddr
     ) internal {
         require(tokenAddresses(symbol) == address(0), 'TOKEN_EXIST');
 
-        bytes32 salt = keccak256(abi.encodePacked(symbol));
-        address token = address(new BurnableMintableCappedERC20{ salt: salt }(name, symbol, decimals, cap));
+        if (tokenAddr == address(0)) {
+            bytes32 salt = keccak256(abi.encodePacked(symbol));
+            tokenAddr = address(new BurnableMintableCappedERC20{ salt: salt }(name, symbol, decimals, cap));
+        } else {
+            require(!_isTokenDeployed(tokenAddr), 'TOKEN_EXIST');
+            _setTokenExternal(tokenAddr);
+        }
 
-        _setTokenAddress(symbol, token);
+        _setTokenAddress(symbol, tokenAddr);
+        _setTokenDeployed(tokenAddr);
 
-        emit TokenDeployed(symbol, token);
+        emit TokenDeployed(symbol, tokenAddr);
     }
 
     function _mintToken(
@@ -127,19 +138,35 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
-        BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
+        if (_isTokenExternal(tokenAddress)) {
+            IERC20(tokenAddress).transfer(account, amount);
+        } else {
+            BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
+        }
     }
 
     function _burnToken(string memory symbol, bytes32 salt) internal {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
-        BurnableMintableCappedERC20(tokenAddress).burn(salt);
+        if (_isTokenExternal(tokenAddress)) {
+            new Burner{ salt: salt }(tokenAddress, salt);
+        } else {
+            BurnableMintableCappedERC20(tokenAddress).burn(salt);
+        }
     }
 
     /********************\
     |* Pure Key Getters *|
     \********************/
+
+    function _getIsTokenDeployedKey(address tokenAddr) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_IS_TOKEN_DEPLOYED, tokenAddr));
+    }
+
+    function _getIsTokenExternalKey(address tokenAddr) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_IS_TOKEN_EXTERNAL, tokenAddr));
+    }
 
     function _getFreezeTokenKey(string memory symbol) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(PREFIX_TOKEN_FROZEN, symbol));
@@ -157,6 +184,14 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Internal Getters *|
     \********************/
 
+    function _isTokenDeployed(address tokenAddr) internal view returns (bool) {
+        return getBool(_getIsTokenDeployedKey(tokenAddr));
+    }
+
+    function _isTokenExternal(address tokenAddr) internal view returns (bool) {
+        return getBool(_getIsTokenExternalKey(tokenAddr));
+    }
+
     function _getChainID() internal view returns (uint256 id) {
         assembly {
             id := chainid()
@@ -166,6 +201,14 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /********************\
     |* Internal Setters *|
     \********************/
+
+    function _setTokenDeployed(address tokenAddr) internal {
+        _setBool(_getIsTokenDeployedKey(tokenAddr), true);
+    }
+
+    function _setTokenExternal(address tokenAddr) internal {
+        _setBool(_getIsTokenExternalKey(tokenAddr), true);
+    }
 
     function _setTokenAddress(string memory symbol, address tokenAddr) internal {
         _setAddress(_getTokenAddressKey(symbol), tokenAddr);

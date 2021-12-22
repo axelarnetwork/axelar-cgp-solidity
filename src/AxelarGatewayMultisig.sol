@@ -326,12 +326,12 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     \**********************/
 
     function deployToken(bytes calldata params) external onlySelf {
-        (string memory name, string memory symbol, uint8 decimals, uint256 cap) = abi.decode(
+        (string memory name, string memory symbol, uint8 decimals, uint256 cap, address tokenAddr) = abi.decode(
             params,
-            (string, string, uint8, uint256)
+            (string, string, uint8, uint256, address)
         );
 
-        _deployToken(name, symbol, decimals, cap);
+        _deployToken(name, symbol, decimals, cap, tokenAddr);
     }
 
     function mintToken(bytes calldata params) external onlySelf {

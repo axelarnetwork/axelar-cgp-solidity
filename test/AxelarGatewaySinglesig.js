@@ -4,7 +4,14 @@ const chai = require('chai');
 const {
   Contract,
   ContractFactory,
-  utils: { defaultAbiCoder, id, arrayify, keccak256, getCreate2Address },
+  utils: {
+    defaultAbiCoder,
+    id,
+    arrayify,
+    keccak256,
+    getCreate2Address,
+    randomBytes,
+  },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
@@ -17,6 +24,7 @@ const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const AxelarGatewayProxySinglesig = require('../build/AxelarGatewayProxySinglesig.json');
 const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
+const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
 const Burner = require('../build/Burner.json');
 const {
   bigNumberToNumber,
@@ -105,8 +113,8 @@ describe('AxelarGatewaySingleSig', () => {
             ['deployToken'],
             [
               defaultAbiCoder.encode(
-                ['string', 'string', 'uint8', 'uint256'],
-                [name, symbol, decimals, cap],
+                ['string', 'string', 'uint8', 'uint256', 'address'],
+                [name, symbol, decimals, cap, ADDRESS_ZERO],
               ),
             ],
           ],
@@ -337,11 +345,12 @@ describe('AxelarGatewaySingleSig', () => {
     });
 
     describe('command deployToken', () => {
-      it('should not deploy the duplicate token', () => {
-        const name = 'An Awesome Token';
-        const symbol = 'AAT';
-        const decimals = 18;
-        const cap = 10000;
+      const name = 'An Awesome Token';
+      const symbol = 'AAT';
+      const decimals = 18;
+      const cap = 10000;
+
+      it('should not allow claiming a deployed token', () => {
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
@@ -351,8 +360,61 @@ describe('AxelarGatewaySingleSig', () => {
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
+                ),
+              ],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, ownerWallet)
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(contract, 'TokenDeployed')
+              .and.to.emit(contract, 'Executed'),
+          )
+          .then(() => contract.tokenAddresses(symbol))
+          .then((tokenAddress) => {
+            const symbol = 'TST';
+            const data = arrayify(
+              defaultAbiCoder.encode(
+                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                [
+                  CHAIN_ID,
+                  [getRandomID()],
+                  ['deployToken'],
+                  [
+                    defaultAbiCoder.encode(
+                      ['string', 'string', 'uint8', 'uint256', 'address'],
+                      [name, symbol, decimals, cap, tokenAddress],
+                    ),
+                  ],
+                ],
+              ),
+            );
+
+            return getSignedExecuteInput(data, ownerWallet);
+          })
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.not.emit(contract, 'TokenDeployed')
+              .and.to.not.emit(contract, 'Executed'),
+          );
+      });
+
+      it('should not deploy the duplicate token', () => {
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              [getRandomID()],
+              ['deployToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
               ],
             ],
@@ -367,8 +429,8 @@ describe('AxelarGatewaySingleSig', () => {
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
               ],
             ],
@@ -389,10 +451,6 @@ describe('AxelarGatewaySingleSig', () => {
       });
 
       it('should not allow the operator to deploy a token', () => {
-        const name = 'An Awesome Token';
-        const symbol = 'AAT';
-        const decimals = 18;
-        const cap = 10000;
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
@@ -402,8 +460,8 @@ describe('AxelarGatewaySingleSig', () => {
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
               ],
             ],
@@ -418,10 +476,6 @@ describe('AxelarGatewaySingleSig', () => {
       });
 
       it('should deploy a new token', () => {
-        const name = 'An Awesome Token';
-        const symbol = 'AAT';
-        const decimals = 18;
-        const cap = 10000;
         const commandID = getRandomID();
         const data = arrayify(
           defaultAbiCoder.encode(
@@ -432,8 +486,8 @@ describe('AxelarGatewaySingleSig', () => {
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
               ],
             ],
@@ -503,8 +557,8 @@ describe('AxelarGatewaySingleSig', () => {
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
               ],
             ],
@@ -618,8 +672,8 @@ describe('AxelarGatewaySingleSig', () => {
               ['deployToken', 'mintToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
                 defaultAbiCoder.encode(
                   ['string', 'address', 'uint256'],
@@ -681,9 +735,6 @@ describe('AxelarGatewaySingleSig', () => {
           salt,
           keccak256(burnerInitCode),
         );
-
-        // This is simpler.
-        // const burnerAddress = await tokenContract.depositAddress(salt);
 
         const burnAmount = amount / 2;
 
@@ -756,9 +807,6 @@ describe('AxelarGatewaySingleSig', () => {
           salt,
           keccak256(burnerInitCode),
         );
-
-        // This is simpler.
-        // const burnerAddress = await tokenContract.depositAddress(salt);
 
         const burnAmount = amount / 2;
 
@@ -889,8 +937,8 @@ describe('AxelarGatewaySingleSig', () => {
                   ['deployToken'],
                   [
                     defaultAbiCoder.encode(
-                      ['string', 'string', 'uint8', 'uint256'],
-                      [name, symbol, decimals, cap],
+                      ['string', 'string', 'uint8', 'uint256', 'address'],
+                      [name, symbol, decimals, cap, ADDRESS_ZERO],
                     ),
                   ],
                 ],
@@ -1000,6 +1048,103 @@ describe('AxelarGatewaySingleSig', () => {
     });
 
     describe('batch commands', () => {
+      it('should support external ERC20 token', () => {
+        const name = 'test';
+        const symbol = 'test';
+        const decimals = 16;
+        const capacity = 0;
+
+        return deployContract(ownerWallet, MintableCappedERC20, [
+          name,
+          symbol,
+          decimals,
+          capacity,
+        ]).then(async (token) => {
+          const amount = 10000;
+          await token.mint(nonOwnerWallet.address, amount);
+
+          const deployTokenData = arrayify(
+            defaultAbiCoder.encode(
+              ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+              [
+                CHAIN_ID,
+                [getRandomID()],
+                ['deployToken'],
+                [
+                  defaultAbiCoder.encode(
+                    ['string', 'string', 'uint8', 'uint256', 'address'],
+                    [name, symbol, decimals, capacity, token.address],
+                  ),
+                ],
+              ],
+            ),
+          );
+          await getSignedExecuteInput(deployTokenData, ownerWallet).then(
+            (input) =>
+              expect(contract.execute(input))
+                .to.emit(contract, 'TokenDeployed')
+                .withArgs(symbol, token.address),
+          );
+
+          const salt = randomBytes(32);
+          const burnerFactory = new ContractFactory(
+            Burner.abi,
+            Burner.bytecode,
+          );
+          const { data: burnerInitCode } = burnerFactory.getDeployTransaction(
+            token.address,
+            salt,
+          );
+          const burnerAddress = getCreate2Address(
+            contract.address,
+            salt,
+            keccak256(burnerInitCode),
+          );
+          await token.connect(nonOwnerWallet).transfer(burnerAddress, amount);
+
+          const burnTokenData = arrayify(
+            defaultAbiCoder.encode(
+              ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+              [
+                CHAIN_ID,
+                [getRandomID()],
+                ['burnToken'],
+                [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
+              ],
+            ),
+          );
+          await getSignedExecuteInput(burnTokenData, ownerWallet).then(
+            (input) =>
+              expect(contract.execute(input))
+                .to.emit(token, 'Transfer')
+                .withArgs(burnerAddress, contract.address, amount),
+          );
+
+          const mintTokenData = arrayify(
+            defaultAbiCoder.encode(
+              ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+              [
+                CHAIN_ID,
+                [getRandomID()],
+                ['mintToken'],
+                [
+                  defaultAbiCoder.encode(
+                    ['string', 'address', 'uint256'],
+                    [symbol, ownerWallet.address, amount],
+                  ),
+                ],
+              ],
+            ),
+          );
+          await getSignedExecuteInput(mintTokenData, ownerWallet).then(
+            (input) =>
+              expect(contract.execute(input))
+                .to.emit(token, 'Transfer')
+                .withArgs(contract.address, ownerWallet.address, amount),
+          );
+        });
+      });
+
       it('should batch execute multiple commands', () => {
         const name = 'Bitcoin';
         const symbol = 'BTC';
@@ -1017,8 +1162,8 @@ describe('AxelarGatewaySingleSig', () => {
               ['deployToken', 'mintToken', 'mintToken', 'transferOwnership'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
                 defaultAbiCoder.encode(
                   ['string', 'address', 'uint256'],
