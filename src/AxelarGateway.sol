@@ -125,7 +125,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             _setTokenDeployed(tokenAddress);
         } else {
             // If token address is specified, ensure that there is a contact at the specified addressed.
-            require(!_isTokenDeployed(tokenAddress) && (tokenAddress.code.length != uint256(0)));
+            require(!_isTokenDeployed(tokenAddress) && (tokenAddress.code.length != uint256(0)), 'TOKEN_DEPLOYED');
         }
 
         _setTokenAddress(symbol, tokenAddress);
@@ -133,7 +133,11 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         emit TokenDeployed(symbol, tokenAddress);
     }
 
-    function _mintToken(string memory symbol, address account, uint256 amount) internal {
+    function _mintToken(
+        string memory symbol,
+        address account,
+        uint256 amount
+    ) internal {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
