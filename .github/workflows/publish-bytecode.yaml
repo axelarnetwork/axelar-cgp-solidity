@@ -1,12 +1,11 @@
 name: Publish Compiled Bytecode
 
 on:
-  pull_request:
   release:
     types: [published]
 
 jobs:
-  test:
+  publish:
     strategy:
       matrix:
         node-version:
@@ -30,5 +29,5 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: Bytecode
+          name: Upload Bytecode
           path: build/
