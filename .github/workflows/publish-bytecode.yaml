@@ -1,0 +1,34 @@
+name: Publish Compiled Bytecode
+
+on:
+  pull_request:
+  release:
+    types: [published]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        node-version:
+          - 14.x
+        os:
+          - ubuntu-18.04
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Bytecode
+          path: build/
