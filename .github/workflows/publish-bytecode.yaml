@@ -1,7 +1,6 @@
 name: Publish Compiled Bytecode
 
 on:
-  pull_request:
   release:
     types: [published]
 
