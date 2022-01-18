@@ -27,7 +27,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Get the tag
+        id: release_tag
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+
       - uses: actions/upload-artifact@v2
         with:
-          name: "Bytecode-${GITHUB_REF#refs/tags/}"
+          name: Bytecode-${{ steps.release_tag.outputs.VERSION }}
           path: build/
