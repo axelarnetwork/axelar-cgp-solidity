@@ -350,59 +350,6 @@ describe('AxelarGatewaySingleSig', () => {
       const decimals = 18;
       const cap = 10000;
 
-      it('should not allow claiming a deployed token', () => {
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              [getRandomID()],
-              ['deployToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [name, symbol, decimals, cap, ADDRESS_ZERO],
-                ),
-              ],
-            ],
-          ),
-        );
-
-        return getSignedExecuteInput(data, ownerWallet)
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(contract, 'TokenDeployed')
-              .and.to.emit(contract, 'Executed'),
-          )
-          .then(() => contract.tokenAddresses(symbol))
-          .then((tokenAddress) => {
-            const symbol = 'TST';
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [
-                  CHAIN_ID,
-                  [getRandomID()],
-                  ['deployToken'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['string', 'string', 'uint8', 'uint256', 'address'],
-                      [name, symbol, decimals, cap, tokenAddress],
-                    ),
-                  ],
-                ],
-              ),
-            );
-
-            return getSignedExecuteInput(data, ownerWallet);
-          })
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.not.emit(contract, 'TokenDeployed')
-              .and.to.not.emit(contract, 'Executed'),
-          );
-      });
-
       it('should not deploy the duplicate token', () => {
         const data = arrayify(
           defaultAbiCoder.encode(
