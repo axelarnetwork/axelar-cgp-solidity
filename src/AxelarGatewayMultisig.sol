@@ -84,12 +84,13 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return getBool(_getIsOwnerKey(ownerEpoch, account));
     }
 
-    /// @dev Returns true if a sufficient quantity of `accounts` are owners in the same `ownerEpoch`, within the last `OLD_KEY_RETENTION + 1` owner epochs.
-    function _areValidRecentOwners(address[] memory accounts) internal view returns (bool) {
+    /// @dev Returns true if a sufficient quantity of `accounts` are owners within the last `OLD_KEY_RETENTION + 1` owner epochs (excluding the current one).
+    function _areValidPreviousOwners(address[] memory accounts) internal view returns (bool) {
         uint256 ownerEpoch = _ownerEpoch();
         uint256 recentEpochs = OLD_KEY_RETENTION + uint256(1);
         uint256 lowerBoundOwnerEpoch = ownerEpoch > recentEpochs ? ownerEpoch - recentEpochs : uint256(0);
 
+        --ownerEpoch;
         while (ownerEpoch > lowerBoundOwnerEpoch) {
             if (_areValidOwnersInEpoch(ownerEpoch--, accounts)) return true;
         }
@@ -99,8 +100,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
     /// @dev Returns true if a sufficient quantity of `accounts` are owners in the `ownerEpoch`.
     function _areValidOwnersInEpoch(uint256 ownerEpoch, address[] memory accounts) internal view returns (bool) {
-        if (_containsDuplicates(accounts)) return false;
-
         uint256 threshold = _getOwnerThreshold(ownerEpoch);
         uint256 validSignerCount;
 
@@ -243,8 +242,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
     /// @dev Returns true if a sufficient quantity of `accounts` are operator in the `operatorEpoch`.
     function _areValidOperatorsInEpoch(uint256 operatorEpoch, address[] memory accounts) internal view returns (bool) {
-        if (_containsDuplicates(accounts)) return false;
-
         uint256 threshold = _getOperatorThreshold(operatorEpoch);
         uint256 validSignerCount;
 
@@ -329,12 +326,12 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     \**********************/
 
     function deployToken(bytes calldata params) external onlySelf {
-        (string memory name, string memory symbol, uint8 decimals, uint256 cap) = abi.decode(
+        (string memory name, string memory symbol, uint8 decimals, uint256 cap, address tokenAddr) = abi.decode(
             params,
-            (string, string, uint8, uint256)
+            (string, string, uint8, uint256, address)
         );
 
-        _deployToken(name, symbol, decimals, cap);
+        _deployToken(name, symbol, decimals, cap, tokenAddr);
     }
 
     function mintToken(bytes calldata params) external onlySelf {
@@ -426,13 +423,14 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         );
 
         require(chainId == _getChainID(), 'INV_CHAIN');
+        require(!_containsDuplicates(signers), 'DUP_SIGNERS');
 
         uint256 commandsLength = commandIds.length;
 
         require(commandsLength == commands.length && commandsLength == params.length, 'INV_CMDS');
 
         bool areValidCurrentOwners = _areValidOwnersInEpoch(_ownerEpoch(), signers);
-        bool areValidRecentOwners = areValidCurrentOwners || _areValidRecentOwners(signers);
+        bool areValidRecentOwners = areValidCurrentOwners || _areValidPreviousOwners(signers);
         bool areValidRecentOperators = _areValidRecentOperators(signers);
 
         for (uint256 i; i < commandsLength; i++) {

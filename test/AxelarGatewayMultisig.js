@@ -126,8 +126,8 @@ describe('AxelarGatewayMultisig', () => {
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
               ],
             ],
@@ -194,8 +194,8 @@ describe('AxelarGatewayMultisig', () => {
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
               ],
             ],
@@ -228,8 +228,8 @@ describe('AxelarGatewayMultisig', () => {
               ['deployToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
               ],
             ],
@@ -339,8 +339,8 @@ describe('AxelarGatewayMultisig', () => {
               ['deployToken', 'mintToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
                 defaultAbiCoder.encode(
                   ['string', 'address', 'uint256'],
@@ -402,9 +402,6 @@ describe('AxelarGatewayMultisig', () => {
           salt,
           keccak256(burnerInitCode),
         );
-
-        // This is simpler.
-        // const burnerAddress = await tokenContract.depositAddress(salt);
 
         const burnAmount = amount / 2;
 
@@ -481,9 +478,6 @@ describe('AxelarGatewayMultisig', () => {
           salt,
           keccak256(burnerInitCode),
         );
-
-        // This is simpler.
-        // const burnerAddress = await tokenContract.depositAddress(salt);
 
         const burnAmount = amount / 2;
 
@@ -569,8 +563,8 @@ describe('AxelarGatewayMultisig', () => {
               ['deployToken', 'mintToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
                 defaultAbiCoder.encode(
                   ['string', 'address', 'uint256'],
@@ -661,9 +655,6 @@ describe('AxelarGatewayMultisig', () => {
               keccak256(burnerInitCode),
             );
 
-            // This is simpler.
-            // const burnerAddress = await tokenContract.depositAddress(salt);
-
             await tokenContract.transfer(burnerAddress, amount);
             const input = await getSignedMultisigExecuteInput(
               data,
@@ -728,8 +719,8 @@ describe('AxelarGatewayMultisig', () => {
               ['deployToken', 'mintToken'],
               [
                 defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256'],
-                  [name, symbol, decimals, cap],
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, cap, ADDRESS_ZERO],
                 ),
                 defaultAbiCoder.encode(
                   ['string', 'address', 'uint256'],
@@ -819,9 +810,6 @@ describe('AxelarGatewayMultisig', () => {
               salt,
               keccak256(burnerInitCode),
             );
-
-            // This is simpler.
-            // const burnerAddress = await tokenContract.depositAddress(salt);
 
             await tokenContract.transfer(burnerAddress, amount);
             const input = await getSignedMultisigExecuteInput(
