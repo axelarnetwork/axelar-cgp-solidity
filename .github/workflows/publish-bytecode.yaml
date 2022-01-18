@@ -5,7 +5,7 @@ on:
     types: [published]
 
 jobs:
-  publish:
+  publish-bytecode:
     strategy:
       matrix:
         node-version:
