@@ -29,5 +29,5 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: Bytecode
+          name: Bytecode-${GITHUB_REF#refs/tags/}
           path: build/
