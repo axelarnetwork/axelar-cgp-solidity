@@ -121,10 +121,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             bytes32 salt = keccak256(abi.encodePacked(symbol));
             tokenAddress = address(new BurnableMintableCappedERC20{ salt: salt }(name, symbol, decimals, cap));
         } else {
+            // If token address is specified, ensure that there is a contact at the specified addressed.
+            require(tokenAddress.code.length != uint256(0), 'NOT_TOKEN');
             // Mark that this symbol is an external token, which is needed to differentiate between operations on mint and burn.
             _setTokenExternal(symbol);
-            // If token address is specified, ensure that there is a contact at the specified addressed.
-            require(tokenAddress.code.length != uint256(0), 'TOKEN_NOT_EXIST');
         }
 
         _setTokenAddress(symbol, tokenAddress);
