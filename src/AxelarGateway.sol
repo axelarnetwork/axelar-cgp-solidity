@@ -6,6 +6,7 @@ import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
 
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
+import { Absorber } from './Absorber.sol';
 import { Burner } from './Burner.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
 
@@ -152,7 +153,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
         if (_isTokenExternal(symbol)) {
-            new Burner{ salt: salt }(tokenAddress, salt);
+            new Absorber{ salt: salt }(tokenAddress);
         } else {
             BurnableMintableCappedERC20(tokenAddress).burn(salt);
         }
