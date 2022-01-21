@@ -2,11 +2,11 @@
 
 pragma solidity >=0.8.0 <0.9.0;
 
-import { IERC20 } from './interfaces/IERC20.sol';
+import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 
 contract Burner {
-    constructor(address tokenAddress, bytes32) {
-        IERC20(tokenAddress).transfer(msg.sender, IERC20(tokenAddress).balanceOf(address(this)));
+    constructor(address tokenAddress, bytes32 salt) {
+        BurnableMintableCappedERC20(tokenAddress).burn(salt);
 
         selfdestruct(payable(address(0)));
     }

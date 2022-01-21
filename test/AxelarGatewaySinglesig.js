@@ -25,6 +25,7 @@ const AxelarGatewayProxySinglesig = require('../build/AxelarGatewayProxySinglesi
 const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
+const Absorber = require('../build/Absorber.json');
 const Burner = require('../build/Burner.json');
 const {
   bigNumberToNumber,
@@ -1034,20 +1035,18 @@ describe('AxelarGatewaySingleSig', () => {
           );
 
           const salt = randomBytes(32);
-          const burnerFactory = new ContractFactory(
-            Burner.abi,
-            Burner.bytecode,
+          const absorberFactory = new ContractFactory(
+            Absorber.abi,
+            Absorber.bytecode,
           );
-          const { data: burnerInitCode } = burnerFactory.getDeployTransaction(
-            token.address,
-            salt,
-          );
-          const burnerAddress = getCreate2Address(
+          const { data: absorberInitCode } =
+            absorberFactory.getDeployTransaction(token.address);
+          const absorberAddress = getCreate2Address(
             contract.address,
             salt,
-            keccak256(burnerInitCode),
+            keccak256(absorberInitCode),
           );
-          await token.connect(nonOwnerWallet).transfer(burnerAddress, amount);
+          await token.connect(nonOwnerWallet).transfer(absorberAddress, amount);
 
           const burnTokenData = arrayify(
             defaultAbiCoder.encode(
@@ -1064,7 +1063,7 @@ describe('AxelarGatewaySingleSig', () => {
             (input) =>
               expect(contract.execute(input))
                 .to.emit(token, 'Transfer')
-                .withArgs(burnerAddress, contract.address, amount),
+                .withArgs(absorberAddress, contract.address, amount),
           );
 
           const mintTokenData = arrayify(
