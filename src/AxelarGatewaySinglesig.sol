@@ -127,6 +127,18 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         _burnToken(symbol, salt);
     }
 
+    function mintTokenAndApproveContractCall(bytes calldata params) external onlySelf {
+        (string memory symbol, address contractAddress, uint256 amount, bytes32 payloadHash) = abi.decode(params, (string, address, uint256, bytes32));
+
+        _mintTokenAndApproveContractCall(symbol, contractAddress, amount, payloadHash);
+    }
+
+    function approveContractCall(bytes calldata params) external onlySelf {
+        (address contractAddress, bytes32 payloadHash) = abi.decode(params, (address, bytes32));
+
+        _approveContractCall(contractAddress, payloadHash);
+    }
+
     function transferOwnership(bytes calldata params) external onlySelf {
         address newOwner = abi.decode(params, (address));
         uint256 ownerEpoch = _ownerEpoch();
@@ -218,6 +230,14 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
                 if (!isValidRecentOperator && !isValidRecentOwner) continue;
 
                 commandSelector = AxelarGatewaySinglesig.mintToken.selector;
+            } else if (commandHash == SELECTOR_MINT_TOKEN_AND_APPROVE_CONTRACT_CALL) {
+                if (!isValidRecentOperator && !isValidRecentOwner) continue;
+
+                commandSelector = AxelarGatewaySinglesig.mintTokenAndApproveContractCall.selector;
+            } else if (commandHash == SELECTOR_APPROVE_CONTRACT_CALL) {
+                if (!isValidRecentOperator && !isValidRecentOwner) continue;
+
+                commandSelector = AxelarGatewaySinglesig.approveContractCall.selector;
             } else if (commandHash == SELECTOR_BURN_TOKEN) {
                 if (!isValidRecentOperator && !isValidRecentOwner) continue;
 

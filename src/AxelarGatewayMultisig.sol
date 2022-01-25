@@ -346,6 +346,18 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         _burnToken(symbol, salt);
     }
 
+    function mintTokenAndApproveContractCall(bytes calldata params) external onlySelf {
+        (string memory symbol, address contractAddress, uint256 amount, bytes32 payloadHash) = abi.decode(params, (string, address, uint256, bytes32));
+
+        _mintTokenAndApproveContractCall(symbol, contractAddress, amount, payloadHash);
+    }
+
+    function approveContractCall(bytes calldata params) external onlySelf {
+        (address contractAddress, bytes32 payloadHash) = abi.decode(params, (address, bytes32));
+
+        _approveContractCall(contractAddress, payloadHash);
+    }
+
     function transferOwnership(bytes calldata params) external onlySelf {
         (address[] memory newOwners, uint256 newThreshold) = abi.decode(params, (address[], uint256));
 
@@ -449,6 +461,14 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
                 if (!areValidRecentOperators && !areValidRecentOwners) continue;
 
                 commandSelector = AxelarGatewayMultisig.mintToken.selector;
+            } else if (commandHash == SELECTOR_MINT_TOKEN_AND_APPROVE_CONTRACT_CALL) {
+                if (!areValidRecentOperators && !areValidRecentOwners) continue;
+
+                commandSelector = AxelarGatewayMultisig.mintTokenAndApproveContractCall.selector;
+            } else if (commandHash == SELECTOR_APPROVE_CONTRACT_CALL) {
+                if (!areValidRecentOperators && !areValidRecentOwners) continue;
+
+                commandSelector = AxelarGatewayMultisig.approveContractCall.selector;
             } else if (commandHash == SELECTOR_BURN_TOKEN) {
                 if (!areValidRecentOperators && !areValidRecentOwners) continue;
 
