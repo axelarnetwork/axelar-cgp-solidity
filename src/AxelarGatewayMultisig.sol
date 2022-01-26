@@ -417,10 +417,13 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             signers[i] = ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), signatures[i]);
         }
 
-        (uint256 chainId, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) = abi.decode(
-            data,
-            (uint256, bytes32[], string[], bytes[])
-        );
+        (
+            uint256 chainId,
+            Role signersRole,
+            bytes32[] memory commandIds,
+            string[] memory commands,
+            bytes[] memory params
+        ) = abi.decode(data, (uint256, Role, bytes32[], string[], bytes[]));
 
         require(chainId == _getChainID(), 'INV_CHAIN');
         require(!_containsDuplicates(signers), 'DUP_SIGNERS');
@@ -429,9 +432,15 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         require(commandsLength == commands.length && commandsLength == params.length, 'INV_CMDS');
 
-        bool areValidCurrentOwners = _areValidOwnersInEpoch(_ownerEpoch(), signers);
-        bool areValidRecentOwners = areValidCurrentOwners || _areValidPreviousOwners(signers);
-        bool areValidRecentOperators = _areValidRecentOperators(signers);
+        bool areValidCurrentOwners;
+        bool areValidRecentOwners;
+        bool areValidRecentOperators;
+        if (signersRole == Role.Owner) {
+            areValidCurrentOwners = _areValidOwnersInEpoch(_ownerEpoch(), signers);
+            areValidRecentOwners = areValidCurrentOwners || _areValidPreviousOwners(signers);
+        } else if (signersRole == Role.Operator) {
+            areValidRecentOperators = _areValidRecentOperators(signers);
+        }
 
         for (uint256 i; i < commandsLength; i++) {
             bytes32 commandId = commandIds[i];
