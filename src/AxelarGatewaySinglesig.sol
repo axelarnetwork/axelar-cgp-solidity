@@ -205,6 +205,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         bool isCurrentOwner;
         bool isValidRecentOwner;
         bool isValidRecentOperator;
+
         if (signerRole == Role.Owner) {
             isCurrentOwner = signer == owner();
             isValidRecentOwner = isCurrentOwner || _isValidPreviousOwner(signer);

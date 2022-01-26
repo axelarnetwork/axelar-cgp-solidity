@@ -435,6 +435,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         bool areValidCurrentOwners;
         bool areValidRecentOwners;
         bool areValidRecentOperators;
+
         if (signersRole == Role.Owner) {
             areValidCurrentOwners = _areValidOwnersInEpoch(_ownerEpoch(), signers);
             areValidRecentOwners = areValidCurrentOwners || _areValidPreviousOwners(signers);
