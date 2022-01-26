@@ -20,6 +20,8 @@ const { get } = require('lodash/fp');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
+const ROLE_OWNER = 1;
+const ROLE_OPERATOR = 2;
 
 const AxelarGatewayProxySinglesig = require('../build/AxelarGatewayProxySinglesig.json');
 const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
@@ -32,6 +34,7 @@ const {
   getSignedExecuteInput,
   getRandomID,
 } = require('./utils');
+const { it } = require('mocha');
 
 describe('AxelarGatewaySingleSig', () => {
   const [
@@ -107,9 +110,10 @@ describe('AxelarGatewaySingleSig', () => {
     beforeEach(() => {
       const data = arrayify(
         defaultAbiCoder.encode(
-          ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
           [
             CHAIN_ID,
+            ROLE_OWNER,
             [getRandomID()],
             ['deployToken'],
             [
@@ -135,9 +139,10 @@ describe('AxelarGatewaySingleSig', () => {
         .then(() => {
           const data = arrayify(
             defaultAbiCoder.encode(
-              ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
               [
                 CHAIN_ID,
+                ROLE_OWNER,
                 [getRandomID()],
                 ['mintToken'],
                 [
@@ -335,8 +340,8 @@ describe('AxelarGatewaySingleSig', () => {
     it('should fail if chain Id mismatches', () => {
       const data = arrayify(
         defaultAbiCoder.encode(
-          ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-          [CHAIN_ID + 1, [], [], []],
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [CHAIN_ID + 1, ROLE_OWNER, [], [], []],
         ),
       );
 
@@ -354,9 +359,10 @@ describe('AxelarGatewaySingleSig', () => {
       it('should not deploy the duplicate token', () => {
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['deployToken'],
               [
@@ -370,9 +376,10 @@ describe('AxelarGatewaySingleSig', () => {
         );
         const secondTxData = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['deployToken'],
               [
@@ -401,9 +408,10 @@ describe('AxelarGatewaySingleSig', () => {
       it('should not allow the operator to deploy a token', () => {
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OPERATOR,
               [getRandomID()],
               ['deployToken'],
               [
@@ -427,9 +435,10 @@ describe('AxelarGatewaySingleSig', () => {
         const commandID = getRandomID();
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [commandID],
               ['deployToken'],
               [
@@ -498,9 +507,10 @@ describe('AxelarGatewaySingleSig', () => {
       beforeEach(() => {
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['deployToken'],
               [
@@ -518,13 +528,64 @@ describe('AxelarGatewaySingleSig', () => {
         );
       });
 
+      it('should not mint tokens if signer role is incorrect', async () => {
+        const amount = 9999;
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              ROLE_OWNER,
+              [getRandomID()],
+              ['mintToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'address', 'uint256'],
+                  [symbol, nonOwnerWallet.address, amount],
+                ),
+              ],
+            ],
+          ),
+        );
+
+        return getSignedExecuteInput(data, operatorWallet)
+          .then((input) =>
+            expect(contract.execute(input)).to.not.emit(contract, 'Executed'),
+          )
+          .then(() => {
+            const data = arrayify(
+              defaultAbiCoder.encode(
+                ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                [
+                  CHAIN_ID,
+                  ROLE_OPERATOR,
+                  [getRandomID()],
+                  ['mintToken'],
+                  [
+                    defaultAbiCoder.encode(
+                      ['string', 'address', 'uint256'],
+                      [symbol, nonOwnerWallet.address, amount],
+                    ),
+                  ],
+                ],
+              ),
+            );
+
+            return getSignedExecuteInput(data, ownerWallet);
+          })
+          .then((input) =>
+            expect(contract.execute(input)).to.not.emit(contract, 'Executed'),
+          );
+      });
+
       it('should allow the owner to mint tokens', async () => {
         const amount = 9999;
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['mintToken'],
               [
@@ -548,7 +609,8 @@ describe('AxelarGatewaySingleSig', () => {
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
-              .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, amount),
+              .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, amount)
+              .and.to.emit(contract, 'Executed'),
           )
           .then(() =>
             tokenContract
@@ -564,9 +626,10 @@ describe('AxelarGatewaySingleSig', () => {
         const amount = 9999;
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OPERATOR,
               [getRandomID()],
               ['mintToken'],
               [
@@ -590,7 +653,8 @@ describe('AxelarGatewaySingleSig', () => {
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
-              .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, amount),
+              .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, amount)
+              .and.to.emit(contract, 'Executed'),
           )
           .then(() =>
             tokenContract
@@ -613,9 +677,10 @@ describe('AxelarGatewaySingleSig', () => {
       beforeEach(() => {
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID(), getRandomID()],
               ['deployToken', 'mintToken'],
               [
@@ -645,9 +710,10 @@ describe('AxelarGatewaySingleSig', () => {
 
         const dataFirstBurn = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['burnToken'],
               [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
@@ -656,9 +722,10 @@ describe('AxelarGatewaySingleSig', () => {
         );
         const dataSecondBurn = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['burnToken'],
               [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
@@ -717,9 +784,10 @@ describe('AxelarGatewaySingleSig', () => {
 
         const dataFirstBurn = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OPERATOR,
               [getRandomID()],
               ['burnToken'],
               [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
@@ -728,9 +796,10 @@ describe('AxelarGatewaySingleSig', () => {
         );
         const dataSecondBurn = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OPERATOR,
               [getRandomID()],
               ['burnToken'],
               [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
@@ -786,9 +855,10 @@ describe('AxelarGatewaySingleSig', () => {
       it('should not transferring ownership to address zero', () => {
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [ADDRESS_ZERO])],
@@ -807,9 +877,10 @@ describe('AxelarGatewaySingleSig', () => {
       it('should not allow the operator to transfer ownership', () => {
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OPERATOR,
               [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [operatorWallet.address])],
@@ -829,9 +900,10 @@ describe('AxelarGatewaySingleSig', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [newOwner])],
@@ -855,9 +927,10 @@ describe('AxelarGatewaySingleSig', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [newOwner])],
@@ -878,9 +951,10 @@ describe('AxelarGatewaySingleSig', () => {
             const cap = 10000;
             const data = arrayify(
               defaultAbiCoder.encode(
-                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                 [
                   CHAIN_ID,
+                  ROLE_OWNER,
                   [getRandomID()],
                   ['deployToken'],
                   [
@@ -904,9 +978,10 @@ describe('AxelarGatewaySingleSig', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [newOwner])],
@@ -924,9 +999,10 @@ describe('AxelarGatewaySingleSig', () => {
             const newOwner = '0x2e531e213004433c2f92592ABEf79228AACaedFa';
             const data = arrayify(
               defaultAbiCoder.encode(
-                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                 [
                   CHAIN_ID,
+                  ROLE_OWNER,
                   [getRandomID()],
                   ['transferOwnership'],
                   [defaultAbiCoder.encode(['address'], [newOwner])],
@@ -950,9 +1026,10 @@ describe('AxelarGatewaySingleSig', () => {
         const newOperator = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OPERATOR,
               [getRandomID()],
               ['transferOperatorship'],
               [defaultAbiCoder.encode(['address'], [newOperator])],
@@ -972,9 +1049,10 @@ describe('AxelarGatewaySingleSig', () => {
         const newOperator = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID()],
               ['transferOperatorship'],
               [defaultAbiCoder.encode(['address'], [newOperator])],
@@ -1013,9 +1091,10 @@ describe('AxelarGatewaySingleSig', () => {
 
           const deployTokenData = arrayify(
             defaultAbiCoder.encode(
-              ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
               [
                 CHAIN_ID,
+                ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
                 [
@@ -1050,9 +1129,10 @@ describe('AxelarGatewaySingleSig', () => {
 
           const burnTokenData = arrayify(
             defaultAbiCoder.encode(
-              ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
               [
                 CHAIN_ID,
+                ROLE_OWNER,
                 [getRandomID()],
                 ['burnToken'],
                 [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
@@ -1068,9 +1148,10 @@ describe('AxelarGatewaySingleSig', () => {
 
           const mintTokenData = arrayify(
             defaultAbiCoder.encode(
-              ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
               [
                 CHAIN_ID,
+                ROLE_OWNER,
                 [getRandomID()],
                 ['mintToken'],
                 [
@@ -1101,9 +1182,10 @@ describe('AxelarGatewaySingleSig', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
         const data = arrayify(
           defaultAbiCoder.encode(
-            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
+              ROLE_OWNER,
               [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
               ['deployToken', 'mintToken', 'mintToken', 'transferOwnership'],
               [
