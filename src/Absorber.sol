@@ -7,8 +7,8 @@ import { IERC20 } from './interfaces/IERC20.sol';
 contract Absorber {
     constructor(address /* refundAddress */) {}
 
-    function transferAndDestruct(address tokenAddress) external {
-        IERC20(tokenAddress).transfer(msg.sender, IERC20(tokenAddress).balanceOf(address(this)));
+    function transferAndDestruct(address tokenAddress, address recipient) external {
+        IERC20(tokenAddress).transfer(recipient, IERC20(tokenAddress).balanceOf(address(this)));
 
         selfdestruct(payable(address(0)));
     }
