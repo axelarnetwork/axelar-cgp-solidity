@@ -123,9 +123,9 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     }
 
     function burnToken(bytes calldata params) external onlySelf {
-        (string memory symbol, bytes32 salt) = abi.decode(params, (string, bytes32));
+        (string memory symbol, bytes32 salt, address refundAddress) = abi.decode(params, (string, bytes32, address));
 
-        _burnToken(symbol, salt);
+        _burnToken(symbol, salt, refundAddress);
     }
 
     function transferOwnership(bytes calldata params) external onlySelf {

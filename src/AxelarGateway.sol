@@ -69,6 +69,18 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     /*******************\
+    |* Public Functions *|
+    \*******************/
+
+    function refundToken(address tokenAddress, bytes32 salt) external {
+        uint256 oldBalance = IERC20(tokenAddress).balanceOf(address(this));
+        new Absorber{ salt: salt }(tokenAddress, msg.sender);
+        uint256 newBalance = IERC20(tokenAddress).balanceOf(address(this));
+
+        IERC20(tokenAddress).transfer(msg.sender, newBalance - oldBalance);
+    }
+
+    /*******************\
     |* Admin Functions *|
     \*******************/
 
@@ -156,12 +168,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         }
     }
 
-    function _burnToken(string memory symbol, bytes32 salt) internal {
+    function _burnToken(string memory symbol, bytes32 salt, address refundAddress) internal {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
         if (_isTokenExternal(symbol)) {
-            new Absorber{ salt: salt }(tokenAddress);
+            new Absorber{ salt: salt }(tokenAddress, refundAddress);
         } else {
             BurnableMintableCappedERC20(tokenAddress).burn(salt);
         }
