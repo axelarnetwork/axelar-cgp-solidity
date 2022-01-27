@@ -161,7 +161,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
         if (_isTokenExternal(symbol)) {
-            new Absorber{ salt: salt }(address(0x0)).transferAndDestruct(tokenAddress);
+            new Absorber{ salt: salt }(address(0x0)).transferAndDestruct(tokenAddress, address(this));
         } else {
             BurnableMintableCappedERC20(tokenAddress).burn(salt);
         }
