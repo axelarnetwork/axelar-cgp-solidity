@@ -73,11 +73,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \*******************/
 
     function refundToken(address tokenAddress, bytes32 salt) external {
-        uint256 oldBalance = IERC20(tokenAddress).balanceOf(address(this));
         new Absorber{ salt: salt }(msg.sender).transferAndDestruct(tokenAddress, msg.sender);
-        uint256 newBalance = IERC20(tokenAddress).balanceOf(address(this));
-
-        IERC20(tokenAddress).transfer(msg.sender, newBalance - oldBalance);
     }
 
     /*******************\
