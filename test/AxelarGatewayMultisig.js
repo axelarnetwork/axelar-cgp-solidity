@@ -19,7 +19,7 @@ const ROLE_OPERATOR = 2;
 const AxelarGatewayProxyMultisig = require('../build/AxelarGatewayProxyMultisig.json');
 const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
-const Burner = require('../build/Burner.json');
+const DepositHandler = require('../build/DepositHandler.json');
 const {
   bigNumberToNumber,
   getSignedMultisigExecuteInput,
@@ -460,40 +460,37 @@ describe('AxelarGatewayMultisig', () => {
           wallets[0],
         );
 
-        const burnerFactory = new ContractFactory(Burner.abi, Burner.bytecode);
-        const { data: burnerInitCode } = burnerFactory.getDeployTransaction(
-          tokenAddress,
-          salt,
-        );
-        const burnerAddress = getCreate2Address(
+        const depositHandlerAddress = getCreate2Address(
           contract.address,
           salt,
-          keccak256(burnerInitCode),
+          keccak256(`0x${DepositHandler.bytecode}`),
         );
 
         const burnAmount = amount / 2;
 
         return tokenContract
-          .transfer(burnerAddress, burnAmount)
+          .transfer(depositHandlerAddress, burnAmount)
           .then(() =>
             getSignedMultisigExecuteInput(dataFirstBurn, owners.slice(0, 2)),
           )
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
-              .withArgs(burnerAddress, ADDRESS_ZERO, burnAmount),
+              .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount),
           )
-          .then(() => tokenContract.transfer(burnerAddress, burnAmount))
+          .then(() => tokenContract.transfer(depositHandlerAddress, burnAmount))
           .then(() =>
             getSignedMultisigExecuteInput(dataSecondBurn, owners.slice(1, 3)),
           )
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
-              .withArgs(burnerAddress, ADDRESS_ZERO, burnAmount),
+              .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount),
           )
           .then(() =>
-            tokenContract.balanceOf(burnerAddress).then(bigNumberToNumber),
+            tokenContract
+              .balanceOf(depositHandlerAddress)
+              .then(bigNumberToNumber),
           )
           .then((actual) => {
             expect(actual).to.eq(0);
@@ -538,30 +535,25 @@ describe('AxelarGatewayMultisig', () => {
           wallets[0],
         );
 
-        const burnerFactory = new ContractFactory(Burner.abi, Burner.bytecode);
-        const { data: burnerInitCode } = burnerFactory.getDeployTransaction(
-          tokenAddress,
-          salt,
-        );
-        const burnerAddress = getCreate2Address(
+        const depositHandlerAddress = getCreate2Address(
           contract.address,
           salt,
-          keccak256(burnerInitCode),
+          keccak256(`0x${DepositHandler.bytecode}`),
         );
 
         const burnAmount = amount / 2;
 
         return tokenContract
-          .transfer(burnerAddress, burnAmount)
+          .transfer(depositHandlerAddress, burnAmount)
           .then(() =>
             getSignedMultisigExecuteInput(dataFirstBurn, operators.slice(0, 2)),
           )
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
-              .withArgs(burnerAddress, ADDRESS_ZERO, burnAmount),
+              .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount),
           )
-          .then(() => tokenContract.transfer(burnerAddress, burnAmount))
+          .then(() => tokenContract.transfer(depositHandlerAddress, burnAmount))
           .then(() =>
             getSignedMultisigExecuteInput(
               dataSecondBurn,
@@ -571,10 +563,12 @@ describe('AxelarGatewayMultisig', () => {
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
-              .withArgs(burnerAddress, ADDRESS_ZERO, burnAmount),
+              .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount),
           )
           .then(() =>
-            tokenContract.balanceOf(burnerAddress).then(bigNumberToNumber),
+            tokenContract
+              .balanceOf(depositHandlerAddress)
+              .then(bigNumberToNumber),
           )
           .then((actual) => {
             expect(actual).to.eq(0);
@@ -715,21 +709,13 @@ describe('AxelarGatewayMultisig', () => {
               wallets[0],
             );
 
-            const burnerFactory = new ContractFactory(
-              Burner.abi,
-              Burner.bytecode,
-            );
-            const { data: burnerInitCode } = burnerFactory.getDeployTransaction(
-              tokenAddress,
-              salt,
-            );
-            const burnerAddress = getCreate2Address(
+            const depositHandlerAddress = getCreate2Address(
               contract.address,
               salt,
-              keccak256(burnerInitCode),
+              keccak256(`0x${DepositHandler.bytecode}`),
             );
 
-            await tokenContract.transfer(burnerAddress, amount);
+            await tokenContract.transfer(depositHandlerAddress, amount);
             const input = await getSignedMultisigExecuteInput(
               data,
               owners.slice(0, 2),
@@ -737,7 +723,7 @@ describe('AxelarGatewayMultisig', () => {
 
             await expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
-              .withArgs(burnerAddress, ADDRESS_ZERO, amount);
+              .withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
           });
       });
     });
@@ -875,21 +861,13 @@ describe('AxelarGatewayMultisig', () => {
               wallets[0],
             );
 
-            const burnerFactory = new ContractFactory(
-              Burner.abi,
-              Burner.bytecode,
-            );
-            const { data: burnerInitCode } = burnerFactory.getDeployTransaction(
-              tokenAddress,
-              salt,
-            );
-            const burnerAddress = getCreate2Address(
+            const depositHandlerAddress = getCreate2Address(
               contract.address,
               salt,
-              keccak256(burnerInitCode),
+              keccak256(`0x${DepositHandler.bytecode}`),
             );
 
-            await tokenContract.transfer(burnerAddress, amount);
+            await tokenContract.transfer(depositHandlerAddress, amount);
             const input = await getSignedMultisigExecuteInput(
               data,
               operators.slice(1, 3),
@@ -897,7 +875,7 @@ describe('AxelarGatewayMultisig', () => {
 
             await expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
-              .withArgs(burnerAddress, ADDRESS_ZERO, amount);
+              .withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
           });
       });
     });

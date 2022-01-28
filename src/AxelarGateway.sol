@@ -6,8 +6,7 @@ import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
 
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
-import { Absorber } from './Absorber.sol';
-import { Burner } from './Burner.sol';
+import { DepositHandler } from './DepositHandler.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
 
 abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
@@ -161,7 +160,19 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
         if (_isTokenExternal(symbol)) {
-            new Absorber{ salt: salt }(tokenAddress);
+            DepositHandler depositHandler = new DepositHandler{ salt: salt }();
+
+            (bool success, ) = depositHandler.execute(
+                tokenAddress,
+                abi.encodeWithSelector(
+                    IERC20.transfer.selector,
+                    address(this),
+                    IERC20(tokenAddress).balanceOf(address(depositHandler))
+                )
+            );
+            require(success, 'BURN_FAIL');
+
+            depositHandler.destroy(address(0));
         } else {
             BurnableMintableCappedERC20(tokenAddress).burn(salt);
         }
