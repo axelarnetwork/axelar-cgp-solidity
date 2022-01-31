@@ -3,7 +3,7 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import { MintableCappedERC20 } from './MintableCappedERC20.sol';
-import { Burner } from './Burner.sol';
+import { DepositHandler } from './DepositHandler.sol';
 import { EternalStorage } from './EternalStorage.sol';
 
 contract BurnableMintableCappedERC20 is MintableCappedERC20 {
@@ -32,7 +32,7 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
                                 bytes1(0xff),
                                 owner,
                                 salt,
-                                keccak256(abi.encodePacked(type(Burner).creationCode, abi.encode(address(this)), salt))
+                                keccak256(abi.encodePacked(type(DepositHandler).creationCode))
                             )
                         )
                     )
