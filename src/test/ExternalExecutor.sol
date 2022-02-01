@@ -10,6 +10,8 @@ contract ExternalExecutor {
     address gateway;
     address swapper;
 
+    mapping(bytes32 => bool) public wasExecuted;
+
     constructor(address gatewayAddress, address swapperAddress) {
         gateway = gatewayAddress;
         swapper = swapperAddress;
@@ -31,6 +33,9 @@ contract ExternalExecutor {
             ));
 
         require(IAxelarGateway(gateway).isContractCallApproved(address(this), approvalHash), 'NOT APPROVED');
+
+        require(wasExecuted[approvalHash] == false, 'ALREADY EXECUTED');
+        wasExecuted[approvalHash] = true;
 
         IERC20(tokenAddress).approve(swapper, amount);
         TokenSwapper(swapper).swap(tokenAddress, amount, toTokenAddress, recipient);
