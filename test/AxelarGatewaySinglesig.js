@@ -1256,94 +1256,99 @@ describe('AxelarGatewaySingleSig', () => {
       const capacity = 0;
 
       const tokenA = await deployContract(ownerWallet, MintableCappedERC20, [
-          nameA,
-          symbolA,
-          decimals,
-          capacity,
-      ])
+        nameA,
+        symbolA,
+        decimals,
+        capacity,
+      ]);
       const tokenB = await deployContract(ownerWallet, MintableCappedERC20, [
-          nameB,
-          symbolB,
-          decimals,
-          capacity,
-      ])
+        nameB,
+        symbolB,
+        decimals,
+        capacity,
+      ]);
 
       const swapper = await deployContract(ownerWallet, TokenSwapper, [
-          tokenA.address,
-          tokenB.address,
-      ])
+        tokenA.address,
+        tokenB.address,
+      ]);
 
       const executor = await deployContract(ownerWallet, ExternalExecutor, [
-          contract.address,
-          swapper.address,
-      ])
+        contract.address,
+        swapper.address,
+      ]);
 
       await tokenA.mint(contract.address, 1e6);
       await tokenB.mint(swapper.address, 1e6);
 
       const deployTokenData = arrayify(
-          defaultAbiCoder.encode(
-              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-              [
-                  CHAIN_ID,
-                  ROLE_OWNER,
-                  [getRandomID()],
-                  ['deployToken'],
-                  [
-                      defaultAbiCoder.encode(
-                          ['string', 'string', 'uint8', 'uint256', 'address'],
-                          [nameA, symbolA, decimals, capacity, tokenA.address],
-                      ),
-                  ],
-              ],
-          ),
+        defaultAbiCoder.encode(
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [
+            CHAIN_ID,
+            ROLE_OWNER,
+            [getRandomID()],
+            ['deployToken'],
+            [
+              defaultAbiCoder.encode(
+                ['string', 'string', 'uint8', 'uint256', 'address'],
+                [nameA, symbolA, decimals, capacity, tokenA.address],
+              ),
+            ],
+          ],
+        ),
       );
-      await getSignedExecuteInput(deployTokenData, ownerWallet).then(
-          (input) =>
-              expect(contract.execute(input))
-                  .to.emit(contract, 'TokenDeployed')
-                  .withArgs(symbolA, tokenA.address),
+      await getSignedExecuteInput(deployTokenData, ownerWallet).then((input) =>
+        expect(contract.execute(input))
+          .to.emit(contract, 'TokenDeployed')
+          .withArgs(symbolA, tokenA.address),
       );
 
-      const payload = [tokenB.address, nonOwnerWallet.address, 1]
-      const payloadHash = keccak256(defaultAbiCoder.encode(['address', 'address', 'uint256'], payload))
-      const swapAmount = 20000
-
+      const payload = [tokenB.address, nonOwnerWallet.address, 1];
+      const payloadHash = keccak256(
+        defaultAbiCoder.encode(['address', 'address', 'uint256'], payload),
+      );
+      const swapAmount = 20000;
 
       const mintAndApproveData = arrayify(
-          defaultAbiCoder.encode(
-              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-              [
-                  CHAIN_ID,
-                  ROLE_OWNER,
-                  [getRandomID()],
-                  ['mintTokenAndApproveContractCall'],
-                  [
-                      defaultAbiCoder.encode(
-                          ['string', 'address', 'uint256', 'bytes32'],
-                          [symbolA, executor.address, swapAmount, payloadHash],
-                      ),
-                  ],
-              ],
-          ),
+        defaultAbiCoder.encode(
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [
+            CHAIN_ID,
+            ROLE_OWNER,
+            [getRandomID()],
+            ['mintTokenAndApproveContractCall'],
+            [
+              defaultAbiCoder.encode(
+                ['string', 'address', 'uint256', 'bytes32'],
+                [symbolA, executor.address, swapAmount, payloadHash],
+              ),
+            ],
+          ],
+        ),
       );
 
-      const approveExecute = await contract.execute(await getSignedExecuteInput(mintAndApproveData, ownerWallet))
+      const approveExecute = await contract.execute(
+        await getSignedExecuteInput(mintAndApproveData, ownerWallet),
+      );
 
       await expect(approveExecute)
         .to.emit(tokenA, 'Transfer')
-        .withArgs(contract.address, executor.address, swapAmount)
+        .withArgs(contract.address, executor.address, swapAmount);
 
       await expect(approveExecute)
         .to.emit(contract, 'ContractCallApproved')
-        .withArgs(executor.address, 0, payloadHash)
+        .withArgs(executor.address, 0, payloadHash);
 
-      const swap = await executor.swapToken(tokenA.address, swapAmount, ...payload)
+      const swap = await executor.swapToken(
+        tokenA.address,
+        swapAmount,
+        ...payload,
+      );
 
       await expect(swap)
         .to.emit(tokenB, 'Transfer')
-        .withArgs(swapper.address, nonOwnerWallet.address, swapAmount * 2)
-    })
+        .withArgs(swapper.address, nonOwnerWallet.address, swapAmount * 2);
+    });
   });
-
 });
