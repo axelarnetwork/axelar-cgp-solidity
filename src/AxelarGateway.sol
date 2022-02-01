@@ -71,8 +71,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getBool(_getIsCommandExecutedKey(commandId));
     }
 
-    function isContractCallApproved(address contractAddress, bytes32 payloadHash) public view override returns (bool) {
-        return getBool(_getIsContractCallApprovedKey(contractAddress, payloadHash));
+    function isContractCallApproved(address contractAddress, bytes32 approvalHash) public view override returns (bool) {
+        return getBool(_getIsContractCallApprovedKey(contractAddress, approvalHash));
     }
 
     /*******************\
@@ -197,7 +197,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             _setContractCallApproved(
                 contractAddress,
                 keccak256(
-                    abi.encode(uint256(ContractCallHashKey.WithToken), tokenAddresses(symbol), amount, payloadHash)
+                    abi.encode(ContractCallHashKey.WithToken, tokenAddresses(symbol), amount, payloadHash)
                 )
             );
         } else {
@@ -234,12 +234,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return keccak256(abi.encodePacked(PREFIX_COMMAND_EXECUTED, commandId));
     }
 
-    function _getIsContractCallApprovedKey(address contractAddress, bytes32 payloadHash)
+    function _getIsContractCallApprovedKey(address contractAddress, bytes32 approvalHash)
         internal
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, contractAddress, payloadHash));
+        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, contractAddress, approvalHash));
     }
 
     /********************\
@@ -272,8 +272,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setBool(_getIsCommandExecutedKey(commandId), executed);
     }
 
-    function _setContractCallApproved(address contractAddress, bytes32 payloadHash) internal {
-        _setBool(_getIsContractCallApprovedKey(contractAddress, payloadHash), true);
+    function _setContractCallApproved(address contractAddress, bytes32 approvalHash) internal {
+        _setBool(_getIsContractCallApprovedKey(contractAddress, approvalHash), true);
     }
 
     function _setImplementation(address newImplementation) internal {
