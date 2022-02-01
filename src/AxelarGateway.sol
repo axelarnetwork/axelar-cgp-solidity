@@ -187,25 +187,23 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _mintTokenAndApproveContractCall(
         string memory symbol,
-        address contractAddress,
         uint256 amount,
-        bytes32 payloadHash
-    ) internal {
-        _mintToken(symbol, contractAddress, amount);
-
-        _setContractCallApproved(contractAddress, keccak256(abi.encode(ContractCallHashKey.WithToken, symbol, amount, payloadHash)));
-
-        emit MintedAndContractCallApproved(contractAddress, ContractCallHashKey.WithToken, symbol, amount, payloadHash);
-    }
-
-    function _approveContractCall(
         address contractAddress,
         bytes32 payloadHash
     ) internal {
-        // using keyed hashing to prevent hash forging for minted/direct call approvals
-        _setContractCallApproved(contractAddress, keccak256(abi.encode(ContractCallHashKey.WithoutToken, payloadHash)));
+        if (amount > 0) {
+            _mintToken(symbol, contractAddress, amount);
+            _setContractCallApproved(contractAddress, keccak256(abi.encode(
+                    uint256(ContractCallHashKey.WithToken),
+                    tokenAddresses(symbol),
+                    amount,
+                    payloadHash
+                )));
+        } else {
+            _setContractCallApproved(contractAddress, keccak256(abi.encode(ContractCallHashKey.WithoutToken, payloadHash)));
+        }
 
-        emit ContractCallApproved(contractAddress, ContractCallHashKey.WithToken, payloadHash);
+        emit ContractCallApproved(contractAddress, amount > 0 ? ContractCallHashKey.WithToken : ContractCallHashKey.WithoutToken, payloadHash);
     }
 
     /********************\

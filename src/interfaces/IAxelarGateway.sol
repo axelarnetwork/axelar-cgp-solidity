@@ -28,8 +28,6 @@ interface IAxelarGateway {
 
     event Upgraded(address indexed implementation);
 
-    event MintedAndContractCallApproved(address contractAddress, ContractCallHashKey hashKey, string symbol, uint256 amount, bytes32 payloadHash);
-
     event ContractCallApproved(address contractAddress, ContractCallHashKey hashKey, bytes32 payloadHash);
 
     /***********\
