@@ -4,8 +4,6 @@ pragma solidity >=0.8.0 <0.9.0;
 
 interface IAxelarGateway {
 
-    enum ContractCallHashKey { WithToken, WithoutToken }
-
     /**********\
     |* Events *|
     \**********/
@@ -28,7 +26,9 @@ interface IAxelarGateway {
 
     event Upgraded(address indexed implementation);
 
-    event ContractCallApproved(address contractAddress, ContractCallHashKey hashKey, bytes32 payloadHash);
+    event ContractCallApproved(address indexed contractAddress, bytes32 indexed payloadHash);
+
+    event ContractCallApprovedWithMint(address indexed contractAddress, bytes32 indexed payloadHash, address indexed token, uint256 amount);
 
     /***********\
     |* Getters *|
@@ -45,6 +45,8 @@ interface IAxelarGateway {
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
 
     function isContractCallApproved(address contractAddress, bytes32 payloadHash) external view returns (bool);
+
+    function isContractCallApprovedWithMint(address contractAddress, bytes32 payloadHash, address token, uint256 amount) external view returns (bool);
 
     /*******************\
     |* Admin Functions *|

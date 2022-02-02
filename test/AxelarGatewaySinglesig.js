@@ -1261,6 +1261,7 @@ describe('AxelarGatewaySingleSig', () => {
         decimals,
         capacity,
       ]);
+
       const tokenB = await deployContract(ownerWallet, MintableCappedERC20, [
         nameB,
         symbolB,
@@ -1298,6 +1299,7 @@ describe('AxelarGatewaySingleSig', () => {
           ],
         ),
       );
+
       await getSignedExecuteInput(deployTokenData, ownerWallet).then((input) =>
         expect(contract.execute(input))
           .to.emit(contract, 'TokenDeployed')
@@ -1337,8 +1339,8 @@ describe('AxelarGatewaySingleSig', () => {
         .withArgs(contract.address, executor.address, swapAmount);
 
       await expect(approveExecute)
-        .to.emit(contract, 'ContractCallApproved')
-        .withArgs(executor.address, 0, payloadHash);
+        .to.emit(contract, 'ContractCallApprovedWithMint')
+        .withArgs(executor.address, payloadHash, tokenA.address, 20000);
 
       const swap = await executor.swapToken(
         tokenA.address,

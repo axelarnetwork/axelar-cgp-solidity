@@ -25,17 +25,11 @@ contract ExternalExecutor {
         uint256 nonce
     ) external {
         bytes32 payloadHash = keccak256(abi.encode(toTokenAddress, recipient, nonce));
-        bytes32 approvalHash = keccak256(abi.encode(
-                IAxelarGateway.ContractCallHashKey.WithToken,
-                tokenAddress,
-                amount,
-                payloadHash
-            ));
 
-        require(IAxelarGateway(gateway).isContractCallApproved(address(this), approvalHash), 'NOT APPROVED');
+        require(IAxelarGateway(gateway).isContractCallApprovedWithMint(address(this), payloadHash, tokenAddress, amount), 'NOT APPROVED');
 
-        require(wasExecuted[approvalHash] == false, 'ALREADY EXECUTED');
-        wasExecuted[approvalHash] = true;
+        require(!wasExecuted[payloadHash], 'ALREADY EXECUTED');
+        wasExecuted[payloadHash] = true;
 
         IERC20(tokenAddress).approve(swapper, amount);
         TokenSwapper(swapper).swap(tokenAddress, amount, toTokenAddress, recipient);

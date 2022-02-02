@@ -71,8 +71,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getBool(_getIsCommandExecutedKey(commandId));
     }
 
-    function isContractCallApproved(address contractAddress, bytes32 approvalHash) public view override returns (bool) {
-        return getBool(_getIsContractCallApprovedKey(contractAddress, approvalHash));
+    function isContractCallApproved(address contractAddress, bytes32 payloadHash) public view override returns (bool) {
+        return getBool(_getIsContractCallApprovedKey(contractAddress, payloadHash));
+    }
+
+    function isContractCallApprovedWithMint(address contractAddress, bytes32 payloadHash, address token, uint256 amount) public view override returns (bool) {
+        return getBool(_getIsContractCallApprovedWithMintKey(contractAddress, payloadHash, token, amount));
     }
 
     /*******************\
@@ -186,32 +190,19 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         }
     }
 
-    function _mintTokenAndApproveContractCall(
-        string memory symbol,
-        uint256 amount,
-        address contractAddress,
-        bytes32 payloadHash
-    ) internal {
-        if (amount > 0) {
-            _mintToken(symbol, contractAddress, amount);
-            _setContractCallApproved(
-                contractAddress,
-                keccak256(
-                    abi.encode(ContractCallHashKey.WithToken, tokenAddresses(symbol), amount, payloadHash)
-                )
-            );
-        } else {
-            _setContractCallApproved(
-                contractAddress,
-                keccak256(abi.encode(ContractCallHashKey.WithoutToken, payloadHash))
-            );
-        }
+    function _mintTokenAndApproveContractCall(string memory symbol, uint256 amount, address contractAddress, bytes32 payloadHash) internal {
+        _mintToken(symbol, contractAddress, amount);
 
-        emit ContractCallApproved(
-            contractAddress,
-            amount > 0 ? ContractCallHashKey.WithToken : ContractCallHashKey.WithoutToken,
-            payloadHash
-        );
+        address token = tokenAddresses(symbol);
+        _setContractCallApprovedWithMint(contractAddress, payloadHash, token, amount);
+
+        emit ContractCallApprovedWithMint(contractAddress, payloadHash, token, amount);
+    }
+
+    function _approveContractCall(address contractAddress, bytes32 approvalHash) internal {
+        _setContractCallApproved(contractAddress, approvalHash);
+
+        emit ContractCallApproved(contractAddress, approvalHash);
     }
 
     /********************\
@@ -234,12 +225,20 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return keccak256(abi.encodePacked(PREFIX_COMMAND_EXECUTED, commandId));
     }
 
-    function _getIsContractCallApprovedKey(address contractAddress, bytes32 approvalHash)
+    function _getIsContractCallApprovedKey(address contractAddress, bytes32 payloadHash)
         internal
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, contractAddress, approvalHash));
+        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, contractAddress, payloadHash));
+    }
+
+    function _getIsContractCallApprovedWithMintKey(address contractAddress, bytes32 payloadHash, address token, uint256 amount)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, contractAddress, payloadHash, token, amount));
     }
 
     /********************\
@@ -272,8 +271,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setBool(_getIsCommandExecutedKey(commandId), executed);
     }
 
-    function _setContractCallApproved(address contractAddress, bytes32 approvalHash) internal {
-        _setBool(_getIsContractCallApprovedKey(contractAddress, approvalHash), true);
+    function _setContractCallApproved(address contractAddress, bytes32 payloadHash) internal {
+        _setBool(_getIsContractCallApprovedKey(contractAddress, payloadHash), true);
+    }
+
+    function _setContractCallApprovedWithMint(address contractAddress, bytes32 payloadHash, address token, uint256 amount) internal {
+        _setBool(_getIsContractCallApprovedWithMintKey(contractAddress, payloadHash, token, amount), true);
     }
 
     function _setImplementation(address newImplementation) internal {

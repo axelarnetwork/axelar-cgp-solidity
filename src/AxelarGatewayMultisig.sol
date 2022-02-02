@@ -358,7 +358,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     function approveContractCall(bytes calldata params) external onlySelf {
         (address contractAddress, bytes32 payloadHash) = abi.decode(params, (address, bytes32));
 
-        _mintTokenAndApproveContractCall('', 0, contractAddress, payloadHash);
+        _approveContractCall(contractAddress, payloadHash);
     }
 
     function transferOwnership(bytes calldata params) external onlySelf {
