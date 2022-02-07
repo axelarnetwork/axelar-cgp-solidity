@@ -149,7 +149,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
         if (_isTokenExternal(symbol)) {
-            IERC20(tokenAddress).transfer(account, amount);
+            (bool success, bytes memory returnData) = tokenAddress.call(
+                abi.encodeWithSelector(IERC20.transfer.selector, account, amount)
+            );
+            require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), 'MINT_FAIL');
         } else {
             BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
         }
@@ -162,7 +165,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (_isTokenExternal(symbol)) {
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
 
-            (bool success, ) = depositHandler.execute(
+            (bool success, bytes memory returnData) = depositHandler.execute(
                 tokenAddress,
                 abi.encodeWithSelector(
                     IERC20.transfer.selector,
@@ -170,7 +173,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
                     IERC20(tokenAddress).balanceOf(address(depositHandler))
                 )
             );
-            require(success, 'BURN_FAIL');
+            require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), 'BURN_FAIL');
 
             depositHandler.destroy(address(0));
         } else {
