@@ -8,9 +8,15 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event Executed(bytes32 indexed commandId);
+    event TokenDeployed(bytes32 indexed commandId, string indexed symbol, address tokenAddresses);
 
-    event TokenDeployed(string symbol, address tokenAddresses);
+    event TokenMinted(bytes32 indexed commandId);
+
+    event TokenBurned(bytes32 indexed commandId);
+
+    event ContractCallApproved(bytes32 indexed commandId, address indexed contractAddress, bytes32 indexed payloadHash);
+
+    event ContractCallApprovedWithMint(bytes32 indexed commandId, address indexed contractAddress, bytes32 indexed payloadHash, address token, uint256 amount);
 
     event TokenFrozen(string indexed symbol);
 
@@ -25,10 +31,6 @@ interface IAxelarGateway {
     event AccountWhitelisted(address indexed account);
 
     event Upgraded(address indexed implementation);
-
-    event ContractCallApproved(address indexed contractAddress, bytes32 indexed payloadHash);
-
-    event ContractCallApprovedWithMint(address indexed contractAddress, bytes32 indexed payloadHash, address indexed token, uint256 amount);
 
     /***********\
     |* Getters *|

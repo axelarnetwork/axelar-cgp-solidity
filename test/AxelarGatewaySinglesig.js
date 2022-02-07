@@ -427,8 +427,7 @@ describe('AxelarGatewaySingleSig', () => {
 
         return getSignedExecuteInput(data, operatorWallet).then((input) =>
           expect(contract.execute(input))
-            .to.not.emit(contract, 'TokenDeployed')
-            .and.to.not.emit(contract, 'Executed'),
+            .to.not.emit(contract, 'TokenDeployed'),
         );
       });
 
@@ -472,8 +471,7 @@ describe('AxelarGatewaySingleSig', () => {
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'TokenDeployed')
-              .and.to.emit(contract, 'Executed')
-              .withArgs(commandID),
+              .withArgs(commandID, symbol, expectedTokenAddress),
           )
           .then(() => contract.tokenAddresses(symbol))
           .then((tokenAddress) => {
@@ -551,7 +549,7 @@ describe('AxelarGatewaySingleSig', () => {
 
         return getSignedExecuteInput(data, operatorWallet)
           .then((input) =>
-            expect(contract.execute(input)).to.not.emit(contract, 'Executed'),
+            expect(contract.execute(input)).to.not.emit(contract, 'TokenMinted'),
           )
           .then(() => {
             const data = arrayify(
@@ -575,7 +573,7 @@ describe('AxelarGatewaySingleSig', () => {
             return getSignedExecuteInput(data, ownerWallet);
           })
           .then((input) =>
-            expect(contract.execute(input)).to.not.emit(contract, 'Executed'),
+            expect(contract.execute(input)).to.not.emit(contract, 'TokenMinted'),
           );
       });
 
@@ -611,7 +609,7 @@ describe('AxelarGatewaySingleSig', () => {
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
               .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, amount)
-              .and.to.emit(contract, 'Executed'),
+              .and.to.emit(contract, 'TokenMinted'),
           )
           .then(() =>
             tokenContract
@@ -655,7 +653,7 @@ describe('AxelarGatewaySingleSig', () => {
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
               .withArgs(ADDRESS_ZERO, nonOwnerWallet.address, amount)
-              .and.to.emit(contract, 'Executed'),
+              .and.to.emit(contract, 'TokenMinted'),
           )
           .then(() =>
             tokenContract
@@ -893,13 +891,14 @@ describe('AxelarGatewaySingleSig', () => {
 
       it('should transfer ownership if transferring to a valid address', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        let commandId
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
               ROLE_OWNER,
-              [getRandomID()],
+              [commandId = getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [newOwner])],
             ],
@@ -910,7 +909,7 @@ describe('AxelarGatewaySingleSig', () => {
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'OwnershipTransferred')
-              .withArgs(ownerWallet.address, newOwner),
+              .withArgs(commandId, ownerWallet.address, newOwner),
           )
           .then(() => contract.owner())
           .then((actual) => {
@@ -920,13 +919,14 @@ describe('AxelarGatewaySingleSig', () => {
 
       it('should allow the previous owner to deploy token', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        let commandId
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
               ROLE_OWNER,
-              [getRandomID()],
+              [commandId = getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [newOwner])],
             ],
@@ -937,7 +937,7 @@ describe('AxelarGatewaySingleSig', () => {
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'OwnershipTransferred')
-              .withArgs(ownerWallet.address, newOwner),
+              .withArgs(commandId, ownerWallet.address, newOwner),
           )
           .then(() => {
             const name = 'An Awesome Token';
@@ -971,13 +971,14 @@ describe('AxelarGatewaySingleSig', () => {
 
       it('should not allow the previous owner to transfer ownership', () => {
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        let commandId
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
               ROLE_OWNER,
-              [getRandomID()],
+              [commandId = getRandomID()],
               ['transferOwnership'],
               [defaultAbiCoder.encode(['address'], [newOwner])],
             ],
@@ -988,7 +989,7 @@ describe('AxelarGatewaySingleSig', () => {
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'OwnershipTransferred')
-              .withArgs(ownerWallet.address, newOwner),
+              .withArgs(commandId, ownerWallet.address, newOwner),
           )
           .then(() => {
             const newOwner = '0x2e531e213004433c2f92592ABEf79228AACaedFa';
@@ -1042,13 +1043,14 @@ describe('AxelarGatewaySingleSig', () => {
 
       it('should allow the owner to transfer operatorship', () => {
         const newOperator = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        let commandId
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
               ROLE_OWNER,
-              [getRandomID()],
+              [commandId = getRandomID()],
               ['transferOperatorship'],
               [defaultAbiCoder.encode(['address'], [newOperator])],
             ],
@@ -1059,7 +1061,7 @@ describe('AxelarGatewaySingleSig', () => {
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'OperatorshipTransferred')
-              .withArgs(operatorWallet.address, newOperator),
+              .withArgs(commandId, operatorWallet.address, newOperator),
           )
           .then(() => contract.operator())
           .then((actual) => {
@@ -1084,13 +1086,15 @@ describe('AxelarGatewaySingleSig', () => {
           const amount = 10000;
           await token.mint(nonOwnerWallet.address, amount);
 
+          let commandId
+
           const deployTokenData = arrayify(
             defaultAbiCoder.encode(
               ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
               [
                 CHAIN_ID,
                 ROLE_OWNER,
-                [getRandomID()],
+                [commandId = getRandomID()],
                 ['deployToken'],
                 [
                   defaultAbiCoder.encode(
@@ -1105,7 +1109,7 @@ describe('AxelarGatewaySingleSig', () => {
             (input) =>
               expect(contract.execute(input))
                 .to.emit(contract, 'TokenDeployed')
-                .withArgs(symbol, token.address),
+                .withArgs(commandId, symbol, token.address),
           );
 
           const salt = randomBytes(32);
@@ -1171,13 +1175,14 @@ describe('AxelarGatewaySingleSig', () => {
         const amount1 = 10000;
         const amount2 = 20000;
         const newOwner = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+        let commandIds
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
               ROLE_OWNER,
-              [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
+              commandIds = [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
               ['deployToken', 'mintToken', 'mintToken', 'transferOwnership'],
               [
                 defaultAbiCoder.encode(
@@ -1203,7 +1208,7 @@ describe('AxelarGatewaySingleSig', () => {
             expect(contract.execute(input))
               .to.emit(contract, 'TokenDeployed')
               .and.to.emit(contract, 'OwnershipTransferred')
-              .withArgs(ownerWallet.address, newOwner),
+              .withArgs(commandIds[3], ownerWallet.address, newOwner),
           )
           .then(() => contract.tokenAddresses(symbol))
           .then((tokenAddress) => {
@@ -1282,13 +1287,15 @@ describe('AxelarGatewaySingleSig', () => {
       await tokenA.mint(contract.address, 1e6);
       await tokenB.mint(swapper.address, 1e6);
 
+      let commandId
+
       const deployTokenData = arrayify(
         defaultAbiCoder.encode(
           ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
           [
             CHAIN_ID,
             ROLE_OWNER,
-            [getRandomID()],
+            [commandId = getRandomID()],
             ['deployToken'],
             [
               defaultAbiCoder.encode(
@@ -1303,7 +1310,7 @@ describe('AxelarGatewaySingleSig', () => {
       await getSignedExecuteInput(deployTokenData, ownerWallet).then((input) =>
         expect(contract.execute(input))
           .to.emit(contract, 'TokenDeployed')
-          .withArgs(symbolA, tokenA.address),
+          .withArgs(commandId, symbolA, tokenA.address),
       );
 
       const payload = [tokenB.address, nonOwnerWallet.address, 1];
@@ -1318,7 +1325,7 @@ describe('AxelarGatewaySingleSig', () => {
           [
             CHAIN_ID,
             ROLE_OWNER,
-            [getRandomID()],
+            [commandId = getRandomID()],
             ['mintTokenAndApproveContractCall'],
             [
               defaultAbiCoder.encode(
@@ -1340,7 +1347,7 @@ describe('AxelarGatewaySingleSig', () => {
 
       await expect(approveExecute)
         .to.emit(contract, 'ContractCallApprovedWithMint')
-        .withArgs(executor.address, payloadHash, tokenA.address, 20000);
+        .withArgs(commandId, executor.address, payloadHash, tokenA.address, swapAmount);
 
       const swap = await executor.swapToken(
         tokenA.address,

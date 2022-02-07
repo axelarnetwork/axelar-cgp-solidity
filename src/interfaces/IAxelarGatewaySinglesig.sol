@@ -6,9 +6,9 @@ import { IAxelarGateway } from './IAxelarGateway.sol';
 
 interface IAxelarGatewaySinglesig is IAxelarGateway {
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(bytes32 indexed commandId, address indexed previousOwner, address indexed newOwner);
 
-    event OperatorshipTransferred(address indexed previousOperator, address indexed newOperator);
+    event OperatorshipTransferred(bytes32 indexed commandId, address indexed previousOperator, address indexed newOperator);
 
     function owner() external view returns (address);
 

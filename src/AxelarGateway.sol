@@ -29,13 +29,13 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant PREFIX_IS_TOKEN_EXTERNAL = keccak256('is-token-external');
     bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED = keccak256('contract-call-approved');
+    bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT = keccak256('contract-call-approved-with-mint');
 
     bytes32 internal constant SELECTOR_BURN_TOKEN = keccak256('burnToken');
     bytes32 internal constant SELECTOR_DEPLOY_TOKEN = keccak256('deployToken');
     bytes32 internal constant SELECTOR_MINT_TOKEN = keccak256('mintToken');
-    bytes32 internal constant SELECTOR_MINT_TOKEN_AND_APPROVE_CONTRACT_CALL =
-        keccak256('mintTokenAndApproveContractCall');
     bytes32 internal constant SELECTOR_APPROVE_CONTRACT_CALL = keccak256('approveContractCall');
+    bytes32 internal constant SELECTOR_APPROVE_CONTRACT_CALL_WITH_MINT = keccak256('approveContractCallWithMint');
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
     bytes32 internal constant SELECTOR_TRANSFER_OWNERSHIP = keccak256('transferOwnership');
 
@@ -127,6 +127,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \**********************/
 
     function _deployToken(
+        bytes32 commandId,
         string memory name,
         string memory symbol,
         uint8 decimals,
@@ -149,7 +150,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         _setTokenAddress(symbol, tokenAddress);
 
-        emit TokenDeployed(symbol, tokenAddress);
+        emit TokenDeployed(commandId, symbol, tokenAddress);
     }
 
     function _mintToken(
@@ -167,7 +168,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         }
     }
 
-    function _burnToken(string memory symbol, bytes32 salt) internal {
+    function _burnToken(bytes32 commandId, string memory symbol, bytes32 salt) internal {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
@@ -188,21 +189,25 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         } else {
             BurnableMintableCappedERC20(tokenAddress).burn(salt);
         }
+
+        emit TokenBurned(commandId);
     }
 
-    function _mintTokenAndApproveContractCall(string memory symbol, uint256 amount, address contractAddress, bytes32 payloadHash) internal {
+    function _approveContractCall(bytes32 commandId, address contractAddress, bytes32 approvalHash) internal {
+        // TODO add messageSender
+        _setContractCallApproved(contractAddress, approvalHash);
+
+        emit ContractCallApproved(commandId, contractAddress, approvalHash);
+    }
+
+    function _approveContractCallWithMint(bytes32 commandId, address contractAddress, bytes32 payloadHash, string memory symbol, uint256 amount) internal {
+        // TODO add messageSender
         _mintToken(symbol, contractAddress, amount);
 
         address token = tokenAddresses(symbol);
         _setContractCallApprovedWithMint(contractAddress, payloadHash, token, amount);
 
-        emit ContractCallApprovedWithMint(contractAddress, payloadHash, token, amount);
-    }
-
-    function _approveContractCall(address contractAddress, bytes32 approvalHash) internal {
-        _setContractCallApproved(contractAddress, approvalHash);
-
-        emit ContractCallApproved(contractAddress, approvalHash);
+        emit ContractCallApprovedWithMint(commandId, contractAddress, payloadHash, token, amount);
     }
 
     /********************\
@@ -238,7 +243,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, contractAddress, payloadHash, token, amount));
+        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT, contractAddress, payloadHash, token, amount));
     }
 
     /********************\

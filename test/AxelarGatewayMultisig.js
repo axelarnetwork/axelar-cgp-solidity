@@ -157,8 +157,7 @@ describe('AxelarGatewayMultisig', () => {
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'TokenDeployed')
-              .and.to.emit(contract, 'Executed')
-              .withArgs(commandID),
+              .withArgs(commandID, symbol, expectedTokenAddress),
           )
           .then(() => contract.tokenAddresses(symbol))
           .then((tokenAddress) => {
@@ -271,7 +270,7 @@ describe('AxelarGatewayMultisig', () => {
           operators.slice(0, threshold),
         )
           .then((input) =>
-            expect(contract.execute(input)).to.not.emit(contract, 'Executed'),
+            expect(contract.execute(input)).to.not.emit(contract, 'TokenMinted'),
           )
           .then(() => {
             const data = arrayify(
@@ -298,7 +297,7 @@ describe('AxelarGatewayMultisig', () => {
             );
           })
           .then((input) =>
-            expect(contract.execute(input)).to.not.emit(contract, 'Executed'),
+            expect(contract.execute(input)).to.not.emit(contract, 'TokenMinted'),
           );
       });
 
@@ -334,7 +333,7 @@ describe('AxelarGatewayMultisig', () => {
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
               .withArgs(ADDRESS_ZERO, wallets[0].address, amount)
-              .and.to.emit(contract, 'Executed'),
+              .and.to.emit(contract, 'TokenMinted'),
           )
           .then(() =>
             tokenContract.balanceOf(wallets[0].address).then(bigNumberToNumber),
@@ -376,7 +375,7 @@ describe('AxelarGatewayMultisig', () => {
             expect(contract.execute(input))
               .to.emit(tokenContract, 'Transfer')
               .withArgs(ADDRESS_ZERO, wallets[0].address, amount)
-              .and.to.emit(contract, 'Executed'),
+              .and.to.emit(contract, 'TokenMinted'),
           )
           .then(() =>
             tokenContract.balanceOf(wallets[0].address).then(bigNumberToNumber),
@@ -578,13 +577,14 @@ describe('AxelarGatewayMultisig', () => {
 
     describe('command transferOwnership', () => {
       it('should owners to transfer ownership', () => {
+        let commandId
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
               ROLE_OWNER,
-              [getRandomID()],
+              [commandId = getRandomID()],
               ['transferOwnership'],
               [
                 defaultAbiCoder.encode(
@@ -601,6 +601,7 @@ describe('AxelarGatewayMultisig', () => {
             expect(contract.execute(input))
               .to.emit(contract, 'OwnershipTransferred')
               .withArgs(
+                commandId,
                 owners.map(get('address')),
                 threshold,
                 operators.map(get('address')),
@@ -641,6 +642,8 @@ describe('AxelarGatewayMultisig', () => {
           ),
         );
 
+        let commandId
+
         return getSignedMultisigExecuteInput(data, owners.slice(1, 3))
           .then((input) => contract.execute(input))
           .then(() => {
@@ -650,7 +653,7 @@ describe('AxelarGatewayMultisig', () => {
                 [
                   CHAIN_ID,
                   ROLE_OWNER,
-                  [getRandomID()],
+                  [commandId = getRandomID()],
                   ['transferOwnership'],
                   [
                     defaultAbiCoder.encode(
@@ -668,6 +671,7 @@ describe('AxelarGatewayMultisig', () => {
             expect(contract.execute(input))
               .to.emit(contract, 'OwnershipTransferred')
               .withArgs(
+                commandId,
                 owners.map(get('address')),
                 threshold,
                 operators.map(get('address')),
@@ -730,13 +734,14 @@ describe('AxelarGatewayMultisig', () => {
 
     describe('command transferOperatorship', () => {
       it('should owners to transfer operatorship', () => {
+        let commandId
         const data = arrayify(
           defaultAbiCoder.encode(
             ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
             [
               CHAIN_ID,
               ROLE_OWNER,
-              [getRandomID()],
+              [commandId = getRandomID()],
               ['transferOperatorship'],
               [
                 defaultAbiCoder.encode(
@@ -753,6 +758,7 @@ describe('AxelarGatewayMultisig', () => {
             expect(contract.execute(input))
               .to.emit(contract, 'OperatorshipTransferred')
               .withArgs(
+                commandId,
                 operators.map(get('address')),
                 threshold,
                 owners.map(get('address')),
@@ -793,6 +799,8 @@ describe('AxelarGatewayMultisig', () => {
           ),
         );
 
+        let commandId
+
         return getSignedMultisigExecuteInput(data, owners.slice(1, 3))
           .then((input) => contract.execute(input))
           .then(() => {
@@ -802,7 +810,7 @@ describe('AxelarGatewayMultisig', () => {
                 [
                   CHAIN_ID,
                   ROLE_OWNER,
-                  [getRandomID()],
+                  [commandId = getRandomID()],
                   ['transferOperatorship'],
                   [
                     defaultAbiCoder.encode(
@@ -820,6 +828,7 @@ describe('AxelarGatewayMultisig', () => {
             expect(contract.execute(input))
               .to.emit(contract, 'OperatorshipTransferred')
               .withArgs(
+                commandId,
                 operators.map(get('address')),
                 threshold,
                 owners.map(get('address')),
