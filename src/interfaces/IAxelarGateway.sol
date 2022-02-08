@@ -47,6 +47,8 @@ interface IAxelarGateway {
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
 
+    function destinationChainEnabled(uint256 destinationChainId) external view returns (bool);
+
     /*******************\
     |* Admin Functions *|
     \*******************/

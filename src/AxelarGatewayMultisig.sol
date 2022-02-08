@@ -346,6 +346,12 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         _burnToken(symbol, salt);
     }
 
+    function setDestinationChain(bytes calldata params) external onlySelf {
+        (uint256 destinationChainId, bool enabled) = abi.decode(params, (uint256, bool));
+
+        _setDestinationChain(destinationChainId, enabled);
+    }
+
     function transferOwnership(bytes calldata params) external onlySelf {
         (address[] memory newOwners, uint256 newThreshold) = abi.decode(params, (address[], uint256));
 
@@ -463,6 +469,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
                 if (!areValidRecentOperators && !areValidRecentOwners) continue;
 
                 commandSelector = AxelarGatewayMultisig.burnToken.selector;
+            } else if (commandHash == SELECTOR_SET_DESTINATION_CHAIN) {
+                if (!areValidRecentOperators && !areValidRecentOwners) continue;
+
+                commandSelector = AxelarGatewayMultisig.setDestinationChain.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OWNERSHIP) {
                 if (!areValidCurrentOwners) continue;
 
