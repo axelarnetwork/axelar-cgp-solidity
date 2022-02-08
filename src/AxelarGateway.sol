@@ -54,7 +54,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \******************/
 
     function sendToken(
-        uint256 destinationChain,
+        uint256 destinationChainId,
         string memory symbol,
         uint256 amount
     ) external returns (bool) {
