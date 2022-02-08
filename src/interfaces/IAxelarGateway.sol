@@ -53,6 +53,8 @@ interface IAxelarGateway {
     |* Admin Functions *|
     \*******************/
 
+    function setDestinationChain(uint256 destinationChainId, bool enabled) external;
+
     function freezeToken(string memory symbol) external;
 
     function unfreezeToken(string memory symbol) external;

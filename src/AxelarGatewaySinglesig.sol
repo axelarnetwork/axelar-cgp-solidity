@@ -128,12 +128,6 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         _burnToken(symbol, salt);
     }
 
-    function setDestinationChain(bytes calldata params) external onlySelf {
-        (uint256 destinationChainId, bool enabled) = abi.decode(params, (uint256, bool));
-
-        _setDestinationChain(destinationChainId, enabled);
-    }
-
     function transferOwnership(bytes calldata params) external onlySelf {
         address newOwner = abi.decode(params, (address));
         uint256 ownerEpoch = _ownerEpoch();
@@ -239,10 +233,6 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
                 if (!isValidRecentOperator && !isValidRecentOwner) continue;
 
                 commandSelector = AxelarGatewaySinglesig.burnToken.selector;
-            } else if (commandHash == SELECTOR_SET_DESTINATION_CHAIN) {
-                if (!isValidRecentOperator && !isValidRecentOwner) continue;
-
-                commandSelector = AxelarGatewaySinglesig.setDestinationChain.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OWNERSHIP) {
                 if (!isCurrentOwner) continue;
 

@@ -41,7 +41,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant SELECTOR_MINT_TOKEN = keccak256('mintToken');
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
     bytes32 internal constant SELECTOR_TRANSFER_OWNERSHIP = keccak256('transferOwnership');
-    bytes32 internal constant SELECTOR_SET_DESTINATION_CHAIN = keccak256('addDestinationChain');
 
     bytes32 internal constant EMPTY_HASH = keccak256('');
 
@@ -119,6 +118,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /*******************\
     |* Admin Functions *|
     \*******************/
+
+    function setDestinationChain(uint256 destinationChainId, bool enabled) external override onlyAdmin {
+        _setBool(_getDestinationChainKey(destinationChainId), enabled);
+    }
 
     function freezeToken(string memory symbol) external override onlyAdmin {
         _setBool(_getFreezeTokenKey(symbol), true);
@@ -284,9 +287,5 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _setImplementation(address newImplementation) internal {
         _setAddress(KEY_IMPLEMENTATION, newImplementation);
-    }
-
-    function _setDestinationChain(uint256 destinationChainId, bool enabled) internal {
-        _setBool(_getDestinationChainKey(destinationChainId), enabled);
     }
 }
