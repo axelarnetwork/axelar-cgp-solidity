@@ -463,7 +463,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
                 if (!areValidRecentOperators && !areValidRecentOwners) continue;
 
                 commandSelector = AxelarGatewayMultisig.burnToken.selector;
-           } else if (commandHash == SELECTOR_TRANSFER_OWNERSHIP) {
+            } else if (commandHash == SELECTOR_TRANSFER_OWNERSHIP) {
                 if (!areValidCurrentOwners) continue;
 
                 commandSelector = AxelarGatewayMultisig.transferOwnership.selector;
