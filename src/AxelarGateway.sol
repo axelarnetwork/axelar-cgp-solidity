@@ -57,7 +57,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         uint256 destinationChainId,
         string memory symbol,
         uint256 amount
-    ) external returns (bool) {
+    ) external {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
