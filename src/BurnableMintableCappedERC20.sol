@@ -45,10 +45,9 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
         _burn(account, balanceOf[account]);
     }
 
-    function burnFrom(address account, uint256 amount) public onlyOwner returns (bool) {
+    function burnFrom(address account, uint256 amount) public onlyOwner {
         _approve(account, owner, allowance[account][owner] - amount);
         _burn(account, amount);
-        return true;
     }
 
     function _beforeTokenTransfer(

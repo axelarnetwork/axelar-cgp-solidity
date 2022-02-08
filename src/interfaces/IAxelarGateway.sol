@@ -7,7 +7,7 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenSent(uint256 destinationChain, string symbol, uint256 amount);
+    event TokenSent(uint256 destinationChainId, string symbol, uint256 amount);
 
     event Executed(bytes32 indexed commandId);
 
@@ -31,7 +31,7 @@ interface IAxelarGateway {
     |* Public Methods *|
     \******************/
 
-    function sendToken(uint256 destinationChain, string memory symbol, uint256 amount) external returns (bool);
+    function sendToken(uint256 destinationChain, string memory symbol, uint256 amount) external;
 
     /***********\
     |* Getters *|
