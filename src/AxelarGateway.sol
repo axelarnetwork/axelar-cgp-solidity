@@ -42,8 +42,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
     bytes32 internal constant SELECTOR_TRANSFER_OWNERSHIP = keccak256('transferOwnership');
 
-    bytes32 internal constant EMPTY_HASH = keccak256('');
-
     uint8 internal constant OLD_KEY_RETENTION = 16;
 
     modifier onlySelf() {
@@ -183,7 +181,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             _setTokenType(symbol, TokenType.InternalBurnableFrom);
         } else {
             // If token address is specified, ensure that there is a contact at the specified addressed.
-            require(tokenAddress.codehash != EMPTY_HASH, 'NOT_TOKEN');
+            require(tokenAddress.code.length != uint256(0), 'NOT_TOKEN');
             // Mark that this symbol is an external token, which is needed to differentiate between operations on mint and burn.
             _setTokenType(symbol, TokenType.External);
         }
