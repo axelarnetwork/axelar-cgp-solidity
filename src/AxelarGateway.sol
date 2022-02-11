@@ -63,26 +63,40 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
         require(destinationChainEnabled(destinationChainId), 'UNKNOWN_CHAIN');
 
+        emit TokenSent(destinationChainId, symbol, amount);
+
         TokenType tokenType = _getTokenType(symbol);
-        bytes memory tokenCallData;
+        string memory burnErrorMessage = 'BURN_FAIL';
 
         if (tokenType == TokenType.External) {
-            tokenCallData = abi.encodeWithSelector(IERC20.transferFrom.selector, msg.sender, address(this), amount);
-        } else if (tokenType == TokenType.InternalBurnableFrom) {
-            tokenCallData = abi.encodeWithSelector(BurnableMintableCappedERC20.burnFrom.selector, msg.sender, amount);
-        } else if (tokenType == TokenType.InternalBurnable) {
-            address depositAddress = BurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0));
-            tokenCallData = abi.encodeWithSelector(IERC20.transferFrom.selector, msg.sender, depositAddress, amount);
+            _callERC20Token(
+                tokenAddress,
+                abi.encodeWithSelector(IERC20.transferFrom.selector, msg.sender, address(this), amount),
+                burnErrorMessage
+            );
+            return;
         }
 
-        (bool success, bytes memory returnData) = tokenAddress.call(tokenCallData);
-        require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), 'BURN_FAIL');
-
-        if (tokenType == TokenType.InternalBurnable) {
-            BurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
+        if (tokenType == TokenType.InternalBurnableFrom) {
+            _callERC20Token(
+                tokenAddress,
+                abi.encodeWithSelector(BurnableMintableCappedERC20.burnFrom.selector, msg.sender, amount),
+                burnErrorMessage
+            );
+            return;
         }
 
-        emit TokenSent(destinationChainId, symbol, amount);
+        _callERC20Token(
+            tokenAddress,
+            abi.encodeWithSelector(
+                IERC20.transferFrom.selector,
+                msg.sender,
+                BurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0)),
+                amount
+            ),
+            burnErrorMessage
+        );
+        BurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
     }
 
     /***********\
@@ -200,10 +214,11 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
         if (_getTokenType(symbol) == TokenType.External) {
-            (bool success, bytes memory returnData) = tokenAddress.call(
-                abi.encodeWithSelector(IERC20.transfer.selector, account, amount)
+            _callERC20Token(
+                tokenAddress,
+                abi.encodeWithSelector(IERC20.transfer.selector, account, amount),
+                'MINT_FAIL'
             );
-            require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), 'MINT_FAIL');
         } else {
             BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
         }
@@ -254,6 +269,19 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _getDestinationChainKey(uint256 destinationChainId) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(PREFIX_DESTINATION_CHAIN, destinationChainId));
+    }
+
+    /********************\
+    |* Internal Methods *|
+    \********************/
+
+    function _callERC20Token(
+        address tokenAddress,
+        bytes memory callData,
+        string memory errorMessage
+    ) internal {
+        (bool success, bytes memory returnData) = tokenAddress.call(callData);
+        require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), errorMessage);
     }
 
     /********************\
