@@ -10,6 +10,7 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
     bytes32 public DOMAIN_SEPARATOR;
 
     string private constant EIP191_PREFIX_FOR_EIP712_STRUCTURED_DATA = '\x19\x01';
+    // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 private constant PERMIT_SIGNATURE_HASH =
         bytes32(0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9);
 
