@@ -32,7 +32,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
-    bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('is-token-external');
+    bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
     bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
     bytes32 internal constant PREFIX_DESTINATION_CHAIN = keccak256('destination-chain');
 
