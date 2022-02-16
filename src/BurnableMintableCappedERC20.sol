@@ -68,7 +68,7 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
     }
 
     function permit(
-        address owner,
+        address issuer,
         address spender,
         uint256 value,
         uint256 deadline,
@@ -82,14 +82,14 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
             abi.encodePacked(
                 EIP191_PREFIX_FOR_EIP712_STRUCTURED_DATA,
                 DOMAIN_SEPARATOR,
-                keccak256(abi.encode(PERMIT_SIGNATURE_HASH, owner, spender, value, nonces[owner]++, deadline))
+                keccak256(abi.encode(PERMIT_SIGNATURE_HASH, issuer, spender, value, nonces[issuer]++, deadline))
             )
         );
 
         address recoveredAddress = ecrecover(digest, v, r, s);
-        require(recoveredAddress == owner, 'INVALID_SIGNATURE');
+        require(recoveredAddress == issuer, 'INVALID_SIGNATURE');
 
-        _approve(owner, spender, value);
+        _approve(issuer, spender, value);
     }
 
     function _beforeTokenTransfer(
