@@ -10,7 +10,12 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
     bytes32 public DOMAIN_SEPARATOR;
 
     string private constant EIP191_PREFIX_FOR_EIP712_STRUCTURED_DATA = '\x19\x01';
-    // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+
+    // keccak256('EIP712Domain(uint256 chainId,address verifyingContract)')
+    bytes32 private constant DOMAIN_TYPE_SIGNATURE_HASH =
+        bytes32(0x47e79534a245952e8b16893a336b85a3d9ea9fa8c573f3d803afb92a79469218);
+
+    // keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)')
     bytes32 private constant PERMIT_SIGNATURE_HASH =
         bytes32(0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9);
 
@@ -30,7 +35,7 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
     ) MintableCappedERC20(name, symbol, decimals, capacity) {
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
-                keccak256('EIP712Domain(uint256 chainId,address verifyingContract)'),
+                DOMAIN_TYPE_SIGNATURE_HASH,
                 block.chainid,
                 address(this)
             )
