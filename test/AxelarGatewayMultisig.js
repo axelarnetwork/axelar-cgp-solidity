@@ -81,6 +81,10 @@ describe('AxelarGatewayMultisig', () => {
         AxelarGatewayMultisig,
         [],
       );
+      const newImplementationCode = await newImplementation.provider.getCode(
+        newImplementation.address,
+      );
+      const newImplementationCodeHash = keccak256(newImplementationCode);
       const params = arrayify(
         defaultAbiCoder.encode(
           ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
@@ -96,14 +100,24 @@ describe('AxelarGatewayMultisig', () => {
       );
 
       return expect(
-        contract.connect(admins[0]).upgrade(newImplementation.address, params),
+        contract
+          .connect(admins[0])
+          .upgrade(
+            newImplementation.address,
+            newImplementationCodeHash,
+            params,
+          ),
       )
         .to.not.emit(contract, 'Upgraded')
         .then(() =>
           expect(
             contract
               .connect(admins[2])
-              .upgrade(newImplementation.address, params),
+              .upgrade(
+                newImplementation.address,
+                newImplementationCodeHash,
+                params,
+              ),
           )
             .to.emit(contract, 'Upgraded')
             .withArgs(newImplementation.address),
