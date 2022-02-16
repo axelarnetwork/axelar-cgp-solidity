@@ -34,7 +34,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
     bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
     bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
-    bytes32 internal constant PREFIX_DESTINATION_CHAIN = keccak256('destination-chain');
 
     bytes32 internal constant SELECTOR_BURN_TOKEN = keccak256('burnToken');
     bytes32 internal constant SELECTOR_DEPLOY_TOKEN = keccak256('deployToken');
@@ -56,14 +55,14 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function sendToken(
         uint256 destinationChainId,
+        string memory destinationAddress,
         string memory symbol,
         uint256 amount
     ) external {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
-        require(destinationChainEnabled(destinationChainId), 'UNKNOWN_CHAIN');
 
-        emit TokenSent(destinationChainId, symbol, amount);
+        emit TokenSent(destinationChainId, destinationAddress, symbol, amount);
 
         TokenType tokenType = _getTokenType(symbol);
         string memory burnErrorMessage = 'BURN_FAIL';
@@ -123,17 +122,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getBool(_getIsCommandExecutedKey(commandId));
     }
 
-    function destinationChainEnabled(uint256 destinationChainId) public view override returns (bool) {
-        return getBool(_getDestinationChainKey(destinationChainId));
-    }
-
     /*******************\
     |* Admin Functions *|
     \*******************/
-
-    function setDestinationChain(uint256 destinationChainId, bool enabled) external override onlyAdmin {
-        _setBool(_getDestinationChainKey(destinationChainId), enabled);
-    }
 
     function freezeToken(string memory symbol) external override onlyAdmin {
         _setBool(_getFreezeTokenKey(symbol), true);
@@ -267,10 +258,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return keccak256(abi.encodePacked(PREFIX_COMMAND_EXECUTED, commandId));
     }
 
-    function _getDestinationChainKey(uint256 destinationChainId) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_DESTINATION_CHAIN, destinationChainId));
-    }
-
     /********************\
     |* Internal Methods *|
     \********************/
@@ -290,12 +277,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _getTokenType(string memory symbol) internal view returns (TokenType) {
         return TokenType(getUint(_getTokenTypeKey(symbol)));
-    }
-
-    function _getChainID() internal view returns (uint256 id) {
-        assembly {
-            id := chainid()
-        }
     }
 
     /********************\

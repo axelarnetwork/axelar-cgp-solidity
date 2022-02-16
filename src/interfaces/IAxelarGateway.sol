@@ -7,7 +7,7 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenSent(uint256 destinationChainId, string symbol, uint256 amount);
+    event TokenSent(uint256 indexed destinationChainId, string indexed destinationAddress, string symbol, uint256 amount);
 
     event Executed(bytes32 indexed commandId);
 
@@ -31,7 +31,7 @@ interface IAxelarGateway {
     |* Public Methods *|
     \******************/
 
-    function sendToken(uint256 destinationChain, string memory symbol, uint256 amount) external;
+    function sendToken(uint256 destinationChainId, string memory destinationAddress, string memory symbol, uint256 amount) external;
 
     /***********\
     |* Getters *|
@@ -47,13 +47,9 @@ interface IAxelarGateway {
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
 
-    function destinationChainEnabled(uint256 destinationChainId) external view returns (bool);
-
     /*******************\
     |* Admin Functions *|
     \*******************/
-
-    function setDestinationChain(uint256 destinationChainId, bool enabled) external;
 
     function freezeToken(string memory symbol) external;
 
