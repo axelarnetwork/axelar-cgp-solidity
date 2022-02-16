@@ -6,7 +6,7 @@
   "compilerOptions": {
     "evmVersion": "london",
     "debug": {
-      "revertStrings": "strip"
+      "revertStrings": "default"
     },
     "optimizer": {
       "enabled": true,

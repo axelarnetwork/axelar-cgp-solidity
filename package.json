@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha",
-    "build": "rm -rf build && waffle",
+    "build:prod": "rm -rf build && waffle waffle-prod.json",
+    "build:dev": "rm -rf build && waffle waffle-dev.json",
     "lint": "solhint 'src/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'test/*.js' && prettier --write 'src/*.sol'"
   },
