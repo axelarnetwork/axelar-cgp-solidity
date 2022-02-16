@@ -19,8 +19,11 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
     bytes32 private constant PERMIT_SIGNATURE_HASH =
         bytes32(0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9);
 
-    bytes32 private constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
-    bytes32 private constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
+    bytes32 private constant PREFIX_TOKEN_FROZEN = // keccak256('token-frozen')
+        bytes32(0x1a7261d3a36c4ce4235d10859911c9444a6963a3591ec5725b96871d9810626b);
+
+    bytes32 private constant KEY_ALL_TOKENS_FROZEN = // keccak256('all-tokens-frozen')
+        bytes32(0x75a31d1ce8e5f9892188befc328d3b9bd3fa5037457e881abc21f388471b8d96);
 
     mapping(address => uint256) public nonces;
 
