@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
@@ -95,7 +95,13 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         emit AllTokensUnfrozen();
     }
 
-    function upgrade(address newImplementation, bytes calldata setupParams) external override onlyAdmin {
+    function upgrade(
+        address newImplementation,
+        bytes32 newImplementationCodeHash,
+        bytes calldata setupParams
+    ) external override onlyAdmin {
+        require(newImplementationCodeHash == newImplementation.codehash, 'INV_CODEHASH');
+
         emit Upgraded(newImplementation);
 
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
