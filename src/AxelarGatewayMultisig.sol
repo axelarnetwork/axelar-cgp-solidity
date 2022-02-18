@@ -24,16 +24,14 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     bytes32 internal constant PREFIX_OPERATOR_THRESHOLD = keccak256('operator-threshold');
     bytes32 internal constant PREFIX_IS_OPERATOR = keccak256('is-operator');
 
-    function _containsDuplicates(address[] memory accounts) internal pure returns (bool) {
-        uint256 count = accounts.length;
-
-        for (uint256 i; i < count; ++i) {
-            for (uint256 j = i + 1; j < count; ++j) {
-                if (accounts[i] == accounts[j]) return true;
+    function _isSortedAscAndContainsNoDuplicate(address[] memory accounts) internal pure returns (bool) {
+        for (uint256 i; i < accounts.length - 1; ++i) {
+            if (accounts[i] >= accounts[i + 1]) {
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 
     /************************\
@@ -426,7 +424,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         ) = abi.decode(data, (uint256, Role, bytes32[], string[], bytes[]));
 
         require(chainId == _getChainID(), 'INV_CHAIN');
-        require(!_containsDuplicates(signers), 'DUP_SIGNERS');
+        require(_isSortedAscAndContainsNoDuplicate(signers), 'DUP_SIGNERS');
 
         uint256 commandsLength = commandIds.length;
 
