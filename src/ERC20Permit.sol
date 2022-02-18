@@ -50,6 +50,9 @@ abstract contract ERC20Permit is ERC20 {
             )
         );
 
+        require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, 'INV_S');
+        require(v == 27 || v == 28, 'INV_V');
+
         address recoveredAddress = ecrecover(digest, v, r, s);
         require(recoveredAddress == issuer, 'INV_SIG');
 
