@@ -189,7 +189,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             );
             require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), 'BURN_FAIL');
 
-            depositHandler.destroy(address(0));
+            depositHandler.destroy(address(this));
         } else {
             BurnableMintableCappedERC20(tokenAddress).burn(salt);
         }
