@@ -8,19 +8,17 @@ contract DepositHandler {
 
     uint256 internal _lockedStatus = IS_NOT_LOCKED;
 
-    modifier noReenter() {
+    function execute(address callee, bytes calldata data) external returns (bool success, bytes memory returnData) {
+        // Reentrancy Guard
         require(_lockedStatus == IS_NOT_LOCKED);
-
         _lockedStatus = IS_LOCKED;
-        _;
+
+        (success, returnData) = callee.call(data);
+
         _lockedStatus = IS_NOT_LOCKED;
     }
 
-    function execute(address callee, bytes calldata data) external noReenter returns (bool success, bytes memory returnData) {
-        (success, returnData) = callee.call(data);
-    }
-
-    function destroy(address etherDestination) external noReenter {
+    function destroy(address etherDestination) external {
         selfdestruct(payable(etherDestination));
     }
 }
