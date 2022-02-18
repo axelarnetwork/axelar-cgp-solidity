@@ -7,8 +7,13 @@ import { DepositHandler } from './DepositHandler.sol';
 import { EternalStorage } from './EternalStorage.sol';
 
 contract BurnableMintableCappedERC20 is MintableCappedERC20 {
-    bytes32 private constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
-    bytes32 private constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
+    // keccak256('token-frozen')
+    bytes32 private constant PREFIX_TOKEN_FROZEN =
+        bytes32(0x1a7261d3a36c4ce4235d10859911c9444a6963a3591ec5725b96871d9810626b);
+
+    // keccak256('all-tokens-frozen')
+    bytes32 private constant KEY_ALL_TOKENS_FROZEN =
+        bytes32(0x75a31d1ce8e5f9892188befc328d3b9bd3fa5037457e881abc21f388471b8d96);
 
     event Frozen(address indexed owner);
     event Unfrozen(address indexed owner);

@@ -196,7 +196,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             bytes[] memory params
         ) = abi.decode(data, (uint256, Role, bytes32[], string[], bytes[]));
 
-        require(chainId == _getChainID(), 'INV_CHAIN');
+        require(chainId == block.chainid, 'INV_CHAIN');
 
         uint256 commandsLength = commandIds.length;
 

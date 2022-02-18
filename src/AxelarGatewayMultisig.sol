@@ -423,7 +423,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             bytes[] memory params
         ) = abi.decode(data, (uint256, Role, bytes32[], string[], bytes[]));
 
-        require(chainId == _getChainID(), 'INV_CHAIN');
+        require(chainId == block.chainid, 'INV_CHAIN');
         require(_isSortedAscAndContainsNoDuplicate(signers), 'DUP_SIGNERS');
 
         uint256 commandsLength = commandIds.length;
