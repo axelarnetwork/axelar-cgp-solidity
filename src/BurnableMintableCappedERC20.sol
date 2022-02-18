@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity 0.8.9;
 
 import { MintableCappedERC20 } from './MintableCappedERC20.sol';
 import { DepositHandler } from './DepositHandler.sol';
