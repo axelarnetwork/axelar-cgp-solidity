@@ -5,6 +5,9 @@
   "outputDirectory": "./build",
   "compilerOptions": {
     "evmVersion": "istanbul",
+    "debug": {
+      "revertStrings": "default"
+    },
     "optimizer": {
       "enabled": true,
       "runs": 200
