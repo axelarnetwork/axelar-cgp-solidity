@@ -3,6 +3,7 @@
 const {
   utils: { defaultAbiCoder, id, arrayify, keccak256 },
 } = require('ethers');
+const { sortBy } = require('lodash');
 
 const getRandomInt = (max) => {
   return Math.floor(Math.random() * max);
@@ -20,7 +21,9 @@ module.exports = {
 
   getSignedMultisigExecuteInput: (data, wallets) =>
     Promise.all(
-      wallets.map((wallet) => wallet.signMessage(arrayify(keccak256(data)))),
+      sortBy(wallets, (wallet) => wallet.address.toLowerCase()).map((wallet) =>
+        wallet.signMessage(arrayify(keccak256(data))),
+      ),
     ).then((signatures) =>
       defaultAbiCoder.encode(['bytes', 'bytes[]'], [data, signatures]),
     ),
