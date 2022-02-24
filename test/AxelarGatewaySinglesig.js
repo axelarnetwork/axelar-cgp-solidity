@@ -33,7 +33,6 @@ const {
   getSignedExecuteInput,
   getRandomID,
 } = require('./utils');
-const { it } = require('mocha');
 
 describe('AxelarGatewaySingleSig', () => {
   const [

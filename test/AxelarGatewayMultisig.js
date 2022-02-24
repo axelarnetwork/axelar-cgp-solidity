@@ -26,7 +26,6 @@ const {
   getRandomInt,
   getRandomID,
 } = require('./utils');
-const {it} = require("mocha");
 
 describe('AxelarGatewayMultisig', () => {
   const wallets = new MockProvider().getWallets();
