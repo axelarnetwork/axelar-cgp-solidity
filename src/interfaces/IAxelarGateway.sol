@@ -7,7 +7,7 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenSent(address sender, uint256 indexed destinationChainId, string indexed destinationAddress, string symbol, uint256 amount);
+    event TokenSent(address indexed sender, uint256 indexed destinationChainId, string indexed destinationAddress, string symbol, uint256 amount);
 
     event Executed(bytes32 indexed commandId);
 

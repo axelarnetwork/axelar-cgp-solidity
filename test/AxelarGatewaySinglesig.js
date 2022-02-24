@@ -1311,5 +1311,59 @@ describe('AxelarGatewaySingleSig', () => {
           });
       });
     });
+
+    describe('send token from gateway', () => {
+      it('should burn token and emit an event', async () => {
+        const tokenName = 'Test Token';
+        const tokenSymbol = 'TEST';
+        const decimals = 18;
+        const cap = 1e9;
+
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              ROLE_OWNER,
+              [getRandomID(), getRandomID()],
+              ['deployToken', 'mintToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO],
+                ),
+                defaultAbiCoder.encode(
+                  ['string', 'address', 'uint256'],
+                  [tokenSymbol, ownerWallet.address, 1e6],
+                ),
+              ],
+            ],
+          ),
+        );
+        await contract.execute(await getSignedExecuteInput(data, ownerWallet))
+
+        const tokenAddress = await contract.tokenAddresses(tokenSymbol)
+        const token = new Contract(
+          tokenAddress,
+          BurnableMintableCappedERC20.abi,
+          ownerWallet,
+        );
+
+        const issuer = ownerWallet.address;
+        const spender = contract.address;
+        const amount = 1000;
+        const destination = nonOwnerWallet.address.toString().replace('0x', '');
+
+        await expect(await token.approve(spender, amount))
+          .to.emit(token, 'Approval')
+          .withArgs(issuer, spender, amount);
+
+        await expect(await contract.sendToken(2, destination, tokenSymbol, amount))
+          .to.emit(token, 'Transfer')
+          .withArgs(issuer, ADDRESS_ZERO, amount)
+          .to.emit(contract, 'TokenSent')
+          .withArgs(issuer, 2, destination, tokenSymbol, amount);
+      });
+    });
   });
 });

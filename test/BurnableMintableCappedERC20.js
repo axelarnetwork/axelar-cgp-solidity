@@ -1,52 +1,108 @@
 'use strict';
 
-const chai = require('chai');
 const {
-  utils: { splitSignature },
+  Contract,
+  utils: { defaultAbiCoder, splitSignature, arrayify },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
+const { get } = require("lodash/fp");
+const chai = require('chai');
 chai.use(solidity);
 const { expect } = chai;
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
+const ROLE_OWNER = 1;
 
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 
-const { it } = require('mocha');
+const AxelarGatewayProxyMultisig = require("../build/AxelarGatewayProxyMultisig.json");
+const AxelarGatewayMultisig = require("../build/AxelarGatewayMultisig.json");
+const {getRandomID, getSignedMultisigExecuteInput} = require("./utils");
 
 describe('BurnableMintableCappedERC20', () => {
-  const [ownerWallet, userWallet] = new MockProvider().getWallets();
+  const wallets = new MockProvider().getWallets();
+  const owners = wallets.slice(0, 3);
+  const operators = wallets.slice(3, 6);
+  const admins = wallets.slice(6, 9);
+  const threshold = 2;
+
+  const ownerWallet = owners[0]
+  const userWallet = admins[0]
+
+  const tokenName = 'Test Token';
+  const tokenSymbol = 'TEST';
+  let gateway;
   let token;
 
   beforeEach(async () => {
-    const name = 'test';
-    const symbol = 'test';
-    const decimals = 16;
-    const capacity = 0;
-
-    token = await deployContract(ownerWallet, BurnableMintableCappedERC20, [
-      name,
-      symbol,
-      decimals,
-      capacity,
+    const params = arrayify(
+      defaultAbiCoder.encode(
+        ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
+        [
+          admins.map(get('address')),
+          threshold,
+          owners.map(get('address')),
+          threshold,
+          operators.map(get('address')),
+          threshold,
+        ],
+      ),
+    );
+    const proxy = await deployContract(wallets[0], AxelarGatewayProxyMultisig, [
+      params,
     ]);
+    gateway = new Contract(
+      proxy.address,
+      AxelarGatewayMultisig.abi,
+      wallets[0],
+    );
 
-    // const amount = 1000000;
-    // await token.mint(userWallet.address, amount);
+    const decimals = 18;
+    const cap = 1e9
+
+    const data = arrayify(
+      defaultAbiCoder.encode(
+        ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+        [
+          CHAIN_ID,
+          ROLE_OWNER,
+          [getRandomID(), getRandomID()],
+          ['deployToken', 'mintToken'],
+          [
+            defaultAbiCoder.encode(
+              ['string', 'string', 'uint8', 'uint256', 'address'],
+              [tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO],
+            ),
+            defaultAbiCoder.encode(
+              ['string', 'address', 'uint256'],
+              [tokenSymbol, userWallet.address, 1e6],
+            ),
+          ],
+        ],
+      ),
+    );
+    await gateway.execute(await getSignedMultisigExecuteInput(data, owners.slice(1, 3)))
+
+    const tokenAddress = await gateway.tokenAddresses(tokenSymbol)
+    token = new Contract(
+      tokenAddress,
+      BurnableMintableCappedERC20.abi,
+      wallets[0],
+    );
   });
 
   describe('burning from account with given approve', () => {
-    it('should burnFrom address', async () => {
+    it('gateway should burnFrom address', async () => {
       const issuer = userWallet.address;
-      const spender = ownerWallet.address;
+      const spender = gateway.address;
       const amount = 1000;
 
       await expect(await token.connect(userWallet).approve(spender, amount))
         .to.emit(token, 'Approval')
         .withArgs(issuer, spender, amount);
 
-      await expect(await token.burnFrom(issuer, amount))
+      await expect(await gateway.connect(userWallet).sendToken(2, ownerWallet.address, tokenSymbol, amount))
         .to.emit(token, 'Transfer')
         .withArgs(issuer, ADDRESS_ZERO, amount);
     });
@@ -62,7 +118,7 @@ describe('BurnableMintableCappedERC20', () => {
       const signature = splitSignature(
         await userWallet._signTypedData(
           {
-            name: 'test',
+            name: tokenName,
             version: '1',
             chainId: CHAIN_ID,
             verifyingContract: token.address,
