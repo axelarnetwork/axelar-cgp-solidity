@@ -3,10 +3,11 @@
 pragma solidity 0.8.9;
 
 import { MintableCappedERC20 } from './MintableCappedERC20.sol';
+import { ERC20Permit } from './ERC20Permit.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { EternalStorage } from './EternalStorage.sol';
 
-contract BurnableMintableCappedERC20 is MintableCappedERC20 {
+contract BurnableMintableCappedERC20 is MintableCappedERC20, ERC20Permit {
     // keccak256('token-frozen')
     bytes32 private constant PREFIX_TOKEN_FROZEN =
         bytes32(0x1a7261d3a36c4ce4235d10859911c9444a6963a3591ec5725b96871d9810626b);
@@ -23,7 +24,7 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
         string memory symbol,
         uint8 decimals,
         uint256 capacity
-    ) MintableCappedERC20(name, symbol, decimals, capacity) {}
+    ) MintableCappedERC20(name, symbol, decimals, capacity) ERC20Permit(name) {}
 
     function depositAddress(bytes32 salt) public view returns (address) {
         /* Convert a hash which is bytes32 to an address which is 20-byte long
@@ -48,6 +49,11 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
     function burn(bytes32 salt) public onlyOwner {
         address account = depositAddress(salt);
         _burn(account, balanceOf[account]);
+    }
+
+    function burnFrom(address account, uint256 amount) public onlyOwner {
+        _approve(account, owner, allowance[account][owner] - amount);
+        _burn(account, amount);
     }
 
     function _beforeTokenTransfer(

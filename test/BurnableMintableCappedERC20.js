@@ -11,11 +11,11 @@ const { expect } = chai;
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
-const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
+const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 
 const { it } = require('mocha');
 
-describe('MintableCappedERC20', () => {
+describe('BurnableMintableCappedERC20', () => {
   const [ownerWallet, userWallet] = new MockProvider().getWallets();
   let token;
 
@@ -25,15 +25,15 @@ describe('MintableCappedERC20', () => {
     const decimals = 16;
     const capacity = 0;
 
-    token = await deployContract(ownerWallet, MintableCappedERC20, [
+    token = await deployContract(ownerWallet, BurnableMintableCappedERC20, [
       name,
       symbol,
       decimals,
       capacity,
     ]);
 
-    const amount = 1000000;
-    await token.mint(userWallet.address, amount);
+    // const amount = 1000000;
+    // await token.mint(userWallet.address, amount);
   });
 
   describe('burning from account with given approve', () => {
