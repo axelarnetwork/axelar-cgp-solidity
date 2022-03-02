@@ -107,7 +107,8 @@ describe('BurnableMintableCappedERC20', () => {
         .withArgs(issuer, ADDRESS_ZERO, amount);
     });
   });
-  describe('EIP-2612: approve permit', () => {
+
+  describe('permit', () => {
     it('should should set allowance by verifying permit', async () => {
       const issuer = userWallet.address;
       const spender = ownerWallet.address;
