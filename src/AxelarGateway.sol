@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
+import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
 
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 import { DepositHandler } from './DepositHandler.sol';
@@ -79,7 +80,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenType == TokenType.InternalBurnableFrom) {
             _callERC20Token(
                 tokenAddress,
-                abi.encodeWithSelector(BurnableMintableCappedERC20.burnFrom.selector, msg.sender, amount),
+                abi.encodeWithSelector(IERC20BurnFrom.burnFrom.selector, msg.sender, amount),
                 burnErrorMessage
             );
             return;
