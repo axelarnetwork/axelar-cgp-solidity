@@ -92,7 +92,7 @@ describe('BurnableMintableCappedERC20', () => {
     );
   });
 
-  describe('burning from account with given approve', () => {
+  describe('burnFrom, () => {
     it('gateway should burnFrom address', async () => {
       const issuer = userWallet.address;
       const spender = gateway.address;
