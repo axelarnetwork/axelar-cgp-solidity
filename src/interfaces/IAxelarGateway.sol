@@ -8,9 +8,15 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
+    event TokenSent(address indexed sender, uint256 indexed destinationChainId, string indexed destinationAddress, string symbol, uint256 amount);
+
     event Executed(bytes32 indexed commandId);
 
     event TokenDeployed(string symbol, address tokenAddresses);
+
+    event ContractCallApproved(address indexed contractAddress, bytes32 indexed payloadHash);
+
+    event ContractCallApprovedWithMint(address indexed contractAddress, bytes32 indexed payloadHash, address indexed token, uint256 amount);
 
     event TokenFrozen(string indexed symbol);
 
@@ -26,9 +32,11 @@ interface IAxelarGateway {
 
     event Upgraded(address indexed implementation);
 
-    event ContractCallApproved(address indexed contractAddress, bytes32 indexed payloadHash);
+    /******************\
+    |* Public Methods *|
+    \******************/
 
-    event ContractCallApprovedWithMint(address indexed contractAddress, bytes32 indexed payloadHash, address indexed token, uint256 amount);
+    function sendToken(uint256 destinationChainId, string memory destinationAddress, string memory symbol, uint256 amount) external;
 
     /***********\
     |* Getters *|

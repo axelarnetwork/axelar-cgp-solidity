@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
+import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
 
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 import { DepositHandler } from './DepositHandler.sol';
@@ -51,6 +52,55 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         require(msg.sender == address(this), 'NOT_SELF');
 
         _;
+    }
+
+    /******************\
+    |* Public Methods *|
+    \******************/
+
+    function sendToken(
+        uint256 destinationChainId,
+        string memory destinationAddress,
+        string memory symbol,
+        uint256 amount
+    ) external {
+        address tokenAddress = tokenAddresses(symbol);
+        require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
+
+        emit TokenSent(msg.sender, destinationChainId, destinationAddress, symbol, amount);
+
+        TokenType tokenType = _getTokenType(symbol);
+        string memory burnErrorMessage = 'BURN_FAIL';
+
+        if (tokenType == TokenType.External) {
+            _callERC20Token(
+                tokenAddress,
+                abi.encodeWithSelector(IERC20.transferFrom.selector, msg.sender, address(this), amount),
+                burnErrorMessage
+            );
+            return;
+        }
+
+        if (tokenType == TokenType.InternalBurnableFrom) {
+            _callERC20Token(
+                tokenAddress,
+                abi.encodeWithSelector(IERC20BurnFrom.burnFrom.selector, msg.sender, amount),
+                burnErrorMessage
+            );
+            return;
+        }
+
+        _callERC20Token(
+            tokenAddress,
+            abi.encodeWithSelector(
+                IERC20.transferFrom.selector,
+                msg.sender,
+                BurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0)),
+                amount
+            ),
+            burnErrorMessage
+        );
+        BurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
     }
 
     /***********\

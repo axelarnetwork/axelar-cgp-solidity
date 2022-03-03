@@ -18,6 +18,7 @@ const ROLE_OPERATOR = 2;
 
 const AxelarGatewayProxyMultisig = require('../build/AxelarGatewayProxyMultisig.json');
 const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
+const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 const DepositHandler = require('../build/DepositHandler.json');
 const {
@@ -891,6 +892,110 @@ describe('AxelarGatewayMultisig', () => {
               .to.emit(tokenContract, 'Transfer')
               .withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
           });
+      });
+    });
+
+    describe('send token from gateway', () => {
+      it('should burn internal token and emit an event', async () => {
+        const tokenName = 'Test Token';
+        const tokenSymbol = 'TEST';
+        const decimals = 18;
+        const cap = 1e9;
+
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              ROLE_OWNER,
+              [getRandomID(), getRandomID()],
+              ['deployToken', 'mintToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO],
+                ),
+                defaultAbiCoder.encode(
+                  ['string', 'address', 'uint256'],
+                  [tokenSymbol, owners[0].address, 1e6],
+                ),
+              ],
+            ],
+          ),
+        );
+        await contract.execute(await getSignedMultisigExecuteInput(data, owners.slice(0, 2)))
+
+        const tokenAddress = await contract.tokenAddresses(tokenSymbol)
+        const token = new Contract(
+          tokenAddress,
+          BurnableMintableCappedERC20.abi,
+          owners[0],
+        );
+
+        const issuer = owners[0].address;
+        const spender = contract.address;
+        const amount = 1000;
+        const destination = operators[1].address.toString().replace('0x', '');
+
+        await expect(await token.approve(spender, amount))
+          .to.emit(token, 'Approval')
+          .withArgs(issuer, spender, amount);
+
+        await expect(await contract.sendToken(2, destination, tokenSymbol, amount))
+          .to.emit(token, 'Transfer')
+          .withArgs(issuer, ADDRESS_ZERO, amount)
+          .to.emit(contract, 'TokenSent')
+          .withArgs(issuer, 2, destination, tokenSymbol, amount);
+      });
+
+      it('should lock external token and emit an event', async () => {
+        const tokenName = 'Test Token';
+        const tokenSymbol = 'TEST';
+        const decimals = 18;
+        const cap = 1e9;
+
+        const token = await deployContract(owners[0], MintableCappedERC20, [
+          tokenName,
+          tokenSymbol,
+          decimals,
+          cap,
+        ]);
+
+        await token.mint(owners[0].address, 1000000);
+
+        const data = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              ROLE_OWNER,
+              [getRandomID()],
+              ['deployToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [tokenName, tokenSymbol, decimals, cap, token.address],
+                ),
+              ],
+            ],
+          ),
+        );
+        await contract.execute(await getSignedMultisigExecuteInput(data, owners.slice(0, 2)))
+
+        const issuer = owners[0].address;
+        const locker = contract.address;
+        const amount = 1000;
+        const destination = operators[1].address.toString().replace('0x', '');
+
+        await expect(await token.approve(locker, amount))
+          .to.emit(token, 'Approval')
+          .withArgs(issuer, locker, amount);
+
+        await expect(await contract.sendToken(2, destination, tokenSymbol, amount))
+          .to.emit(token, 'Transfer')
+          .withArgs(issuer, locker, amount)
+          .to.emit(contract, 'TokenSent')
+          .withArgs(issuer, 2, destination, tokenSymbol, amount);
       });
     });
   });

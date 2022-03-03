@@ -36,8 +36,8 @@ describe('MintableCappedERC20', () => {
     await token.mint(userWallet.address, amount);
   });
 
-  describe('burning from account with given approve', () => {
-    it('should burnFrom address', async () => {
+  describe('burnFrom', () => {
+    it('should burnFrom address after approval', async () => {
       const issuer = userWallet.address;
       const spender = ownerWallet.address;
       const amount = 1000;
@@ -51,7 +51,7 @@ describe('MintableCappedERC20', () => {
         .withArgs(issuer, ADDRESS_ZERO, amount);
     });
   });
-  describe('EIP-2612: approve permit', () => {
+  describe('ERC20 Permit', () => {
     it('should should set allowance by verifying permit', async () => {
       const issuer = userWallet.address;
       const spender = ownerWallet.address;
