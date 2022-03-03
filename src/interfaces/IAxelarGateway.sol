@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity 0.8.9;
 
 interface IAxelarGateway {
 
@@ -60,7 +60,11 @@ interface IAxelarGateway {
 
     function unfreezeAllTokens() external;
 
-    function upgrade(address newImplementation, bytes calldata setupParams) external;
+    function upgrade(
+        address newImplementation,
+        bytes32 newImplementationCodeHash,
+        bytes calldata setupParams
+    ) external;
 
     /**********************\
     |* External Functions *|

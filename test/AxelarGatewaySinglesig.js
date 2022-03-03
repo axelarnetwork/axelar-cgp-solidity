@@ -296,11 +296,14 @@ describe('AxelarGatewaySingleSig', () => {
   });
 
   describe('upgrade', () => {
-    it('should allow admins to upgrade implementation', async () => {
+    it('should not allow admins to upgrade to a wrong implementation', async () => {
       const newImplementation = await deployContract(
         ownerWallet,
         AxelarGatewaySinglesig,
         [],
+      );
+      const wrongImplementationCodeHash = keccak256(
+        `0x${AxelarGatewaySinglesig.bytecode}`,
       );
       const params = defaultAbiCoder.encode(
         ['address[]', 'uint8', 'address', 'address'],
@@ -315,21 +318,87 @@ describe('AxelarGatewaySingleSig', () => {
       return expect(
         contract
           .connect(adminWallet1)
-          .upgrade(newImplementation.address, params),
+          .upgrade(
+            newImplementation.address,
+            wrongImplementationCodeHash,
+            params,
+          ),
       )
         .to.not.emit(contract, 'Upgraded')
         .then(() =>
           expect(
             contract
               .connect(adminWallet2)
-              .upgrade(newImplementation.address, params),
+              .upgrade(
+                newImplementation.address,
+                wrongImplementationCodeHash,
+                params,
+              ),
           ).to.not.emit(contract, 'Upgraded'),
         )
         .then(() =>
           expect(
             contract
               .connect(adminWallet3)
-              .upgrade(newImplementation.address, params),
+              .upgrade(
+                newImplementation.address,
+                wrongImplementationCodeHash,
+                params,
+              ),
+          ).to.be.revertedWith('INV_CODEHASH'),
+        );
+    });
+
+    it('should allow admins to upgrade to the correct implementation', async () => {
+      const newImplementation = await deployContract(
+        ownerWallet,
+        AxelarGatewaySinglesig,
+        [],
+      );
+      const newImplementationCode = await newImplementation.provider.getCode(
+        newImplementation.address,
+      );
+      const newImplementationCodeHash = keccak256(newImplementationCode);
+      const params = defaultAbiCoder.encode(
+        ['address[]', 'uint8', 'address', 'address'],
+        [
+          [ownerWallet.address, operatorWallet.address],
+          1,
+          ownerWallet.address,
+          operatorWallet.address,
+        ],
+      );
+
+      return expect(
+        contract
+          .connect(adminWallet1)
+          .upgrade(
+            newImplementation.address,
+            newImplementationCodeHash,
+            params,
+          ),
+      )
+        .to.not.emit(contract, 'Upgraded')
+        .then(() =>
+          expect(
+            contract
+              .connect(adminWallet2)
+              .upgrade(
+                newImplementation.address,
+                newImplementationCodeHash,
+                params,
+              ),
+          ).to.not.emit(contract, 'Upgraded'),
+        )
+        .then(() =>
+          expect(
+            contract
+              .connect(adminWallet3)
+              .upgrade(
+                newImplementation.address,
+                newImplementationCodeHash,
+                params,
+              ),
           )
             .to.emit(contract, 'Upgraded')
             .withArgs(newImplementation.address),

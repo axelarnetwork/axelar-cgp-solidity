@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity 0.8.9;
 
 import { IAxelarGatewaySinglesig } from './interfaces/IAxelarGatewaySinglesig.sol';
 
@@ -211,7 +211,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             bytes[] memory params
         ) = abi.decode(data, (uint256, Role, bytes32[], string[], bytes[]));
 
-        require(chainId == _getChainID(), 'INV_CHAIN');
+        require(chainId == block.chainid, 'INV_CHAIN');
 
         uint256 commandsLength = commandIds.length;
 

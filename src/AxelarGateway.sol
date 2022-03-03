@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
@@ -16,6 +16,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         Operator
     }
 
+    enum TokenType {
+        InternalBurnable,
+        InternalBurnableFrom,
+        External
+    }
+
     /// @dev Storage slot with the address of the current factory. `keccak256('eip1967.proxy.implementation') - 1`.
     bytes32 internal constant KEY_IMPLEMENTATION =
         bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
@@ -26,7 +32,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
-    bytes32 internal constant PREFIX_IS_TOKEN_EXTERNAL = keccak256('is-token-external');
+    bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
     bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED = keccak256('contract-call-approved');
 
@@ -107,7 +113,13 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         emit AllTokensUnfrozen();
     }
 
-    function upgrade(address newImplementation, bytes calldata setupParams) external override onlyAdmin {
+    function upgrade(
+        address newImplementation,
+        bytes32 newImplementationCodeHash,
+        bytes calldata setupParams
+    ) external override onlyAdmin {
+        require(newImplementationCodeHash == newImplementation.codehash, 'INV_CODEHASH');
+
         emit Upgraded(newImplementation);
 
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
@@ -140,11 +152,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             // If token address is no specified, it indicates a request to deploy one.
             bytes32 salt = keccak256(abi.encodePacked(symbol));
             tokenAddress = address(new BurnableMintableCappedERC20{ salt: salt }(name, symbol, decimals, cap));
+            _setTokenType(symbol, TokenType.InternalBurnableFrom);
         } else {
             // If token address is specified, ensure that there is a contact at the specified addressed.
             require(tokenAddress.code.length != uint256(0), 'NOT_TOKEN');
             // Mark that this symbol is an external token, which is needed to differentiate between operations on mint and burn.
-            _setTokenExternal(symbol);
+            _setTokenType(symbol, TokenType.External);
         }
 
         _setTokenAddress(symbol, tokenAddress);
@@ -160,8 +173,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
-        if (_isTokenExternal(symbol)) {
-            IERC20(tokenAddress).transfer(account, amount);
+        if (_getTokenType(symbol) == TokenType.External) {
+            _callERC20Token(
+                tokenAddress,
+                abi.encodeWithSelector(IERC20.transfer.selector, account, amount),
+                'MINT_FAIL'
+            );
         } else {
             BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
         }
@@ -171,10 +188,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
 
-        if (_isTokenExternal(symbol)) {
+        if (_getTokenType(symbol) == TokenType.External) {
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
 
-            (bool success, ) = depositHandler.execute(
+            (bool success, bytes memory returnData) = depositHandler.execute(
                 tokenAddress,
                 abi.encodeWithSelector(
                     IERC20.transfer.selector,
@@ -182,9 +199,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
                     IERC20(tokenAddress).balanceOf(address(depositHandler))
                 )
             );
-            require(success, 'BURN_FAIL');
+            require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), 'BURN_FAIL');
 
-            depositHandler.destroy(address(0));
+            depositHandler.destroy(address(this));
         } else {
             BurnableMintableCappedERC20(tokenAddress).burn(salt);
         }
@@ -209,8 +226,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Pure Key Getters *|
     \********************/
 
-    function _getIsTokenExternalKey(string memory symbol) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_IS_TOKEN_EXTERNAL, symbol));
+    function _getTokenTypeKey(string memory symbol) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_TOKEN_TYPE, symbol));
     }
 
     function _getFreezeTokenKey(string memory symbol) internal pure returns (bytes32) {
@@ -242,25 +259,32 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     /********************\
+    |* Internal Methods *|
+    \********************/
+
+    function _callERC20Token(
+        address tokenAddress,
+        bytes memory callData,
+        string memory errorMessage
+    ) internal {
+        (bool success, bytes memory returnData) = tokenAddress.call(callData);
+        require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), errorMessage);
+    }
+
+    /********************\
     |* Internal Getters *|
     \********************/
 
-    function _isTokenExternal(string memory symbol) internal view returns (bool) {
-        return getBool(_getIsTokenExternalKey(symbol));
-    }
-
-    function _getChainID() internal view returns (uint256 id) {
-        assembly {
-            id := chainid()
-        }
+    function _getTokenType(string memory symbol) internal view returns (TokenType) {
+        return TokenType(getUint(_getTokenTypeKey(symbol)));
     }
 
     /********************\
     |* Internal Setters *|
     \********************/
 
-    function _setTokenExternal(string memory symbol) internal {
-        _setBool(_getIsTokenExternalKey(symbol), true);
+    function _setTokenType(string memory symbol, TokenType tokenType) internal {
+        _setUint(_getTokenTypeKey(symbol), uint256(tokenType));
     }
 
     function _setTokenAddress(string memory symbol, address tokenAddress) internal {

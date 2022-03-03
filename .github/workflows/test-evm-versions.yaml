@@ -1,10 +1,10 @@
-name: Testing
+name: Testing previous EVM versions
 
 on:
   - pull_request
 
 jobs:
-  test:
+  test-evm-versions:
     strategy:
       matrix:
         node-version:
@@ -24,4 +24,4 @@ jobs:
         run: npm ci
 
       - name: Test
-        run: npm run build:dev && npm t
+        run: npm run test-evm-versions
