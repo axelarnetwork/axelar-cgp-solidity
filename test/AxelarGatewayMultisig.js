@@ -17,7 +17,7 @@ const ROLE_OWNER = 1;
 const ROLE_OPERATOR = 2;
 
 const TokenDeploy = require('../build/TokenDeploy.json');
-const AxelarGatewayProxyMultisig = require('../build/AxelarGatewayProxyMultisig.json');
+const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
 const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
 const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
@@ -54,9 +54,12 @@ describe('AxelarGatewayMultisig', () => {
       ),
     );
     tokenDeployer = await deployContract(wallets[0], TokenDeploy);
-    const proxy = await deployContract(wallets[0], AxelarGatewayProxyMultisig, [
-      params,
+    const gateway = await deployContract(wallets[0], AxelarGatewayMultisig, [
       tokenDeployer.address,
+    ]);
+    const proxy = await deployContract(wallets[0], AxelarGatewayProxy, [
+      gateway.address,
+      params,
     ]);
     contract = new Contract(
       proxy.address,
