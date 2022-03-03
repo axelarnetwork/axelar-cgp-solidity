@@ -129,11 +129,15 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     function validateContractCall(bytes32 commandId, bytes32 payloadHash) external override returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedKey(commandId, msg.sender, payloadHash);
         valid = getBool(key);
-        if (valid)
-            _setBool(key, false);
+        if (valid) _setBool(key, false);
     }
 
-    function validateContractCallAndMint(bytes32 commandId, bytes32 payloadHash, string memory symbol, uint256 amount) external override returns (bool valid) {
+    function validateContractCallAndMint(
+        bytes32 commandId,
+        bytes32 payloadHash,
+        string memory symbol,
+        uint256 amount
+    ) external override returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedWithMintKey(commandId, msg.sender, payloadHash, symbol, amount);
         valid = getBool(key);
         if (valid) {
@@ -264,12 +268,22 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         }
     }
 
-    function _approveContractCall(bytes32 commandId, address contractAddress, bytes32 approvalHash) internal {
+    function _approveContractCall(
+        bytes32 commandId,
+        address contractAddress,
+        bytes32 approvalHash
+    ) internal {
         _setContractCallApproved(commandId, contractAddress, approvalHash);
         emit ContractCallApproved(commandId, contractAddress, approvalHash);
     }
 
-    function _approveContractCallWithMint(bytes32 commandId, address contractAddress, bytes32 payloadHash, string memory symbol, uint256 amount) internal {
+    function _approveContractCallWithMint(
+        bytes32 commandId,
+        address contractAddress,
+        bytes32 payloadHash,
+        string memory symbol,
+        uint256 amount
+    ) internal {
         _setContractCallApprovedWithMint(commandId, contractAddress, payloadHash, symbol, amount);
         emit ContractCallApprovedWithMint(commandId, contractAddress, payloadHash, symbol, amount);
     }
@@ -294,20 +308,25 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return keccak256(abi.encodePacked(PREFIX_COMMAND_EXECUTED, commandId));
     }
 
-    function _getIsContractCallApprovedKey(bytes32 commandId, address contractAddress, bytes32 payloadHash)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function _getIsContractCallApprovedKey(
+        bytes32 commandId,
+        address contractAddress,
+        bytes32 payloadHash
+    ) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, commandId, contractAddress, payloadHash));
     }
 
-    function _getIsContractCallApprovedWithMintKey(bytes32 commandId, address contractAddress, bytes32 payloadHash, string memory symbol, uint256 amount)
-        internal
-        pure
-        returns (bytes32)
-    {
-        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, commandId, contractAddress, payloadHash, symbol, amount));
+    function _getIsContractCallApprovedWithMintKey(
+        bytes32 commandId,
+        address contractAddress,
+        bytes32 payloadHash,
+        string memory symbol,
+        uint256 amount
+    ) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, commandId, contractAddress, payloadHash, symbol, amount)
+            );
     }
 
     /********************\
@@ -347,11 +366,21 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setBool(_getIsCommandExecutedKey(commandId), executed);
     }
 
-    function _setContractCallApproved(bytes32 commandId, address contractAddress, bytes32 payloadHash) internal {
+    function _setContractCallApproved(
+        bytes32 commandId,
+        address contractAddress,
+        bytes32 payloadHash
+    ) internal {
         _setBool(_getIsContractCallApprovedKey(commandId, contractAddress, payloadHash), true);
     }
 
-    function _setContractCallApprovedWithMint(bytes32 commandId, address contractAddress, bytes32 payloadHash, string memory symbol, uint256 amount) internal {
+    function _setContractCallApprovedWithMint(
+        bytes32 commandId,
+        address contractAddress,
+        bytes32 payloadHash,
+        string memory symbol,
+        uint256 amount
+    ) internal {
         _setBool(_getIsContractCallApprovedWithMintKey(commandId, contractAddress, payloadHash, symbol, amount), true);
     }
 
