@@ -1339,9 +1339,9 @@ describe('AxelarGatewaySingleSig', () => {
             ],
           ),
         );
-        await contract.execute(await getSignedExecuteInput(data, ownerWallet))
+        await contract.execute(await getSignedExecuteInput(data, ownerWallet));
 
-        const tokenAddress = await contract.tokenAddresses(tokenSymbol)
+        const tokenAddress = await contract.tokenAddresses(tokenSymbol);
         const token = new Contract(
           tokenAddress,
           BurnableMintableCappedERC20.abi,
@@ -1357,7 +1357,9 @@ describe('AxelarGatewaySingleSig', () => {
           .to.emit(token, 'Approval')
           .withArgs(issuer, spender, amount);
 
-        await expect(await contract.sendToken(2, destination, tokenSymbol, amount))
+        await expect(
+          await contract.sendToken(2, destination, tokenSymbol, amount),
+        )
           .to.emit(token, 'Transfer')
           .withArgs(issuer, ADDRESS_ZERO, amount)
           .to.emit(contract, 'TokenSent')
@@ -1396,7 +1398,7 @@ describe('AxelarGatewaySingleSig', () => {
             ],
           ),
         );
-        await contract.execute(await getSignedExecuteInput(data, ownerWallet))
+        await contract.execute(await getSignedExecuteInput(data, ownerWallet));
 
         const issuer = ownerWallet.address;
         const locker = contract.address;
@@ -1407,7 +1409,9 @@ describe('AxelarGatewaySingleSig', () => {
           .to.emit(token, 'Approval')
           .withArgs(issuer, locker, amount);
 
-        await expect(await contract.sendToken(2, destination, tokenSymbol, amount))
+        await expect(
+          await contract.sendToken(2, destination, tokenSymbol, amount),
+        )
           .to.emit(token, 'Transfer')
           .withArgs(issuer, locker, amount)
           .to.emit(contract, 'TokenSent')
