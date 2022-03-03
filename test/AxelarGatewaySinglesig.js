@@ -1478,11 +1478,12 @@ describe('AxelarGatewaySingleSig', () => {
           .withArgs(symbolA, tokenA.address),
       );
 
-      const payload = [tokenB.address, nonOwnerWallet.address, 1];
+      const payload = [tokenB.address, nonOwnerWallet.address];
       const payloadHash = keccak256(
-        defaultAbiCoder.encode(['address', 'address', 'uint256'], payload),
+        defaultAbiCoder.encode(['address', 'address'], payload),
       );
       const swapAmount = 20000;
+      const commandId = getRandomID();
 
       const mintAndApproveData = arrayify(
         defaultAbiCoder.encode(
@@ -1490,12 +1491,12 @@ describe('AxelarGatewaySingleSig', () => {
           [
             CHAIN_ID,
             ROLE_OWNER,
-            [getRandomID()],
-            ['mintTokenAndApproveContractCall'],
+            [commandId],
+            ['approveContractCallWithMint'],
             [
               defaultAbiCoder.encode(
-                ['string', 'address', 'uint256', 'bytes32'],
-                [symbolA, executor.address, swapAmount, payloadHash],
+                ['address', 'bytes32', 'string', 'uint256'],
+                [executor.address, payloadHash, symbolA, swapAmount],
               ),
             ],
           ],
@@ -1507,21 +1508,20 @@ describe('AxelarGatewaySingleSig', () => {
       );
 
       await expect(approveExecute)
-        .to.emit(tokenA, 'Transfer')
-        .withArgs(contract.address, executor.address, swapAmount);
-
-      await expect(approveExecute)
         .to.emit(contract, 'ContractCallApprovedWithMint')
-        .withArgs(executor.address, payloadHash, tokenA.address, 20000);
+        .withArgs(commandId, executor.address, payloadHash, symbolA, 20000);
 
       const swap = await executor.swapToken(
-        tokenA.address,
+        commandId,
+        symbolA,
         swapAmount,
         ...payload,
       );
 
       await expect(swap)
-        .to.emit(tokenB, 'Transfer')
+        .to.emit(tokenA, 'Transfer')
+        .withArgs(contract.address, executor.address, swapAmount)
+        .and.to.emit(tokenB, 'Transfer')
         .withArgs(swapper.address, nonOwnerWallet.address, swapAmount * 2);
     });
   });

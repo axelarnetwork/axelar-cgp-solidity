@@ -10,27 +10,23 @@ contract ExternalExecutor {
     address gateway;
     address swapper;
 
-    mapping(bytes32 => bool) public wasExecuted;
-
     constructor(address gatewayAddress, address swapperAddress) {
         gateway = gatewayAddress;
         swapper = swapperAddress;
     }
 
     function swapToken(
-        address tokenAddress,
+        bytes32 commandId,
+        string memory tokenSymbol,
         uint256 amount,
         address toTokenAddress,
-        address recipient,
-        uint256 nonce
+        address recipient
     ) external {
-        bytes32 payloadHash = keccak256(abi.encode(toTokenAddress, recipient, nonce));
+        bytes32 payloadHash = keccak256(abi.encode(toTokenAddress, recipient));
 
-        require(IAxelarGateway(gateway).isContractCallApprovedWithMint(address(this), payloadHash, tokenAddress, amount), 'NOT APPROVED');
+        require(IAxelarGateway(gateway).validateContractCallAndMint(commandId, payloadHash, tokenSymbol, amount), 'NOT APPROVED');
 
-        require(!wasExecuted[payloadHash], 'ALREADY EXECUTED');
-        wasExecuted[payloadHash] = true;
-
+        address tokenAddress = IAxelarGateway(gateway).tokenAddresses(tokenSymbol);
         IERC20(tokenAddress).approve(swapper, amount);
         TokenSwapper(swapper).swap(tokenAddress, amount, toTokenAddress, recipient);
     }
