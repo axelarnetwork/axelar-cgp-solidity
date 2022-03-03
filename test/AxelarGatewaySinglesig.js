@@ -23,6 +23,7 @@ const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const ROLE_OWNER = 1;
 const ROLE_OPERATOR = 2;
 
+const TokenDeploy = require('../build/TokenDeploy.json');
 const AxelarGatewayProxySinglesig = require('../build/AxelarGatewayProxySinglesig.json');
 const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
@@ -57,6 +58,7 @@ describe('AxelarGatewaySingleSig', () => {
   const threshold = 3;
 
   let contract;
+  let tokenDeployer;
 
   beforeEach(async () => {
     const params = arrayify(
@@ -70,10 +72,11 @@ describe('AxelarGatewaySingleSig', () => {
         ],
       ),
     );
+    tokenDeployer = await deployContract(ownerWallet, TokenDeploy);
     const proxy = await deployContract(
       ownerWallet,
       AxelarGatewayProxySinglesig,
-      [params],
+      [params, tokenDeployer.address],
     );
     contract = new Contract(
       proxy.address,
@@ -297,7 +300,7 @@ describe('AxelarGatewaySingleSig', () => {
       const newImplementation = await deployContract(
         ownerWallet,
         AxelarGatewaySinglesig,
-        [],
+        [tokenDeployer.address],
       );
       const wrongImplementationCodeHash = keccak256(
         `0x${AxelarGatewaySinglesig.bytecode}`,
@@ -350,7 +353,7 @@ describe('AxelarGatewaySingleSig', () => {
       const newImplementation = await deployContract(
         ownerWallet,
         AxelarGatewaySinglesig,
-        [],
+        [tokenDeployer.address],
       );
       const newImplementationCode = await newImplementation.provider.getCode(
         newImplementation.address,

@@ -8,9 +8,9 @@ import { AxelarGatewayProxy } from './AxelarGatewayProxy.sol';
 import { AxelarGatewaySinglesig } from './AxelarGatewaySinglesig.sol';
 
 contract AxelarGatewayProxySinglesig is AxelarGatewayProxy {
-    constructor(bytes memory params) {
+    constructor(bytes memory params, address tokenDeployImplementation) {
         // AUDIT: constructor contains entire AxelarGatewaySinglesig bytecode. Consider passing in an AxelarGatewaySinglesig address.
-        address gateway = address(new AxelarGatewaySinglesig());
+        address gateway = address(new AxelarGatewaySinglesig(tokenDeployImplementation));
 
         _setAddress(KEY_IMPLEMENTATION, gateway);
 

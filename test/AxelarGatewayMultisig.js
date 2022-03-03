@@ -16,6 +16,7 @@ const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const ROLE_OWNER = 1;
 const ROLE_OPERATOR = 2;
 
+const TokenDeploy = require('../build/TokenDeploy.json');
 const AxelarGatewayProxyMultisig = require('../build/AxelarGatewayProxyMultisig.json');
 const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
 const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
@@ -36,6 +37,7 @@ describe('AxelarGatewayMultisig', () => {
   const threshold = 2;
 
   let contract;
+  let tokenDeployer;
 
   beforeEach(async () => {
     const params = arrayify(
@@ -51,8 +53,10 @@ describe('AxelarGatewayMultisig', () => {
         ],
       ),
     );
+    tokenDeployer = await deployContract(wallets[0], TokenDeploy);
     const proxy = await deployContract(wallets[0], AxelarGatewayProxyMultisig, [
       params,
+      tokenDeployer.address,
     ]);
     contract = new Contract(
       proxy.address,
@@ -80,7 +84,7 @@ describe('AxelarGatewayMultisig', () => {
       const newImplementation = await deployContract(
         wallets[0],
         AxelarGatewayMultisig,
-        [],
+        [tokenDeployer.address],
       );
       const newImplementationCode = await newImplementation.provider.getCode(
         newImplementation.address,
