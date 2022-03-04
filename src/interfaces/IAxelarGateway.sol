@@ -7,6 +7,8 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
+    event TokenSent(address indexed sender, uint256 indexed destinationChainId, string indexed destinationAddress, string symbol, uint256 amount);
+
     event Executed(bytes32 indexed commandId);
 
     event TokenDeployed(string symbol, address tokenAddresses);
@@ -24,6 +26,12 @@ interface IAxelarGateway {
     event AccountWhitelisted(address indexed account);
 
     event Upgraded(address indexed implementation);
+
+    /******************\
+    |* Public Methods *|
+    \******************/
+
+    function sendToken(uint256 destinationChainId, string memory destinationAddress, string memory symbol, uint256 amount) external;
 
     /***********\
     |* Getters *|
