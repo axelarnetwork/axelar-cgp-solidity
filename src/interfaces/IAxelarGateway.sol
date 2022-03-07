@@ -14,9 +14,9 @@ interface IAxelarGateway {
 
     event TokenDeployed(string symbol, address tokenAddresses);
 
-    event ContractCallApproved(bytes32 indexed commandId, address indexed contractAddress, bytes32 payloadHash);
+    event ContractCallApproved(bytes32 indexed commandId, uint256 sourceChainId, string sourceAddress, address indexed contractAddress, bytes32 payloadHash);
 
-    event ContractCallApprovedWithMint(bytes32 indexed commandId, address indexed contractAddress, bytes32 payloadHash, string indexed symbol, uint256 amount);
+    event ContractCallApprovedWithMint(bytes32 indexed commandId, uint256 sourceChainId, string sourceAddress, address indexed contractAddress, bytes32 payloadHash, string indexed symbol, uint256 amount);
 
     event TokenFrozen(string indexed symbol);
 
@@ -52,9 +52,9 @@ interface IAxelarGateway {
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
 
-    function validateContractCall(bytes32 commandId, bytes32 payloadHash) external returns (bool);
+    function validateContractCall(bytes32 commandId, uint256 sourceChainId, string memory sourceAddress, bytes32 payloadHash) external returns (bool);
 
-    function validateContractCallAndMint(bytes32 commandId, bytes32 payloadHash, string memory symbol, uint256 amount) external returns (bool);
+    function validateContractCallAndMint(bytes32 commandId, uint256 sourceChainId, string memory sourceAddress, bytes32 payloadHash, string memory symbol, uint256 amount) external returns (bool);
 
     /*******************\
     |* Admin Functions *|

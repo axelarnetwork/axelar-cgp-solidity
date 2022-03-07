@@ -129,18 +129,18 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     }
 
     function approveContractCall(bytes calldata params, bytes32 commandId) external onlySelf {
-        (address contractAddress, bytes32 payloadHash) = abi.decode(params, (address, bytes32));
+        (uint256 sourceChainId, string memory sourceAddress, address contractAddress, bytes32 payloadHash) = abi.decode(params, (uint256, string, address, bytes32));
 
-        _approveContractCall(commandId, contractAddress, payloadHash);
+        _approveContractCall(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash);
     }
 
     function approveContractCallWithMint(bytes calldata params, bytes32 commandId) external onlySelf {
-        (address contractAddress, bytes32 payloadHash, string memory symbol, uint256 amount) = abi.decode(
+        (uint256 sourceChainId, string memory sourceAddress, address contractAddress, bytes32 payloadHash, string memory symbol, uint256 amount) = abi.decode(
             params,
-            (address, bytes32, string, uint256)
+            (uint256, string, address, bytes32, string, uint256)
         );
 
-        _approveContractCallWithMint(commandId, contractAddress, payloadHash, symbol, amount);
+        _approveContractCallWithMint(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash, symbol, amount);
     }
 
     function transferOwnership(bytes calldata params, bytes32) external onlySelf {

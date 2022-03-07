@@ -36,6 +36,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
     bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED = keccak256('contract-call-approved');
+    bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT = keccak256('contract-call-approved-with-mint');
 
     bytes32 internal constant SELECTOR_BURN_TOKEN = keccak256('burnToken');
     bytes32 internal constant SELECTOR_DEPLOY_TOKEN = keccak256('deployToken');
@@ -126,19 +127,21 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getBool(_getIsCommandExecutedKey(commandId));
     }
 
-    function validateContractCall(bytes32 commandId, bytes32 payloadHash) external override returns (bool valid) {
-        bytes32 key = _getIsContractCallApprovedKey(commandId, msg.sender, payloadHash);
+    function validateContractCall(bytes32 commandId, uint256 sourceChainId, string memory sourceAddress, bytes32 payloadHash) external override returns (bool valid) {
+        bytes32 key = _getIsContractCallApprovedKey(commandId, sourceChainId, sourceAddress, msg.sender, payloadHash);
         valid = getBool(key);
         if (valid) _setBool(key, false);
     }
 
     function validateContractCallAndMint(
         bytes32 commandId,
+        uint256 sourceChainId,
+        string memory sourceAddress,
         bytes32 payloadHash,
         string memory symbol,
         uint256 amount
     ) external override returns (bool valid) {
-        bytes32 key = _getIsContractCallApprovedWithMintKey(commandId, msg.sender, payloadHash, symbol, amount);
+        bytes32 key = _getIsContractCallApprovedWithMintKey(commandId, sourceChainId, sourceAddress, msg.sender, payloadHash, symbol, amount);
         valid = getBool(key);
         if (valid) {
             _mintToken(symbol, msg.sender, amount);
@@ -270,22 +273,26 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _approveContractCall(
         bytes32 commandId,
+        uint256 sourceChainId,
+        string memory sourceAddress,
         address contractAddress,
-        bytes32 approvalHash
+        bytes32 payloadHash
     ) internal {
-        _setContractCallApproved(commandId, contractAddress, approvalHash);
-        emit ContractCallApproved(commandId, contractAddress, approvalHash);
+        _setContractCallApproved(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash);
+        emit ContractCallApproved(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash);
     }
 
     function _approveContractCallWithMint(
         bytes32 commandId,
+        uint256 sourceChainId,
+        string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash,
         string memory symbol,
         uint256 amount
     ) internal {
-        _setContractCallApprovedWithMint(commandId, contractAddress, payloadHash, symbol, amount);
-        emit ContractCallApprovedWithMint(commandId, contractAddress, payloadHash, symbol, amount);
+        _setContractCallApprovedWithMint(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash, symbol, amount);
+        emit ContractCallApprovedWithMint(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash, symbol, amount);
     }
 
     /********************\
@@ -310,14 +317,18 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _getIsContractCallApprovedKey(
         bytes32 commandId,
+        uint256 sourceChainId,
+        string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, commandId, contractAddress, payloadHash));
+        return keccak256(abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, commandId, sourceChainId, sourceAddress, contractAddress, payloadHash));
     }
 
     function _getIsContractCallApprovedWithMintKey(
         bytes32 commandId,
+        uint256 sourceChainId,
+        string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash,
         string memory symbol,
@@ -325,7 +336,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     ) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED, commandId, contractAddress, payloadHash, symbol, amount)
+                abi.encodePacked(PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT, commandId, sourceChainId, sourceAddress, contractAddress, payloadHash, symbol, amount)
             );
     }
 
@@ -368,20 +379,24 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _setContractCallApproved(
         bytes32 commandId,
+        uint256 sourceChainId,
+        string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash
     ) internal {
-        _setBool(_getIsContractCallApprovedKey(commandId, contractAddress, payloadHash), true);
+        _setBool(_getIsContractCallApprovedKey(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash), true);
     }
 
     function _setContractCallApprovedWithMint(
         bytes32 commandId,
+        uint256 sourceChainId,
+        string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash,
         string memory symbol,
         uint256 amount
     ) internal {
-        _setBool(_getIsContractCallApprovedWithMintKey(commandId, contractAddress, payloadHash, symbol, amount), true);
+        _setBool(_getIsContractCallApprovedWithMintKey(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash, symbol, amount), true);
     }
 
     function _setImplementation(address newImplementation) internal {

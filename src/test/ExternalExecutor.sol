@@ -17,14 +17,16 @@ contract ExternalExecutor {
 
     function swapToken(
         bytes32 commandId,
+        uint256 sourceChainId,
+        string memory sourceAddress,
         string memory tokenSymbol,
         uint256 amount,
-        address toTokenAddress,
-        address recipient
+        bytes calldata payload
     ) external {
-        bytes32 payloadHash = keccak256(abi.encode(toTokenAddress, recipient));
+        bytes32 payloadHash = keccak256(payload);
+        (address toTokenAddress, address recipient) = abi.decode(payload, (address, address));
 
-        require(IAxelarGateway(gateway).validateContractCallAndMint(commandId, payloadHash, tokenSymbol, amount), 'NOT APPROVED');
+        require(IAxelarGateway(gateway).validateContractCallAndMint(commandId, sourceChainId, sourceAddress, payloadHash, tokenSymbol, amount), 'NOT APPROVED');
 
         address tokenAddress = IAxelarGateway(gateway).tokenAddresses(tokenSymbol);
         IERC20(tokenAddress).approve(swapper, amount);

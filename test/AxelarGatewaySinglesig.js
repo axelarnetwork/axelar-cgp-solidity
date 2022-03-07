@@ -1482,14 +1482,14 @@ describe('AxelarGatewaySingleSig', () => {
           .withArgs(symbolA, tokenA.address),
       );
 
-      const payload = [tokenB.address, nonOwnerWallet.address];
-      const payloadHash = keccak256(
-        defaultAbiCoder.encode(['address', 'address'], payload),
-      );
+      const payload = defaultAbiCoder.encode(['address', 'address'], [tokenB.address, nonOwnerWallet.address]);
+      const payloadHash = keccak256(payload);
       const swapAmount = 20000;
       const commandId = getRandomID();
+      const sourceChainId = 2;
+      const sourceAddress = 'address0x123';
 
-      const mintAndApproveData = arrayify(
+      const approveWithMintData = arrayify(
         defaultAbiCoder.encode(
           ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
           [
@@ -1499,8 +1499,8 @@ describe('AxelarGatewaySingleSig', () => {
             ['approveContractCallWithMint'],
             [
               defaultAbiCoder.encode(
-                ['address', 'bytes32', 'string', 'uint256'],
-                [executor.address, payloadHash, symbolA, swapAmount],
+                ['uint256', 'string', 'address', 'bytes32', 'string', 'uint256'],
+                [sourceChainId, sourceAddress, executor.address, payloadHash, symbolA, swapAmount],
               ),
             ],
           ],
@@ -1508,18 +1508,20 @@ describe('AxelarGatewaySingleSig', () => {
       );
 
       const approveExecute = await contract.execute(
-        await getSignedExecuteInput(mintAndApproveData, ownerWallet),
+        await getSignedExecuteInput(approveWithMintData, ownerWallet),
       );
 
       await expect(approveExecute)
         .to.emit(contract, 'ContractCallApprovedWithMint')
-        .withArgs(commandId, executor.address, payloadHash, symbolA, 20000);
+        .withArgs(commandId, sourceChainId, sourceAddress, executor.address, payloadHash, symbolA, 20000);
 
       const swap = await executor.swapToken(
         commandId,
+        sourceChainId,
+        sourceAddress,
         symbolA,
         swapAmount,
-        ...payload,
+        payload,
       );
 
       await expect(swap)
