@@ -8,7 +8,11 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenSent(address indexed sender, uint256 indexed destinationChainId, string indexed destinationAddress, string symbol, uint256 amount);
+    event TokenSent(address indexed sender, uint256 destinationChainId, string indexed destinationAddress, string symbol, uint256 amount);
+
+    event ContractCall(address indexed sender, uint256 destinationChainId, string indexed contractAddress, bytes32 indexed payloadHash, bytes payload);
+
+    event ContractCallWithToken(address indexed sender, uint256 destinationChainId, string indexed contractAddress, bytes32 indexed payloadHash, bytes payload, string symbol, uint256 amount);
 
     event Executed(bytes32 indexed commandId);
 
@@ -37,6 +41,10 @@ interface IAxelarGateway {
     \******************/
 
     function sendToken(uint256 destinationChainId, string memory destinationAddress, string memory symbol, uint256 amount) external;
+
+    function callContract(uint256 destinationChainId, string memory contractAddress, bytes memory payload) external;
+
+    function callContractWithToken(uint256 destinationChainId, string memory contractAddress, bytes memory payload, string memory symbol, uint256 amount) external;
 
     /***********\
     |* Getters *|

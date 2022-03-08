@@ -1482,7 +1482,10 @@ describe('AxelarGatewaySingleSig', () => {
           .withArgs(symbolA, tokenA.address),
       );
 
-      const payload = defaultAbiCoder.encode(['address', 'address'], [tokenB.address, nonOwnerWallet.address]);
+      const payload = defaultAbiCoder.encode(
+        ['address', 'address'],
+        [tokenB.address, nonOwnerWallet.address],
+      );
       const payloadHash = keccak256(payload);
       const swapAmount = 20000;
       const commandId = getRandomID();
@@ -1499,8 +1502,22 @@ describe('AxelarGatewaySingleSig', () => {
             ['approveContractCallWithMint'],
             [
               defaultAbiCoder.encode(
-                ['uint256', 'string', 'address', 'bytes32', 'string', 'uint256'],
-                [sourceChainId, sourceAddress, executor.address, payloadHash, symbolA, swapAmount],
+                [
+                  'uint256',
+                  'string',
+                  'address',
+                  'bytes32',
+                  'string',
+                  'uint256',
+                ],
+                [
+                  sourceChainId,
+                  sourceAddress,
+                  executor.address,
+                  payloadHash,
+                  symbolA,
+                  swapAmount,
+                ],
               ),
             ],
           ],
@@ -1513,7 +1530,15 @@ describe('AxelarGatewaySingleSig', () => {
 
       await expect(approveExecute)
         .to.emit(contract, 'ContractCallApprovedWithMint')
-        .withArgs(commandId, sourceChainId, sourceAddress, executor.address, payloadHash, symbolA, 20000);
+        .withArgs(
+          commandId,
+          sourceChainId,
+          sourceAddress,
+          executor.address,
+          payloadHash,
+          symbolA,
+          20000,
+        );
 
       const swap = await executor.swapToken(
         commandId,
