@@ -9,6 +9,7 @@ import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
+import { TokenDeployer } from './TokenDeployer.sol';
 
 abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     enum Role {
@@ -43,6 +44,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant SELECTOR_TRANSFER_OWNERSHIP = keccak256('transferOwnership');
 
     uint8 internal constant OLD_KEY_RETENTION = 16;
+
+    address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
+
+    constructor(address tokenDeployerImplementation) {
+        TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation;
+    }
 
     modifier onlySelf() {
         require(msg.sender == address(this), 'NOT_SELF');
@@ -189,7 +196,15 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenAddress == address(0)) {
             // If token address is no specified, it indicates a request to deploy one.
             bytes32 salt = keccak256(abi.encodePacked(symbol));
-            tokenAddress = address(new BurnableMintableCappedERC20{ salt: salt }(name, symbol, decimals, cap));
+
+            (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
+                abi.encodeWithSelector(TokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
+            );
+
+            require(success, 'TOKEN_DEPLOY_FAILED');
+
+            tokenAddress = abi.decode(data, (address));
+
             _setTokenType(symbol, TokenType.InternalBurnableFrom);
         } else {
             // If token address is specified, ensure that there is a contact at the specified addressed.

@@ -24,6 +24,8 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     bytes32 internal constant PREFIX_OPERATOR_THRESHOLD = keccak256('operator-threshold');
     bytes32 internal constant PREFIX_IS_OPERATOR = keccak256('is-operator');
 
+    constructor(address tokenDeployer) AxelarGateway(tokenDeployer) {}
+
     function _isSortedAscAndContainsNoDuplicate(address[] memory accounts) internal pure returns (bool) {
         for (uint256 i; i < accounts.length - 1; ++i) {
             if (accounts[i] >= accounts[i + 1]) {
