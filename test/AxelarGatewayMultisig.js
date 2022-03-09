@@ -16,7 +16,7 @@ const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const ROLE_OWNER = 1;
 const ROLE_OPERATOR = 2;
 
-const TokenDeploy = require('../build/TokenDeploy.json');
+const TokenDeployer = require('../build/TokenDeployer.json');
 const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
 const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
 const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
@@ -53,7 +53,7 @@ describe('AxelarGatewayMultisig', () => {
         ],
       ),
     );
-    tokenDeployer = await deployContract(wallets[0], TokenDeploy);
+    tokenDeployer = await deployContract(wallets[0], TokenDeployer);
     const gateway = await deployContract(wallets[0], AxelarGatewayMultisig, [
       tokenDeployer.address,
     ]);

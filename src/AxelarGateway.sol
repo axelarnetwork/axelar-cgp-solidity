@@ -9,7 +9,7 @@ import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
-import { TokenDeploy } from './TokenDeploy.sol';
+import { TokenDeployer } from './TokenDeployer.sol';
 
 abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     enum Role {
@@ -45,10 +45,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     uint8 internal constant OLD_KEY_RETENTION = 16;
 
-    address internal immutable TOKEN_DEPLOY_IMPLEMENTATION;
+    address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
-    constructor(address tokenDeployImplementation) {
-        TOKEN_DEPLOY_IMPLEMENTATION = tokenDeployImplementation;
+    constructor(address tokenDeployerImplementation) {
+        TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation;
     }
 
     modifier onlySelf() {
@@ -197,8 +197,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             // If token address is no specified, it indicates a request to deploy one.
             bytes32 salt = keccak256(abi.encodePacked(symbol));
 
-            (bool success, bytes memory data) = TOKEN_DEPLOY_IMPLEMENTATION.delegatecall(
-                abi.encodeWithSelector(TokenDeploy.deployToken.selector, name, symbol, decimals, cap, salt)
+            (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
+                abi.encodeWithSelector(TokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
             );
 
             require(success, 'TOKEN_DEPLOY_FAILED');
