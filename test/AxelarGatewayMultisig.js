@@ -902,7 +902,7 @@ describe('AxelarGatewayMultisig', () => {
       });
     });
 
-    describe('send token from gateway', () => {
+    describe('sendToken', () => {
       it('should burn internal token and emit an event', async () => {
         const tokenName = 'Test Token';
         const tokenSymbol = 'TEST';
@@ -951,12 +951,12 @@ describe('AxelarGatewayMultisig', () => {
           .withArgs(issuer, spender, amount);
 
         await expect(
-          await contract.sendToken(2, destination, tokenSymbol, amount),
+          await contract.sendToken('polygon', destination, tokenSymbol, amount),
         )
           .to.emit(token, 'Transfer')
           .withArgs(issuer, ADDRESS_ZERO, amount)
           .to.emit(contract, 'TokenSent')
-          .withArgs(issuer, 2, destination, tokenSymbol, amount);
+          .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
       });
 
       it('should lock external token and emit an event', async () => {
@@ -1005,12 +1005,12 @@ describe('AxelarGatewayMultisig', () => {
           .withArgs(issuer, locker, amount);
 
         await expect(
-          await contract.sendToken(2, destination, tokenSymbol, amount),
+          await contract.sendToken('polygon', destination, tokenSymbol, amount),
         )
           .to.emit(token, 'Transfer')
           .withArgs(issuer, locker, amount)
           .to.emit(contract, 'TokenSent')
-          .withArgs(issuer, 2, destination, tokenSymbol, amount);
+          .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
       });
     });
   });

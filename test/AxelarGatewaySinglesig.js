@@ -1365,12 +1365,12 @@ describe('AxelarGatewaySingleSig', () => {
           .withArgs(issuer, spender, amount);
 
         await expect(
-          await contract.sendToken(2, destination, tokenSymbol, amount),
+          await contract.sendToken('polygon', destination, tokenSymbol, amount),
         )
           .to.emit(token, 'Transfer')
           .withArgs(issuer, ADDRESS_ZERO, amount)
           .to.emit(contract, 'TokenSent')
-          .withArgs(issuer, 2, destination, tokenSymbol, amount);
+          .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
       });
 
       it('should lock external token and emit an event', async () => {
@@ -1417,12 +1417,12 @@ describe('AxelarGatewaySingleSig', () => {
           .withArgs(issuer, locker, amount);
 
         await expect(
-          await contract.sendToken(2, destination, tokenSymbol, amount),
+          await contract.sendToken('polygon', destination, tokenSymbol, amount),
         )
           .to.emit(token, 'Transfer')
           .withArgs(issuer, locker, amount)
           .to.emit(contract, 'TokenSent')
-          .withArgs(issuer, 2, destination, tokenSymbol, amount);
+          .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
       });
     });
   });
@@ -1494,7 +1494,7 @@ describe('AxelarGatewaySingleSig', () => {
       const payloadHash = keccak256(payload);
       const swapAmount = 20000;
       const commandId = getRandomID();
-      const sourceChainId = 2;
+      const sourceChain = 'polygon';
       const sourceAddress = 'address0x123';
 
       const approveWithMintData = arrayify(
@@ -1508,7 +1508,7 @@ describe('AxelarGatewaySingleSig', () => {
             [
               defaultAbiCoder.encode(
                 [
-                  'uint256',
+                  'string',
                   'string',
                   'address',
                   'bytes32',
@@ -1516,7 +1516,7 @@ describe('AxelarGatewaySingleSig', () => {
                   'uint256',
                 ],
                 [
-                  sourceChainId,
+                  sourceChain,
                   sourceAddress,
                   executor.address,
                   payloadHash,
@@ -1537,7 +1537,7 @@ describe('AxelarGatewaySingleSig', () => {
         .to.emit(contract, 'ContractCallApprovedWithMint')
         .withArgs(
           commandId,
-          sourceChainId,
+          sourceChain,
           sourceAddress,
           executor.address,
           payloadHash,
@@ -1547,7 +1547,7 @@ describe('AxelarGatewaySingleSig', () => {
 
       const swap = await executor.swapToken(
         commandId,
-        sourceChainId,
+        sourceChain,
         sourceAddress,
         symbolA,
         swapAmount,
