@@ -16,6 +16,8 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
 
     bytes32 internal constant PREFIX_OPERATOR = keccak256('operator');
 
+    constructor(address tokenDeployer) AxelarGateway(tokenDeployer) {}
+
     /********************\
     |* Pure Key Getters *|
     \********************/
