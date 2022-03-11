@@ -59,25 +59,25 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \******************/
 
     function sendToken(
-        uint256 destinationChainId,
+        string memory destinationChain,
         string memory destinationAddress,
         string memory symbol,
         uint256 amount
     ) external {
         _burnTokenFrom(msg.sender, symbol, amount);
-        emit TokenSent(msg.sender, destinationChainId, destinationAddress, symbol, amount);
+        emit TokenSent(msg.sender, destinationChain, destinationAddress, symbol, amount);
     }
 
     function callContract(
-        uint256 destinationChainId,
+        string memory destinationChain,
         string memory contractAddress,
         bytes memory payload
     ) external {
-        emit ContractCall(msg.sender, destinationChainId, contractAddress, keccak256(payload), payload);
+        emit ContractCall(msg.sender, destinationChain, contractAddress, keccak256(payload), payload);
     }
 
     function callContractWithToken(
-        uint256 destinationChainId,
+        string memory destinationChain,
         string memory destinationAddress,
         bytes memory payload,
         string memory symbol,
@@ -86,7 +86,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _burnTokenFrom(msg.sender, symbol, amount);
         emit ContractCallWithToken(
             msg.sender,
-            destinationChainId,
+            destinationChain,
             destinationAddress,
             keccak256(payload),
             payload,
@@ -121,18 +121,18 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function validateContractCall(
         bytes32 commandId,
-        uint256 sourceChainId,
+        string memory sourceChain,
         string memory sourceAddress,
         bytes32 payloadHash
     ) external override returns (bool valid) {
-        bytes32 key = _getIsContractCallApprovedKey(commandId, sourceChainId, sourceAddress, msg.sender, payloadHash);
+        bytes32 key = _getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash);
         valid = getBool(key);
         if (valid) _setBool(key, false);
     }
 
     function validateContractCallAndMint(
         bytes32 commandId,
-        uint256 sourceChainId,
+        string memory sourceChain,
         string memory sourceAddress,
         bytes32 payloadHash,
         string memory symbol,
@@ -140,7 +140,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     ) external override returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedWithMintKey(
             commandId,
-            sourceChainId,
+            sourceChain,
             sourceAddress,
             msg.sender,
             payloadHash,
@@ -320,18 +320,18 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _approveContractCall(
         bytes32 commandId,
-        uint256 sourceChainId,
+        string memory sourceChain,
         string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash
     ) internal {
-        _setContractCallApproved(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash);
-        emit ContractCallApproved(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash);
+        _setContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
+        emit ContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
     }
 
     function _approveContractCallWithMint(
         bytes32 commandId,
-        uint256 sourceChainId,
+        string memory sourceChain,
         string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash,
@@ -340,7 +340,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     ) internal {
         _setContractCallApprovedWithMint(
             commandId,
-            sourceChainId,
+            sourceChain,
             sourceAddress,
             contractAddress,
             payloadHash,
@@ -349,7 +349,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         );
         emit ContractCallApprovedWithMint(
             commandId,
-            sourceChainId,
+            sourceChain,
             sourceAddress,
             contractAddress,
             payloadHash,
@@ -380,7 +380,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _getIsContractCallApprovedKey(
         bytes32 commandId,
-        uint256 sourceChainId,
+        string memory sourceChain,
         string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash
@@ -390,7 +390,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
                 abi.encodePacked(
                     PREFIX_CONTRACT_CALL_APPROVED,
                     commandId,
-                    sourceChainId,
+                    sourceChain,
                     sourceAddress,
                     contractAddress,
                     payloadHash
@@ -400,7 +400,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _getIsContractCallApprovedWithMintKey(
         bytes32 commandId,
-        uint256 sourceChainId,
+        string memory sourceChain,
         string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash,
@@ -412,7 +412,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
                 abi.encodePacked(
                     PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT,
                     commandId,
-                    sourceChainId,
+                    sourceChain,
                     sourceAddress,
                     contractAddress,
                     payloadHash,
@@ -461,20 +461,20 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _setContractCallApproved(
         bytes32 commandId,
-        uint256 sourceChainId,
+        string memory sourceChain,
         string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash
     ) internal {
         _setBool(
-            _getIsContractCallApprovedKey(commandId, sourceChainId, sourceAddress, contractAddress, payloadHash),
+            _getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, contractAddress, payloadHash),
             true
         );
     }
 
     function _setContractCallApprovedWithMint(
         bytes32 commandId,
-        uint256 sourceChainId,
+        string memory sourceChain,
         string memory sourceAddress,
         address contractAddress,
         bytes32 payloadHash,
@@ -484,7 +484,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setBool(
             _getIsContractCallApprovedWithMintKey(
                 commandId,
-                sourceChainId,
+                sourceChain,
                 sourceAddress,
                 contractAddress,
                 payloadHash,

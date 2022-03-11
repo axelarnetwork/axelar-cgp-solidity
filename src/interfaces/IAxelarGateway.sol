@@ -8,19 +8,19 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenSent(address indexed sender, uint256 destinationChainId, string indexed destinationAddress, string symbol, uint256 amount);
+    event TokenSent(address indexed sender, string destinationChain, string indexed destinationAddress, string symbol, uint256 amount);
 
-    event ContractCall(address indexed sender, uint256 destinationChainId, string indexed contractAddress, bytes32 indexed payloadHash, bytes payload);
+    event ContractCall(address indexed sender, string destinationChain, string indexed contractAddress, bytes32 indexed payloadHash, bytes payload);
 
-    event ContractCallWithToken(address indexed sender, uint256 destinationChainId, string indexed contractAddress, bytes32 indexed payloadHash, bytes payload, string symbol, uint256 amount);
+    event ContractCallWithToken(address indexed sender, string destinationChain, string indexed contractAddress, bytes32 indexed payloadHash, bytes payload, string symbol, uint256 amount);
 
     event Executed(bytes32 indexed commandId);
 
     event TokenDeployed(string symbol, address tokenAddresses);
 
-    event ContractCallApproved(bytes32 indexed commandId, uint256 sourceChainId, string sourceAddress, address indexed contractAddress, bytes32 payloadHash);
+    event ContractCallApproved(bytes32 indexed commandId, string sourceChain, string sourceAddress, address indexed contractAddress, bytes32 payloadHash);
 
-    event ContractCallApprovedWithMint(bytes32 indexed commandId, uint256 sourceChainId, string sourceAddress, address indexed contractAddress, bytes32 payloadHash, string indexed symbol, uint256 amount);
+    event ContractCallApprovedWithMint(bytes32 indexed commandId, string sourceChain, string sourceAddress, address indexed contractAddress, bytes32 payloadHash, string indexed symbol, uint256 amount);
 
     event TokenFrozen(string indexed symbol);
 
@@ -40,11 +40,11 @@ interface IAxelarGateway {
     |* Public Methods *|
     \******************/
 
-    function sendToken(uint256 destinationChainId, string memory destinationAddress, string memory symbol, uint256 amount) external;
+    function sendToken(string memory destinationChain, string memory destinationAddress, string memory symbol, uint256 amount) external;
 
-    function callContract(uint256 destinationChainId, string memory contractAddress, bytes memory payload) external;
+    function callContract(string memory destinationChain, string memory contractAddress, bytes memory payload) external;
 
-    function callContractWithToken(uint256 destinationChainId, string memory contractAddress, bytes memory payload, string memory symbol, uint256 amount) external;
+    function callContractWithToken(string memory destinationChain, string memory contractAddress, bytes memory payload, string memory symbol, uint256 amount) external;
 
     /***********\
     |* Getters *|
@@ -60,9 +60,9 @@ interface IAxelarGateway {
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
 
-    function validateContractCall(bytes32 commandId, uint256 sourceChainId, string memory sourceAddress, bytes32 payloadHash) external returns (bool);
+    function validateContractCall(bytes32 commandId, string memory sourceChain, string memory sourceAddress, bytes32 payloadHash) external returns (bool);
 
-    function validateContractCallAndMint(bytes32 commandId, uint256 sourceChainId, string memory sourceAddress, bytes32 payloadHash, string memory symbol, uint256 amount) external returns (bool);
+    function validateContractCallAndMint(bytes32 commandId, string memory sourceChain, string memory sourceAddress, bytes32 payloadHash, string memory symbol, uint256 amount) external returns (bool);
 
     /*******************\
     |* Admin Functions *|
