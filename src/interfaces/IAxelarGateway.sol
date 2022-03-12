@@ -18,9 +18,9 @@ interface IAxelarGateway {
 
     event TokenDeployed(string symbol, address tokenAddresses);
 
-    event ContractCallApproved(bytes32 indexed commandId, string sourceChain, string sourceAddress, address indexed contractAddress, bytes32 payloadHash);
+    event ContractCallApproved(bytes32 indexed commandId, string sourceChain, string sourceAddress, address indexed contractAddress, bytes32 indexed payloadHash);
 
-    event ContractCallApprovedWithMint(bytes32 indexed commandId, string sourceChain, string sourceAddress, address indexed contractAddress, bytes32 payloadHash, string indexed symbol, uint256 amount);
+    event ContractCallApprovedWithMint(bytes32 indexed commandId, string sourceChain, string sourceAddress, address indexed contractAddress, bytes32 indexed payloadHash, string symbol, uint256 amount);
 
     event TokenFrozen(string indexed symbol);
 
