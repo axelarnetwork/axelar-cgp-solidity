@@ -131,10 +131,8 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     }
 
     function approveContractCall(bytes calldata params, bytes32 commandId) external onlySelf {
-        (string memory sourceChain, string memory sourceAddress, address contractAddress, bytes32 payloadHash) = abi.decode(
-            params,
-            (string, string, address, bytes32)
-        );
+        (string memory sourceChain, string memory sourceAddress, address contractAddress, bytes32 payloadHash) = abi
+            .decode(params, (string, string, address, bytes32));
 
         _approveContractCall(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
     }

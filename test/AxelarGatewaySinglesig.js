@@ -1427,21 +1427,24 @@ describe('AxelarGatewaySingleSig', () => {
     });
   });
 
-
   describe('callContract', () => {
     it('should burn internal token and emit an event', async () => {
-      const chain = 'polygon'
+      const chain = 'polygon';
       const destination = nonOwnerWallet.address.toString().replace('0x', '');
       const payload = defaultAbiCoder.encode(
         ['address', 'address'],
         [ownerWallet.address, nonOwnerWallet.address],
       );
 
-      await expect(
-        await contract.callContract(chain, destination, payload),
-      )
+      await expect(await contract.callContract(chain, destination, payload))
         .to.emit(contract, 'ContractCall')
-        .withArgs(ownerWallet.address, chain, destination, keccak256(payload), payload);
+        .withArgs(
+          ownerWallet.address,
+          chain,
+          destination,
+          keccak256(payload),
+          payload,
+        );
     });
   });
 
@@ -1485,7 +1488,7 @@ describe('AxelarGatewaySingleSig', () => {
       const issuer = ownerWallet.address;
       const spender = contract.address;
       const amount = 1000;
-      const chain = 'polygon'
+      const chain = 'polygon';
       const destination = nonOwnerWallet.address.toString().replace('0x', '');
       const payload = defaultAbiCoder.encode(
         ['address', 'address'],
@@ -1497,12 +1500,26 @@ describe('AxelarGatewaySingleSig', () => {
         .withArgs(issuer, spender, amount);
 
       await expect(
-        await contract.callContractWithToken(chain, destination, payload, tokenSymbol, amount),
+        await contract.callContractWithToken(
+          chain,
+          destination,
+          payload,
+          tokenSymbol,
+          amount,
+        ),
       )
         .to.emit(token, 'Transfer')
         .withArgs(issuer, ADDRESS_ZERO, amount)
         .to.emit(contract, 'ContractCallWithToken')
-        .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
+        .withArgs(
+          issuer,
+          chain,
+          destination,
+          keccak256(payload),
+          payload,
+          tokenSymbol,
+          amount,
+        );
     });
 
     it('should lock external token and emit an event', async () => {
@@ -1542,7 +1559,7 @@ describe('AxelarGatewaySingleSig', () => {
       const issuer = ownerWallet.address;
       const locker = contract.address;
       const amount = 1000;
-      const chain = 'polygon'
+      const chain = 'polygon';
       const destination = nonOwnerWallet.address.toString().replace('0x', '');
       const payload = defaultAbiCoder.encode(
         ['address', 'address'],
@@ -1554,12 +1571,26 @@ describe('AxelarGatewaySingleSig', () => {
         .withArgs(issuer, locker, amount);
 
       await expect(
-        await contract.callContractWithToken(chain, destination, payload, tokenSymbol, amount),
+        await contract.callContractWithToken(
+          chain,
+          destination,
+          payload,
+          tokenSymbol,
+          amount,
+        ),
       )
         .to.emit(token, 'Transfer')
         .withArgs(issuer, locker, amount)
         .to.emit(contract, 'ContractCallWithToken')
-        .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
+        .withArgs(
+          issuer,
+          chain,
+          destination,
+          keccak256(payload),
+          payload,
+          tokenSymbol,
+          amount,
+        );
     });
   });
 
@@ -1643,14 +1674,7 @@ describe('AxelarGatewaySingleSig', () => {
             ['approveContractCallWithMint'],
             [
               defaultAbiCoder.encode(
-                [
-                  'string',
-                  'string',
-                  'address',
-                  'bytes32',
-                  'string',
-                  'uint256',
-                ],
+                ['string', 'string', 'address', 'bytes32', 'string', 'uint256'],
                 [
                   sourceChain,
                   sourceAddress,
