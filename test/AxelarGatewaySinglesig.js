@@ -1317,113 +1317,249 @@ describe('AxelarGatewaySingleSig', () => {
           });
       });
     });
+  });
 
-    describe('send token from gateway', () => {
-      it('should burn internal token and emit an event', async () => {
-        const tokenName = 'Test Token';
-        const tokenSymbol = 'TEST';
-        const decimals = 18;
-        const cap = 1e9;
+  describe('sendToken', () => {
+    it('should burn internal token and emit an event', async () => {
+      const tokenName = 'Test Token';
+      const tokenSymbol = 'TEST';
+      const decimals = 18;
+      const cap = 1e9;
 
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+      const data = arrayify(
+        defaultAbiCoder.encode(
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [
+            CHAIN_ID,
+            ROLE_OWNER,
+            [getRandomID(), getRandomID()],
+            ['deployToken', 'mintToken'],
             [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID(), getRandomID()],
-              ['deployToken', 'mintToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO],
-                ),
-                defaultAbiCoder.encode(
-                  ['string', 'address', 'uint256'],
-                  [tokenSymbol, ownerWallet.address, 1e6],
-                ),
-              ],
+              defaultAbiCoder.encode(
+                ['string', 'string', 'uint8', 'uint256', 'address'],
+                [tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO],
+              ),
+              defaultAbiCoder.encode(
+                ['string', 'address', 'uint256'],
+                [tokenSymbol, ownerWallet.address, 1e6],
+              ),
             ],
-          ),
-        );
-        await contract.execute(await getSignedExecuteInput(data, ownerWallet));
+          ],
+        ),
+      );
+      await contract.execute(await getSignedExecuteInput(data, ownerWallet));
 
-        const tokenAddress = await contract.tokenAddresses(tokenSymbol);
-        const token = new Contract(
-          tokenAddress,
-          BurnableMintableCappedERC20.abi,
-          ownerWallet,
-        );
+      const tokenAddress = await contract.tokenAddresses(tokenSymbol);
+      const token = new Contract(
+        tokenAddress,
+        BurnableMintableCappedERC20.abi,
+        ownerWallet,
+      );
 
-        const issuer = ownerWallet.address;
-        const spender = contract.address;
-        const amount = 1000;
-        const destination = nonOwnerWallet.address.toString().replace('0x', '');
+      const issuer = ownerWallet.address;
+      const spender = contract.address;
+      const amount = 1000;
+      const destination = nonOwnerWallet.address.toString().replace('0x', '');
 
-        await expect(await token.approve(spender, amount))
-          .to.emit(token, 'Approval')
-          .withArgs(issuer, spender, amount);
+      await expect(await token.approve(spender, amount))
+        .to.emit(token, 'Approval')
+        .withArgs(issuer, spender, amount);
 
-        await expect(
-          await contract.sendToken('polygon', destination, tokenSymbol, amount),
-        )
-          .to.emit(token, 'Transfer')
-          .withArgs(issuer, ADDRESS_ZERO, amount)
-          .to.emit(contract, 'TokenSent')
-          .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
-      });
+      await expect(
+        await contract.sendToken('polygon', destination, tokenSymbol, amount),
+      )
+        .to.emit(token, 'Transfer')
+        .withArgs(issuer, ADDRESS_ZERO, amount)
+        .to.emit(contract, 'TokenSent')
+        .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
+    });
 
-      it('should lock external token and emit an event', async () => {
-        const tokenName = 'Test Token';
-        const tokenSymbol = 'TEST';
-        const decimals = 18;
-        const cap = 1e9;
+    it('should lock external token and emit an event', async () => {
+      const tokenName = 'Test Token';
+      const tokenSymbol = 'TEST';
+      const decimals = 18;
+      const cap = 1e9;
 
-        const token = await deployContract(ownerWallet, MintableCappedERC20, [
-          tokenName,
-          tokenSymbol,
-          decimals,
-          cap,
-        ]);
+      const token = await deployContract(ownerWallet, MintableCappedERC20, [
+        tokenName,
+        tokenSymbol,
+        decimals,
+        cap,
+      ]);
 
-        await token.mint(ownerWallet.address, 1000000);
+      await token.mint(ownerWallet.address, 1000000);
 
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+      const data = arrayify(
+        defaultAbiCoder.encode(
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [
+            CHAIN_ID,
+            ROLE_OWNER,
+            [getRandomID()],
+            ['deployToken'],
             [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['deployToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [tokenName, tokenSymbol, decimals, cap, token.address],
-                ),
-              ],
+              defaultAbiCoder.encode(
+                ['string', 'string', 'uint8', 'uint256', 'address'],
+                [tokenName, tokenSymbol, decimals, cap, token.address],
+              ),
             ],
-          ),
-        );
-        await contract.execute(await getSignedExecuteInput(data, ownerWallet));
+          ],
+        ),
+      );
+      await contract.execute(await getSignedExecuteInput(data, ownerWallet));
 
-        const issuer = ownerWallet.address;
-        const locker = contract.address;
-        const amount = 1000;
-        const destination = nonOwnerWallet.address.toString().replace('0x', '');
+      const issuer = ownerWallet.address;
+      const locker = contract.address;
+      const amount = 1000;
+      const destination = nonOwnerWallet.address.toString().replace('0x', '');
 
-        await expect(await token.approve(locker, amount))
-          .to.emit(token, 'Approval')
-          .withArgs(issuer, locker, amount);
+      await expect(await token.approve(locker, amount))
+        .to.emit(token, 'Approval')
+        .withArgs(issuer, locker, amount);
 
-        await expect(
-          await contract.sendToken('polygon', destination, tokenSymbol, amount),
-        )
-          .to.emit(token, 'Transfer')
-          .withArgs(issuer, locker, amount)
-          .to.emit(contract, 'TokenSent')
-          .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
-      });
+      await expect(
+        await contract.sendToken('polygon', destination, tokenSymbol, amount),
+      )
+        .to.emit(token, 'Transfer')
+        .withArgs(issuer, locker, amount)
+        .to.emit(contract, 'TokenSent')
+        .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
+    });
+  });
+
+
+  describe('callContract', () => {
+    it('should burn internal token and emit an event', async () => {
+      const chain = 'polygon'
+      const destination = nonOwnerWallet.address.toString().replace('0x', '');
+      const payload = defaultAbiCoder.encode(
+        ['address', 'address'],
+        [ownerWallet.address, nonOwnerWallet.address],
+      );
+
+      await expect(
+        await contract.callContract(chain, destination, payload),
+      )
+        .to.emit(contract, 'ContractCall')
+        .withArgs(ownerWallet.address, chain, destination, keccak256(payload), payload);
+    });
+  });
+
+  describe('callContractWithToken', () => {
+    it('should burn internal token and emit an event', async () => {
+      const tokenName = 'Test Token';
+      const tokenSymbol = 'TEST';
+      const decimals = 18;
+      const cap = 1e9;
+
+      const data = arrayify(
+        defaultAbiCoder.encode(
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [
+            CHAIN_ID,
+            ROLE_OWNER,
+            [getRandomID(), getRandomID()],
+            ['deployToken', 'mintToken'],
+            [
+              defaultAbiCoder.encode(
+                ['string', 'string', 'uint8', 'uint256', 'address'],
+                [tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO],
+              ),
+              defaultAbiCoder.encode(
+                ['string', 'address', 'uint256'],
+                [tokenSymbol, ownerWallet.address, 1e6],
+              ),
+            ],
+          ],
+        ),
+      );
+      await contract.execute(await getSignedExecuteInput(data, ownerWallet));
+
+      const tokenAddress = await contract.tokenAddresses(tokenSymbol);
+      const token = new Contract(
+        tokenAddress,
+        BurnableMintableCappedERC20.abi,
+        ownerWallet,
+      );
+
+      const issuer = ownerWallet.address;
+      const spender = contract.address;
+      const amount = 1000;
+      const chain = 'polygon'
+      const destination = nonOwnerWallet.address.toString().replace('0x', '');
+      const payload = defaultAbiCoder.encode(
+        ['address', 'address'],
+        [ownerWallet.address, nonOwnerWallet.address],
+      );
+
+      await expect(await token.approve(spender, amount))
+        .to.emit(token, 'Approval')
+        .withArgs(issuer, spender, amount);
+
+      await expect(
+        await contract.callContractWithToken(chain, destination, payload, tokenSymbol, amount),
+      )
+        .to.emit(token, 'Transfer')
+        .withArgs(issuer, ADDRESS_ZERO, amount)
+        .to.emit(contract, 'ContractCallWithToken')
+        .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
+    });
+
+    it('should lock external token and emit an event', async () => {
+      const tokenName = 'Test Token';
+      const tokenSymbol = 'TEST';
+      const decimals = 18;
+      const cap = 1e9;
+
+      const token = await deployContract(ownerWallet, MintableCappedERC20, [
+        tokenName,
+        tokenSymbol,
+        decimals,
+        cap,
+      ]);
+
+      await token.mint(ownerWallet.address, 1000000);
+
+      const data = arrayify(
+        defaultAbiCoder.encode(
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [
+            CHAIN_ID,
+            ROLE_OWNER,
+            [getRandomID()],
+            ['deployToken'],
+            [
+              defaultAbiCoder.encode(
+                ['string', 'string', 'uint8', 'uint256', 'address'],
+                [tokenName, tokenSymbol, decimals, cap, token.address],
+              ),
+            ],
+          ],
+        ),
+      );
+      await contract.execute(await getSignedExecuteInput(data, ownerWallet));
+
+      const issuer = ownerWallet.address;
+      const locker = contract.address;
+      const amount = 1000;
+      const chain = 'polygon'
+      const destination = nonOwnerWallet.address.toString().replace('0x', '');
+      const payload = defaultAbiCoder.encode(
+        ['address', 'address'],
+        [ownerWallet.address, nonOwnerWallet.address],
+      );
+
+      await expect(await token.approve(locker, amount))
+        .to.emit(token, 'Approval')
+        .withArgs(issuer, locker, amount);
+
+      await expect(
+        await contract.callContractWithToken(chain, destination, payload, tokenSymbol, amount),
+      )
+        .to.emit(token, 'Transfer')
+        .withArgs(issuer, locker, amount)
+        .to.emit(contract, 'ContractCallWithToken')
+        .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
     });
   });
 
