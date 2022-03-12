@@ -102,30 +102,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         );
     }
 
-    /***********\
-    |* Getters *|
-    \***********/
-
-    function allTokensFrozen() public view override returns (bool) {
-        return getBool(KEY_ALL_TOKENS_FROZEN);
-    }
-
-    function implementation() public view override returns (address) {
-        return getAddress(KEY_IMPLEMENTATION);
-    }
-
-    function tokenAddresses(string memory symbol) public view override returns (address) {
-        return getAddress(_getTokenAddressKey(symbol));
-    }
-
-    function tokenFrozen(string memory symbol) public view override returns (bool) {
-        return getBool(_getFreezeTokenKey(symbol));
-    }
-
-    function isCommandExecuted(bytes32 commandId) public view override returns (bool) {
-        return getBool(_getIsCommandExecutedKey(commandId));
-    }
-
     function validateContractCall(
         bytes32 commandId,
         string memory sourceChain,
@@ -156,9 +132,33 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         );
         valid = getBool(key);
         if (valid) {
-            _mintToken(symbol, msg.sender, amount);
             _setBool(key, false);
+            _mintToken(symbol, msg.sender, amount);
         }
+    }
+
+    /***********\
+    |* Getters *|
+    \***********/
+
+    function allTokensFrozen() public view override returns (bool) {
+        return getBool(KEY_ALL_TOKENS_FROZEN);
+    }
+
+    function implementation() public view override returns (address) {
+        return getAddress(KEY_IMPLEMENTATION);
+    }
+
+    function tokenAddresses(string memory symbol) public view override returns (address) {
+        return getAddress(_getTokenAddressKey(symbol));
+    }
+
+    function tokenFrozen(string memory symbol) public view override returns (bool) {
+        return getBool(_getFreezeTokenKey(symbol));
+    }
+
+    function isCommandExecuted(bytes32 commandId) public view override returns (bool) {
+        return getBool(_getIsCommandExecutedKey(commandId));
     }
 
     /*******************\

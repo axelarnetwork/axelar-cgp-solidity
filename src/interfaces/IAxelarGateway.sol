@@ -46,6 +46,10 @@ interface IAxelarGateway {
 
     function callContractWithToken(string memory destinationChain, string memory contractAddress, bytes memory payload, string memory symbol, uint256 amount) external;
 
+    function validateContractCall(bytes32 commandId, string memory sourceChain, string memory sourceAddress, bytes32 payloadHash) external returns (bool);
+
+    function validateContractCallAndMint(bytes32 commandId, string memory sourceChain, string memory sourceAddress, bytes32 payloadHash, string memory symbol, uint256 amount) external returns (bool);
+
     /***********\
     |* Getters *|
     \***********/
@@ -59,10 +63,6 @@ interface IAxelarGateway {
     function tokenFrozen(string memory symbol) external view returns (bool);
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
-
-    function validateContractCall(bytes32 commandId, string memory sourceChain, string memory sourceAddress, bytes32 payloadHash) external returns (bool);
-
-    function validateContractCallAndMint(bytes32 commandId, string memory sourceChain, string memory sourceAddress, bytes32 payloadHash, string memory symbol, uint256 amount) external returns (bool);
 
     /*******************\
     |* Admin Functions *|
