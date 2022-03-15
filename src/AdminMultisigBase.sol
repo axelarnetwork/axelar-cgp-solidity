@@ -5,6 +5,12 @@ pragma solidity 0.8.9;
 import { EternalStorage } from './EternalStorage.sol';
 
 contract AdminMultisigBase is EternalStorage {
+    error NotAdmin();
+    error AlreadyVoted();
+    error InvalidAdmins();
+    error InvalidAdminThreshold();
+    error DuplicateAdmin(address admin);
+
     // AUDIT: slot names should be prefixed with some standard string
     // AUDIT: constants should be literal and their derivation should be in comments
     bytes32 internal constant KEY_ADMIN_EPOCH = keccak256('admin-epoch');
@@ -19,12 +25,13 @@ contract AdminMultisigBase is EternalStorage {
     modifier onlyAdmin() {
         uint256 adminEpoch = _adminEpoch();
 
-        require(_isAdmin(adminEpoch, msg.sender), 'NOT_ADMIN');
+        if (!_isAdmin(adminEpoch, msg.sender)) revert NotAdmin();
 
         bytes32 topic = keccak256(msg.data);
 
         // Check that admin has not voted, then record that they have voted.
-        require(!_hasVoted(adminEpoch, topic, msg.sender), 'VOTED');
+        if (_hasVoted(adminEpoch, topic, msg.sender)) revert AlreadyVoted();
+
         _setHasVoted(adminEpoch, topic, msg.sender, true);
 
         // Determine the new vote count and update it.
@@ -141,8 +148,9 @@ contract AdminMultisigBase is EternalStorage {
     ) internal {
         uint256 adminLength = accounts.length;
 
-        require(adminLength >= threshold, 'INV_ADMINS');
-        require(threshold > uint256(0), 'INV_ADMIN_THLD');
+        if (adminLength < threshold) revert InvalidAdmins();
+
+        if (threshold == uint256(0)) revert InvalidAdminThreshold();
 
         _setAdminThreshold(adminEpoch, threshold);
         _setAdminCount(adminEpoch, adminLength);
@@ -151,7 +159,7 @@ contract AdminMultisigBase is EternalStorage {
             address account = accounts[i];
 
             // Check that the account wasn't already set as an admin for this epoch.
-            require(!_isAdmin(adminEpoch, account), 'DUP_ADMIN');
+            if (_isAdmin(adminEpoch, account)) revert DuplicateAdmin(account);
 
             // Set this account as the i-th admin in this epoch (needed to we can clear topic votes in `onlyAdmin`).
             _setAdmin(adminEpoch, i, account);

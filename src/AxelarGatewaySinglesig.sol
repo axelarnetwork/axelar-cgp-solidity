@@ -8,6 +8,11 @@ import { ECDSA } from './ECDSA.sol';
 import { AxelarGateway } from './AxelarGateway.sol';
 
 contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
+    error InvalidAddress();
+    error NotProxy();
+    error InvalidChainId();
+    error InvalidCommands();
+
     bytes32 internal constant KEY_OWNER_EPOCH = keccak256('owner-epoch');
 
     bytes32 internal constant PREFIX_OWNER = keccak256('owner');
@@ -162,7 +167,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         address newOwner = abi.decode(params, (address));
         uint256 ownerEpoch = _ownerEpoch();
 
-        require(newOwner != address(0), 'ZERO_ADDR');
+        if (newOwner == address(0)) revert InvalidAddress();
 
         emit OwnershipTransferred(_getOwner(ownerEpoch), newOwner);
 
@@ -173,7 +178,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     function transferOperatorship(bytes calldata params, bytes32) external onlySelf {
         address newOperator = abi.decode(params, (address));
 
-        require(newOperator != address(0), 'ZERO_ADDR');
+        if (newOperator == address(0)) revert InvalidAddress();
 
         emit OperatorshipTransferred(operator(), newOperator);
 
@@ -188,7 +193,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
 
     function setup(bytes calldata params) external override {
         // Prevent setup from being called on a non-proxy (the implementation).
-        require(implementation() != address(0), 'NOT_PROXY');
+        if (implementation() == address(0)) revert NotProxy();
 
         (address[] memory adminAddresses, uint256 adminThreshold, address ownerAddress, address operatorAddress) = abi
             .decode(params, (address[], uint256, address, address));
@@ -226,11 +231,11 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             bytes[] memory params
         ) = abi.decode(data, (uint256, Role, bytes32[], string[], bytes[]));
 
-        require(chainId == block.chainid, 'INV_CHAIN');
+        if (chainId != block.chainid) revert InvalidChainId();
 
         uint256 commandsLength = commandIds.length;
 
-        require(commandsLength == commands.length && commandsLength == params.length, 'INV_CMDS');
+        if (commandsLength != commands.length || commandsLength != params.length) revert InvalidCommands();
 
         bool isCurrentOwner;
         bool isValidRecentOwner;
