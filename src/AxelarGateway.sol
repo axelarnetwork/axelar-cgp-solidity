@@ -15,6 +15,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     error NotSelf();
     error InvalidCodeHash();
     error SetupFailed();
+    error InvalidAmount();
     error TokenDoesNotExist(string symbol);
     error TokenAlreadyExists(string symbol);
     error TokenDeployFailed(string symbol);
@@ -233,33 +234,34 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address tokenAddress = tokenAddresses(symbol);
 
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
-        require(amount > 0, 'WRONG_AMOUNT');
+        if (amount == 0) revert InvalidAmount();
 
         TokenType tokenType = _getTokenType(symbol);
+        bool burnSuccess;
 
         if (tokenType == TokenType.External) {
-            bool success = _callERC20Token(
+            burnSuccess = _callERC20Token(
                 tokenAddress,
                 abi.encodeWithSelector(IERC20.transferFrom.selector, sender, address(this), amount)
             );
 
-            if (!success) revert BurnFailed(symbol);
+            if (!burnSuccess) revert BurnFailed(symbol);
 
             return;
         }
 
         if (tokenType == TokenType.InternalBurnableFrom) {
-            bool success = _callERC20Token(
+            burnSuccess = _callERC20Token(
                 tokenAddress,
                 abi.encodeWithSelector(IERC20BurnFrom.burnFrom.selector, sender, amount)
             );
 
-            if (!success) revert BurnFailed(symbol);
+            if (!burnSuccess) revert BurnFailed(symbol);
 
             return;
         }
 
-        bool success = _callERC20Token(
+        burnSuccess = _callERC20Token(
             tokenAddress,
             abi.encodeWithSelector(
                 IERC20.transferFrom.selector,
@@ -269,7 +271,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             )
         );
 
-        if (!success) revert BurnFailed(symbol);
+        if (!burnSuccess) revert BurnFailed(symbol);
 
         BurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
     }

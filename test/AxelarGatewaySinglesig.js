@@ -29,7 +29,7 @@ const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
 const DepositHandler = require('../build/DepositHandler.json');
-const DestinationExecutor = require('../build/DestinationSwapExecutor.json');
+const DestinationSwapExecutable = require('../build/DestinationSwapExecutable.json');
 const TokenSwapper = require('../build/TokenSwapper.json');
 const {
   bigNumberToNumber,
@@ -1623,10 +1623,11 @@ describe('AxelarGatewaySingleSig', () => {
         tokenB.address,
       ]);
 
-      const executor = await deployContract(ownerWallet, DestinationExecutor, [
-        contract.address,
-        swapper.address,
-      ]);
+      const swapExecutable = await deployContract(
+        ownerWallet,
+        DestinationSwapExecutable,
+        [contract.address, swapper.address],
+      );
 
       await tokenA.mint(contract.address, 1e6);
       await tokenB.mint(swapper.address, 1e6);
@@ -1679,7 +1680,7 @@ describe('AxelarGatewaySingleSig', () => {
                 [
                   sourceChain,
                   sourceAddress,
-                  executor.address,
+                  swapExecutable.address,
                   payloadHash,
                   symbolA,
                   swapAmount,
@@ -1700,13 +1701,13 @@ describe('AxelarGatewaySingleSig', () => {
           commandId,
           sourceChain,
           sourceAddress,
-          executor.address,
+          swapExecutable.address,
           payloadHash,
           symbolA,
           20000,
         );
 
-      const swap = await executor.executeWithToken(
+      const swap = await swapExecutable.executeWithToken(
         commandId,
         sourceChain,
         sourceAddress,
@@ -1717,7 +1718,7 @@ describe('AxelarGatewaySingleSig', () => {
 
       await expect(swap)
         .to.emit(tokenA, 'Transfer')
-        .withArgs(contract.address, executor.address, swapAmount)
+        .withArgs(contract.address, swapExecutable.address, swapAmount)
         .and.to.emit(tokenB, 'Transfer')
         .withArgs(swapper.address, nonOwnerWallet.address, swapAmount * 2);
     });
