@@ -8,11 +8,11 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenSent(address indexed sender, string destinationChain, string indexed destinationAddress, string symbol, uint256 amount);
+    event TokenSent(address indexed sender, string destinationChain, string destinationAddress, string symbol, uint256 amount);
 
-    event ContractCall(address indexed sender, string destinationChain, string indexed contractAddress, bytes32 indexed payloadHash, bytes payload);
+    event ContractCall(address indexed sender, string destinationChain, string contractAddress, bytes32 indexed payloadHash, bytes payload);
 
-    event ContractCallWithToken(address indexed sender, string destinationChain, string indexed contractAddress, bytes32 indexed payloadHash, bytes payload, string symbol, uint256 amount);
+    event ContractCallWithToken(address indexed sender, string destinationChain, string contractAddress, bytes32 indexed payloadHash, bytes payload, string symbol, uint256 amount);
 
     event Executed(bytes32 indexed commandId);
 
@@ -22,9 +22,9 @@ interface IAxelarGateway {
 
     event ContractCallApprovedWithMint(bytes32 indexed commandId, string sourceChain, string sourceAddress, address indexed contractAddress, bytes32 indexed payloadHash, string symbol, uint256 amount);
 
-    event TokenFrozen(string indexed symbol);
+    event TokenFrozen(string symbol);
 
-    event TokenUnfrozen(string indexed symbol);
+    event TokenUnfrozen(string symbol);
 
     event AllTokensFrozen();
 

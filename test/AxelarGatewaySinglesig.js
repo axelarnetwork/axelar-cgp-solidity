@@ -29,7 +29,7 @@ const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
 const DepositHandler = require('../build/DepositHandler.json');
-const ExternalExecutor = require('../build/ExternalExecutor.json');
+const DestinationExecutor = require('../build/DestinationSwapExecutor.json');
 const TokenSwapper = require('../build/TokenSwapper.json');
 const {
   bigNumberToNumber,
@@ -1622,7 +1622,7 @@ describe('AxelarGatewaySingleSig', () => {
         tokenB.address,
       ]);
 
-      const executor = await deployContract(ownerWallet, ExternalExecutor, [
+      const executor = await deployContract(ownerWallet, DestinationExecutor, [
         contract.address,
         swapper.address,
       ]);
@@ -1705,13 +1705,13 @@ describe('AxelarGatewaySingleSig', () => {
           20000,
         );
 
-      const swap = await executor.swapToken(
+      const swap = await executor.executeWithToken(
         commandId,
         sourceChain,
         sourceAddress,
+        payload,
         symbolA,
         swapAmount,
-        payload,
       );
 
       await expect(swap)

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity 0.8.9;
 
-import {IAxelarGateway} from '../interfaces/IAxelarGateway.sol';
-import {IERC20} from '../interfaces/IERC20.sol';
-import './TokenSwapper.sol';
+import { IDestinationExecutor } from '../interfaces/IDestinationExecutor.sol';
+import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
+import { IERC20 } from '../interfaces/IERC20.sol';
+import { TokenSwapper } from './TokenSwapper.sol';
 
-contract ExternalExecutor {
+contract DestinationSwapExecutor is IDestinationExecutor{
     address gateway;
     address swapper;
 
@@ -15,13 +16,20 @@ contract ExternalExecutor {
         swapper = swapperAddress;
     }
 
-    function swapToken(
+    function execute(
         bytes32 commandId,
         string memory sourceChain,
         string memory sourceAddress,
-        string memory tokenSymbol,
-        uint256 amount,
         bytes calldata payload
+    ) external {}
+
+    function executeWithToken(
+        bytes32 commandId,
+        string memory sourceChain,
+        string memory sourceAddress,
+        bytes calldata payload,
+        string memory tokenSymbol,
+        uint256 amount
     ) external {
         bytes32 payloadHash = keccak256(payload);
         (address toTokenAddress, address recipient) = abi.decode(payload, (address, address));

@@ -221,6 +221,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     ) internal {
         address tokenAddress = tokenAddresses(symbol);
         require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
+        require(amount > 0, 'WRONG_AMOUNT');
 
         TokenType tokenType = _getTokenType(symbol);
         string memory burnErrorMessage = 'BURN_FAIL';
