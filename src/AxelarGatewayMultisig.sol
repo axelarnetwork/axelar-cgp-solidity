@@ -8,6 +8,18 @@ import { ECDSA } from './ECDSA.sol';
 import { AxelarGateway } from './AxelarGateway.sol';
 
 contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
+    error InvalidAddress();
+    error InvalidOwners();
+    error InvalidOwnerThreshold();
+    error DuplicateOwner(address owner);
+    error InvalidOperators();
+    error InvalidOperatorThreshold();
+    error DuplicateOperator(address operator);
+    error NotProxy();
+    error InvalidChainId();
+    error MalformedSigners();
+    error InvalidCommands();
+
     // AUDIT: slot names should be prefixed with some standard string
     // AUDIT: constants should be literal and their derivation should be in comments
     bytes32 internal constant KEY_OWNER_EPOCH = keccak256('owner-epoch');
@@ -134,7 +146,8 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         uint256 index,
         address account
     ) internal {
-        require(account != address(0), 'ZERO_ADDR');
+        if (account == address(0)) revert InvalidAddress();
+
         _setAddress(_getOwnerKey(ownerEpoch, index), account);
     }
 
@@ -149,8 +162,9 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     ) internal {
         uint256 accountLength = accounts.length;
 
-        require(accountLength >= threshold, 'INV_OWNERS');
-        require(threshold > uint256(0), 'INV_OWNER_THLD');
+        if (accountLength < threshold) revert InvalidOwners();
+
+        if (threshold == uint256(0)) revert InvalidOwnerThreshold();
 
         _setOwnerThreshold(ownerEpoch, threshold);
         _setOwnerCount(ownerEpoch, accountLength);
@@ -159,7 +173,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             address account = accounts[i];
 
             // Check that the account wasn't already set as an owner for this ownerEpoch.
-            require(!_isOwner(ownerEpoch, account), 'DUP_OWNER');
+            if (_isOwner(ownerEpoch, account)) revert DuplicateOwner(account);
 
             // Set this account as the i-th owner in this ownerEpoch (needed to we can get all the owners for `owners`).
             _setOwner(ownerEpoch, i, account);
@@ -276,7 +290,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         uint256 index,
         address account
     ) internal {
-        // AUDIT: Should have `require(account != address(0), 'ZERO_ADDR');` like Singlesig?
         _setAddress(_getOperatorKey(operatorEpoch, index), account);
     }
 
@@ -291,8 +304,9 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     ) internal {
         uint256 accountLength = accounts.length;
 
-        require(accountLength >= threshold, 'INV_OPERATORS');
-        require(threshold > uint256(0), 'INV_OPERATOR_THLD');
+        if (accountLength < threshold) revert InvalidOperators();
+
+        if (threshold == uint256(0)) revert InvalidOperatorThreshold();
 
         _setOperatorThreshold(operatorEpoch, threshold);
         _setOperatorCount(operatorEpoch, accountLength);
@@ -301,7 +315,9 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             address account = accounts[i];
 
             // Check that the account wasn't already set as an operator for this operatorEpoch.
-            require(!_isOperator(operatorEpoch, account), 'DUP_OPERATOR');
+            if (_isOperator(operatorEpoch, account)) revert DuplicateOperator(account);
+
+            if (account == address(0)) revert InvalidAddress();
 
             // Set this account as the i-th operator in this operatorEpoch (needed to we can get all the operators for `operators`).
             _setOperator(operatorEpoch, i, account);
@@ -403,7 +419,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
     function setup(bytes calldata params) external override {
         // Prevent setup from being called on a non-proxy (the implementation).
-        require(implementation() != address(0), 'NOT_PROXY');
+        if (implementation() == address(0)) revert NotProxy();
 
         (
             address[] memory adminAddresses,
@@ -453,12 +469,13 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             bytes[] memory params
         ) = abi.decode(data, (uint256, Role, bytes32[], string[], bytes[]));
 
-        require(chainId == block.chainid, 'INV_CHAIN');
-        require(_isSortedAscAndContainsNoDuplicate(signers), 'DUP_SIGNERS');
+        if (chainId != block.chainid) revert InvalidChainId();
+
+        if (!_isSortedAscAndContainsNoDuplicate(signers)) revert MalformedSigners();
 
         uint256 commandsLength = commandIds.length;
 
-        require(commandsLength == commands.length && commandsLength == params.length, 'INV_CMDS');
+        if (commandsLength != commands.length || commandsLength != params.length) revert InvalidCommands();
 
         bool areValidCurrentOwners;
         bool areValidRecentOwners;
