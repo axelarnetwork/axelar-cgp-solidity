@@ -12,6 +12,16 @@ import { AdminMultisigBase } from './AdminMultisigBase.sol';
 import { TokenDeployer } from './TokenDeployer.sol';
 
 abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
+    error NotSelf();
+    error InvalidCodeHash();
+    error SetupFailed();
+    error TokenDoesNotExist(string symbol);
+    error TokenAlreadyExists(string symbol);
+    error TokenDeployFailed(string symbol);
+    error TokenContractDoesNotExist(address token);
+    error BurnFailed(string symbol);
+    error MintFailed(string symbol);
+
     enum Role {
         Admin,
         Owner,
@@ -56,7 +66,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     modifier onlySelf() {
-        require(msg.sender == address(this), 'NOT_SELF');
+        if (msg.sender != address(this)) revert NotSelf();
 
         _;
     }
@@ -194,7 +204,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         bytes32 newImplementationCodeHash,
         bytes calldata setupParams
     ) external override onlyAdmin {
-        require(newImplementationCodeHash == newImplementation.codehash, 'INV_CODEHASH');
+        if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
         emit Upgraded(newImplementation);
 
@@ -204,7 +214,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             (bool success, ) = newImplementation.delegatecall(
                 abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams)
             );
-            require(success, 'SETUP_FAILED');
+
+            if (!success) revert SetupFailed();
         }
 
         _setImplementation(newImplementation);
@@ -220,40 +231,46 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         uint256 amount
     ) internal {
         address tokenAddress = tokenAddresses(symbol);
-        require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
+
+        if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
         require(amount > 0, 'WRONG_AMOUNT');
 
         TokenType tokenType = _getTokenType(symbol);
-        string memory burnErrorMessage = 'BURN_FAIL';
 
         if (tokenType == TokenType.External) {
-            _callERC20Token(
+            bool success = _callERC20Token(
                 tokenAddress,
-                abi.encodeWithSelector(IERC20.transferFrom.selector, sender, address(this), amount),
-                burnErrorMessage
+                abi.encodeWithSelector(IERC20.transferFrom.selector, sender, address(this), amount)
             );
+
+            if (!success) revert BurnFailed(symbol);
+
             return;
         }
 
         if (tokenType == TokenType.InternalBurnableFrom) {
-            _callERC20Token(
+            bool success = _callERC20Token(
                 tokenAddress,
-                abi.encodeWithSelector(IERC20BurnFrom.burnFrom.selector, sender, amount),
-                burnErrorMessage
+                abi.encodeWithSelector(IERC20BurnFrom.burnFrom.selector, sender, amount)
             );
+
+            if (!success) revert BurnFailed(symbol);
+
             return;
         }
 
-        _callERC20Token(
+        bool success = _callERC20Token(
             tokenAddress,
             abi.encodeWithSelector(
                 IERC20.transferFrom.selector,
                 sender,
                 BurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0)),
                 amount
-            ),
-            burnErrorMessage
+            )
         );
+
+        if (!success) revert BurnFailed(symbol);
+
         BurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
     }
 
@@ -265,7 +282,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address tokenAddress
     ) internal {
         // Ensure that this symbol has not been taken.
-        require(tokenAddresses(symbol) == address(0), 'TOKEN_EXIST');
+        if (tokenAddresses(symbol) != address(0)) revert TokenAlreadyExists(symbol);
 
         if (tokenAddress == address(0)) {
             // If token address is no specified, it indicates a request to deploy one.
@@ -275,14 +292,15 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
                 abi.encodeWithSelector(TokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
             );
 
-            require(success, 'TOKEN_DEPLOY_FAILED');
+            if (!success) revert TokenDeployFailed(symbol);
 
             tokenAddress = abi.decode(data, (address));
 
             _setTokenType(symbol, TokenType.InternalBurnableFrom);
         } else {
             // If token address is specified, ensure that there is a contact at the specified addressed.
-            require(tokenAddress.code.length != uint256(0), 'NOT_TOKEN');
+            if (tokenAddress.code.length == uint256(0)) revert TokenContractDoesNotExist(tokenAddress);
+
             // Mark that this symbol is an external token, which is needed to differentiate between operations on mint and burn.
             _setTokenType(symbol, TokenType.External);
         }
@@ -298,14 +316,16 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         uint256 amount
     ) internal {
         address tokenAddress = tokenAddresses(symbol);
-        require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
+
+        if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
         if (_getTokenType(symbol) == TokenType.External) {
-            _callERC20Token(
+            bool success = _callERC20Token(
                 tokenAddress,
-                abi.encodeWithSelector(IERC20.transfer.selector, account, amount),
-                'MINT_FAIL'
+                abi.encodeWithSelector(IERC20.transfer.selector, account, amount)
             );
+
+            if (!success) revert MintFailed(symbol);
         } else {
             BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
         }
@@ -313,7 +333,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _burnToken(string memory symbol, bytes32 salt) internal {
         address tokenAddress = tokenAddresses(symbol);
-        require(tokenAddress != address(0), 'TOKEN_NOT_EXIST');
+
+        if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
         if (_getTokenType(symbol) == TokenType.External) {
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
@@ -326,7 +347,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
                     IERC20(tokenAddress).balanceOf(address(depositHandler))
                 )
             );
-            require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), 'BURN_FAIL');
+
+            if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool))))
+                revert BurnFailed(symbol);
 
             depositHandler.destroy(address(this));
         } else {
@@ -442,13 +465,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Internal Methods *|
     \********************/
 
-    function _callERC20Token(
-        address tokenAddress,
-        bytes memory callData,
-        string memory errorMessage
-    ) internal {
+    function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
         (bool success, bytes memory returnData) = tokenAddress.call(callData);
-        require(success && (returnData.length == uint256(0) || abi.decode(returnData, (bool))), errorMessage);
+        return success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
     }
 
     /********************\

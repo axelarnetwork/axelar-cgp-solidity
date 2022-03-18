@@ -9,6 +9,11 @@ pragma solidity 0.8.9;
  * of the private keys of a given address.
  */
 library ECDSA {
+    error InvalidSignatureLength();
+    error InvalidS();
+    error InvalidV();
+    error InvalidSignature();
+
     /**
      * @dev Returns the address that signed a hashed message (`hash`) with
      * `signature`. This address can then be used for verification purposes.
@@ -25,7 +30,7 @@ library ECDSA {
      */
     function recover(bytes32 hash, bytes memory signature) internal pure returns (address signer) {
         // Check the signature length
-        require(signature.length == 65, 'INV_LEN');
+        if (signature.length != 65) revert InvalidSignatureLength();
 
         // Divide the signature in r, s and v variables
         bytes32 r;
@@ -50,12 +55,12 @@ library ECDSA {
         // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or
         // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept
         // these malleable signatures as well.
-        require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, 'INV_S');
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) revert InvalidS();
 
-        require(v == 27 || v == 28, 'INV_V');
+        if (v != 27 && v != 28) revert InvalidV();
 
         // If the signature is valid (and not malleable), return the signer address
-        require((signer = ecrecover(hash, v, r, s)) != address(0), 'INV_SIG');
+        if ((signer = ecrecover(hash, v, r, s)) == address(0)) revert InvalidSignature();
     }
 
     /**
