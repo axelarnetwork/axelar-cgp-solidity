@@ -1,1 +1,1 @@
-# ethereum-bridge
+# Axelar cross-chain gateway protocol solidity
