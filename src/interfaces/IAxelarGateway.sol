@@ -10,9 +10,9 @@ interface IAxelarGateway {
 
     event TokenSent(address indexed sender, string destinationChain, string destinationAddress, string symbol, uint256 amount);
 
-    event ContractCall(address indexed sender, string destinationChain, string contractAddress, bytes32 indexed payloadHash, bytes payload);
+    event ContractCall(address indexed sender, string destinationChain, string destinationContractAddress, bytes32 indexed payloadHash, bytes payload);
 
-    event ContractCallWithToken(address indexed sender, string destinationChain, string contractAddress, bytes32 indexed payloadHash, bytes payload, string symbol, uint256 amount);
+    event ContractCallWithToken(address indexed sender, string destinationChain, string destinationContractAddress, bytes32 indexed payloadHash, bytes payload, string symbol, uint256 amount);
 
     event Executed(bytes32 indexed commandId);
 
