@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-library Address {
+library AddressFormat {
     function toLowerString(address a) internal pure returns (string memory) {
         bytes memory data = abi.encodePacked(a);
         bytes memory characters = '0123456789abcdef';
