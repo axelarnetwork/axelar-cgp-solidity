@@ -1,6 +1,6 @@
 {
-  "name": "ethereum-bridge-contracts",
-  "version": "1.0.0",
+  "name": "axelar-cgp-solidity",
+  "version": "3.0.0",
   "description": "Ethereum Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {

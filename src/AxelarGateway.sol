@@ -88,15 +88,15 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function callContract(
         string memory destinationChain,
-        string memory contractAddress,
+        string memory destinationContractAddress,
         bytes memory payload
     ) external {
-        emit ContractCall(msg.sender, destinationChain, contractAddress, keccak256(payload), payload);
+        emit ContractCall(msg.sender, destinationChain, destinationContractAddress, keccak256(payload), payload);
     }
 
     function callContractWithToken(
         string memory destinationChain,
-        string memory destinationAddress,
+        string memory destinationContractAddress,
         bytes memory payload,
         string memory symbol,
         uint256 amount
@@ -105,7 +105,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         emit ContractCallWithToken(
             msg.sender,
             destinationChain,
-            destinationAddress,
+            destinationContractAddress,
             keccak256(payload),
             payload,
             symbol,
