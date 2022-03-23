@@ -1,15 +1,14 @@
-'use strict';
-
 require('dotenv').config();
 
-const {
-  ContractFactory,
-  Wallet,
-  providers: { JsonRpcProvider },
-  utils: { defaultAbiCoder, arrayify, computeAddress },
-} = require('ethers');
+const { ethers } = require('hardhat');
 
-const { execSync }  = require('child_process');
+const {
+    Wallet,
+    providers: { JsonRpcProvider },
+    utils: { defaultAbiCoder, arrayify, computeAddress },
+} = ethers;
+
+const { execSync } = require('child_process');
 
 // these environment variables should be defined in an '.env' file
 const prefix = process.env.PREFIX;
@@ -21,89 +20,79 @@ const adminThreshold = parseInt(process.env.ADMIN_THRESHOLD);
 const provider = new JsonRpcProvider(url);
 const wallet = new Wallet(privKey, provider);
 
-const TokenDeployer = require('../build/TokenDeployer.json');
-const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
-const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
-
 const adminKeyIDs = JSON.parse(execSync(`${prefix} "axelard q tss external-key-id ${chain} --output json"`)).key_ids;
 
-const admins = adminKeyIDs.map(adminKeyID => {
-  const output = execSync(`${prefix} "axelard q tss key ${adminKeyID} --output json"`);
-  const key = JSON.parse(output).ecdsa_key.key;
-  
-  return computeAddress(`0x04${key.x}${key.y}`);
+const admins = adminKeyIDs.map((adminKeyID) => {
+    const output = execSync(`${prefix} "axelard q tss key ${adminKeyID} --output json"`);
+    const key = JSON.parse(output).ecdsa_key.key;
+
+    return computeAddress(`0x04${key.x}${key.y}`);
 });
 
 const getAddresses = (role) => {
-  const keyID = execSync(`${prefix} "axelard q tss key-id ${chain} ${role}"`, { encoding: 'utf-8' }).replaceAll('\n','');
-  const output = execSync(`${prefix} "axelard q tss key ${keyID} --output json"`);
-  const keys = JSON.parse(output).multisig_key.key;
- 
-  const addresses = keys.map(key => computeAddress(`0x04${key.x}${key.y}`));
+    const keyID = execSync(`${prefix} "axelard q tss key-id ${chain} ${role}"`, { encoding: 'utf-8' }).replaceAll('\n', '');
+    const output = execSync(`${prefix} "axelard q tss key ${keyID} --output json"`);
+    const keys = JSON.parse(output).multisig_key.key;
 
-  return {
-    addresses: addresses,
-    threshold: JSON.parse(output).multisig_key.threshold
-  }
-}
+    const addresses = keys.map((key) => computeAddress(`0x04${key.x}${key.y}`));
 
-console.log({admins: {addresses: admins, threshold: adminThreshold}});
+    return {
+        addresses,
+        threshold: JSON.parse(output).multisig_key.threshold,
+    };
+};
 
-const { addresses: owners, threshold: ownerThreshold } = getAddresses("master")
-console.log({owners: owners, threshold: ownerThreshold })
+console.log({ admins: { addresses: admins, threshold: adminThreshold } });
 
-const { addresses: operators, threshold: operatorThreshold } = getAddresses("secondary")
-console.log({operators: operators, threshold: operatorThreshold })
+const { addresses: owners, threshold: ownerThreshold } = getAddresses('master');
+console.log({ owners, threshold: ownerThreshold });
 
-const params = arrayify(
-  defaultAbiCoder.encode(
-    ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
-    [
-      admins,
-      adminThreshold,
-      owners,
-      ownerThreshold,
-      operators,
-      operatorThreshold,
-    ],
-  ),
+const { addresses: operators, threshold: operatorThreshold } = getAddresses('secondary');
+console.log({ operators, threshold: operatorThreshold });
+
+const deployParams = arrayify(
+    defaultAbiCoder.encode(
+        ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
+        [admins, adminThreshold, owners, ownerThreshold, operators, operatorThreshold],
+    ),
 );
 
-const tokenDeployerFactory = new ContractFactory(
-  TokenDeployer.abi,
-  TokenDeployer.bytecode,
-  wallet,
-);
-const axelarGatewayMultisigFactory = new ContractFactory(
-  AxelarGatewayMultisig.abi,
-  AxelarGatewayMultisig.bytecode,
-  wallet,
-);
-const axelarGatewayProxyFactory = new ContractFactory(
-  AxelarGatewayProxy.abi,
-  AxelarGatewayProxy.bytecode,
-  wallet,
-);
+const getFactories = async (wallet) => {
+    const tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', wallet);
+    const gatewayMultisigFactory = await ethers.getContractFactory('AxelarGatewayMultisig', wallet);
+    const gatewayProxyFactory = await ethers.getContractFactory('AxelarGatewayProxy', wallet);
 
-tokenDeployerFactory
-  .deploy()
-  .then((tokenDeployer) => tokenDeployer.deployed())
-  .then(({ address }) => {
-    console.log(`deployed token deployer at address ${address}`);
-    return axelarGatewayMultisigFactory.deploy(address)
-  })
-  .then((axelarGatewayMultisig) => axelarGatewayMultisig.deployed())
-  .then(({ address }) => {
-    console.log(`deployed axelar gateway multisig at address ${address}`);
-    return axelarGatewayProxyFactory.deploy(address, params)
-  })
-  .then((axelarGatewayProxy) => axelarGatewayProxy.deployed())
-  .then(({ address }) => {
-    console.log(`deployed axelar gateway proxy at address ${address}`);
+    return { tokenDeployerFactory, gatewayMultisigFactory, gatewayProxyFactory };
+};
 
-    process.exit(0);
-  })
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+getFactories(wallet).then(async ({ tokenDeployerFactory, gatewayMultisigFactory, gatewayProxyFactory }) => {
+    const tokenDeployer = await tokenDeployerFactory
+        .deploy()
+        .then((d) => d.deployed())
+        .catch((err) => {
+            console.error(`Failed to deploy token deployer: ${err}`);
+            process.exit(1);
+        });
+
+    console.log(`Deployed token deployer to ${tokenDeployer.address}`);
+
+    const gatewayImplementation = await gatewayMultisigFactory
+        .deploy(tokenDeployer.address)
+        .then((d) => d.deployed())
+        .catch((err) => {
+            console.error(`Failed to deploy gateway multisig implementation: ${err}`);
+            process.exit(1);
+        });
+
+    console.log(`Deployed Axelar gateway multisig implementation to ${gatewayImplementation.address}`);
+
+    const proxy = await gatewayProxyFactory
+        .deploy(gatewayImplementation.address, deployParams)
+        .then((d) => d.deployed())
+        .catch((err) => {
+            console.error(`Failed to deploy gateway proxy: ${err}`);
+            process.exit(1);
+        });
+
+    console.log(`Deployed Axelar gateway proxy to ${proxy.address}`);
+});

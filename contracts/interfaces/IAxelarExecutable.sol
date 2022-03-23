@@ -34,16 +34,8 @@ abstract contract IAxelarExecutable {
         uint256 amount
     ) external {
         bytes32 payloadHash = keccak256(payload);
-        if (
-            !IAxelarGateway(gateway).validateContractCallAndMint(
-                commandId,
-                sourceChain,
-                sourceAddress,
-                payloadHash,
-                tokenSymbol,
-                amount
-            )
-        ) revert NotApprovedByGateway();
+        if (!IAxelarGateway(gateway).validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, tokenSymbol, amount))
+            revert NotApprovedByGateway();
 
         _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
     }

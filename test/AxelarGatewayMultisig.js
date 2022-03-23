@@ -1,1011 +1,1217 @@
-'use strict';
-
 const chai = require('chai');
+const { ethers } = require('hardhat');
 const {
-  Contract,
-  ContractFactory,
-  utils: { defaultAbiCoder, id, arrayify, keccak256, getCreate2Address },
-} = require('ethers');
-const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
-chai.use(solidity);
+    utils: { id, keccak256, getCreate2Address, defaultAbiCoder },
+} = ethers;
 const { expect } = chai;
-const { get } = require('lodash/fp');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const ROLE_OWNER = 1;
 const ROLE_OPERATOR = 2;
 
-const TokenDeployer = require('../build/TokenDeployer.json');
-const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
-const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
-const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
-const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
-const DepositHandler = require('../build/DepositHandler.json');
 const {
-  bigNumberToNumber,
-  getSignedMultisigExecuteInput,
-  getRandomInt,
-  getRandomID,
+    bigNumberToNumber,
+    getSignedMultisigExecuteInput,
+    getRandomInt,
+    getRandomID,
+    getMultisigProxyDeployParams,
+    getDeployCommand,
+    getMintCommand,
+    getBurnCommand,
+    getTransferMultiOwnershipCommand,
+    getTransferMultiOperatorshipCommand,
+    buildCommandBatch,
+    getAddresses,
+    getApproveContractCallWithMint,
 } = require('./utils');
 
 describe('AxelarGatewayMultisig', () => {
-  const wallets = new MockProvider().getWallets();
-  const owners = wallets.slice(0, 3);
-  const operators = wallets.slice(3, 6);
-  const admins = wallets.slice(6, 9);
-  const threshold = 2;
+    const threshold = 3;
 
-  let contract;
-  let tokenDeployer;
+    let wallets;
+    let owners;
+    let operators;
+    let admins;
 
-  const makeTransferCommand = (commandName, newSet, newThreshold) =>
-    arrayify(
-      defaultAbiCoder.encode(
-        ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-        [
-          CHAIN_ID,
-          ROLE_OWNER,
-          [getRandomID()],
-          [commandName],
-          [
-            defaultAbiCoder.encode(
-              ['address[]', 'uint8'],
-              [newSet.map(get('address')), newThreshold],
-            ),
-          ],
-        ],
-      ),
-    );
+    let gatewayFactory;
+    let tokenDeployerFactory;
+    let gatewayProxyFactory;
+    let burnableMintableCappedERC20Factory;
+    let depositHandlerFactory;
+    let mintableCappedERC20Factory;
 
-  beforeEach(async () => {
-    const params = arrayify(
-      defaultAbiCoder.encode(
-        ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
-        [
-          admins.map(get('address')),
-          threshold,
-          owners.map(get('address')),
-          threshold,
-          operators.map(get('address')),
-          threshold,
-        ],
-      ),
-    );
-    tokenDeployer = await deployContract(wallets[0], TokenDeployer);
-    const gateway = await deployContract(wallets[0], AxelarGatewayMultisig, [
-      tokenDeployer.address,
-    ]);
-    const proxy = await deployContract(wallets[0], AxelarGatewayProxy, [
-      gateway.address,
-      params,
-    ]);
-    contract = new Contract(
-      proxy.address,
-      AxelarGatewayMultisig.abi,
-      wallets[0],
-    );
-  });
+    let tokenDeployer;
+    let gateway;
 
-  describe('owners', () => {
-    it('should get correct owners', () =>
-      contract.owners(1).then((actual) => {
-        expect(actual).to.deep.eq(owners.map(get('address')));
-      }));
-  });
+    before(async () => {
+        wallets = await ethers.getSigners();
+        admins = wallets.slice(0, 3);
+        owners = wallets.slice(0, 6);
+        operators = wallets.slice(6, 9);
 
-  describe('operators', () => {
-    it('should get correct operators', () =>
-      contract.operators(1).then((actual) => {
-        expect(actual).to.deep.eq(operators.map(get('address')));
-      }));
-  });
-
-  describe('admins', () => {
-    it('should get correct admins', () =>
-      contract.admins(1).then((actual) => {
-        expect(actual).to.deep.eq(admins.map(get('address')));
-      }));
-  });
-
-  describe('upgrade', () => {
-    it('should allow admins to upgrade implementation', async () => {
-      const newImplementation = await deployContract(
-        wallets[0],
-        AxelarGatewayMultisig,
-        [tokenDeployer.address],
-      );
-      const newImplementationCode = await newImplementation.provider.getCode(
-        newImplementation.address,
-      );
-      const newImplementationCodeHash = keccak256(newImplementationCode);
-      const params = arrayify(
-        defaultAbiCoder.encode(
-          ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
-          [
-            owners.map(get('address')),
-            threshold,
-            owners.slice(0, 2).map(get('address')),
-            threshold,
-            operators.slice(0, 2).map(get('address')),
-            threshold,
-          ],
-        ),
-      );
-
-      return expect(
-        contract
-          .connect(admins[0])
-          .upgrade(
-            newImplementation.address,
-            newImplementationCodeHash,
-            params,
-          ),
-      )
-        .to.not.emit(contract, 'Upgraded')
-        .then(() =>
-          expect(
-            contract
-              .connect(admins[2])
-              .upgrade(
-                newImplementation.address,
-                newImplementationCodeHash,
-                params,
-              ),
-          )
-            .to.emit(contract, 'Upgraded')
-            .withArgs(newImplementation.address),
-        );
-    });
-  });
-
-  describe('execute', () => {
-    describe('command deployToken', () => {
-      it('should allow owners to deploy a new token', () => {
-        const name = 'An Awesome Token';
-        const symbol = 'AAT';
-        const decimals = 18;
-        const cap = 10000;
-        const commandID = getRandomID();
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [commandID],
-              ['deployToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [name, symbol, decimals, cap, ADDRESS_ZERO],
-                ),
-              ],
-            ],
-          ),
-        );
-
-        const tokenFactory = new ContractFactory(
-          BurnableMintableCappedERC20.abi,
-          BurnableMintableCappedERC20.bytecode,
-        );
-        const { data: tokenInitCode } = tokenFactory.getDeployTransaction(
-          name,
-          symbol,
-          decimals,
-          cap,
-        );
-        const expectedTokenAddress = getCreate2Address(
-          contract.address,
-          id(symbol),
-          keccak256(tokenInitCode),
-        );
-
-        return getSignedMultisigExecuteInput(data, owners.slice(1, 3))
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(contract, 'TokenDeployed')
-              .and.to.emit(contract, 'Executed')
-              .withArgs(commandID),
-          )
-          .then(() => contract.tokenAddresses(symbol))
-          .then((tokenAddress) => {
-            expect(tokenAddress).to.be.properAddress;
-            expect(tokenAddress).to.eq(expectedTokenAddress);
-
-            const tokenContract = new Contract(
-              tokenAddress,
-              BurnableMintableCappedERC20.abi,
-              wallets[0],
-            );
-
-            return Promise.all([
-              tokenContract.name(),
-              tokenContract.symbol(),
-              tokenContract.decimals(),
-              tokenContract.cap().then(bigNumberToNumber),
-            ]);
-          })
-          .then((actual) => {
-            expect(actual).to.deep.eq([name, symbol, decimals, cap]);
-          });
-      });
-
-      it('should not allow operators to deploy a new token', () => {
-        const name = 'An Awesome Token';
-        const symbol = 'AAT';
-        const decimals = 18;
-        const cap = 10000;
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['deployToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [name, symbol, decimals, cap, ADDRESS_ZERO],
-                ),
-              ],
-            ],
-          ),
-        );
-
-        return getSignedMultisigExecuteInput(data, operators.slice(1, 3)).then(
-          (input) =>
-            expect(contract.execute(input)).to.not.emit(
-              contract,
-              'TokenDeployed',
-            ),
-        );
-      });
+        gatewayFactory = await ethers.getContractFactory('AxelarGatewayMultisig', wallets[0]);
+        tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', wallets[0]);
+        gatewayProxyFactory = await ethers.getContractFactory('AxelarGatewayProxy', wallets[0]);
+        burnableMintableCappedERC20Factory = await ethers.getContractFactory('BurnableMintableCappedERC20', wallets[0]);
+        depositHandlerFactory = await ethers.getContractFactory('DepositHandler', wallets[0]);
+        mintableCappedERC20Factory = await ethers.getContractFactory('MintableCappedERC20', wallets[0]);
     });
 
-    describe('command mintToken', () => {
-      const name = 'An Awesome Token';
-      const symbol = 'AAT';
-      const decimals = 18;
-      const cap = 1e8;
+    beforeEach(async () => {
+        const adminAddresses = getAddresses(admins);
+        const ownerAddresses = getAddresses(owners);
+        const operatorAddresses = getAddresses(operators);
 
-      beforeEach(() => {
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['deployToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [name, symbol, decimals, cap, ADDRESS_ZERO],
-                ),
-              ],
-            ],
-          ),
-        );
+        const params = getMultisigProxyDeployParams(adminAddresses, threshold, ownerAddresses, threshold, operatorAddresses, threshold);
 
-        return getSignedMultisigExecuteInput(data, owners.slice(1, 3)).then(
-          (input) => contract.execute(input),
-        );
-      });
+        tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
+        const gatewayImplementation = await gatewayFactory.deploy(tokenDeployer.address).then((d) => d.deployed());
+        const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
 
-      it('should not mint tokens if signer role is incorrect', async () => {
-        const amount = 9999;
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['mintToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'address', 'uint256'],
-                  [symbol, wallets[0].address, amount],
-                ),
-              ],
-            ],
-          ),
-        );
+        gateway = gatewayFactory.attach(proxy.address);
+    });
 
-        return getSignedMultisigExecuteInput(
-          data,
-          operators.slice(0, threshold),
-        )
-          .then((input) =>
-            expect(contract.execute(input)).to.not.emit(contract, 'Executed'),
-          )
-          .then(() => {
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+    describe('owners', () => {
+        it('should get the correct owners', async () => {
+            expect(await gateway.owners(1)).to.deep.eq(getAddresses(owners));
+        });
+    });
+
+    describe('operators', () => {
+        it('should get the correct operators', async () => {
+            expect(await gateway.operators(1)).to.deep.eq(getAddresses(operators));
+        });
+    });
+
+    describe('admins', () => {
+        it('should get the correct admins', async () => {
+            expect(await gateway.admins(1)).to.deep.eq(getAddresses(admins));
+        });
+    });
+
+    describe('upgrade', () => {
+        it('should allow the admins to upgrade to the correct implementation', async () => {
+            const newGatewayImplementation = await gatewayFactory.deploy(tokenDeployer.address).then((d) => d.deployed());
+            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
+            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+
+            const newAdminAddresses = getAddresses(admins.slice(0, 2));
+            const newOwnerAddresses = getAddresses(owners.slice(0, 2));
+            const newOperatorAddresses = getAddresses(operators.slice(0, 2));
+
+            const params = getMultisigProxyDeployParams(newAdminAddresses, 2, newOwnerAddresses, 2, newOperatorAddresses, 2);
+
+            for (let i = 0; i < threshold - 1; ++i) {
+                await expect(
+                    gateway.connect(admins[i]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
+                ).to.not.emit(gateway, 'Upgraded');
+            }
+
+            await expect(
+                gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
+            )
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation.address);
+        });
+
+        it('should not allow the admins to upgrade to a wrong implementation', async () => {
+            const newGatewayImplementation = await gatewayFactory.deploy(tokenDeployer.address).then((d) => d.deployed());
+            const wrongImplementationCodeHash = keccak256(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`);
+
+            const newAdminAddresses = getAddresses(admins.slice(0, 2));
+            const newOwnerAddresses = getAddresses(owners.slice(0, 2));
+            const newOperatorAddresses = getAddresses(operators.slice(0, 2));
+
+            const params = getMultisigProxyDeployParams(newAdminAddresses, 2, newOwnerAddresses, 2, newOperatorAddresses, 2);
+
+            for (let i = 0; i < threshold - 1; ++i) {
+                await expect(
+                    gateway.connect(admins[i]).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
+                ).to.not.emit(gateway, 'Upgraded');
+            }
+
+            await expect(
+                gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
+            ).to.be.reverted;
+        });
+    });
+
+    describe('execute', () => {
+        it('should fail if chain id mismatches', async () => {
+            const data = buildCommandBatch(
+                CHAIN_ID + 1,
+                ROLE_OWNER,
+                [getRandomID()],
+                ['transferOwnership'],
                 [
-                  CHAIN_ID,
-                  ROLE_OPERATOR,
-                  [getRandomID()],
-                  ['mintToken'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['string', 'address', 'uint256'],
-                      [symbol, wallets[0].address, amount],
+                    getTransferMultiOperatorshipCommand(
+                        ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'],
+                        2,
                     ),
-                  ],
                 ],
-              ),
             );
 
-            return getSignedMultisigExecuteInput(
-              data,
-              owners.slice(0, threshold),
-            );
-          })
-          .then((input) =>
-            expect(contract.execute(input)).to.not.emit(contract, 'Executed'),
-          );
-      });
+            const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
 
-      it('should allow the owners to mint tokens', async () => {
-        const amount = getRandomInt(cap);
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['mintToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'address', 'uint256'],
-                  [symbol, wallets[0].address, amount],
-                ),
-              ],
-            ],
-          ),
-        );
+            await expect(gateway.execute(input)).to.be.reverted;
+        });
 
-        const tokenAddress = await contract.tokenAddresses(symbol);
-        const tokenContract = new Contract(
-          tokenAddress,
-          BurnableMintableCappedERC20.abi,
-          wallets[0],
-        );
+        describe('command deployToken', () => {
+            const name = 'An Awesome Token';
+            const symbol = 'AAT';
+            const decimals = 18;
+            const cap = 10000;
 
-        return getSignedMultisigExecuteInput(data, wallets.slice(0, 2))
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(ADDRESS_ZERO, wallets[0].address, amount)
-              .and.to.emit(contract, 'Executed'),
-          )
-          .then(() =>
-            tokenContract.balanceOf(wallets[0].address).then(bigNumberToNumber),
-          )
-          .then((actual) => {
-            expect(actual).to.eq(amount);
-          });
-      });
+            it('should allow the owners to deploy a new token', async () => {
+                const commandID = getRandomID();
 
-      it('should allow the operators to mint tokens', async () => {
-        const amount = getRandomInt(cap);
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OPERATOR,
-              [getRandomID()],
-              ['mintToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'address', 'uint256'],
-                  [symbol, wallets[0].address, amount],
-                ),
-              ],
-            ],
-          ),
-        );
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [commandID],
+                    ['deployToken'],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                );
 
-        const tokenAddress = await contract.tokenAddresses(symbol);
-        const tokenContract = new Contract(
-          tokenAddress,
-          BurnableMintableCappedERC20.abi,
-          wallets[0],
-        );
+                const { data: tokenInitCode } = burnableMintableCappedERC20Factory.getDeployTransaction(name, symbol, decimals, cap);
+                const expectedTokenAddress = getCreate2Address(gateway.address, id(symbol), keccak256(tokenInitCode));
 
-        return getSignedMultisigExecuteInput(data, operators.slice(1, 3))
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(ADDRESS_ZERO, wallets[0].address, amount)
-              .and.to.emit(contract, 'Executed'),
-          )
-          .then(() =>
-            tokenContract.balanceOf(wallets[0].address).then(bigNumberToNumber),
-          )
-          .then((actual) => {
-            expect(actual).to.eq(amount);
-          });
-      });
+                const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+                await expect(gateway.execute(input)).to.emit(gateway, 'TokenDeployed').and.to.emit(gateway, 'Executed').withArgs(commandID);
+
+                const tokenAddress = await gateway.tokenAddresses(symbol);
+
+                expect(tokenAddress).to.be.properAddress;
+                expect(tokenAddress).to.eq(expectedTokenAddress);
+
+                const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+
+                const actualValues = await Promise.all([
+                    token.name(),
+                    token.symbol(),
+                    token.decimals(),
+                    token.cap().then(bigNumberToNumber),
+                ]);
+
+                expect(actualValues).to.deep.eq([name, symbol, decimals, cap]);
+            });
+
+            it('should not allow the operators to deploy a new token', async () => {
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, operators.slice(0, threshold));
+                await expect(gateway.execute(input)).to.not.emit(gateway, 'TokenDeployed');
+            });
+
+            it('should not deploy a duplicate token', async () => {
+                const firstCommandID = getRandomID();
+
+                const firstData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [firstCommandID],
+                    ['deployToken'],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                );
+
+                const firstInput = await getSignedMultisigExecuteInput(firstData, owners.slice(0, threshold));
+                await expect(gateway.execute(firstInput))
+                    .to.emit(gateway, 'TokenDeployed')
+                    .and.to.emit(gateway, 'Executed')
+                    .withArgs(firstCommandID);
+
+                const secondCommandID = getRandomID();
+
+                const secondData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [secondCommandID],
+                    ['deployToken'],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                );
+
+                const secondInput = await getSignedMultisigExecuteInput(secondData, owners.slice(0, threshold));
+                await expect(gateway.execute(secondInput))
+                    .to.not.emit(gateway, 'TokenDeployed')
+                    .and.to.emit(gateway, 'Executed')
+                    .withArgs(secondCommandID);
+            });
+        });
+
+        describe('command mintToken', () => {
+            const name = 'An Awesome Token';
+            const symbol = 'AAT';
+            const decimals = 18;
+            const cap = 1e8;
+
+            let token;
+
+            beforeEach(async () => {
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, owners);
+                await gateway.execute(input);
+
+                const tokenAddress = await gateway.tokenAddresses(symbol);
+                token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+            });
+
+            it('should not mint tokens if the signer role is incorrect', async () => {
+                const amount = 9999;
+
+                const firstMintData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['mintToken'],
+                    [getMintCommand(symbol, wallets[0].address, amount)],
+                );
+
+                const firstMintInput = await getSignedMultisigExecuteInput(firstMintData, operators.slice(0, threshold));
+                await expect(gateway.execute(firstMintInput)).to.not.emit(gateway, 'Executed');
+
+                const secondMintData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OPERATOR,
+                    [getRandomID()],
+                    ['mintToken'],
+                    [getMintCommand(symbol, wallets[0].address, amount)],
+                );
+
+                const secondMintInput = getSignedMultisigExecuteInput(secondMintData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(secondMintInput)).to.not.emit(gateway, 'Executed');
+            });
+
+            it('should allow the owners to mint tokens', async () => {
+                const amount = getRandomInt(cap);
+
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['mintToken'],
+                    [getMintCommand(symbol, wallets[0].address, amount)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+
+                await expect(gateway.execute(input))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(ADDRESS_ZERO, wallets[0].address, amount)
+                    .and.to.emit(gateway, 'Executed');
+
+                expect(await token.balanceOf(wallets[0].address).then(bigNumberToNumber)).to.eq(amount);
+            });
+
+            it('should allow the operators to mint tokens', async () => {
+                const amount = getRandomInt(cap);
+
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OPERATOR,
+                    [getRandomID()],
+                    ['mintToken'],
+                    [getMintCommand(symbol, wallets[0].address, amount)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, operators.slice(0, threshold));
+
+                await expect(gateway.execute(input))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(ADDRESS_ZERO, wallets[0].address, amount)
+                    .and.to.emit(gateway, 'Executed');
+
+                expect(await token.balanceOf(wallets[0].address).then(bigNumberToNumber)).to.eq(amount);
+            });
+        });
+
+        describe('command burnToken', () => {
+            const name = 'An Awesome Token';
+            const symbol = 'AAT';
+            const decimals = 18;
+            const cap = 1e8;
+            const amount = 100;
+
+            let token;
+
+            beforeEach(async () => {
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID(), getRandomID()],
+                    ['deployToken', 'mintToken'],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO), getMintCommand(symbol, wallets[0].address, amount)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+                await gateway.execute(input);
+
+                const tokenAddress = await gateway.tokenAddresses(symbol);
+                token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+            });
+
+            it('should allow the owners to burn tokens', async () => {
+                const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
+                const salt = id(`${destinationBtcAddress}-${wallets[0].address}-${Date.now()}`);
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+
+                const burnAmount = amount / 2;
+                await token.transfer(depositHandlerAddress, burnAmount);
+
+                const dataFirstBurn = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(symbol, salt)],
+                );
+
+                const firstInput = await getSignedMultisigExecuteInput(dataFirstBurn, owners.slice(0, threshold));
+
+                await expect(gateway.execute(firstInput))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+
+                await token.transfer(depositHandlerAddress, burnAmount);
+
+                const dataSecondBurn = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(symbol, salt)],
+                );
+
+                const secondInput = await getSignedMultisigExecuteInput(dataSecondBurn, owners.slice(0, threshold));
+
+                await expect(gateway.execute(secondInput))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+
+                expect(await token.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
+            });
+
+            it('should allow the operators to burn tokens', async () => {
+                const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
+                const salt = id(`${destinationBtcAddress}-${wallets[0].address}-${Date.now()}`);
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+
+                const burnAmount = amount / 2;
+                await token.transfer(depositHandlerAddress, burnAmount);
+
+                const dataFirstBurn = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OPERATOR,
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(symbol, salt)],
+                );
+
+                const firstInput = await getSignedMultisigExecuteInput(dataFirstBurn, operators.slice(0, threshold));
+
+                await expect(gateway.execute(firstInput))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+
+                await token.transfer(depositHandlerAddress, burnAmount);
+
+                const dataSecondBurn = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OPERATOR,
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(symbol, salt)],
+                );
+
+                const secondInput = await getSignedMultisigExecuteInput(dataSecondBurn, operators.slice(0, threshold));
+
+                await expect(gateway.execute(secondInput))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+
+                expect(await token.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
+            });
+        });
+
+        describe('command transferOwnership', () => {
+            it('should allow the owners to transfer ownership to valid addresses', async () => {
+                const newOwners = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['transferOwnership'],
+                    [getTransferMultiOwnershipCommand(newOwners, 2)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+
+                await expect(gateway.execute(input))
+                    .to.emit(gateway, 'OwnershipTransferred')
+                    .withArgs(getAddresses(owners), threshold, newOwners, 2);
+
+                expect(await gateway.owners(2)).to.deep.eq(newOwners);
+            });
+
+            it('should not allow transferring ownership to address zero', async () => {
+                const newOwners = [ADDRESS_ZERO, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['transferOwnership'],
+                    [getTransferMultiOwnershipCommand(newOwners, 2)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+
+                await expect(gateway.execute(input)).to.not.emit(gateway, 'OwnershipTransferred');
+            });
+
+            it('should not allow the operators to transfer ownership', async () => {
+                const newOwners = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['transferOwnership'],
+                    [getTransferMultiOwnershipCommand(newOwners, 2)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, operators.slice(0, threshold));
+
+                await expect(gateway.execute(input)).to.not.emit(gateway, 'OwnershipTransferred');
+            });
+
+            it('should allow the previous owners to deploy, mint, and burn token', async () => {
+                const newOwners = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+                const transferOwnershipData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['transferOwnership'],
+                    [getTransferMultiOwnershipCommand(newOwners, 2)],
+                );
+
+                const transferOwnershipInput = await getSignedMultisigExecuteInput(transferOwnershipData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(transferOwnershipInput))
+                    .to.emit(gateway, 'OwnershipTransferred')
+                    .withArgs(getAddresses(owners), threshold, newOwners, 2);
+
+                expect(await gateway.owners(2)).to.deep.eq(newOwners);
+
+                const name = 'An Awesome Token';
+                const symbol = 'AAT';
+                const decimals = 18;
+                const cap = 1e8;
+
+                const deployData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                );
+
+                const deployAndMintInput = await getSignedMultisigExecuteInput(deployData, owners.slice(0, threshold));
+                await expect(gateway.execute(deployAndMintInput)).to.emit(gateway, 'TokenDeployed');
+
+                const tokenAddress = await gateway.tokenAddresses(symbol);
+                const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+
+                const amount = getRandomInt(cap);
+
+                const mintData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['mintToken'],
+                    [getMintCommand(symbol, wallets[0].address, amount)],
+                );
+
+                const mintInput = await getSignedMultisigExecuteInput(mintData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(mintInput))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(ADDRESS_ZERO, wallets[0].address, amount)
+                    .and.to.emit(gateway, 'Executed');
+
+                expect(await token.balanceOf(wallets[0].address).then(bigNumberToNumber)).to.eq(amount);
+
+                const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
+                const salt = id(`${destinationBtcAddress}-${wallets[0].address}-${Date.now()}`);
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+
+                const burnData = buildCommandBatch(CHAIN_ID, ROLE_OWNER, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+
+                await token.transfer(depositHandlerAddress, amount);
+                const burnInput = await getSignedMultisigExecuteInput(burnData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
+            });
+
+            it('should not allow the previous owner to transfer ownership', async () => {
+                const newOwners1 = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+                const firstData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['transferOwnership'],
+                    [getTransferMultiOwnershipCommand(newOwners1, 2)],
+                );
+
+                const firstInput = await getSignedMultisigExecuteInput(firstData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(firstInput))
+                    .to.emit(gateway, 'OwnershipTransferred')
+                    .withArgs(getAddresses(owners), threshold, newOwners1, 2);
+
+                const newOwners2 = ['0x5b6d4017D4b1dCd36e6ea88b7900E8eC64a1D131', '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
+
+                const secondData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['transferOwnership'],
+                    [getTransferMultiOwnershipCommand(newOwners2, 2)],
+                );
+
+                const secondInput = await getSignedMultisigExecuteInput(secondData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(secondInput)).to.not.emit(gateway, 'OwnershipTransferred');
+            });
+        });
+
+        describe('command transferOperatorship', () => {
+            it('should owners to transfer operatorship', async () => {
+                const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['transferOperatorship'],
+                    [getTransferMultiOperatorshipCommand(newOperators, 2)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+
+                await expect(gateway.execute(input))
+                    .to.emit(gateway, 'OperatorshipTransferred')
+                    .withArgs(getAddresses(operators), threshold, newOperators, 2);
+
+                expect(await gateway.operators(2)).to.deep.eq(newOperators);
+            });
+
+            it('should allow the previous operators to mint and burn token', async () => {
+                const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+                const transferOwnershipData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['transferOperatorship'],
+                    [getTransferMultiOperatorshipCommand(newOperators, 2)],
+                );
+
+                const transferOwnershipInput = await getSignedMultisigExecuteInput(transferOwnershipData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(transferOwnershipInput))
+                    .to.emit(gateway, 'OperatorshipTransferred')
+                    .withArgs(getAddresses(operators), threshold, newOperators, 2);
+
+                expect(await gateway.operators(2)).to.deep.eq(newOperators);
+
+                const name = 'An Awesome Token';
+                const symbol = 'AAT';
+                const decimals = 18;
+                const cap = 1e8;
+
+                const deployData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                );
+
+                const deployAndMintInput = await getSignedMultisigExecuteInput(deployData, owners.slice(0, threshold));
+                await expect(gateway.execute(deployAndMintInput)).to.emit(gateway, 'TokenDeployed');
+
+                const tokenAddress = await gateway.tokenAddresses(symbol);
+                const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+
+                const amount = getRandomInt(cap);
+
+                const mintData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OPERATOR,
+                    [getRandomID()],
+                    ['mintToken'],
+                    [getMintCommand(symbol, wallets[0].address, amount)],
+                );
+
+                const mintInput = await getSignedMultisigExecuteInput(mintData, operators.slice(0, threshold));
+
+                await expect(gateway.execute(mintInput))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(ADDRESS_ZERO, wallets[0].address, amount)
+                    .and.to.emit(gateway, 'Executed');
+
+                expect(await token.balanceOf(wallets[0].address).then(bigNumberToNumber)).to.eq(amount);
+
+                const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
+                const salt = id(`${destinationBtcAddress}-${wallets[0].address}-${Date.now()}`);
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+
+                const burnData = buildCommandBatch(CHAIN_ID, ROLE_OPERATOR, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+
+                await token.transfer(depositHandlerAddress, amount);
+                const burnInput = await getSignedMultisigExecuteInput(burnData, operators.slice(0, threshold));
+
+                await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
+            });
+
+            it('should not allow the operators to transfer operatorship', async () => {
+                const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['transferOperatorship'],
+                    [getTransferMultiOperatorshipCommand(newOperators, 2)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, operators.slice(0, threshold));
+
+                await expect(gateway.execute(input)).to.not.emit(gateway, 'OperatorshipTransferred');
+            });
+        });
+
+        describe('sendToken', () => {
+            const tokenName = 'Test Token';
+            const tokenSymbol = 'TEST';
+            const decimals = 18;
+            const cap = 1e9;
+
+            it('should burn internal token and emit an event', async () => {
+                const deployAndMintData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID(), getRandomID()],
+                    ['deployToken', 'mintToken'],
+                    [
+                        getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO),
+                        getMintCommand(tokenSymbol, owners[0].address, 1e6),
+                    ],
+                );
+
+                const input = await getSignedMultisigExecuteInput(deployAndMintData, owners.slice(0, threshold));
+                await gateway.execute(input);
+
+                const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
+                const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+
+                const issuer = owners[0].address;
+                const spender = gateway.address;
+                const amount = 1000;
+                const destination = operators[1].address.toString().replace('0x', '');
+
+                await expect(token.approve(spender, amount)).to.emit(token, 'Approval').withArgs(issuer, spender, amount);
+
+                await expect(gateway.sendToken('polygon', destination, tokenSymbol, amount))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(issuer, ADDRESS_ZERO, amount)
+                    .to.emit(gateway, 'TokenSent')
+                    .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
+            });
+
+            it('should lock external token and emit an event', async () => {
+                const token = await mintableCappedERC20Factory.deploy(tokenName, tokenSymbol, decimals, cap).then((d) => d.deployed());
+
+                await token.mint(owners[0].address, 1000000);
+
+                const deployData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(deployData, owners.slice(0, threshold));
+                await gateway.execute(input);
+
+                const issuer = owners[0].address;
+                const locker = gateway.address;
+                const amount = 1000;
+                const destination = operators[1].address.toString().replace('0x', '');
+
+                await expect(token.approve(locker, amount)).to.emit(token, 'Approval').withArgs(issuer, locker, amount);
+
+                await expect(gateway.sendToken('polygon', destination, tokenSymbol, amount))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(issuer, locker, amount)
+                    .to.emit(gateway, 'TokenSent')
+                    .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
+            });
+        });
+
+        describe('external tokens', () => {
+            it('should support external ERC20 token', async () => {
+                const name = 'test';
+                const symbol = 'test';
+                const decimals = 16;
+                const capacity = 0;
+
+                const token = await mintableCappedERC20Factory.deploy(name, symbol, decimals, capacity).then((d) => d.deployed());
+
+                const amount = 10000;
+
+                await token.mint(wallets[0].address, amount);
+
+                const deployData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(name, symbol, decimals, capacity, token.address)],
+                );
+
+                const deployInput = await getSignedMultisigExecuteInput(deployData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(deployInput)).to.emit(gateway, 'TokenDeployed').withArgs(symbol, token.address);
+
+                const salt = '0x2b3e73733ff31436169744c5808241dad2ff8921cf7e4cca6405a6e38d4f7b37';
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+                await token.transfer(depositHandlerAddress, amount);
+
+                const burnData = buildCommandBatch(CHAIN_ID, ROLE_OWNER, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+
+                const burnInput = await getSignedMultisigExecuteInput(burnData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(burnInput))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(depositHandlerAddress, gateway.address, amount);
+
+                const mintData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['mintToken'],
+                    [getMintCommand(symbol, wallets[1].address, amount)],
+                );
+
+                const mintInput = await getSignedMultisigExecuteInput(mintData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(mintInput)).to.emit(token, 'Transfer').withArgs(gateway.address, wallets[1].address, amount);
+            });
+        });
+
+        describe('batch commands', () => {
+            it('should batch execute multiple commands', async () => {
+                const name = 'Bitcoin';
+                const symbol = 'BTC';
+                const decimals = 8;
+                const cap = 2100000000;
+                const amount1 = 10000;
+                const amount2 = 20000;
+                const newOwners = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
+                    ['deployToken', 'mintToken', 'mintToken', 'transferOwnership'],
+                    [
+                        getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO),
+                        getMintCommand(symbol, wallets[0].address, amount1),
+                        getMintCommand(symbol, wallets[1].address, amount2),
+                        getTransferMultiOwnershipCommand(newOwners, 2),
+                    ],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+
+                await expect(gateway.execute(input))
+                    .to.emit(gateway, 'TokenDeployed')
+                    .and.to.emit(gateway, 'OwnershipTransferred')
+                    .withArgs(getAddresses(owners), threshold, newOwners, 2);
+
+                expect(await gateway.owners(2)).to.deep.eq(newOwners);
+
+                const tokenAddress = await gateway.tokenAddresses(symbol);
+
+                expect(tokenAddress).to.be.properAddress;
+
+                const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+
+                const values = await Promise.all([
+                    token.name(),
+                    token.symbol(),
+                    token.decimals(),
+                    token.cap().then(bigNumberToNumber),
+                    token.balanceOf(wallets[0].address).then(bigNumberToNumber),
+                    token.balanceOf(wallets[1].address).then(bigNumberToNumber),
+                ]);
+
+                expect(values).to.deep.eq([name, symbol, decimals, cap, amount1, amount2]);
+            });
+        });
+
+        describe('freeze and unfreeze', () => {
+            const name = 'An Awesome Token';
+            const symbol = 'AAT';
+            const decimals = 18;
+            const cap = 1e8;
+            const amount = 10000;
+
+            let token;
+
+            describe('internal tokens', () => {
+                beforeEach(async () => {
+                    const data = buildCommandBatch(
+                        CHAIN_ID,
+                        ROLE_OWNER,
+                        [getRandomID(), getRandomID()],
+                        ['deployToken', 'mintToken'],
+                        [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO), getMintCommand(symbol, wallets[0].address, amount)],
+                    );
+
+                    const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+                    await gateway.execute(input);
+
+                    const tokenAddress = await gateway.tokenAddresses(symbol);
+                    token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+                });
+
+                it('should freeze internal token transfers after passing threshold', async () => {
+                    await expect(gateway.connect(admins[0]).freezeToken(symbol)).to.not.emit(gateway, 'TokenFrozen');
+                    await expect(gateway.connect(admins[1]).freezeToken(symbol)).to.not.emit(gateway, 'TokenFrozen');
+                    await expect(gateway.connect(admins[2]).freezeToken(symbol)).to.emit(gateway, 'TokenFrozen').withArgs(symbol);
+
+                    await expect(token.transfer(wallets[1].address, 1)).to.be.revertedWith('IS_FROZEN');
+
+                    await expect(gateway.connect(admins[0]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
+                    await expect(gateway.connect(admins[1]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
+                    await expect(gateway.connect(admins[2]).unfreezeToken(symbol)).to.emit(gateway, 'TokenUnfrozen').withArgs(symbol);
+
+                    await expect(token.transfer(wallets[1].address, amount))
+                        .to.emit(token, 'Transfer')
+                        .withArgs(wallets[0].address, wallets[1].address, amount);
+                });
+
+                it('should freeze all internal token transfers after passing threshold', async () => {
+                    await expect(gateway.connect(admins[0]).freezeAllTokens()).to.not.emit(gateway, 'AllTokensFrozen');
+                    await expect(gateway.connect(admins[1]).freezeAllTokens()).to.not.emit(gateway, 'AllTokensFrozen');
+                    await expect(gateway.connect(admins[2]).freezeAllTokens()).to.emit(gateway, 'AllTokensFrozen').withArgs();
+
+                    await expect(token.transfer(wallets[1].address, amount)).to.be.revertedWith('IS_FROZEN');
+
+                    await expect(gateway.connect(admins[0]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
+                    await expect(gateway.connect(admins[1]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
+                    await expect(gateway.connect(admins[2]).unfreezeAllTokens()).to.emit(gateway, 'AllTokensUnfrozen').withArgs();
+
+                    await expect(token.transfer(wallets[1].address, amount))
+                        .to.emit(token, 'Transfer')
+                        .withArgs(wallets[0].address, wallets[1].address, amount);
+                });
+            });
+
+            describe('external tokens', () => {
+                beforeEach(async () => {
+                    token = await mintableCappedERC20Factory.deploy(name, symbol, decimals, cap).then((d) => d.deployed());
+
+                    const data = buildCommandBatch(
+                        CHAIN_ID,
+                        ROLE_OWNER,
+                        [getRandomID()],
+                        ['deployToken'],
+                        [getDeployCommand(name, symbol, decimals, cap, token.address)],
+                    );
+
+                    const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+                    await gateway.execute(input);
+
+                    await token.mint(wallets[0].address, amount);
+                });
+
+                it('should freeze external token sends after passing threshold', async () => {
+                    const destination = 'destination';
+
+                    await expect(token.approve(gateway.address, amount))
+                        .to.emit(token, 'Approval')
+                        .withArgs(wallets[0].address, gateway.address, amount);
+
+                    await expect(gateway.connect(admins[0]).freezeToken(symbol)).to.not.emit(gateway, 'TokenFrozen');
+                    await expect(gateway.connect(admins[1]).freezeToken(symbol)).to.not.emit(gateway, 'TokenFrozen');
+                    await expect(gateway.connect(admins[2]).freezeToken(symbol)).to.emit(gateway, 'TokenFrozen').withArgs(symbol);
+
+                    await expect(gateway.sendToken('polygon', destination, symbol, amount)).to.be.revertedWith(
+                        `TokenIsFrozen("${symbol}")`,
+                    );
+
+                    await expect(gateway.connect(admins[0]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
+                    await expect(gateway.connect(admins[1]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
+                    await expect(gateway.connect(admins[2]).unfreezeToken(symbol)).to.emit(gateway, 'TokenUnfrozen').withArgs(symbol);
+
+                    await expect(gateway.sendToken('polygon', destination, symbol, amount))
+                        .to.emit(token, 'Transfer')
+                        .withArgs(wallets[0].address, gateway.address, amount)
+                        .to.emit(gateway, 'TokenSent')
+                        .withArgs(wallets[0].address, 'polygon', destination, symbol, amount);
+                });
+
+                it('should freeze all external token sends after passing threshold', async () => {
+                    const destination = 'destination';
+
+                    await expect(token.approve(gateway.address, amount))
+                        .to.emit(token, 'Approval')
+                        .withArgs(wallets[0].address, gateway.address, amount);
+
+                    await expect(gateway.connect(admins[0]).freezeAllTokens()).to.not.emit(gateway, 'AllTokensFrozen');
+                    await expect(gateway.connect(admins[1]).freezeAllTokens()).to.not.emit(gateway, 'AllTokensFrozen');
+                    await expect(gateway.connect(admins[2]).freezeAllTokens()).to.emit(gateway, 'AllTokensFrozen').withArgs();
+
+                    await expect(gateway.sendToken('polygon', destination, symbol, amount)).to.be.revertedWith(
+                        `TokenIsFrozen("${symbol}")`,
+                    );
+
+                    await expect(gateway.connect(admins[0]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
+                    await expect(gateway.connect(admins[1]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
+                    await expect(gateway.connect(admins[2]).unfreezeAllTokens()).to.emit(gateway, 'AllTokensUnfrozen').withArgs();
+
+                    await expect(gateway.sendToken('polygon', destination, symbol, amount))
+                        .to.emit(token, 'Transfer')
+                        .withArgs(wallets[0].address, gateway.address, amount)
+                        .to.emit(gateway, 'TokenSent')
+                        .withArgs(wallets[0].address, 'polygon', destination, symbol, amount);
+                });
+            });
+        });
+
+        describe('callContract', () => {
+            it('should burn internal token and emit an event', async () => {
+                const chain = 'polygon';
+                const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+                const payload = defaultAbiCoder.encode(['address', 'address'], [wallets[1].address, wallets[2].address]);
+
+                await expect(gateway.connect(wallets[0]).callContract(chain, destination, payload))
+                    .to.emit(gateway, 'ContractCall')
+                    .withArgs(wallets[0].address, chain, destination, keccak256(payload), payload);
+            });
+        });
+
+        describe('callContractWithToken', () => {
+            const tokenName = 'Test Token';
+            const tokenSymbol = 'TEST';
+            const decimals = 18;
+            const cap = 1e9;
+
+            it('should burn internal token and emit an event', async () => {
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID(), getRandomID()],
+                    ['deployToken', 'mintToken'],
+                    [
+                        getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO),
+                        getMintCommand(tokenSymbol, wallets[0].address, 1e6),
+                    ],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+                await gateway.execute(input);
+
+                const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
+                const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+
+                const issuer = wallets[0].address;
+                const spender = gateway.address;
+                const amount = 1000;
+                const chain = 'polygon';
+                const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+                const payload = defaultAbiCoder.encode(['address', 'address'], [wallets[0].address, destination]);
+
+                await expect(token.approve(spender, amount)).to.emit(token, 'Approval').withArgs(issuer, spender, amount);
+
+                await expect(gateway.callContractWithToken(chain, destination, payload, tokenSymbol, amount))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(issuer, ADDRESS_ZERO, amount)
+                    .to.emit(gateway, 'ContractCallWithToken')
+                    .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
+            });
+
+            it('should lock external token and emit an event', async () => {
+                const token = await mintableCappedERC20Factory.deploy(tokenName, tokenSymbol, decimals, cap).then((d) => d.deployed());
+
+                await token.mint(wallets[0].address, 1000000);
+
+                const data = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address)],
+                );
+
+                const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+
+                await gateway.execute(input);
+
+                const issuer = wallets[0].address;
+                const locker = gateway.address;
+                const amount = 1000;
+                const chain = 'polygon';
+                const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+                const payload = defaultAbiCoder.encode(['address', 'address'], [wallets[0].address, destination]);
+
+                await expect(await token.approve(locker, amount))
+                    .to.emit(token, 'Approval')
+                    .withArgs(issuer, locker, amount);
+
+                await expect(await gateway.callContractWithToken(chain, destination, payload, tokenSymbol, amount))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(issuer, locker, amount)
+                    .to.emit(gateway, 'ContractCallWithToken')
+                    .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
+            });
+        });
+
+        describe('external contract execution', () => {
+            it('should approve to call external TokenSwapper contract', async () => {
+                const nameA = 'testA';
+                const symbolA = 'testA';
+                const nameB = 'testB';
+                const symbolB = 'testB';
+                const decimals = 16;
+                const capacity = 0;
+
+                const tokenA = await mintableCappedERC20Factory.deploy(nameA, symbolA, decimals, capacity).then((d) => d.deployed());
+                const tokenB = await mintableCappedERC20Factory.deploy(nameB, symbolB, decimals, capacity).then((d) => d.deployed());
+
+                const tokenSwapperFactory = await ethers.getContractFactory('TokenSwapper', wallets[0]);
+
+                const swapper = await tokenSwapperFactory.deploy(tokenA.address, tokenB.address).then((d) => d.deployed());
+
+                const destinationSwapExecutableFactory = await ethers.getContractFactory('DestinationSwapExecutable', wallets[0]);
+
+                const swapExecutable = await destinationSwapExecutableFactory
+                    .deploy(gateway.address, swapper.address)
+                    .then((d) => d.deployed());
+
+                await tokenA.mint(gateway.address, 1e6);
+                await tokenB.mint(swapper.address, 1e6);
+
+                const deployTokenData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address)],
+                );
+
+                const deployTokenInput = await getSignedMultisigExecuteInput(deployTokenData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(deployTokenInput)).to.emit(gateway, 'TokenDeployed').withArgs(symbolA, tokenA.address);
+
+                const payload = defaultAbiCoder.encode(['address', 'address'], [tokenB.address, wallets[0].address]);
+                const payloadHash = keccak256(payload);
+                const swapAmount = 20000;
+                const commandId = getRandomID();
+                const sourceChain = 'polygon';
+                const sourceAddress = 'address0x123';
+                const sourceTxHash = keccak256('0x123abc123abc');
+                const sourceEventIndex = 17;
+
+                const approveWithMintData = buildCommandBatch(
+                    CHAIN_ID,
+                    ROLE_OWNER,
+                    [commandId],
+                    ['approveContractCallWithMint'],
+                    [
+                        getApproveContractCallWithMint(
+                            sourceChain,
+                            sourceAddress,
+                            swapExecutable.address,
+                            payloadHash,
+                            symbolA,
+                            swapAmount,
+                            sourceTxHash,
+                            sourceEventIndex,
+                        ),
+                    ],
+                );
+
+                const approveWithMintInput = await getSignedMultisigExecuteInput(approveWithMintData, owners.slice(0, threshold));
+
+                await expect(gateway.execute(approveWithMintInput))
+                    .to.emit(gateway, 'ContractCallApprovedWithMint')
+                    .withArgs(
+                        commandId,
+                        sourceChain,
+                        sourceAddress,
+                        swapExecutable.address,
+                        payloadHash,
+                        symbolA,
+                        swapAmount,
+                        sourceTxHash,
+                        sourceEventIndex,
+                    );
+
+                const isApprovedBefore = await gateway.isContractCallAndMintApproved(
+                    commandId,
+                    sourceChain,
+                    sourceAddress,
+                    swapExecutable.address,
+                    payloadHash,
+                    symbolA,
+                    swapAmount,
+                );
+
+                expect(isApprovedBefore).to.be.true;
+
+                const swap = await swapExecutable.executeWithToken(commandId, sourceChain, sourceAddress, payload, symbolA, swapAmount);
+
+                await expect(swap)
+                    .to.emit(tokenA, 'Transfer')
+                    .withArgs(gateway.address, swapExecutable.address, swapAmount)
+                    .and.to.emit(tokenB, 'Transfer')
+                    .withArgs(swapper.address, wallets[0].address, swapAmount * 2);
+
+                const isApprovedAfter = await gateway.isContractCallAndMintApproved(
+                    commandId,
+                    sourceChain,
+                    sourceAddress,
+                    swapExecutable.address,
+                    payloadHash,
+                    symbolA,
+                    swapAmount,
+                );
+
+                expect(isApprovedAfter).to.be.false;
+            });
+        });
     });
-
-    describe('command burnToken', () => {
-      const name = 'An Awesome Token';
-      const symbol = 'AAT';
-      const decimals = 18;
-      const cap = 1e8;
-      const amount = 100;
-
-      beforeEach(() => {
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID(), getRandomID()],
-              ['deployToken', 'mintToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [name, symbol, decimals, cap, ADDRESS_ZERO],
-                ),
-                defaultAbiCoder.encode(
-                  ['string', 'address', 'uint256'],
-                  [symbol, wallets[0].address, amount],
-                ),
-              ],
-            ],
-          ),
-        );
-
-        return getSignedMultisigExecuteInput(data, owners.slice(1, 3)).then(
-          (input) => contract.execute(input),
-        );
-      });
-
-      it('should allow the owners to burn tokens', async () => {
-        const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
-        const salt = id(
-          `${destinationBtcAddress}-${wallets[0].address}-${Date.now()}`,
-        );
-
-        const dataFirstBurn = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['burnToken'],
-              [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
-            ],
-          ),
-        );
-        const dataSecondBurn = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['burnToken'],
-              [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
-            ],
-          ),
-        );
-
-        const tokenAddress = await contract.tokenAddresses(symbol);
-        const tokenContract = new Contract(
-          tokenAddress,
-          BurnableMintableCappedERC20.abi,
-          wallets[0],
-        );
-
-        const depositHandlerAddress = getCreate2Address(
-          contract.address,
-          salt,
-          keccak256(`0x${DepositHandler.bytecode}`),
-        );
-
-        const burnAmount = amount / 2;
-
-        return tokenContract
-          .transfer(depositHandlerAddress, burnAmount)
-          .then(() =>
-            getSignedMultisigExecuteInput(dataFirstBurn, owners.slice(0, 2)),
-          )
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount),
-          )
-          .then(() => tokenContract.transfer(depositHandlerAddress, burnAmount))
-          .then(() =>
-            getSignedMultisigExecuteInput(dataSecondBurn, owners.slice(1, 3)),
-          )
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount),
-          )
-          .then(() =>
-            tokenContract
-              .balanceOf(depositHandlerAddress)
-              .then(bigNumberToNumber),
-          )
-          .then((actual) => {
-            expect(actual).to.eq(0);
-          });
-      });
-
-      it('should allow the operators to burn tokens', async () => {
-        const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
-        const salt = id(
-          `${destinationBtcAddress}-${wallets[0].address}-${Date.now()}`,
-        );
-
-        const dataFirstBurn = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OPERATOR,
-              [getRandomID()],
-              ['burnToken'],
-              [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
-            ],
-          ),
-        );
-        const dataSecondBurn = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OPERATOR,
-              [getRandomID()],
-              ['burnToken'],
-              [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
-            ],
-          ),
-        );
-
-        const tokenAddress = await contract.tokenAddresses(symbol);
-        const tokenContract = new Contract(
-          tokenAddress,
-          BurnableMintableCappedERC20.abi,
-          wallets[0],
-        );
-
-        const depositHandlerAddress = getCreate2Address(
-          contract.address,
-          salt,
-          keccak256(`0x${DepositHandler.bytecode}`),
-        );
-
-        const burnAmount = amount / 2;
-
-        return tokenContract
-          .transfer(depositHandlerAddress, burnAmount)
-          .then(() =>
-            getSignedMultisigExecuteInput(dataFirstBurn, operators.slice(0, 2)),
-          )
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount),
-          )
-          .then(() => tokenContract.transfer(depositHandlerAddress, burnAmount))
-          .then(() =>
-            getSignedMultisigExecuteInput(
-              dataSecondBurn,
-              operators.slice(1, 3),
-            ),
-          )
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount),
-          )
-          .then(() =>
-            tokenContract
-              .balanceOf(depositHandlerAddress)
-              .then(bigNumberToNumber),
-          )
-          .then((actual) => {
-            expect(actual).to.eq(0);
-          });
-      });
-    });
-
-    describe('command transferOwnership', () => {
-      it('should owners to transfer ownership', async () => {
-        await getSignedMultisigExecuteInput(
-          makeTransferCommand('transferOwnership', operators, threshold + 1),
-          owners,
-        )
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(contract, 'OwnershipTransferred')
-              .withArgs(
-                owners.map(get('address')),
-                threshold,
-                operators.map(get('address')),
-                threshold + 1,
-              ),
-          )
-          .then(() => contract.owners(2))
-          .then((actual) => {
-            expect(actual).to.deep.eq(operators.map(get('address')));
-          });
-
-        await getSignedMultisigExecuteInput(
-          makeTransferCommand('transferOwnership', operators, threshold),
-          operators,
-        ).then((input) =>
-          expect(contract.execute(input))
-            .to.emit(contract, 'OwnershipTransferred')
-            .withArgs(
-              operators.map(get('address')),
-              threshold + 1,
-              operators.map(get('address')),
-              threshold,
-            ),
-        );
-      });
-
-      it('should allow previous owners to burn tokens', () => {
-        const name = 'An Awesome Token';
-        const symbol = 'AAT';
-        const decimals = 18;
-        const cap = 1e8;
-        const amount = 100;
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID(), getRandomID()],
-              ['deployToken', 'mintToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [name, symbol, decimals, cap, ADDRESS_ZERO],
-                ),
-                defaultAbiCoder.encode(
-                  ['string', 'address', 'uint256'],
-                  [symbol, wallets[0].address, amount],
-                ),
-              ],
-            ],
-          ),
-        );
-
-        return getSignedMultisigExecuteInput(data, owners.slice(1, 3))
-          .then((input) => contract.execute(input))
-          .then(() =>
-            getSignedMultisigExecuteInput(
-              makeTransferCommand('transferOwnership', operators, threshold),
-              owners,
-            ),
-          )
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(contract, 'OwnershipTransferred')
-              .withArgs(
-                owners.map(get('address')),
-                threshold,
-                operators.map(get('address')),
-                threshold,
-              ),
-          )
-          .then(() => contract.owners(2))
-          .then((actual) => {
-            expect(actual).to.deep.eq(operators.map(get('address')));
-          })
-          .then(async () => {
-            const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
-            const salt = id(
-              `${destinationBtcAddress}-${wallets[0].address}-${Date.now()}`,
-            );
-
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [
-                  CHAIN_ID,
-                  ROLE_OWNER,
-                  [getRandomID()],
-                  ['burnToken'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['string', 'bytes32'],
-                      [symbol, salt],
-                    ),
-                  ],
-                ],
-              ),
-            );
-
-            const tokenAddress = await contract.tokenAddresses(symbol);
-            const tokenContract = new Contract(
-              tokenAddress,
-              BurnableMintableCappedERC20.abi,
-              wallets[0],
-            );
-
-            const depositHandlerAddress = getCreate2Address(
-              contract.address,
-              salt,
-              keccak256(`0x${DepositHandler.bytecode}`),
-            );
-
-            await tokenContract.transfer(depositHandlerAddress, amount);
-            const input = await getSignedMultisigExecuteInput(
-              data,
-              owners.slice(0, 2),
-            );
-
-            await expect(contract.execute(input))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
-          });
-      });
-    });
-
-    describe('command transferOperatorship', () => {
-      it('should allow owners to transfer operatorship', async () => {
-        await getSignedMultisigExecuteInput(
-          makeTransferCommand('transferOperatorship', owners, threshold + 1),
-          owners,
-        )
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(contract, 'OperatorshipTransferred')
-              .withArgs(
-                operators.map(get('address')),
-                threshold,
-                owners.map(get('address')),
-                threshold + 1,
-              ),
-          )
-          .then(() => contract.operators(2))
-          .then((actual) => {
-            expect(actual).to.deep.eq(owners.map(get('address')));
-          });
-
-        await getSignedMultisigExecuteInput(
-          makeTransferCommand('transferOperatorship', owners, threshold),
-          owners,
-        ).then((input) =>
-          expect(contract.execute(input))
-            .to.emit(contract, 'OperatorshipTransferred')
-            .withArgs(
-              owners.map(get('address')),
-              threshold + 1,
-              owners.map(get('address')),
-              threshold,
-            ),
-        );
-      });
-
-      it('should allow previous operators to burn tokens', () => {
-        const name = 'An Awesome Token';
-        const symbol = 'AAT';
-        const decimals = 18;
-        const cap = 1e8;
-        const amount = 100;
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID(), getRandomID()],
-              ['deployToken', 'mintToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [name, symbol, decimals, cap, ADDRESS_ZERO],
-                ),
-                defaultAbiCoder.encode(
-                  ['string', 'address', 'uint256'],
-                  [symbol, wallets[0].address, amount],
-                ),
-              ],
-            ],
-          ),
-        );
-
-        return getSignedMultisigExecuteInput(data, owners.slice(1, 3))
-          .then((input) => contract.execute(input))
-          .then(() =>
-            getSignedMultisigExecuteInput(
-              makeTransferCommand('transferOperatorship', owners, threshold),
-              owners,
-            ),
-          )
-          .then((input) =>
-            expect(contract.execute(input))
-              .to.emit(contract, 'OperatorshipTransferred')
-              .withArgs(
-                operators.map(get('address')),
-                threshold,
-                owners.map(get('address')),
-                threshold,
-              ),
-          )
-          .then(() => contract.operators(2))
-          .then((actual) => {
-            expect(actual).to.deep.eq(owners.map(get('address')));
-          })
-          .then(async () => {
-            const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
-            const salt = id(
-              `${destinationBtcAddress}-${wallets[0].address}-${Date.now()}`,
-            );
-
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [
-                  CHAIN_ID,
-                  ROLE_OPERATOR,
-                  [getRandomID()],
-                  ['burnToken'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['string', 'bytes32'],
-                      [symbol, salt],
-                    ),
-                  ],
-                ],
-              ),
-            );
-
-            const tokenAddress = await contract.tokenAddresses(symbol);
-            const tokenContract = new Contract(
-              tokenAddress,
-              BurnableMintableCappedERC20.abi,
-              wallets[0],
-            );
-
-            const depositHandlerAddress = getCreate2Address(
-              contract.address,
-              salt,
-              keccak256(`0x${DepositHandler.bytecode}`),
-            );
-
-            await tokenContract.transfer(depositHandlerAddress, amount);
-            const input = await getSignedMultisigExecuteInput(
-              data,
-              operators.slice(1, 3),
-            );
-
-            await expect(contract.execute(input))
-              .to.emit(tokenContract, 'Transfer')
-              .withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
-          });
-      });
-    });
-
-    describe('sendToken', () => {
-      it('should burn internal token and emit an event', async () => {
-        const tokenName = 'Test Token';
-        const tokenSymbol = 'TEST';
-        const decimals = 18;
-        const cap = 1e9;
-
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID(), getRandomID()],
-              ['deployToken', 'mintToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO],
-                ),
-                defaultAbiCoder.encode(
-                  ['string', 'address', 'uint256'],
-                  [tokenSymbol, owners[0].address, 1e6],
-                ),
-              ],
-            ],
-          ),
-        );
-        await contract.execute(
-          await getSignedMultisigExecuteInput(data, owners.slice(0, 2)),
-        );
-
-        const tokenAddress = await contract.tokenAddresses(tokenSymbol);
-        const token = new Contract(
-          tokenAddress,
-          BurnableMintableCappedERC20.abi,
-          owners[0],
-        );
-
-        const issuer = owners[0].address;
-        const spender = contract.address;
-        const amount = 1000;
-        const destination = operators[1].address.toString().replace('0x', '');
-
-        await expect(await token.approve(spender, amount))
-          .to.emit(token, 'Approval')
-          .withArgs(issuer, spender, amount);
-
-        await expect(
-          await contract.sendToken('polygon', destination, tokenSymbol, amount),
-        )
-          .to.emit(token, 'Transfer')
-          .withArgs(issuer, ADDRESS_ZERO, amount)
-          .to.emit(contract, 'TokenSent')
-          .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
-      });
-
-      it('should lock external token and emit an event', async () => {
-        const tokenName = 'Test Token';
-        const tokenSymbol = 'TEST';
-        const decimals = 18;
-        const cap = 1e9;
-
-        const token = await deployContract(owners[0], MintableCappedERC20, [
-          tokenName,
-          tokenSymbol,
-          decimals,
-          cap,
-        ]);
-
-        await token.mint(owners[0].address, 1000000);
-
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['deployToken'],
-              [
-                defaultAbiCoder.encode(
-                  ['string', 'string', 'uint8', 'uint256', 'address'],
-                  [tokenName, tokenSymbol, decimals, cap, token.address],
-                ),
-              ],
-            ],
-          ),
-        );
-        await contract.execute(
-          await getSignedMultisigExecuteInput(data, owners.slice(0, 2)),
-        );
-
-        const issuer = owners[0].address;
-        const locker = contract.address;
-        const amount = 1000;
-        const destination = operators[1].address.toString().replace('0x', '');
-
-        await expect(await token.approve(locker, amount))
-          .to.emit(token, 'Approval')
-          .withArgs(issuer, locker, amount);
-
-        await expect(
-          await contract.sendToken('polygon', destination, tokenSymbol, amount),
-        )
-          .to.emit(token, 'Transfer')
-          .withArgs(issuer, locker, amount)
-          .to.emit(contract, 'TokenSent')
-          .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
-      });
-    });
-  });
 });

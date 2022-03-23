@@ -145,15 +145,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             uint256 sourceEventIndex
         ) = abi.decode(params, (string, string, address, bytes32, bytes32, uint256));
 
-        _approveContractCall(
-            commandId,
-            sourceChain,
-            sourceAddress,
-            contractAddress,
-            payloadHash,
-            sourceTxHash,
-            sourceEventIndex
-        );
+        _approveContractCall(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, sourceTxHash, sourceEventIndex);
     }
 
     function approveContractCallWithMint(bytes calldata params, bytes32 commandId) external onlySelf {
@@ -213,8 +205,10 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         // Prevent setup from being called on a non-proxy (the implementation).
         if (implementation() == address(0)) revert NotProxy();
 
-        (address[] memory adminAddresses, uint256 adminThreshold, address ownerAddress, address operatorAddress) = abi
-            .decode(params, (address[], uint256, address, address));
+        (address[] memory adminAddresses, uint256 adminThreshold, address ownerAddress, address operatorAddress) = abi.decode(
+            params,
+            (address[], uint256, address, address)
+        );
 
         uint256 adminEpoch = _adminEpoch() + uint256(1);
         _setAdminEpoch(adminEpoch);
@@ -241,13 +235,10 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     function _execute(bytes memory data, bytes memory sig) internal {
         address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), sig);
 
-        (
-            uint256 chainId,
-            Role signerRole,
-            bytes32[] memory commandIds,
-            string[] memory commands,
-            bytes[] memory params
-        ) = abi.decode(data, (uint256, Role, bytes32[], string[], bytes[]));
+        (uint256 chainId, Role signerRole, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) = abi.decode(
+            data,
+            (uint256, Role, bytes32[], string[], bytes[])
+        );
 
         if (chainId != block.chainid) revert InvalidChainId();
 
