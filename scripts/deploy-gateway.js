@@ -12,6 +12,14 @@ const {
 const utils = require('ethers').utils
 const execSync = require('child_process').execSync;
 
+// define these environment variables in an .env file like:
+/*
+PREFIX="docker exec validator1 sh -c"
+CHAIN="ethereum"
+URL="http://localhost:7545"
+PRIVATE_KEY="0xcf469f1c4b06a6204bb9f977fa2865271a17a4ed2028ba4c064fea4754e81c83"
+ADMIN_THRESHOLD="4"*
+*/
 const prefix = process.env.PREFIX;
 const chain = process.env.CHAIN;
 const url = process.env.URL;
@@ -107,7 +115,7 @@ tokenDeployerFactory
   })
   .then((axelarGatewayMultisig) => axelarGatewayMultisig.deployed())
   .then(({ address }) => {
-    console.log(`deployed axelar gateway multisig  at address ${address}`);
+    console.log(`deployed axelar gateway multisig at address ${address}`);
     return axelarGatewayProxyFactory.deploy(address, params)
   })
   .then((axelarGatewayProxy) => axelarGatewayProxy.deployed())
