@@ -683,27 +683,12 @@ describe('AxelarGatewayMultisig', () => {
 
         return getSignedMultisigExecuteInput(data, owners.slice(1, 3))
           .then((input) => contract.execute(input))
-          .then(() => {
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [
-                  CHAIN_ID,
-                  ROLE_OWNER,
-                  [getRandomID()],
-                  ['transferOwnership'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['address[]', 'uint8'],
-                      [operators.map(get('address')), threshold],
-                    ),
-                  ],
-                ],
-              ),
-            );
-
-            return getSignedMultisigExecuteInput(data, owners);
-          })
+          .then(() =>
+            getSignedMultisigExecuteInput(
+              makeTransferCommand('transferOwnership', operators, threshold),
+              owners,
+            ),
+          )
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'OwnershipTransferred')
@@ -834,27 +819,12 @@ describe('AxelarGatewayMultisig', () => {
 
         return getSignedMultisigExecuteInput(data, owners.slice(1, 3))
           .then((input) => contract.execute(input))
-          .then(() => {
-            const data = arrayify(
-              defaultAbiCoder.encode(
-                ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [
-                  CHAIN_ID,
-                  ROLE_OWNER,
-                  [getRandomID()],
-                  ['transferOperatorship'],
-                  [
-                    defaultAbiCoder.encode(
-                      ['address[]', 'uint8'],
-                      [owners.map(get('address')), threshold],
-                    ),
-                  ],
-                ],
-              ),
-            );
-
-            return getSignedMultisigExecuteInput(data, owners);
-          })
+          .then(() =>
+            getSignedMultisigExecuteInput(
+              makeTransferCommand('transferOperatorship', owners, threshold),
+              owners,
+            ),
+          )
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'OperatorshipTransferred')
