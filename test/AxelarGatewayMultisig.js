@@ -39,6 +39,25 @@ describe('AxelarGatewayMultisig', () => {
   let contract;
   let tokenDeployer;
 
+  const makeTransferCommand = (commandName, newSet, newThreshold) =>
+    arrayify(
+      defaultAbiCoder.encode(
+        ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+        [
+          CHAIN_ID,
+          ROLE_OWNER,
+          [getRandomID()],
+          [commandName],
+          [
+            defaultAbiCoder.encode(
+              ['address[]', 'uint8'],
+              [newSet.map(get('address')), newThreshold],
+            ),
+          ],
+        ],
+      ),
+    );
+
   beforeEach(async () => {
     const params = arrayify(
       defaultAbiCoder.encode(
@@ -600,27 +619,8 @@ describe('AxelarGatewayMultisig', () => {
 
     describe('command transferOwnership', () => {
       it('should owners to transfer ownership', async () => {
-        const makeTransferCommand = (newThreshold) =>
-          arrayify(
-            defaultAbiCoder.encode(
-              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-              [
-                CHAIN_ID,
-                ROLE_OWNER,
-                [getRandomID()],
-                ['transferOwnership'],
-                [
-                  defaultAbiCoder.encode(
-                    ['address[]', 'uint8'],
-                    [operators.map(get('address')), newThreshold],
-                  ),
-                ],
-              ],
-            ),
-          );
-
         await getSignedMultisigExecuteInput(
-          makeTransferCommand(threshold + 1),
+          makeTransferCommand('transferOwnership', operators, threshold + 1),
           owners,
         )
           .then((input) =>
@@ -639,7 +639,7 @@ describe('AxelarGatewayMultisig', () => {
           });
 
         await getSignedMultisigExecuteInput(
-          makeTransferCommand(threshold),
+          makeTransferCommand('transferOwnership', operators, threshold),
           operators,
         ).then((input) =>
           expect(contract.execute(input))
@@ -770,27 +770,8 @@ describe('AxelarGatewayMultisig', () => {
 
     describe('command transferOperatorship', () => {
       it('should allow owners to transfer operatorship', async () => {
-        const makeTransferCommand = (newThreshold) =>
-          arrayify(
-            defaultAbiCoder.encode(
-              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-              [
-                CHAIN_ID,
-                ROLE_OWNER,
-                [getRandomID()],
-                ['transferOperatorship'],
-                [
-                  defaultAbiCoder.encode(
-                    ['address[]', 'uint8'],
-                    [owners.map(get('address')), newThreshold],
-                  ),
-                ],
-              ],
-            ),
-          );
-
         await getSignedMultisigExecuteInput(
-          makeTransferCommand(threshold + 1),
+          makeTransferCommand('transferOperatorship', owners, threshold + 1),
           owners,
         )
           .then((input) =>
@@ -809,7 +790,7 @@ describe('AxelarGatewayMultisig', () => {
           });
 
         await getSignedMultisigExecuteInput(
-          makeTransferCommand(threshold),
+          makeTransferCommand('transferOperatorship', owners, threshold),
           owners,
         ).then((input) =>
           expect(contract.execute(input))
