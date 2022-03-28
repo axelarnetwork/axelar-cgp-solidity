@@ -599,26 +599,27 @@ describe('AxelarGatewayMultisig', () => {
     });
 
     describe('command transferOwnership', () => {
-      it('should owners to transfer ownership', () => {
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['transferOwnership'],
+      it('should owners to transfer ownership', async () => {
+        const makeTransferCommand = newThreshold =>
+          arrayify(
+            defaultAbiCoder.encode(
+              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
               [
-                defaultAbiCoder.encode(
-                  ['address[]', 'uint8'],
-                  [operators.map(get('address')), threshold],
-                ),
+                CHAIN_ID,
+                ROLE_OWNER,
+                [getRandomID()],
+                ['transferOwnership'],
+                [
+                  defaultAbiCoder.encode(
+                    ['address[]', 'uint8'],
+                    [operators.map(get('address')), newThreshold],
+                  ),
+                ],
               ],
-            ],
-          ),
-        );
+            ),
+          );
 
-        return getSignedMultisigExecuteInput(data, owners)
+        await getSignedMultisigExecuteInput(makeTransferCommand(threshold + 1), owners)
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'OwnershipTransferred')
@@ -626,13 +627,25 @@ describe('AxelarGatewayMultisig', () => {
                 owners.map(get('address')),
                 threshold,
                 operators.map(get('address')),
-                threshold,
+                threshold + 1,
               ),
           )
           .then(() => contract.owners())
           .then((actual) => {
             expect(actual).to.deep.eq(operators.map(get('address')));
           });
+
+        await getSignedMultisigExecuteInput(makeTransferCommand(threshold), operators)
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(contract, 'OwnershipTransferred')
+              .withArgs(
+                operators.map(get('address')),
+                threshold + 1,
+                operators.map(get('address')),
+                threshold,
+              ),
+          )
       });
 
       it('should allow previous owners to burn tokens', () => {
@@ -751,26 +764,27 @@ describe('AxelarGatewayMultisig', () => {
     });
 
     describe('command transferOperatorship', () => {
-      it('should owners to transfer operatorship', () => {
-        const data = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-            [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [getRandomID()],
-              ['transferOperatorship'],
+      it('should allow owners to transfer operatorship', async () => {
+        const makeTransferCommand = newThreshold =>
+          arrayify(
+            defaultAbiCoder.encode(
+              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
               [
-                defaultAbiCoder.encode(
-                  ['address[]', 'uint8'],
-                  [owners.map(get('address')), threshold],
-                ),
+                CHAIN_ID,
+                ROLE_OWNER,
+                [getRandomID()],
+                ['transferOperatorship'],
+                [
+                  defaultAbiCoder.encode(
+                    ['address[]', 'uint8'],
+                    [owners.map(get('address')), newThreshold],
+                  ),
+                ],
               ],
-            ],
-          ),
-        );
+            ),
+          );
 
-        return getSignedMultisigExecuteInput(data, owners)
+        await getSignedMultisigExecuteInput(makeTransferCommand(threshold + 1), owners)
           .then((input) =>
             expect(contract.execute(input))
               .to.emit(contract, 'OperatorshipTransferred')
@@ -778,13 +792,25 @@ describe('AxelarGatewayMultisig', () => {
                 operators.map(get('address')),
                 threshold,
                 owners.map(get('address')),
-                threshold,
+                threshold + 1,
               ),
           )
           .then(() => contract.operators())
           .then((actual) => {
             expect(actual).to.deep.eq(owners.map(get('address')));
           });
+
+        await getSignedMultisigExecuteInput(makeTransferCommand(threshold), owners)
+          .then((input) =>
+            expect(contract.execute(input))
+              .to.emit(contract, 'OperatorshipTransferred')
+              .withArgs(
+                owners.map(get('address')),
+                threshold + 1,
+                owners.map(get('address')),
+                threshold,
+              ),
+          );
       });
 
       it('should allow previous operators to burn tokens', () => {
