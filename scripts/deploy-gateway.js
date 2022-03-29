@@ -32,10 +32,10 @@ const TokenDeployer = require('../build/TokenDeployer.json');
 const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
 const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
 
-const adminKeyIDs = JSON.parse(execSync(`${prefix} "axelard q tss external-key-id ${chain} --output json"`, { encoding: 'utf-8' })).key_ids;
+const adminKeyIDs = JSON.parse(execSync(`${prefix} "axelard q tss external-key-id ${chain} --output json"`)).key_ids;
 
 const admins = adminKeyIDs.map(adminKeyID => {
-  const output = execSync(`${prefix} "axelard q tss key ${adminKeyID} --output json"`, { encoding: 'utf-8' });
+  const output = execSync(`${prefix} "axelard q tss key ${adminKeyID} --output json"`);
   const key = JSON.parse(output).ecdsa_key.key;
   
   return computeAddress(`0x04${key.x}${key.y}`);
@@ -43,7 +43,7 @@ const admins = adminKeyIDs.map(adminKeyID => {
 
 const getAddresses = (role) => {
   const keyID = execSync(`${prefix} "axelard q tss key-id ${chain} ${role}"`, { encoding: 'utf-8' }).replaceAll('\n','');
-  const output = execSync(`${prefix} "axelard q tss key ${keyID} --output json"`, { encoding: 'utf-8' });
+  const output = execSync(`${prefix} "axelard q tss key ${keyID} --output json"`);
   const keys = JSON.parse(output).multisig_key.key;
  
   const addresses = keys.map(key => computeAddress(`0x04${key.x}${key.y}`));
