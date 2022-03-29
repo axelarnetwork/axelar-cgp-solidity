@@ -6,11 +6,10 @@ const {
   ContractFactory,
   Wallet,
   providers: { JsonRpcProvider },
-  utils: { defaultAbiCoder, arrayify },
+  utils: { defaultAbiCoder, arrayify, computeAddress },
 } = require('ethers');
 
-const utils = require('ethers').utils
-const execSync = require('child_process').execSync;
+const { execSync }  = require('child_process');
 
 // define these environment variables in an .env file like:
 /*
@@ -34,25 +33,20 @@ const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
 const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
 
 const adminKeyIDs = JSON.parse(execSync(`${prefix} "axelard q tss external-key-id ${chain} --output json"`, { encoding: 'utf-8' })).key_ids;
-var admins = [];
 
-adminKeyIDs.forEach(function(id) {
-  let output = execSync(`${prefix} "axelard q tss key ${id} --output json"`, { encoding: 'utf-8' });
-  let key = JSON.parse(output).ecdsa_key.key;
-  const addr = utils.computeAddress(`0x04${key.x}${key.y}`);
-  admins.push(addr);
+const admins = adminKeyIDs.map(adminKeyID => {
+  const output = execSync(`${prefix} "axelard q tss key ${adminKeyID} --output json"`, { encoding: 'utf-8' });
+  const key = JSON.parse(output).ecdsa_key.key;
+  
+  return computeAddress(`0x04${key.x}${key.y}`);
 });
 
-var getAddresses = function(role) {
-  let keyID = execSync(`${prefix} "axelard q tss key-id ${chain} ${role}"`, { encoding: 'utf-8' }).replaceAll('\n','');
-  let output = execSync(`${prefix} "axelard q tss key ${keyID} --output json"`, { encoding: 'utf-8' });
+const getAddresses = (role) => {
+  const keyID = execSync(`${prefix} "axelard q tss key-id ${chain} ${role}"`, { encoding: 'utf-8' }).replaceAll('\n','');
+  const output = execSync(`${prefix} "axelard q tss key ${keyID} --output json"`, { encoding: 'utf-8' });
   const keys = JSON.parse(output).multisig_key.key;
-  var addresses = [];
  
-  keys.forEach(function(key) {
-    const addr = utils.computeAddress(`0x04${key.x}${key.y}`);
-    addresses.push(addr);
-  });
+  const addresses = keys.map(key => computeAddress(`0x04${key.x}${key.y}`));
 
   return {
     addresses: addresses,
@@ -62,19 +56,11 @@ var getAddresses = function(role) {
 
 console.log({admins: {addresses: admins, threshold: adminThreshold}});
 
-let obj = getAddresses("master")
-console.log({owners: obj})
+const { addresses: owners, threshold: ownerThreshold } = getAddresses("master")
+console.log({owners: owners, threshold: ownerThreshold })
 
-const owners = obj.addresses
-const ownerThreshold = obj.threshold
-
-obj = getAddresses("secondary")
-console.log({operators: obj})
-
-const operators = obj.addresses
-const operatorThreshold = obj.threshold
-
-
+const { addresses: operators, threshold: operatorThreshold } = getAddresses("secondary")
+console.log({operators: operators, threshold: operatorThreshold })
 
 const params = arrayify(
   defaultAbiCoder.encode(
