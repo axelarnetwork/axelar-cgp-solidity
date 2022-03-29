@@ -404,11 +404,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     function transferOperatorship(bytes calldata params, bytes32) external onlySelf {
         (address[] memory newOperators, uint256 newThreshold) = abi.decode(params, (address[], uint256));
 
-        uint256 ownerEpoch = _ownerEpoch();
-
-        emit OperatorshipTransferred(operators(), _getOperatorThreshold(ownerEpoch), newOperators, newThreshold);
-
         uint256 operatorEpoch = _operatorEpoch();
+
+        emit OperatorshipTransferred(operators(), _getOperatorThreshold(operatorEpoch), newOperators, newThreshold);
+
         _setOperatorEpoch(++operatorEpoch);
         _setOperators(operatorEpoch, newOperators, newThreshold);
     }
