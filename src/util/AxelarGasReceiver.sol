@@ -72,14 +72,19 @@ contract AxelarGasReceiver is Ownable{
         uint256 gasAmount,
         uint256 gasLimit,
         uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        bytes memory signature
     ) external {
         IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
         emit GasReceived(destinationChain, destinationAddress, payload, symbol, amountThrough, gasToken, gasAmount, gasLimit);
-        ERC20Permit tokenThrough = ERC20Permit(gateway.tokenAddresses(symbol));
-        tokenThrough.permit(msg.sender, address(gateway), amountThrough, deadline, v, r, s);
+        {
+            (
+                uint8 v,
+                bytes32 r,
+                bytes32 s 
+            ) = abi.decode(signature, (uint8, bytes32, bytes32));
+            ERC20Permit tokenThrough = ERC20Permit(gateway.tokenAddresses(symbol));
+            tokenThrough.permit(msg.sender, address(gateway), amountThrough, deadline, v, r, s);
+        }
         gateway.callContractWithToken(destinationChain, destinationAddress, payload, symbol, amountThrough);
     }
 
