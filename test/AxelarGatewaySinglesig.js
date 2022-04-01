@@ -1428,7 +1428,6 @@ describe('AxelarGatewaySingleSig', () => {
     });
   });
 
-  /*
   describe('callContract', () => {
     it('should burn internal token and emit an event', async () => {
       const chain = 'polygon';
@@ -1449,7 +1448,6 @@ describe('AxelarGatewaySingleSig', () => {
         );
     });
   });
-   */
 
   describe('callContractWithToken', () => {
     it('should burn internal token and emit an event', async () => {

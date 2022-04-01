@@ -84,13 +84,11 @@ interface IAxelarGateway {
         uint256 amount
     ) external;
 
-    /*
     function callContract(
         string memory destinationChain,
         string memory contractAddress,
         bytes memory payload
     ) external;
-    */
 
     function callContractWithToken(
         string memory destinationChain,
