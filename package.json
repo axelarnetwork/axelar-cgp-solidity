@@ -8,7 +8,7 @@
     "test-evm-versions": "bash test/test-evm-versions.bash",
     "build": "rm -rf build && waffle waffle.json",
     "lint": "solhint 'src/**/*.sol' && eslint 'test/**/*.js'",
-    "prettier": "prettier --write 'test/*.js' && prettier --write 'src/*.sol'"
+    "prettier": "prettier --write 'test/**/*.js' && prettier --write 'src/**/*.sol'"
   },
   "repository": {
     "type": "git",

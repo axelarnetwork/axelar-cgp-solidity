@@ -1428,6 +1428,7 @@ describe('AxelarGatewaySingleSig', () => {
     });
   });
 
+  /*
   describe('callContract', () => {
     it('should burn internal token and emit an event', async () => {
       const chain = 'polygon';
@@ -1448,6 +1449,7 @@ describe('AxelarGatewaySingleSig', () => {
         );
     });
   });
+   */
 
   describe('callContractWithToken', () => {
     it('should burn internal token and emit an event', async () => {
@@ -1665,6 +1667,8 @@ describe('AxelarGatewaySingleSig', () => {
       const commandId = getRandomID();
       const sourceChain = 'polygon';
       const sourceAddress = 'address0x123';
+      const sourceTxHash = keccak256('0x123abc123abc');
+      const sourceEventIndex = 17;
 
       const approveWithMintData = arrayify(
         defaultAbiCoder.encode(
@@ -1676,7 +1680,16 @@ describe('AxelarGatewaySingleSig', () => {
             ['approveContractCallWithMint'],
             [
               defaultAbiCoder.encode(
-                ['string', 'string', 'address', 'bytes32', 'string', 'uint256'],
+                [
+                  'string',
+                  'string',
+                  'address',
+                  'bytes32',
+                  'string',
+                  'uint256',
+                  'bytes32',
+                  'uint256',
+                ],
                 [
                   sourceChain,
                   sourceAddress,
@@ -1684,6 +1697,8 @@ describe('AxelarGatewaySingleSig', () => {
                   payloadHash,
                   symbolA,
                   swapAmount,
+                  sourceTxHash,
+                  sourceEventIndex,
                 ],
               ),
             ],
@@ -1704,8 +1719,22 @@ describe('AxelarGatewaySingleSig', () => {
           swapExecutable.address,
           payloadHash,
           symbolA,
-          20000,
+          swapAmount,
+          sourceTxHash,
+          sourceEventIndex,
         );
+
+      await expect(
+        await contract.isContractCallAndMintApproved(
+          commandId,
+          sourceChain,
+          sourceAddress,
+          swapExecutable.address,
+          payloadHash,
+          symbolA,
+          swapAmount,
+        ),
+      ).to.be.equal(true);
 
       const swap = await swapExecutable.executeWithToken(
         commandId,
@@ -1721,6 +1750,18 @@ describe('AxelarGatewaySingleSig', () => {
         .withArgs(contract.address, swapExecutable.address, swapAmount)
         .and.to.emit(tokenB, 'Transfer')
         .withArgs(swapper.address, nonOwnerWallet.address, swapAmount * 2);
+
+      await expect(
+        await contract.isContractCallAndMintApproved(
+          commandId,
+          sourceChain,
+          sourceAddress,
+          swapExecutable.address,
+          payloadHash,
+          symbolA,
+          swapAmount,
+        ),
+      ).to.be.equal(false);
     });
   });
 });
