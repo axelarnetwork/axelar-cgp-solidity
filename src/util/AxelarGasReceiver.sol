@@ -88,4 +88,10 @@ contract AxelarGasReceiver is Ownable{
         gateway.callContractWithToken(destinationChain, destinationAddress, payload, symbol, amountThrough);
     }
 
+    function receiveFees(address[] memory tokens) external onlyOwner() {
+        for(uint256 i=0;i<tokens.length; i++) {
+            uint256 amount = IERC20(tokens[i]).balanceOf(address(this));
+            IERC20(tokens[i]).transfer(msg.sender, amount);
+        }
+    }
 }
