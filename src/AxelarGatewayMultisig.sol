@@ -56,20 +56,20 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     |* Pure Key Getters *|
     \********************/
 
-    function _getOwnerKey(uint256 ownerEpoch, uint256 index) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_OWNER, ownerEpoch, index));
+    function _getOwnerKey(uint256 epoch, uint256 index) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OWNER, epoch, index));
     }
 
-    function _getOwnerCountKey(uint256 ownerEpoch) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_OWNER_COUNT, ownerEpoch));
+    function _getOwnerCountKey(uint256 epoch) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OWNER_COUNT, epoch));
     }
 
-    function _getOwnerThresholdKey(uint256 ownerEpoch) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_OWNER_THRESHOLD, ownerEpoch));
+    function _getOwnerThresholdKey(uint256 epoch) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OWNER_THRESHOLD, epoch));
     }
 
-    function _getIsOwnerKey(uint256 ownerEpoch, address account) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_IS_OWNER, ownerEpoch, account));
+    function _getIsOwnerKey(uint256 epoch, address account) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_IS_OWNER, epoch, account));
     }
 
     /***********\
@@ -80,56 +80,65 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return getUint(KEY_OWNER_EPOCH);
     }
 
-    function _getOwner(uint256 ownerEpoch, uint256 index) internal view returns (address) {
-        return getAddress(_getOwnerKey(ownerEpoch, index));
+    function _getOwner(uint256 epoch, uint256 index) internal view returns (address) {
+        return getAddress(_getOwnerKey(epoch, index));
     }
 
-    function _getOwnerCount(uint256 ownerEpoch) internal view returns (uint256) {
-        return getUint(_getOwnerCountKey(ownerEpoch));
+    function _getOwnerCount(uint256 epoch) internal view returns (uint256) {
+        return getUint(_getOwnerCountKey(epoch));
     }
 
-    function _getOwnerThreshold(uint256 ownerEpoch) internal view returns (uint256) {
-        return getUint(_getOwnerThresholdKey(ownerEpoch));
+    function _getOwnerThreshold(uint256 epoch) internal view returns (uint256) {
+        return getUint(_getOwnerThresholdKey(epoch));
     }
 
-    function _isOwner(uint256 ownerEpoch, address account) internal view returns (bool) {
-        return getBool(_getIsOwnerKey(ownerEpoch, account));
+    function _isOwner(uint256 epoch, address account) internal view returns (bool) {
+        return getBool(_getIsOwnerKey(epoch, account));
     }
 
     /// @dev Returns true if a sufficient quantity of `accounts` are owners within the last `OLD_KEY_RETENTION + 1` owner epochs (excluding the current one).
     function _areValidPreviousOwners(address[] memory accounts) internal view returns (bool) {
-        uint256 ownerEpoch = _ownerEpoch();
+        uint256 epoch = _ownerEpoch();
         uint256 recentEpochs = OLD_KEY_RETENTION + uint256(1);
-        uint256 lowerBoundOwnerEpoch = ownerEpoch > recentEpochs ? ownerEpoch - recentEpochs : uint256(0);
+        uint256 lowerBoundOwnerEpoch = epoch > recentEpochs ? epoch - recentEpochs : uint256(0);
 
-        --ownerEpoch;
-        while (ownerEpoch > lowerBoundOwnerEpoch) {
-            if (_areValidOwnersInEpoch(ownerEpoch--, accounts)) return true;
+        --epoch;
+        while (epoch > lowerBoundOwnerEpoch) {
+            if (_areValidOwnersInEpoch(epoch--, accounts)) return true;
         }
 
         return false;
     }
 
     /// @dev Returns true if a sufficient quantity of `accounts` are owners in the `ownerEpoch`.
-    function _areValidOwnersInEpoch(uint256 ownerEpoch, address[] memory accounts) internal view returns (bool) {
-        uint256 threshold = _getOwnerThreshold(ownerEpoch);
+    function _areValidOwnersInEpoch(uint256 epoch, address[] memory accounts) internal view returns (bool) {
+        uint256 threshold = _getOwnerThreshold(epoch);
         uint256 validSignerCount;
 
         for (uint256 i; i < accounts.length; i++) {
-            if (_isOwner(ownerEpoch, accounts[i]) && ++validSignerCount >= threshold) return true;
+            if (_isOwner(epoch, accounts[i]) && ++validSignerCount >= threshold) return true;
         }
 
         return false;
     }
 
-    /// @dev Returns the array of owners within the current `ownerEpoch`.
-    function owners() public view override returns (address[] memory results) {
-        uint256 ownerEpoch = _ownerEpoch();
-        uint256 ownerCount = _getOwnerCount(ownerEpoch);
+    /// @dev Returns the current `ownerEpoch`.
+    function ownerEpoch() external view override returns (uint256) {
+        return _ownerEpoch();
+    }
+
+    /// @dev Returns the threshold for a given `ownerEpoch`.
+    function ownerThreshold(uint256 epoch) external view override returns (uint256) {
+        return _getOwnerThreshold(epoch);
+    }
+
+    /// @dev Returns the array of owners within a given `ownerEpoch`.
+    function owners(uint256 epoch) public view override returns (address[] memory results) {
+        uint256 ownerCount = _getOwnerCount(epoch);
         results = new address[](ownerCount);
 
         for (uint256 i; i < ownerCount; i++) {
-            results[i] = _getOwner(ownerEpoch, i);
+            results[i] = _getOwner(epoch, i);
         }
     }
 
@@ -137,26 +146,26 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     |* Setters *|
     \***********/
 
-    function _setOwnerEpoch(uint256 ownerEpoch) internal {
-        _setUint(KEY_OWNER_EPOCH, ownerEpoch);
+    function _setOwnerEpoch(uint256 epoch) internal {
+        _setUint(KEY_OWNER_EPOCH, epoch);
     }
 
     function _setOwner(
-        uint256 ownerEpoch,
+        uint256 epoch,
         uint256 index,
         address account
     ) internal {
         if (account == address(0)) revert InvalidAddress();
 
-        _setAddress(_getOwnerKey(ownerEpoch, index), account);
+        _setAddress(_getOwnerKey(epoch, index), account);
     }
 
-    function _setOwnerCount(uint256 ownerEpoch, uint256 ownerCount) internal {
-        _setUint(_getOwnerCountKey(ownerEpoch), ownerCount);
+    function _setOwnerCount(uint256 epoch, uint256 ownerCount) internal {
+        _setUint(_getOwnerCountKey(epoch), ownerCount);
     }
 
     function _setOwners(
-        uint256 ownerEpoch,
+        uint256 epoch,
         address[] memory accounts,
         uint256 threshold
     ) internal {
@@ -166,31 +175,31 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         if (threshold == uint256(0)) revert InvalidOwnerThreshold();
 
-        _setOwnerThreshold(ownerEpoch, threshold);
-        _setOwnerCount(ownerEpoch, accountLength);
+        _setOwnerThreshold(epoch, threshold);
+        _setOwnerCount(epoch, accountLength);
 
         for (uint256 i; i < accountLength; i++) {
             address account = accounts[i];
 
             // Check that the account wasn't already set as an owner for this ownerEpoch.
-            if (_isOwner(ownerEpoch, account)) revert DuplicateOwner(account);
+            if (_isOwner(epoch, account)) revert DuplicateOwner(account);
 
             // Set this account as the i-th owner in this ownerEpoch (needed to we can get all the owners for `owners`).
-            _setOwner(ownerEpoch, i, account);
-            _setIsOwner(ownerEpoch, account, true);
+            _setOwner(epoch, i, account);
+            _setIsOwner(epoch, account, true);
         }
     }
 
-    function _setOwnerThreshold(uint256 ownerEpoch, uint256 ownerThreshold) internal {
-        _setUint(_getOwnerThresholdKey(ownerEpoch), ownerThreshold);
+    function _setOwnerThreshold(uint256 epoch, uint256 threshold) internal {
+        _setUint(_getOwnerThresholdKey(epoch), threshold);
     }
 
     function _setIsOwner(
-        uint256 ownerEpoch,
+        uint256 epoch,
         address account,
         bool isOwner
     ) internal {
-        _setBool(_getIsOwnerKey(ownerEpoch, account), isOwner);
+        _setBool(_getIsOwnerKey(epoch, account), isOwner);
     }
 
     /**************************\
@@ -201,20 +210,20 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     |* Pure Key Getters *|
     \********************/
 
-    function _getOperatorKey(uint256 operatorEpoch, uint256 index) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_OPERATOR, operatorEpoch, index));
+    function _getOperatorKey(uint256 epoch, uint256 index) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OPERATOR, epoch, index));
     }
 
-    function _getOperatorCountKey(uint256 operatorEpoch) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_OPERATOR_COUNT, operatorEpoch));
+    function _getOperatorCountKey(uint256 epoch) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OPERATOR_COUNT, epoch));
     }
 
-    function _getOperatorThresholdKey(uint256 operatorEpoch) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_OPERATOR_THRESHOLD, operatorEpoch));
+    function _getOperatorThresholdKey(uint256 epoch) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_OPERATOR_THRESHOLD, epoch));
     }
 
-    function _getIsOperatorKey(uint256 operatorEpoch, address account) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_IS_OPERATOR, operatorEpoch, account));
+    function _getIsOperatorKey(uint256 epoch, address account) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_IS_OPERATOR, epoch, account));
     }
 
     /***********\
@@ -225,55 +234,64 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return getUint(KEY_OPERATOR_EPOCH);
     }
 
-    function _getOperator(uint256 operatorEpoch, uint256 index) internal view returns (address) {
-        return getAddress(_getOperatorKey(operatorEpoch, index));
+    function _getOperator(uint256 epoch, uint256 index) internal view returns (address) {
+        return getAddress(_getOperatorKey(epoch, index));
     }
 
-    function _getOperatorCount(uint256 operatorEpoch) internal view returns (uint256) {
-        return getUint(_getOperatorCountKey(operatorEpoch));
+    function _getOperatorCount(uint256 epoch) internal view returns (uint256) {
+        return getUint(_getOperatorCountKey(epoch));
     }
 
-    function _getOperatorThreshold(uint256 operatorEpoch) internal view returns (uint256) {
-        return getUint(_getOperatorThresholdKey(operatorEpoch));
+    function _getOperatorThreshold(uint256 epoch) internal view returns (uint256) {
+        return getUint(_getOperatorThresholdKey(epoch));
     }
 
-    function _isOperator(uint256 operatorEpoch, address account) internal view returns (bool) {
-        return getBool(_getIsOperatorKey(operatorEpoch, account));
+    function _isOperator(uint256 epoch, address account) internal view returns (bool) {
+        return getBool(_getIsOperatorKey(epoch, account));
     }
 
     /// @dev Returns true if a sufficient quantity of `accounts` are operator in the same `operatorEpoch`, within the last `OLD_KEY_RETENTION + 1` operator epochs.
     function _areValidRecentOperators(address[] memory accounts) internal view returns (bool) {
-        uint256 operatorEpoch = _operatorEpoch();
+        uint256 epoch = _operatorEpoch();
         uint256 recentEpochs = OLD_KEY_RETENTION + uint256(1);
-        uint256 lowerBoundOperatorEpoch = operatorEpoch > recentEpochs ? operatorEpoch - recentEpochs : uint256(0);
+        uint256 lowerBoundOperatorEpoch = epoch > recentEpochs ? epoch - recentEpochs : uint256(0);
 
-        while (operatorEpoch > lowerBoundOperatorEpoch) {
-            if (_areValidOperatorsInEpoch(operatorEpoch--, accounts)) return true;
+        while (epoch > lowerBoundOperatorEpoch) {
+            if (_areValidOperatorsInEpoch(epoch--, accounts)) return true;
         }
 
         return false;
     }
 
     /// @dev Returns true if a sufficient quantity of `accounts` are operator in the `operatorEpoch`.
-    function _areValidOperatorsInEpoch(uint256 operatorEpoch, address[] memory accounts) internal view returns (bool) {
-        uint256 threshold = _getOperatorThreshold(operatorEpoch);
+    function _areValidOperatorsInEpoch(uint256 epoch, address[] memory accounts) internal view returns (bool) {
+        uint256 threshold = _getOperatorThreshold(epoch);
         uint256 validSignerCount;
 
         for (uint256 i; i < accounts.length; i++) {
-            if (_isOperator(operatorEpoch, accounts[i]) && ++validSignerCount >= threshold) return true;
+            if (_isOperator(epoch, accounts[i]) && ++validSignerCount >= threshold) return true;
         }
 
         return false;
     }
 
-    /// @dev Returns the array of operators within the current `operatorEpoch`.
-    function operators() public view override returns (address[] memory results) {
-        uint256 operatorEpoch = _operatorEpoch();
-        uint256 operatorCount = _getOperatorCount(operatorEpoch);
+    /// @dev Returns the current `operatorEpoch`.
+    function operatorEpoch() external view override returns (uint256) {
+        return _operatorEpoch();
+    }
+
+    /// @dev Returns the threshold for a given `operatorEpoch`.
+    function operatorThreshold(uint256 epoch) external view override returns (uint256) {
+        return _getOperatorThreshold(epoch);
+    }
+
+    /// @dev Returns the array of operators within a given `operatorEpoch`.
+    function operators(uint256 epoch) public view override returns (address[] memory results) {
+        uint256 operatorCount = _getOperatorCount(epoch);
         results = new address[](operatorCount);
 
         for (uint256 i; i < operatorCount; i++) {
-            results[i] = _getOperator(operatorEpoch, i);
+            results[i] = _getOperator(epoch, i);
         }
     }
 
@@ -281,24 +299,24 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     |* Setters *|
     \***********/
 
-    function _setOperatorEpoch(uint256 operatorEpoch) internal {
-        _setUint(KEY_OPERATOR_EPOCH, operatorEpoch);
+    function _setOperatorEpoch(uint256 epoch) internal {
+        _setUint(KEY_OPERATOR_EPOCH, epoch);
     }
 
     function _setOperator(
-        uint256 operatorEpoch,
+        uint256 epoch,
         uint256 index,
         address account
     ) internal {
-        _setAddress(_getOperatorKey(operatorEpoch, index), account);
+        _setAddress(_getOperatorKey(epoch, index), account);
     }
 
-    function _setOperatorCount(uint256 operatorEpoch, uint256 operatorCount) internal {
-        _setUint(_getOperatorCountKey(operatorEpoch), operatorCount);
+    function _setOperatorCount(uint256 epoch, uint256 operatorCount) internal {
+        _setUint(_getOperatorCountKey(epoch), operatorCount);
     }
 
     function _setOperators(
-        uint256 operatorEpoch,
+        uint256 epoch,
         address[] memory accounts,
         uint256 threshold
     ) internal {
@@ -308,33 +326,33 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         if (threshold == uint256(0)) revert InvalidOperatorThreshold();
 
-        _setOperatorThreshold(operatorEpoch, threshold);
-        _setOperatorCount(operatorEpoch, accountLength);
+        _setOperatorThreshold(epoch, threshold);
+        _setOperatorCount(epoch, accountLength);
 
         for (uint256 i; i < accountLength; i++) {
             address account = accounts[i];
 
             // Check that the account wasn't already set as an operator for this operatorEpoch.
-            if (_isOperator(operatorEpoch, account)) revert DuplicateOperator(account);
+            if (_isOperator(epoch, account)) revert DuplicateOperator(account);
 
             if (account == address(0)) revert InvalidAddress();
 
             // Set this account as the i-th operator in this operatorEpoch (needed to we can get all the operators for `operators`).
-            _setOperator(operatorEpoch, i, account);
-            _setIsOperator(operatorEpoch, account, true);
+            _setOperator(epoch, i, account);
+            _setIsOperator(epoch, account, true);
         }
     }
 
-    function _setOperatorThreshold(uint256 operatorEpoch, uint256 operatorThreshold) internal {
-        _setUint(_getOperatorThresholdKey(operatorEpoch), operatorThreshold);
+    function _setOperatorThreshold(uint256 epoch, uint256 threshold) internal {
+        _setUint(_getOperatorThresholdKey(epoch), threshold);
     }
 
     function _setIsOperator(
-        uint256 operatorEpoch,
+        uint256 epoch,
         address account,
         bool isOperator
     ) internal {
-        _setBool(_getIsOperatorKey(operatorEpoch, account), isOperator);
+        _setBool(_getIsOperatorKey(epoch, account), isOperator);
     }
 
     /**********************\
@@ -363,10 +381,24 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     }
 
     function approveContractCall(bytes calldata params, bytes32 commandId) external onlySelf {
-        (string memory sourceChain, string memory sourceAddress, address contractAddress, bytes32 payloadHash) = abi
-            .decode(params, (string, string, address, bytes32));
+        (
+            string memory sourceChain,
+            string memory sourceAddress,
+            address contractAddress,
+            bytes32 payloadHash,
+            bytes32 sourceTxHash,
+            uint256 sourceEventIndex
+        ) = abi.decode(params, (string, string, address, bytes32, bytes32, uint256));
 
-        _approveContractCall(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
+        _approveContractCall(
+            commandId,
+            sourceChain,
+            sourceAddress,
+            contractAddress,
+            payloadHash,
+            sourceTxHash,
+            sourceEventIndex
+        );
     }
 
     function approveContractCallWithMint(bytes calldata params, bytes32 commandId) external onlySelf {
@@ -376,8 +408,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             address contractAddress,
             bytes32 payloadHash,
             string memory symbol,
-            uint256 amount
-        ) = abi.decode(params, (string, string, address, bytes32, string, uint256));
+            uint256 amount,
+            bytes32 sourceTxHash,
+            uint256 sourceEventIndex
+        ) = abi.decode(params, (string, string, address, bytes32, string, uint256, bytes32, uint256));
 
         _approveContractCallWithMint(
             commandId,
@@ -386,31 +420,37 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             contractAddress,
             payloadHash,
             symbol,
-            amount
+            amount,
+            sourceTxHash,
+            sourceEventIndex
         );
     }
 
     function transferOwnership(bytes calldata params, bytes32) external onlySelf {
         (address[] memory newOwners, uint256 newThreshold) = abi.decode(params, (address[], uint256));
 
-        uint256 ownerEpoch = _ownerEpoch();
+        uint256 epoch = _ownerEpoch();
 
-        emit OwnershipTransferred(owners(), _getOwnerThreshold(ownerEpoch), newOwners, newThreshold);
+        emit OwnershipTransferred(owners(epoch), _getOwnerThreshold(epoch), newOwners, newThreshold);
 
-        _setOwnerEpoch(++ownerEpoch);
-        _setOwners(ownerEpoch, newOwners, newThreshold);
+        _setOwnerEpoch(++epoch);
+        _setOwners(epoch, newOwners, newThreshold);
     }
 
     function transferOperatorship(bytes calldata params, bytes32) external onlySelf {
         (address[] memory newOperators, uint256 newThreshold) = abi.decode(params, (address[], uint256));
 
-        uint256 ownerEpoch = _ownerEpoch();
+        uint256 epoch = _operatorEpoch();
 
-        emit OperatorshipTransferred(operators(), _getOperatorThreshold(ownerEpoch), newOperators, newThreshold);
+        emit OperatorshipTransferred(
+            operators(epoch),
+            _getOperatorThreshold(epoch),
+            newOperators,
+            newThreshold
+        );
 
-        uint256 operatorEpoch = _operatorEpoch();
-        _setOperatorEpoch(++operatorEpoch);
-        _setOperators(operatorEpoch, newOperators, newThreshold);
+        _setOperatorEpoch(++epoch);
+        _setOperators(epoch, newOperators, newThreshold);
     }
 
     /**************************\
@@ -423,27 +463,27 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         (
             address[] memory adminAddresses,
-            uint256 adminThreshold,
+            uint256 newAdminThreshold,
             address[] memory ownerAddresses,
-            uint256 ownerThreshold,
+            uint256 newOwnerThreshold,
             address[] memory operatorAddresses,
-            uint256 operatorThreshold
+            uint256 newOperatorThreshold
         ) = abi.decode(params, (address[], uint256, address[], uint256, address[], uint256));
 
-        uint256 adminEpoch = _adminEpoch() + uint256(1);
-        _setAdminEpoch(adminEpoch);
-        _setAdmins(adminEpoch, adminAddresses, adminThreshold);
+        uint256 newAdminEpoch = _adminEpoch() + uint256(1);
+        _setAdminEpoch(newAdminEpoch);
+        _setAdmins(newAdminEpoch, adminAddresses, newAdminThreshold);
 
-        uint256 ownerEpoch = _ownerEpoch() + uint256(1);
-        _setOwnerEpoch(ownerEpoch);
-        _setOwners(ownerEpoch, ownerAddresses, ownerThreshold);
+        uint256 newOwnerEpoch = _ownerEpoch() + uint256(1);
+        _setOwnerEpoch(newOwnerEpoch);
+        _setOwners(newOwnerEpoch, ownerAddresses, newOwnerThreshold);
 
-        uint256 operatorEpoch = _operatorEpoch() + uint256(1);
-        _setOperatorEpoch(operatorEpoch);
-        _setOperators(operatorEpoch, operatorAddresses, operatorThreshold);
+        uint256 newOperatorEpoch = _operatorEpoch() + uint256(1);
+        _setOperatorEpoch(newOperatorEpoch);
+        _setOperators(newOperatorEpoch, operatorAddresses, newOperatorThreshold);
 
-        emit OwnershipTransferred(new address[](uint256(0)), uint256(0), ownerAddresses, ownerThreshold);
-        emit OperatorshipTransferred(new address[](uint256(0)), uint256(0), operatorAddresses, operatorThreshold);
+        emit OwnershipTransferred(new address[](uint256(0)), uint256(0), ownerAddresses, newOwnerThreshold);
+        emit OperatorshipTransferred(new address[](uint256(0)), uint256(0), operatorAddresses, newOperatorThreshold);
     }
 
     function execute(bytes calldata input) external override {

@@ -113,6 +113,40 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         );
     }
 
+    function isContractCallApproved(
+        bytes32 commandId,
+        string memory sourceChain,
+        string memory sourceAddress,
+        address contractAddress,
+        bytes32 payloadHash
+    ) external view override returns (bool) {
+        return
+            getBool(_getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, contractAddress, payloadHash));
+    }
+
+    function isContractCallAndMintApproved(
+        bytes32 commandId,
+        string memory sourceChain,
+        string memory sourceAddress,
+        address contractAddress,
+        bytes32 payloadHash,
+        string memory symbol,
+        uint256 amount
+    ) external view override returns (bool) {
+        return
+            getBool(
+                _getIsContractCallApprovedWithMintKey(
+                    commandId,
+                    sourceChain,
+                    sourceAddress,
+                    contractAddress,
+                    payloadHash,
+                    symbol,
+                    amount
+                )
+            );
+    }
+
     function validateContractCall(
         bytes32 commandId,
         string memory sourceChain,
@@ -170,6 +204,26 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function isCommandExecuted(bytes32 commandId) public view override returns (bool) {
         return getBool(_getIsCommandExecutedKey(commandId));
+    }
+
+    /// @dev Returns the current `adminEpoch`.
+    function adminEpoch() external view override returns (uint256) {
+        return _adminEpoch();
+    }
+
+    /// @dev Returns the admin threshold for a given `adminEpoch`.
+    function adminThreshold(uint256 epoch) external view override returns (uint256) {
+        return _getAdminThreshold(epoch);
+    }
+
+    /// @dev Returns the array of admins within a given `adminEpoch`.
+    function admins(uint256 epoch) external view override returns (address[] memory results) {
+        uint256 adminCount = _getAdminCount(epoch);
+        results = new address[](adminCount);
+
+        for (uint256 i; i < adminCount; i++) {
+            results[i] = _getAdmin(epoch, i);
+        }
     }
 
     /*******************\
@@ -364,10 +418,20 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         string memory sourceChain,
         string memory sourceAddress,
         address contractAddress,
-        bytes32 payloadHash
+        bytes32 payloadHash,
+        bytes32 sourceTxHash,
+        uint256 sourceEventIndex
     ) internal {
         _setContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
-        emit ContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
+        emit ContractCallApproved(
+            commandId,
+            sourceChain,
+            sourceAddress,
+            contractAddress,
+            payloadHash,
+            sourceTxHash,
+            sourceEventIndex
+        );
     }
 
     function _approveContractCallWithMint(
@@ -377,7 +441,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address contractAddress,
         bytes32 payloadHash,
         string memory symbol,
-        uint256 amount
+        uint256 amount,
+        bytes32 sourceTxHash,
+        uint256 sourceEventIndex
     ) internal {
         _setContractCallApprovedWithMint(
             commandId,
@@ -395,7 +461,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             contractAddress,
             payloadHash,
             symbol,
-            amount
+            amount,
+            sourceTxHash,
+            sourceEventIndex
         );
     }
 
@@ -428,7 +496,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     ) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     PREFIX_CONTRACT_CALL_APPROVED,
                     commandId,
                     sourceChain,
@@ -450,7 +518,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     ) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT,
                     commandId,
                     sourceChain,
