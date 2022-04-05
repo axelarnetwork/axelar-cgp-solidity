@@ -16,11 +16,17 @@ contract AxelarGasReceiver is Ownable{
         string destinationChain,
         string destinationAddress,
         bytes payload,
+        address gasToken,
+        uint256 gasAmount
+    );
+    event GasReceivedWithToken(
+        string destinationChain,
+        string destinationAddress,
+        bytes payload,
         string symbol,
         uint256 amountThrough,
         address gasToken,
-        uint256 gasAmount,
-        uint256 gasLimit
+        uint256 gasAmount
     );
 
     constructor(address gateway_) Ownable() {
@@ -32,14 +38,25 @@ contract AxelarGasReceiver is Ownable{
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
+        address gasToken,
+        uint256 gasAmount
+    ) external {
+        IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
+        emit GasReceived(destinationChain, destinationAddress, payload, gasToken, gasAmount);
+    }
+
+    //This is called by contracts that do stuff on the source chain before calling a remote contract.
+    function receiveGasWithToken (
+        string memory destinationChain,
+        string memory destinationAddress,
+        bytes calldata payload,
         string memory symbol,
         uint256 amountThrough,
         address gasToken,
-        uint256 gasAmount,
-        uint256 gasLimit
+        uint256 gasAmount
     ) external {
         IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
-        emit GasReceived(destinationChain, destinationAddress, payload, symbol, amountThrough, gasToken, gasAmount, gasLimit);
+        emit GasReceivedWithToken(destinationChain, destinationAddress, payload, symbol, amountThrough, gasToken, gasAmount);
     }
 
     //This is called by users to pay gas and send a remote contract call in one tx.
@@ -47,14 +64,26 @@ contract AxelarGasReceiver is Ownable{
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
+        address gasToken,
+        uint256 gasAmount
+    ) external {
+        IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
+        emit GasReceived(destinationChain, destinationAddress, payload, gasToken, gasAmount);
+        gateway.callContract(destinationChain, destinationAddress, payload);
+    }
+
+    //This is called by users to pay gas and send a remote contract call in one tx.
+    function receiveGasAndCallRemoteWithToken (
+        string memory destinationChain,
+        string memory destinationAddress,
+        bytes calldata payload,
         string memory symbol,
         uint256 amountThrough,
         address gasToken,
-        uint256 gasAmount,
-        uint256 gasLimit
+        uint256 gasAmount
     ) external {
         IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
-        emit GasReceived(destinationChain, destinationAddress, payload, symbol, amountThrough, gasToken, gasAmount, gasLimit);
+        emit GasReceivedWithToken(destinationChain, destinationAddress, payload, symbol, amountThrough, gasToken, gasAmount);
         IERC20 tokenThrough = IERC20(gateway.tokenAddresses(symbol));
         tokenThrough.transferFrom(msg.sender, address(this), amountThrough);
         tokenThrough.approve(address(gateway), amountThrough);
@@ -62,7 +91,7 @@ contract AxelarGasReceiver is Ownable{
     }
 
     //This is called by users to pay gas and send a remote contract call in one tx. It is cheaper in gas than the above.
-    function receiveGasAndCallRemotePermit (
+    function receiveGasAndCallRemoteWithTokenPermit (
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -70,12 +99,11 @@ contract AxelarGasReceiver is Ownable{
         uint256 amountThrough,
         address gasToken,
         uint256 gasAmount,
-        uint256 gasLimit,
         uint256 deadline,
         bytes memory signature
     ) external {
         IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
-        emit GasReceived(destinationChain, destinationAddress, payload, symbol, amountThrough, gasToken, gasAmount, gasLimit);
+        emit GasReceivedWithToken(destinationChain, destinationAddress, payload, symbol, amountThrough, gasToken, gasAmount);
         {
             (
                 uint8 v,
