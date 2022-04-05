@@ -38,7 +38,7 @@ contract AxelarGasReceiver is Ownable{
         bytes payload,
         uint256 gasAmount
     );
-    event GasReceivedWithTokenNative(
+    event GasReceivedNativeWithToken(
         address sourceAddress,
         string destinationChain,
         string destinationAddress,
@@ -154,11 +154,11 @@ contract AxelarGasReceiver is Ownable{
         uint256 amountThrough
     ) external payable {
         require(msg.value > 0, 'NOTHING_RECEIVED');
-        emit GasReceivedWithTokenNative(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
+        emit GasReceivedNativeWithToken(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
     }
 
     //This is called by users to pay gas and send a remote contract call in one tx.
-    function receiveGasAndCallRemoteNative (
+    function receiveGasNativeAndCallRemote (
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload
@@ -169,7 +169,7 @@ contract AxelarGasReceiver is Ownable{
     }
 
     //This is called by users to pay gas and send a remote contract call in one tx.
-    function receiveGasAndCallRemoteWithTokenNative (
+    function receiveGasNativeAndCallRemoteWithToken (
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -177,7 +177,7 @@ contract AxelarGasReceiver is Ownable{
         uint256 amountThrough
     ) external payable {
         require(msg.value > 0, 'NOTHING_RECEIVED');
-        emit GasReceivedWithTokenNative(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
+        emit GasReceivedNativeWithToken(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
         IERC20 tokenThrough = IERC20(gateway.tokenAddresses(symbol));
         tokenThrough.transferFrom(msg.sender, address(this), amountThrough);
         tokenThrough.approve(address(gateway), amountThrough);
@@ -185,7 +185,7 @@ contract AxelarGasReceiver is Ownable{
     }
 
     //This is called by users to pay gas and send a remote contract call in one tx. It is cheaper in gas than the above.
-    function receiveGasAndCallRemoteWithTokenPermitNative (
+    function receiveGasNativeAndCallRemoteWithTokenPermit (
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -195,7 +195,7 @@ contract AxelarGasReceiver is Ownable{
         bytes memory signature
     ) external payable {
         require(msg.value > 0, 'NOTHING_RECEIVED');
-        emit GasReceivedWithTokenNative(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
+        emit GasReceivedNativeWithToken(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
         {
             (
                 uint8 v,
