@@ -62,6 +62,40 @@ describe('AxelarGatewaySingleSig', () => {
   let contract;
   let tokenDeployer;
 
+  const freezeToken = (symbol) =>
+    Promise.all(
+      adminWallets
+        .slice(0, 3)
+        .map((wallet) =>
+          contract.connect(wallet).freezeToken(symbol, { gasLimit: 200000 }),
+        ),
+    );
+  const unfreezeToken = (symbol) =>
+    Promise.all(
+      adminWallets
+        .slice(0, 3)
+        .map((wallet) =>
+          contract.connect(wallet).unfreezeToken(symbol, { gasLimit: 200000 }),
+        ),
+    );
+
+  const freezeAllTokens = () =>
+    Promise.all(
+      adminWallets
+        .slice(0, 3)
+        .map((wallet) =>
+          contract.connect(wallet).freezeAllTokens({ gasLimit: 200000 }),
+        ),
+    );
+  const unfreezeAllTokens = () =>
+    Promise.all(
+      adminWallets
+        .slice(0, 3)
+        .map((wallet) =>
+          contract.connect(wallet).unfreezeAllTokens({ gasLimit: 200000 }),
+        ),
+    );
+
   beforeEach(async () => {
     const params = arrayify(
       defaultAbiCoder.encode(
@@ -1410,9 +1444,7 @@ describe('AxelarGatewaySingleSig', () => {
             ),
           );
 
-        for (const adminWallet of adminWallets.slice(0, 3)) {
-          await contract.connect(adminWallet).freezeToken(symbol);
-        }
+        await freezeToken(symbol);
 
         await getSignedExecuteInput(getBurnTokenData(), ownerWallet).then(
           (input) =>
@@ -1426,9 +1458,7 @@ describe('AxelarGatewaySingleSig', () => {
             expect(contract.execute(input)).not.to.emit(token, 'Transfer'),
         );
 
-        for (const adminWallet of adminWallets.slice(0, 3)) {
-          await contract.connect(adminWallet).unfreezeToken(symbol);
-        }
+        await unfreezeToken(symbol);
 
         await getSignedExecuteInput(getMintTokenData(), ownerWallet).then(
           (input) => expect(contract.execute(input)).to.emit(token, 'Transfer'),
@@ -1441,9 +1471,7 @@ describe('AxelarGatewaySingleSig', () => {
               .withArgs(depositHandlerAddress, contract.address, amount),
         );
 
-        for (const adminWallet of adminWallets.slice(0, 3)) {
-          await contract.connect(adminWallet).freezeAllTokens();
-        }
+        await freezeAllTokens();
 
         await getSignedExecuteInput(getMintTokenData(), ownerWallet).then(
           (input) =>
@@ -1457,9 +1485,7 @@ describe('AxelarGatewaySingleSig', () => {
               .withArgs(depositHandlerAddress, contract.address, amount),
         );
 
-        for (const adminWallet of adminWallets.slice(0, 3)) {
-          await contract.connect(adminWallet).unfreezeAllTokens();
-        }
+        await unfreezeAllTokens();
 
         await token
           .connect(nonOwnerWallet)
@@ -1629,26 +1655,20 @@ describe('AxelarGatewaySingleSig', () => {
         .to.emit(token, 'Approval')
         .withArgs(issuer, locker, amount);
 
-      for (const adminWallet of adminWallets.slice(0, 3)) {
-        await contract.connect(adminWallet).freezeToken(tokenSymbol);
-      }
+      await freezeToken(tokenSymbol);
 
       await expect(
         contract.sendToken('polygon', destination, tokenSymbol, amount),
       ).to.be.reverted;
 
-      for (const adminWallet of adminWallets.slice(0, 3)) {
-        await contract.connect(adminWallet).unfreezeToken(tokenSymbol);
-        await contract.connect(adminWallet).freezeAllTokens();
-      }
+      await unfreezeToken(tokenSymbol);
+      await freezeAllTokens();
 
       await expect(
         contract.sendToken('polygon', destination, tokenSymbol, amount),
       ).to.be.reverted;
 
-      for (const adminWallet of adminWallets.slice(0, 3)) {
-        await contract.connect(adminWallet).unfreezeAllTokens();
-      }
+      await unfreezeAllTokens();
 
       await expect(
         contract.sendToken('polygon', destination, tokenSymbol, amount),

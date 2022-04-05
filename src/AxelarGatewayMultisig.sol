@@ -442,12 +442,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         uint256 epoch = _operatorEpoch();
 
-        emit OperatorshipTransferred(
-            operators(epoch),
-            _getOperatorThreshold(epoch),
-            newOperators,
-            newThreshold
-        );
+        emit OperatorshipTransferred(operators(epoch), _getOperatorThreshold(epoch), newOperators, newThreshold);
 
         _setOperatorEpoch(++epoch);
         _setOperators(epoch, newOperators, newThreshold);
