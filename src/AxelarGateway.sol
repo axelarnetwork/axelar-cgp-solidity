@@ -496,7 +496,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     ) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     PREFIX_CONTRACT_CALL_APPROVED,
                     commandId,
                     sourceChain,
@@ -518,7 +518,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     ) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT,
                     commandId,
                     sourceChain,
