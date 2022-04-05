@@ -470,9 +470,9 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             uint256 newOperatorThreshold
         ) = abi.decode(params, (address[], uint256, address[], uint256, address[], uint256));
 
-        uint256 adminEpoch = _adminEpoch() + uint256(1);
-        _setAdminEpoch(adminEpoch);
-        _setAdmins(adminEpoch, adminAddresses, newAdminThreshold);
+        uint256 newAdminEpoch = _adminEpoch() + uint256(1);
+        _setAdminEpoch(newAdminEpoch);
+        _setAdmins(newAdminEpoch, adminAddresses, newAdminThreshold);
 
         uint256 newOwnerEpoch = _ownerEpoch() + uint256(1);
         _setOwnerEpoch(newOwnerEpoch);
