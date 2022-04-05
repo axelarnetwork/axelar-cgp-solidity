@@ -14,15 +14,15 @@ interface IAxelarGatewayMultisig is IAxelarGateway {
         uint256 newThreshold
     );
 
-    function getOwnerEpoch() external view returns (uint256);
+    function ownerEpoch() external view returns (uint256);
 
-    function getOwnerThreshold(uint256 ownerEpoch) external view returns (uint256);
+    function ownerThreshold(uint256 epoch) external view returns (uint256);
 
-    function owners(uint256 ownerEpoch) external view returns (address[] memory);
+    function owners(uint256 epoch) external view returns (address[] memory);
 
-    function getOperatorEpoch() external view returns (uint256);
+    function operatorEpoch() external view returns (uint256);
 
-    function getOperatorThreshold(uint256 operatorEpoch) external view returns (uint256);
+    function operatorThreshold(uint256 epoch) external view returns (uint256);
 
-    function operators(uint256 operatorEpoch) external view returns (address[] memory);
+    function operators(uint256 epoch) external view returns (address[] memory);
 }
