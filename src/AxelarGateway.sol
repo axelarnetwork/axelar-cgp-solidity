@@ -22,6 +22,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     error TokenContractDoesNotExist(address token);
     error BurnFailed(string symbol);
     error MintFailed(string symbol);
+    error TokenIsFrozen(string symbol);
 
     enum Role {
         Admin,
@@ -294,6 +295,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         bool burnSuccess;
 
         if (tokenType == TokenType.External) {
+            _checkTokenStatus(symbol);
+
             burnSuccess = _callERC20Token(
                 tokenAddress,
                 abi.encodeWithSelector(IERC20.transferFrom.selector, sender, address(this), amount)
@@ -376,6 +379,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
         if (_getTokenType(symbol) == TokenType.External) {
+            _checkTokenStatus(symbol);
+
             bool success = _callERC20Token(
                 tokenAddress,
                 abi.encodeWithSelector(IERC20.transfer.selector, account, amount)
@@ -393,6 +398,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
         if (_getTokenType(symbol) == TokenType.External) {
+            _checkTokenStatus(symbol);
+
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
 
             (bool success, bytes memory returnData) = depositHandler.execute(
@@ -546,6 +553,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _getTokenType(string memory symbol) internal view returns (TokenType) {
         return TokenType(getUint(_getTokenTypeKey(symbol)));
+    }
+
+    function _checkTokenStatus(string memory symbol) internal view {
+        if (getBool(_getFreezeTokenKey(symbol)) || getBool(KEY_ALL_TOKENS_FROZEN)) revert TokenIsFrozen(symbol);
     }
 
     /********************\
