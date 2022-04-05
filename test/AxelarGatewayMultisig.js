@@ -89,15 +89,22 @@ describe('AxelarGatewayMultisig', () => {
 
   describe('owners', () => {
     it('should get correct owners', () =>
-      contract.owners().then((actual) => {
+      contract.owners(1).then((actual) => {
         expect(actual).to.deep.eq(owners.map(get('address')));
       }));
   });
 
   describe('operators', () => {
     it('should get correct operators', () =>
-      contract.operators().then((actual) => {
+      contract.operators(1).then((actual) => {
         expect(actual).to.deep.eq(operators.map(get('address')));
+      }));
+  });
+
+  describe('admins', () => {
+    it('should get correct admins', () =>
+      contract.admins(1).then((actual) => {
+        expect(actual).to.deep.eq(admins.map(get('address')));
       }));
   });
 
@@ -633,7 +640,7 @@ describe('AxelarGatewayMultisig', () => {
                 threshold + 1,
               ),
           )
-          .then(() => contract.owners())
+          .then(() => contract.owners(2))
           .then((actual) => {
             expect(actual).to.deep.eq(operators.map(get('address')));
           });
@@ -699,7 +706,7 @@ describe('AxelarGatewayMultisig', () => {
                 threshold,
               ),
           )
-          .then(() => contract.owners())
+          .then(() => contract.owners(2))
           .then((actual) => {
             expect(actual).to.deep.eq(operators.map(get('address')));
           })
@@ -769,7 +776,7 @@ describe('AxelarGatewayMultisig', () => {
                 threshold + 1,
               ),
           )
-          .then(() => contract.operators())
+          .then(() => contract.operators(2))
           .then((actual) => {
             expect(actual).to.deep.eq(owners.map(get('address')));
           });
@@ -835,7 +842,7 @@ describe('AxelarGatewayMultisig', () => {
                 threshold,
               ),
           )
-          .then(() => contract.operators())
+          .then(() => contract.operators(2))
           .then((actual) => {
             expect(actual).to.deep.eq(owners.map(get('address')));
           })

@@ -146,6 +146,12 @@ interface IAxelarGateway {
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
 
+    function getAdminEpoch() external view returns (uint256);
+
+    function getAdminThreshold(uint256 adminEpoch) external view returns (uint256);
+
+    function admins(uint256 adminEpoch) external view returns (address[] memory);
+
     /*******************\
     |* Admin Functions *|
     \*******************/

@@ -206,6 +206,26 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getBool(_getIsCommandExecutedKey(commandId));
     }
 
+    /// @dev Returns the current `adminEpoch`.
+    function getAdminEpoch() external view override returns (uint256) {
+        return _adminEpoch();
+    }
+
+    /// @dev Returns the admin threshold for a given `adminEpoch`.
+    function getAdminThreshold(uint256 adminEpoch) external view override returns (uint256) {
+        return _getAdminThreshold(adminEpoch);
+    }
+
+    /// @dev Returns the array of admins within a given `adminEpoch`.
+    function admins(uint256 adminEpoch) external view override returns (address[] memory results) {
+        uint256 adminCount = _getAdminCount(adminEpoch);
+        results = new address[](adminCount);
+
+        for (uint256 i; i < adminCount; i++) {
+            results[i] = _getAdmin(adminEpoch, i);
+        }
+    }
+
     /*******************\
     |* Admin Functions *|
     \*******************/

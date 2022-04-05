@@ -122,9 +122,18 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return false;
     }
 
-    /// @dev Returns the array of owners within the current `ownerEpoch`.
-    function owners() public view override returns (address[] memory results) {
-        uint256 ownerEpoch = _ownerEpoch();
+    /// @dev Returns the current `ownerEpoch`.
+    function getOwnerEpoch() external view override returns (uint256) {
+        return _ownerEpoch();
+    }
+
+    /// @dev Returns the threshold for a given `ownerEpoch`.
+    function getOwnerThreshold(uint256 ownerEpoch) external view override returns (uint256) {
+        return _getOwnerThreshold(ownerEpoch);
+    }
+
+    /// @dev Returns the array of owners within a given `ownerEpoch`.
+    function owners(uint256 ownerEpoch) public view override returns (address[] memory results) {
         uint256 ownerCount = _getOwnerCount(ownerEpoch);
         results = new address[](ownerCount);
 
@@ -266,9 +275,18 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         return false;
     }
 
-    /// @dev Returns the array of operators within the current `operatorEpoch`.
-    function operators() public view override returns (address[] memory results) {
-        uint256 operatorEpoch = _operatorEpoch();
+    /// @dev Returns the current `operatorEpoch`.
+    function getOperatorEpoch() external view override returns (uint256) {
+        return _operatorEpoch();
+    }
+
+    /// @dev Returns the threshold for a given `operatorEpoch`.
+    function getOperatorThreshold(uint256 operatorEpoch) external view override returns (uint256) {
+        return _getOperatorThreshold(operatorEpoch);
+    }
+
+    /// @dev Returns the array of operators within a given `operatorEpoch`.
+    function operators(uint256 operatorEpoch) public view override returns (address[] memory results) {
         uint256 operatorCount = _getOperatorCount(operatorEpoch);
         results = new address[](operatorCount);
 
@@ -413,7 +431,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         uint256 ownerEpoch = _ownerEpoch();
 
-        emit OwnershipTransferred(owners(), _getOwnerThreshold(ownerEpoch), newOwners, newThreshold);
+        emit OwnershipTransferred(owners(ownerEpoch), _getOwnerThreshold(ownerEpoch), newOwners, newThreshold);
 
         _setOwnerEpoch(++ownerEpoch);
         _setOwners(ownerEpoch, newOwners, newThreshold);
@@ -424,7 +442,12 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         uint256 operatorEpoch = _operatorEpoch();
 
-        emit OperatorshipTransferred(operators(), _getOperatorThreshold(operatorEpoch), newOperators, newThreshold);
+        emit OperatorshipTransferred(
+            operators(operatorEpoch),
+            _getOperatorThreshold(operatorEpoch),
+            newOperators,
+            newThreshold
+        );
 
         _setOperatorEpoch(++operatorEpoch);
         _setOperators(operatorEpoch, newOperators, newThreshold);
