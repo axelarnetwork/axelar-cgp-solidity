@@ -103,6 +103,13 @@ describe('AxelarGatewaySingleSig', () => {
       }));
   });
 
+  describe('admins', () => {
+    it('should get correct admins', () =>
+      contract.admins(1).then((actual) => {
+        expect(actual).to.deep.eq(adminWallets.map(get('address')));
+      }));
+  });
+
   describe('token transfer', () => {
     const name = 'An Awesome Token';
     const symbol = 'AAT';
@@ -1947,7 +1954,8 @@ describe('AxelarGatewaySingleSig', () => {
           sourceEventIndex,
         );
 
-     await contract.isContractCallAndMintApproved(
+      await contract
+        .isContractCallAndMintApproved(
           commandId,
           sourceChain,
           sourceAddress,
@@ -1955,7 +1963,8 @@ describe('AxelarGatewaySingleSig', () => {
           payloadHash,
           symbolA,
           swapAmount,
-        ).then(result => expect(result).to.be.true)
+        )
+        .then((result) => expect(result).to.be.true);
 
       const swap = await swapExecutable.executeWithToken(
         commandId,
@@ -1972,7 +1981,8 @@ describe('AxelarGatewaySingleSig', () => {
         .and.to.emit(tokenB, 'Transfer')
         .withArgs(swapper.address, nonOwnerWallet.address, swapAmount * 2);
 
-      await contract.isContractCallAndMintApproved(
+      await contract
+        .isContractCallAndMintApproved(
           commandId,
           sourceChain,
           sourceAddress,
@@ -1980,7 +1990,8 @@ describe('AxelarGatewaySingleSig', () => {
           payloadHash,
           symbolA,
           swapAmount,
-        ).then(result => expect(result).to.be.false)
+        )
+        .then((result) => expect(result).to.be.false);
     });
   });
 });
