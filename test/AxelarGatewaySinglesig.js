@@ -1143,100 +1143,6 @@ describe('AxelarGatewaySingleSig', () => {
     });
 
     describe('batch commands', () => {
-      it('should support external ERC20 token', () => {
-        const name = 'test';
-        const symbol = 'test';
-        const decimals = 16;
-        const capacity = 0;
-
-        return deployContract(ownerWallet, MintableCappedERC20, [
-          name,
-          symbol,
-          decimals,
-          capacity,
-        ]).then(async (token) => {
-          const amount = 10000;
-          await token.mint(nonOwnerWallet.address, amount);
-
-          const deployTokenData = arrayify(
-            defaultAbiCoder.encode(
-              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-              [
-                CHAIN_ID,
-                ROLE_OWNER,
-                [getRandomID()],
-                ['deployToken'],
-                [
-                  defaultAbiCoder.encode(
-                    ['string', 'string', 'uint8', 'uint256', 'address'],
-                    [name, symbol, decimals, capacity, token.address],
-                  ),
-                ],
-              ],
-            ),
-          );
-          await getSignedExecuteInput(deployTokenData, ownerWallet).then(
-            (input) =>
-              expect(contract.execute(input))
-                .to.emit(contract, 'TokenDeployed')
-                .withArgs(symbol, token.address),
-          );
-
-          const salt = randomBytes(32);
-          const depositHandlerAddress = getCreate2Address(
-            contract.address,
-            salt,
-            keccak256(`0x${DepositHandler.bytecode}`),
-          );
-          await token
-            .connect(nonOwnerWallet)
-            .transfer(depositHandlerAddress, amount);
-
-          const burnTokenData = arrayify(
-            defaultAbiCoder.encode(
-              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-              [
-                CHAIN_ID,
-                ROLE_OWNER,
-                [getRandomID()],
-                ['burnToken'],
-                [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
-              ],
-            ),
-          );
-          await getSignedExecuteInput(burnTokenData, ownerWallet).then(
-            (input) =>
-              expect(contract.execute(input))
-                .to.emit(token, 'Transfer')
-                .withArgs(depositHandlerAddress, contract.address, amount),
-          );
-
-          const mintTokenData = arrayify(
-            defaultAbiCoder.encode(
-              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-              [
-                CHAIN_ID,
-                ROLE_OWNER,
-                [getRandomID()],
-                ['mintToken'],
-                [
-                  defaultAbiCoder.encode(
-                    ['string', 'address', 'uint256'],
-                    [symbol, ownerWallet.address, amount],
-                  ),
-                ],
-              ],
-            ),
-          );
-          await getSignedExecuteInput(mintTokenData, ownerWallet).then(
-            (input) =>
-              expect(contract.execute(input))
-                .to.emit(token, 'Transfer')
-                .withArgs(contract.address, ownerWallet.address, amount),
-          );
-        });
-      });
-
       it('should batch execute multiple commands', () => {
         const name = 'Bitcoin';
         const symbol = 'BTC';
@@ -1316,6 +1222,252 @@ describe('AxelarGatewaySingleSig', () => {
           .then((actual) => {
             expect(actual).to.eq(newOwner);
           });
+      });
+    });
+  });
+
+  describe('external ERC20', () => {
+    it('should support external ERC20 token', () => {
+      const name = 'test';
+      const symbol = 'test';
+      const decimals = 16;
+      const capacity = 0;
+
+      return deployContract(ownerWallet, MintableCappedERC20, [
+        name,
+        symbol,
+        decimals,
+        capacity,
+      ]).then(async (token) => {
+        const amount = 10000;
+        await token.mint(nonOwnerWallet.address, amount);
+
+        const deployTokenData = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              ROLE_OWNER,
+              [getRandomID()],
+              ['deployToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, capacity, token.address],
+                ),
+              ],
+            ],
+          ),
+        );
+        await getSignedExecuteInput(deployTokenData, ownerWallet).then(
+          (input) =>
+            expect(contract.execute(input))
+              .to.emit(contract, 'TokenDeployed')
+              .withArgs(symbol, token.address),
+        );
+
+        const salt = randomBytes(32);
+        const depositHandlerAddress = getCreate2Address(
+          contract.address,
+          salt,
+          keccak256(`0x${DepositHandler.bytecode}`),
+        );
+        await token
+          .connect(nonOwnerWallet)
+          .transfer(depositHandlerAddress, amount);
+
+        const burnTokenData = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              ROLE_OWNER,
+              [getRandomID()],
+              ['burnToken'],
+              [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
+            ],
+          ),
+        );
+        await getSignedExecuteInput(burnTokenData, ownerWallet).then((input) =>
+          expect(contract.execute(input))
+            .to.emit(token, 'Transfer')
+            .withArgs(depositHandlerAddress, contract.address, amount),
+        );
+
+        const mintTokenData = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              ROLE_OWNER,
+              [getRandomID()],
+              ['mintToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'address', 'uint256'],
+                  [symbol, ownerWallet.address, amount],
+                ),
+              ],
+            ],
+          ),
+        );
+        await getSignedExecuteInput(mintTokenData, ownerWallet).then((input) =>
+          expect(contract.execute(input))
+            .to.emit(token, 'Transfer')
+            .withArgs(contract.address, ownerWallet.address, amount),
+        );
+      });
+    });
+
+    it('should freeze external ERC20 token', () => {
+      const name = 'test';
+      const symbol = 'test';
+      const decimals = 16;
+      const capacity = 0;
+
+      return deployContract(ownerWallet, MintableCappedERC20, [
+        name,
+        symbol,
+        decimals,
+        capacity,
+      ]).then(async (token) => {
+        const amount = 10000;
+        await token.mint(nonOwnerWallet.address, amount * 2);
+        await token.mint(contract.address, amount);
+
+        const deployTokenData = arrayify(
+          defaultAbiCoder.encode(
+            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+            [
+              CHAIN_ID,
+              ROLE_OWNER,
+              [getRandomID()],
+              ['deployToken'],
+              [
+                defaultAbiCoder.encode(
+                  ['string', 'string', 'uint8', 'uint256', 'address'],
+                  [name, symbol, decimals, capacity, token.address],
+                ),
+              ],
+            ],
+          ),
+        );
+
+        const salt = randomBytes(32);
+        const depositHandlerAddress = getCreate2Address(
+          contract.address,
+          salt,
+          keccak256(`0x${DepositHandler.bytecode}`),
+        );
+        await token
+          .connect(nonOwnerWallet)
+          .transfer(depositHandlerAddress, amount);
+
+        await getSignedExecuteInput(deployTokenData, ownerWallet).then(
+          (input) =>
+            expect(contract.execute(input))
+              .to.emit(contract, 'TokenDeployed')
+              .withArgs(symbol, token.address),
+        );
+
+        const getBurnTokenData = () =>
+          arrayify(
+            defaultAbiCoder.encode(
+              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+              [
+                CHAIN_ID,
+                ROLE_OWNER,
+                [getRandomID()],
+                ['burnToken'],
+                [defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt])],
+              ],
+            ),
+          );
+
+        const getMintTokenData = () =>
+          arrayify(
+            defaultAbiCoder.encode(
+              ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+              [
+                CHAIN_ID,
+                ROLE_OWNER,
+                [getRandomID()],
+                ['mintToken'],
+                [
+                  defaultAbiCoder.encode(
+                    ['string', 'address', 'uint256'],
+                    [symbol, ownerWallet.address, amount],
+                  ),
+                ],
+              ],
+            ),
+          );
+
+        for (const adminWallet of adminWallets.slice(0, 3)) {
+          await contract.connect(adminWallet).freezeToken(symbol);
+        }
+
+        await getSignedExecuteInput(getBurnTokenData(), ownerWallet).then(
+          (input) =>
+            expect(contract.execute(input))
+              .not.to.emit(token, 'Transfer')
+              .withArgs(depositHandlerAddress, contract.address, amount),
+        );
+
+        await getSignedExecuteInput(getMintTokenData(), ownerWallet).then(
+          (input) =>
+            expect(contract.execute(input)).not.to.emit(token, 'Transfer'),
+        );
+
+        for (const adminWallet of adminWallets.slice(0, 3)) {
+          await contract.connect(adminWallet).unfreezeToken(symbol);
+        }
+
+        await getSignedExecuteInput(getMintTokenData(), ownerWallet).then(
+          (input) => expect(contract.execute(input)).to.emit(token, 'Transfer'),
+        );
+
+        await getSignedExecuteInput(getBurnTokenData(), ownerWallet).then(
+          (input) =>
+            expect(contract.execute(input))
+              .to.emit(token, 'Transfer')
+              .withArgs(depositHandlerAddress, contract.address, amount),
+        );
+
+        for (const adminWallet of adminWallets.slice(0, 3)) {
+          await contract.connect(adminWallet).freezeAllTokens();
+        }
+
+        await getSignedExecuteInput(getMintTokenData(), ownerWallet).then(
+          (input) =>
+            expect(contract.execute(input)).not.to.emit(token, 'Transfer'),
+        );
+
+        await getSignedExecuteInput(getBurnTokenData(), ownerWallet).then(
+          (input) =>
+            expect(contract.execute(input))
+              .not.to.emit(token, 'Transfer')
+              .withArgs(depositHandlerAddress, contract.address, amount),
+        );
+
+        for (const adminWallet of adminWallets.slice(0, 3)) {
+          await contract.connect(adminWallet).unfreezeAllTokens();
+        }
+
+        await token
+          .connect(nonOwnerWallet)
+          .transfer(depositHandlerAddress, amount);
+
+        await getSignedExecuteInput(getBurnTokenData(), ownerWallet).then(
+          (input) =>
+            expect(contract.execute(input))
+              .to.emit(token, 'Transfer')
+              .withArgs(depositHandlerAddress, contract.address, amount),
+        );
+
+        await getSignedExecuteInput(getMintTokenData(), ownerWallet).then(
+          (input) => expect(contract.execute(input)).to.emit(token, 'Transfer'),
+        );
       });
     });
   });
@@ -1420,6 +1572,79 @@ describe('AxelarGatewaySingleSig', () => {
 
       await expect(
         await contract.sendToken('polygon', destination, tokenSymbol, amount),
+      )
+        .to.emit(token, 'Transfer')
+        .withArgs(issuer, locker, amount)
+        .to.emit(contract, 'TokenSent')
+        .withArgs(issuer, 'polygon', destination, tokenSymbol, amount);
+    });
+
+    it('should freeze external token', async () => {
+      const tokenName = 'Test Token';
+      const tokenSymbol = 'TEST';
+      const decimals = 18;
+      const cap = 1e9;
+
+      const token = await deployContract(ownerWallet, MintableCappedERC20, [
+        tokenName,
+        tokenSymbol,
+        decimals,
+        cap,
+      ]);
+
+      await token.mint(ownerWallet.address, 1000000);
+
+      const data = arrayify(
+        defaultAbiCoder.encode(
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [
+            CHAIN_ID,
+            ROLE_OWNER,
+            [getRandomID()],
+            ['deployToken'],
+            [
+              defaultAbiCoder.encode(
+                ['string', 'string', 'uint8', 'uint256', 'address'],
+                [tokenName, tokenSymbol, decimals, cap, token.address],
+              ),
+            ],
+          ],
+        ),
+      );
+      await contract.execute(await getSignedExecuteInput(data, ownerWallet));
+
+      const issuer = ownerWallet.address;
+      const locker = contract.address;
+      const amount = 1000;
+      const destination = nonOwnerWallet.address.toString().replace('0x', '');
+
+      await expect(token.approve(locker, amount))
+        .to.emit(token, 'Approval')
+        .withArgs(issuer, locker, amount);
+
+      for (const adminWallet of adminWallets.slice(0, 3)) {
+        await contract.connect(adminWallet).freezeToken(tokenSymbol);
+      }
+
+      await expect(
+        contract.sendToken('polygon', destination, tokenSymbol, amount),
+      ).to.be.reverted;
+
+      for (const adminWallet of adminWallets.slice(0, 3)) {
+        await contract.connect(adminWallet).unfreezeToken(tokenSymbol);
+        await contract.connect(adminWallet).freezeAllTokens();
+      }
+
+      await expect(
+        contract.sendToken('polygon', destination, tokenSymbol, amount),
+      ).to.be.reverted;
+
+      for (const adminWallet of adminWallets.slice(0, 3)) {
+        await contract.connect(adminWallet).unfreezeAllTokens();
+      }
+
+      await expect(
+        contract.sendToken('polygon', destination, tokenSymbol, amount),
       )
         .to.emit(token, 'Transfer')
         .withArgs(issuer, locker, amount)
