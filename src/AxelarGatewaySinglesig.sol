@@ -136,10 +136,24 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     }
 
     function approveContractCall(bytes calldata params, bytes32 commandId) external onlySelf {
-        (string memory sourceChain, string memory sourceAddress, address contractAddress, bytes32 payloadHash) = abi
-            .decode(params, (string, string, address, bytes32));
+        (
+            string memory sourceChain,
+            string memory sourceAddress,
+            address contractAddress,
+            bytes32 payloadHash,
+            bytes32 sourceTxHash,
+            uint256 sourceEventIndex
+        ) = abi.decode(params, (string, string, address, bytes32, bytes32, uint256));
 
-        _approveContractCall(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
+        _approveContractCall(
+            commandId,
+            sourceChain,
+            sourceAddress,
+            contractAddress,
+            payloadHash,
+            sourceTxHash,
+            sourceEventIndex
+        );
     }
 
     function approveContractCallWithMint(bytes calldata params, bytes32 commandId) external onlySelf {
@@ -149,8 +163,10 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             address contractAddress,
             bytes32 payloadHash,
             string memory symbol,
-            uint256 amount
-        ) = abi.decode(params, (string, string, address, bytes32, string, uint256));
+            uint256 amount,
+            bytes32 sourceTxHash,
+            uint256 sourceEventIndex
+        ) = abi.decode(params, (string, string, address, bytes32, string, uint256, bytes32, uint256));
 
         _approveContractCallWithMint(
             commandId,
@@ -159,7 +175,9 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             contractAddress,
             payloadHash,
             symbol,
-            amount
+            amount,
+            sourceTxHash,
+            sourceEventIndex
         );
     }
 
