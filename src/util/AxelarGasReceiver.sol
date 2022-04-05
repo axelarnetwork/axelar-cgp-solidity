@@ -209,6 +209,7 @@ contract AxelarGasReceiver is Ownable{
     }
 
     function retreiveFees(address[] memory tokens) external onlyOwner() {
+        payable(msg.sender).transfer(address(this).balance);
         for(uint256 i=0;i<tokens.length; i++) {
             uint256 amount = IERC20(tokens[i]).balanceOf(address(this));
             IERC20(tokens[i]).transfer(msg.sender, amount);
