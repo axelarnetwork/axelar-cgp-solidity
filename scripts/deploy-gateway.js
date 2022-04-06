@@ -11,7 +11,7 @@ const {
 
 const { execSync }  = require('child_process');
 
-// environment variables should be defined in an .env file:
+// these environment variables should be defined in an '.env' file
 const prefix = process.env.PREFIX;
 const chain = process.env.CHAIN;
 const url = process.env.URL;
