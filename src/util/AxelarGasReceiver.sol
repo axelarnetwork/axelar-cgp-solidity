@@ -158,7 +158,7 @@ contract AxelarGasReceiver is Ownable{
     }
 
     //This is called by contracts that do stuff on the source chain before calling a remote contract.
-    function receiveGasWithToken (
+    function receiveGasNativeWithToken (
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
