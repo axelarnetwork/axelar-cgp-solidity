@@ -6,7 +6,7 @@ import { AxelarGasReceiver } from './AxelarGasReceiver.sol';
 import { Ownable } from '../Ownable.sol';
 
 
-contract AxelarGatewayProxy is Ownable {
+contract AxelarGasReceiverProxy is Ownable {
     error InvalidCodeHash();
     event Upgraded(address newImplementation);
 
@@ -29,11 +29,11 @@ contract AxelarGatewayProxy is Ownable {
     }
 
     fallback() external payable {
-
+        address implementation_ = implementation;
         assembly {
             calldatacopy(0, 0, calldatasize())
 
-            let result := delegatecall(gas(), implementation, 0, calldatasize(), 0, 0)
+            let result := delegatecall(gas(), implementation_, 0, calldatasize(), 0, 0)
 
             returndatacopy(0, 0, returndatasize())
 
