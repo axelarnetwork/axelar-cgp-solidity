@@ -12,6 +12,9 @@ import { ERC20Permit } from '../ERC20Permit.sol';
 contract AxelarGasReceiver is Ownable{
     IAxelarGateway public gateway;
 
+    error NothingReceived();
+
+
     event GasReceived(
         address sourceAddress,
         string destinationChain,
@@ -141,7 +144,8 @@ contract AxelarGasReceiver is Ownable{
         string memory destinationAddress,
         bytes calldata payload
     ) external payable {
-        require(msg.value > 0, 'NOTHING_RECEIVED');
+        if(msg.value == 0)
+            revert NothingReceived();
         emit GasReceivedNative(msg.sender, destinationChain, destinationAddress, payload, msg.value);
     }
 
@@ -153,7 +157,8 @@ contract AxelarGasReceiver is Ownable{
         string memory symbol,
         uint256 amountThrough
     ) external payable {
-        require(msg.value > 0, 'NOTHING_RECEIVED');
+        if(msg.value == 0)
+            revert NothingReceived();
         emit GasReceivedNativeWithToken(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
     }
 
@@ -163,7 +168,8 @@ contract AxelarGasReceiver is Ownable{
         string memory destinationAddress,
         bytes calldata payload
     ) external payable {
-        require(msg.value > 0, 'NOTHING_RECEIVED');
+        if(msg.value == 0)
+            revert NothingReceived();
         emit GasReceivedNative(msg.sender, destinationChain, destinationAddress, payload, msg.value);
         gateway.callContract(destinationChain, destinationAddress, payload);
     }
@@ -176,7 +182,8 @@ contract AxelarGasReceiver is Ownable{
         string memory symbol,
         uint256 amountThrough
     ) external payable {
-        require(msg.value > 0, 'NOTHING_RECEIVED');
+        if(msg.value == 0)
+            revert NothingReceived();
         emit GasReceivedNativeWithToken(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
         IERC20 tokenThrough = IERC20(gateway.tokenAddresses(symbol));
         tokenThrough.transferFrom(msg.sender, address(this), amountThrough);
@@ -194,7 +201,8 @@ contract AxelarGasReceiver is Ownable{
         uint256 deadline,
         bytes memory signature
     ) external payable {
-        require(msg.value > 0, 'NOTHING_RECEIVED');
+        if(msg.value == 0)
+            revert NothingReceived();
         emit GasReceivedNativeWithToken(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
         {
             (
@@ -208,11 +216,13 @@ contract AxelarGasReceiver is Ownable{
         gateway.callContractWithToken(destinationChain, destinationAddress, payload, symbol, amountThrough);
     }
 
-    function retreiveFees(address[] memory tokens) external onlyOwner() {
-        payable(msg.sender).transfer(address(this).balance);
+    function retreiveFees(address payable receiver, address[] memory tokens) external onlyOwner {
+        receiver.transfer(address(this).balance);
         for(uint256 i=0;i<tokens.length; i++) {
             uint256 amount = IERC20(tokens[i]).balanceOf(address(this));
-            IERC20(tokens[i]).transfer(msg.sender, amount);
+            IERC20(tokens[i]).transfer(receiver, amount);
         }
     }
+
+
 }
