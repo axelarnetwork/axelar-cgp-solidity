@@ -11,14 +11,7 @@ const {
 
 const { execSync }  = require('child_process');
 
-// define these environment variables in an .env file like:
-/*
-PREFIX="docker exec validator1 sh -c"
-CHAIN="ethereum"
-URL="http://localhost:7545"
-PRIVATE_KEY="0x1234567890ABCDEF"
-ADMIN_THRESHOLD="4"*
-*/
+// environment variables should be defined in an .env file:
 const prefix = process.env.PREFIX;
 const chain = process.env.CHAIN;
 const url = process.env.URL;
