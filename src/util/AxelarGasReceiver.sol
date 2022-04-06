@@ -51,7 +51,15 @@ contract AxelarGasReceiver is Ownable{
         uint256 gasAmount
     );
 
-    constructor(address gateway_) Ownable() {
+    constructor() Ownable() {
+    }
+
+    function setup(bytes calldata data) public {
+        address gateway_;
+        ( 
+            owner, 
+            gateway_ 
+        ) = abi.decode(data, (address, address));
         gateway = IAxelarGateway(gateway_);
     }
 

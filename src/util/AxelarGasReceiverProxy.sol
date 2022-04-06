@@ -8,33 +8,57 @@ import { Ownable } from '../Ownable.sol';
 
 contract AxelarGasReceiverProxy is Ownable {
     error InvalidCodeHash();
+    error SetupFailed();
+
     event Upgraded(address newImplementation);
 
-    address public implementation;
+    bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
-    constructor(address gasReceiverImplementation) {
-        implementation = gasReceiverImplementation;
+    constructor(address gasReceiverImplementation, bytes memory params) {
+        assembly {
+            sstore(_IMPLEMENTATION_SLOT, gasReceiverImplementation)
+        }
+        (bool success, ) = gasReceiverImplementation.delegatecall(
+            abi.encodeWithSelector(AxelarGasReceiver.setup.selector, params)
+        );
 
+        if (!success) revert SetupFailed();
+    }
+
+    function implementation() public view returns (address implementation_) {
+        assembly {
+            implementation_ := sload(_IMPLEMENTATION_SLOT)
+        }
     }
 
     function upgrade(
         address newImplementation,
-        bytes32 newImplementationCodeHash
+        bytes32 newImplementationCodeHash,
+        bytes calldata params
     ) external onlyOwner {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
+        (bool success, ) = newImplementation.delegatecall(
+            abi.encodeWithSelector(AxelarGasReceiver.setup.selector, params)
+        );
+
+        if (!success) revert SetupFailed();
+
         emit Upgraded(newImplementation);
 
-        implementation = newImplementation;
+        assembly {
+            sstore(_IMPLEMENTATION_SLOT, newImplementation)
+        }
     }
 
+    function setup(bytes calldata data) public {}
+
     fallback() external payable {
-        address implementation_ = implementation;
+        address implementaion_ = implementation();
         assembly {
             calldatacopy(0, 0, calldatasize())
 
-            let result := delegatecall(gas(), implementation_, 0, calldatasize(), 0, 0)
-
+            let result := delegatecall(gas(), implementaion_, 0, calldatasize(), 0, 0)
             returndatacopy(0, 0, returndatasize())
 
             switch result
