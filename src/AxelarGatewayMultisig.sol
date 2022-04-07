@@ -183,6 +183,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
             // Check that the account wasn't already set as an owner for this ownerEpoch.
             if (_isOwner(epoch, account)) revert DuplicateOwner(account);
+            if (account == address(0)) revert InvalidOwners();
 
             // Set this account as the i-th owner in this ownerEpoch (needed to we can get all the owners for `owners`).
             _setOwner(epoch, i, account);
@@ -334,8 +335,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
             // Check that the account wasn't already set as an operator for this operatorEpoch.
             if (_isOperator(epoch, account)) revert DuplicateOperator(account);
-
-            if (account == address(0)) revert InvalidAddress();
+            if (account == address(0)) revert InvalidOperators();
 
             // Set this account as the i-th operator in this operatorEpoch (needed to we can get all the operators for `operators`).
             _setOperator(epoch, i, account);
