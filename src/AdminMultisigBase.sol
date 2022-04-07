@@ -160,6 +160,7 @@ contract AdminMultisigBase is EternalStorage {
 
             // Check that the account wasn't already set as an admin for this epoch.
             if (_isAdmin(adminEpoch, account)) revert DuplicateAdmin(account);
+
             if (account == address(0)) revert InvalidAdmins();
 
             // Set this account as the i-th admin in this epoch (needed to we can clear topic votes in `onlyAdmin`).
