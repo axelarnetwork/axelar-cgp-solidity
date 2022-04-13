@@ -357,7 +357,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
             _setTokenType(symbol, TokenType.InternalBurnableFrom);
         } else {
-            // If token address is specified, ensure that there is a contact at the specified addressed.
+            // If token address is specified, ensure that there is a contact at the specified address.
             if (tokenAddress.code.length == uint256(0)) revert TokenContractDoesNotExist(tokenAddress);
 
             // Mark that this symbol is an external token, which is needed to differentiate between operations on mint and burn.
@@ -414,6 +414,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool))))
                 revert BurnFailed(symbol);
 
+            // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
             depositHandler.destroy(address(this));
         } else {
             BurnableMintableCappedERC20(tokenAddress).burn(salt);

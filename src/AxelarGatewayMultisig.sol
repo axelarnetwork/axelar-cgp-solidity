@@ -186,7 +186,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
             if (account == address(0)) revert InvalidOwners();
 
-            // Set this account as the i-th owner in this ownerEpoch (needed to we can get all the owners for `owners`).
+            // Set this account as the i-th owner in this ownerEpoch (needed so we can get all the owners for `owners`).
             _setOwner(epoch, i, account);
             _setIsOwner(epoch, account, true);
         }
@@ -339,7 +339,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
             if (account == address(0)) revert InvalidOperators();
 
-            // Set this account as the i-th operator in this operatorEpoch (needed to we can get all the operators for `operators`).
+            // Set this account as the i-th operator in this operatorEpoch (needed so we can get all the operators for `operators`).
             _setOperator(epoch, i, account);
             _setIsOperator(epoch, account, true);
         }
@@ -467,6 +467,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             uint256 newOperatorThreshold
         ) = abi.decode(params, (address[], uint256, address[], uint256, address[], uint256));
 
+        // NOTE: Admin epoch is incremented to easily invalidate current admin-related state.
         uint256 newAdminEpoch = _adminEpoch() + uint256(1);
         _setAdminEpoch(newAdminEpoch);
         _setAdmins(newAdminEpoch, adminAddresses, newAdminThreshold);
