@@ -39,6 +39,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /// @dev Storage slot with the address of the current factory. `keccak256('eip1967.proxy.implementation') - 1`.
     bytes32 internal constant KEY_IMPLEMENTATION =
         bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
+    /// @dev Storage slot with the address of the current token deployer. `bytes32(uint256(keccak256('eip1967.proxy.token.deployer')) - 1)`
+    bytes32 internal constant KEY_TOKEN_DEPLOYER_IMPLEMENTATION =
+        bytes32(0x8aa47aa9d723e8543a50fff50c962bb34dd4a647318775b399bf923741a6636d);
 
     // AUDIT: slot names should be prefixed with some standard string
     // AUDIT: constants should be literal and their derivation should be in comments
@@ -60,12 +63,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant SELECTOR_TRANSFER_OWNERSHIP = keccak256('transferOwnership');
 
     uint8 internal constant OLD_KEY_RETENTION = 16;
-
-    address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
-
-    constructor(address tokenDeployerImplementation) {
-        TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation;
-    }
 
     modifier onlySelf() {
         if (msg.sender != address(this)) revert NotSelf();
@@ -277,6 +274,17 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setImplementation(newImplementation);
     }
 
+    function upgradeTokenDeployer(address newImplementation, bytes32 newImplementationCodeHash)
+        external
+        override
+        onlyAdmin
+    {
+        emit TokenDeployerUpgraded(newImplementation);
+
+        if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
+        _setAddress(KEY_TOKEN_DEPLOYER_IMPLEMENTATION, newImplementation);
+    }
+
     /**********************\
     |* Internal Functions *|
     \**********************/
@@ -347,7 +355,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             // If token address is no specified, it indicates a request to deploy one.
             bytes32 salt = keccak256(abi.encodePacked(symbol));
 
-            (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
+            (bool success, bytes memory data) = getAddress(KEY_TOKEN_DEPLOYER_IMPLEMENTATION).delegatecall(
                 abi.encodeWithSelector(TokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
             );
 

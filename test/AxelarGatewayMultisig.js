@@ -73,11 +73,10 @@ describe('AxelarGatewayMultisig', () => {
       ),
     );
     tokenDeployer = await deployContract(wallets[0], TokenDeployer);
-    const gateway = await deployContract(wallets[0], AxelarGatewayMultisig, [
-      tokenDeployer.address,
-    ]);
+    const gateway = await deployContract(wallets[0], AxelarGatewayMultisig);
     const proxy = await deployContract(wallets[0], AxelarGatewayProxy, [
       gateway.address,
+      tokenDeployer.address,
       params,
     ]);
     contract = new Contract(
@@ -113,7 +112,6 @@ describe('AxelarGatewayMultisig', () => {
       const newImplementation = await deployContract(
         wallets[0],
         AxelarGatewayMultisig,
-        [tokenDeployer.address],
       );
       const newImplementationCode = await newImplementation.provider.getCode(
         newImplementation.address,

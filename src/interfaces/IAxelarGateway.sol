@@ -73,6 +73,8 @@ interface IAxelarGateway {
 
     event Upgraded(address indexed implementation);
 
+    event TokenDeployerUpgraded(address indexed implementation);
+
     /******************\
     |* Public Methods *|
     \******************/
@@ -169,6 +171,8 @@ interface IAxelarGateway {
         bytes32 newImplementationCodeHash,
         bytes calldata setupParams
     ) external;
+
+    function upgradeTokenDeployer(address newImplementation, bytes32 newImplementationCodeHash) external;
 
     /**********************\
     |* External Functions *|

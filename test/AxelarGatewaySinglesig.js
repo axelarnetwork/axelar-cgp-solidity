@@ -109,11 +109,10 @@ describe('AxelarGatewaySingleSig', () => {
       ),
     );
     tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
-    const gateway = await deployContract(ownerWallet, AxelarGatewaySinglesig, [
-      tokenDeployer.address,
-    ]);
+    const gateway = await deployContract(ownerWallet, AxelarGatewaySinglesig);
     const proxy = await deployContract(ownerWallet, AxelarGatewayProxy, [
       gateway.address,
+      tokenDeployer.address,
       params,
     ]);
     contract = new Contract(
@@ -345,7 +344,6 @@ describe('AxelarGatewaySingleSig', () => {
       const newImplementation = await deployContract(
         ownerWallet,
         AxelarGatewaySinglesig,
-        [tokenDeployer.address],
       );
       const wrongImplementationCodeHash = keccak256(
         `0x${AxelarGatewaySinglesig.bytecode}`,
@@ -399,7 +397,6 @@ describe('AxelarGatewaySingleSig', () => {
       const newImplementation = await deployContract(
         ownerWallet,
         AxelarGatewaySinglesig,
-        [tokenDeployer.address],
       );
       const newImplementationCode = await newImplementation.provider.getCode(
         newImplementation.address,
