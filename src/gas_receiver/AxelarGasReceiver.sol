@@ -4,56 +4,13 @@ pragma solidity 0.8.9;
 
 import { IERC20 } from '../interfaces/IERC20.sol';
 import { Ownable } from '../Ownable.sol';
-import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
-import { ERC20Permit } from '../ERC20Permit.sol';
+import { IAxelarGasReceiver } from './interfaces/IAxelarGasReceiver.sol';
 
 
 // This should be owned by the microservice that is paying for gas.
-contract AxelarGasReceiver is Ownable{
+contract AxelarGasReceiver is IAxelarGasReceiver, Ownable{
     
     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-
-    error NothingReceived();
-    error InvalidCodeHash();
-    error SetupFailed();
-
-    event Upgraded(address newImplementation);
-
-    event GasReceived(
-        address sourceAddress,
-        string destinationChain,
-        string destinationAddress,
-        bytes payload,
-        address gasToken,
-        uint256 gasAmount
-    );
-    event GasReceivedWithToken(
-        address sourceAddress,
-        string destinationChain,
-        string destinationAddress,
-        bytes payload,
-        string symbol,
-        uint256 amountThrough,
-        address gasToken,
-        uint256 gasAmount
-    );
-    
-    event GasReceivedNative(
-        address sourceAddress,
-        string destinationChain,
-        string destinationAddress,
-        bytes payload,
-        uint256 gasAmount
-    );
-    event GasReceivedNativeWithToken(
-        address sourceAddress,
-        string destinationChain,
-        string destinationAddress,
-        bytes payload,
-        string symbol,
-        uint256 amountThrough,
-        uint256 gasAmount
-    );
 
     constructor() Ownable() {
     }
