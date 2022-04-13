@@ -24,6 +24,7 @@ contract DepositHandler {
         (success, returnData) = callee.call(data);
     }
 
+    // NOTE: The gateway should always destroy the `DepositHandler` in the same runtime context that deploys it.
     function destroy(address etherDestination) external noReenter {
         selfdestruct(payable(etherDestination));
     }
