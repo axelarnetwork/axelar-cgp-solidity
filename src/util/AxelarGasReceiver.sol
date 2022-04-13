@@ -11,9 +11,14 @@ import { ERC20Permit } from '../ERC20Permit.sol';
 // This should be owned by the microservice that is paying for gas.
 contract AxelarGasReceiver is Ownable{
     IAxelarGateway public gateway;
+    
+    bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
     error NothingReceived();
+    error InvalidCodeHash();
+    error SetupFailed();
 
+    event Upgraded(address newImplementation);
 
     event GasReceived(
         address sourceAddress,
@@ -232,5 +237,24 @@ contract AxelarGasReceiver is Ownable{
         }
     }
 
+    function upgrade(
+        address newImplementation,
+        bytes32 newImplementationCodeHash,
+        bytes calldata params
+    ) external onlyOwner {
+        if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
+
+        (bool success, ) = newImplementation.delegatecall(
+            abi.encodeWithSelector(this.setup.selector, params)
+        );
+
+        if (!success) revert SetupFailed();
+
+        emit Upgraded(newImplementation);
+
+        assembly {
+            sstore(_IMPLEMENTATION_SLOT, newImplementation)
+        }
+    }
 
 }
