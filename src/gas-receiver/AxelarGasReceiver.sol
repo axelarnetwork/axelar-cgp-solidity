@@ -4,25 +4,20 @@ pragma solidity 0.8.9;
 
 import { IERC20 } from '../interfaces/IERC20.sol';
 import { Ownable } from '../Ownable.sol';
-import { IAxelarGasReceiver } from './interfaces/IAxelarGasReceiver.sol';
-
+import { IAxelarGasReceiver } from '../interfaces/IAxelarGasReceiver.sol';
 
 // This should be owned by the microservice that is paying for gas.
-contract AxelarGasReceiver is IAxelarGasReceiver, Ownable{
-    
+contract AxelarGasReceiver is IAxelarGasReceiver, Ownable {
     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
-    constructor() Ownable() {
-    }
+    constructor() Ownable() {}
 
     function setup(bytes calldata data) public {
-        ( 
-            owner
-        ) = abi.decode(data, (address));
+        (owner) = abi.decode(data, (address));
     }
 
     //This is called by contracts that do stuff on the source chain before calling a remote contract.
-    function receiveGas (
+    function payGasForContractCall(
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -30,11 +25,11 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable{
         uint256 gasAmount
     ) external {
         IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
-        emit GasReceived(msg.sender, destinationChain, destinationAddress, payload, gasToken, gasAmount);
+        emit GasPaidForContractCall(msg.sender, destinationChain, destinationAddress, payload, gasToken, gasAmount);
     }
 
     //This is called by contracts that do stuff on the source chain before calling a remote contract.
-    function receiveGasWithToken (
+    function payGasForContractCallWithToken(
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -44,36 +39,51 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable{
         uint256 gasAmount
     ) external {
         IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
-        emit GasReceivedWithToken(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, gasToken, gasAmount);
+        emit GasPaidForContractCallWithToken(
+            msg.sender,
+            destinationChain,
+            destinationAddress,
+            payload,
+            symbol,
+            amountThrough,
+            gasToken,
+            gasAmount
+        );
     }
 
     //This is called by contracts that do stuff on the source chain before calling a remote contract.
-    function receiveGasNative (
+    function payNativeGasForContractCall(
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload
     ) external payable {
-        if(msg.value == 0)
-            revert NothingReceived();
-        emit GasReceivedNative(msg.sender, destinationChain, destinationAddress, payload, msg.value);
+        if (msg.value == 0) revert NothingReceived();
+        emit NativeGasPaidForContractCall(msg.sender, destinationChain, destinationAddress, payload, msg.value);
     }
 
     //This is called by contracts that do stuff on the source chain before calling a remote contract.
-    function receiveGasNativeWithToken (
+    function payNativeGasForContractCallWithToken(
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
         string memory symbol,
         uint256 amountThrough
     ) external payable {
-        if(msg.value == 0)
-            revert NothingReceived();
-        emit GasReceivedNativeWithToken(msg.sender, destinationChain, destinationAddress, payload, symbol, amountThrough, msg.value);
+        if (msg.value == 0) revert NothingReceived();
+        emit NativeGasPaidForContractCallWithToken(
+            msg.sender,
+            destinationChain,
+            destinationAddress,
+            payload,
+            symbol,
+            amountThrough,
+            msg.value
+        );
     }
 
-    function retreiveFees(address payable receiver, address[] memory tokens) external onlyOwner {
+    function retrieveFees(address payable receiver, address[] memory tokens) external onlyOwner {
         receiver.transfer(address(this).balance);
-        for(uint256 i=0;i<tokens.length; i++) {
+        for (uint256 i = 0; i < tokens.length; i++) {
             uint256 amount = IERC20(tokens[i]).balanceOf(address(this));
             IERC20(tokens[i]).transfer(receiver, amount);
         }
@@ -86,9 +96,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable{
     ) external onlyOwner {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
-        (bool success, ) = newImplementation.delegatecall(
-            abi.encodeWithSelector(this.setup.selector, params)
-        );
+        (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(this.setup.selector, params));
 
         if (!success) revert SetupFailed();
 
@@ -98,5 +106,4 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable{
             sstore(_IMPLEMENTATION_SLOT, newImplementation)
         }
     }
-
 }

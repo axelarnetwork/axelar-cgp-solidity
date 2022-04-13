@@ -4,10 +4,8 @@ pragma solidity 0.8.9;
 
 import { AxelarGasReceiver } from './AxelarGasReceiver.sol';
 
-
 contract AxelarGasReceiverProxy {
     error SetupFailed();
-
 
     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
