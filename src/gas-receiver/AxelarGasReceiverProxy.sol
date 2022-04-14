@@ -10,9 +10,11 @@ contract AxelarGasReceiverProxy {
     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
     constructor(address gasReceiverImplementation, bytes memory params) {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(_IMPLEMENTATION_SLOT, gasReceiverImplementation)
         }
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = gasReceiverImplementation.delegatecall(
             abi.encodeWithSelector(AxelarGasReceiver.setup.selector, params)
         );
@@ -21,15 +23,19 @@ contract AxelarGasReceiverProxy {
     }
 
     function implementation() public view returns (address implementation_) {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             implementation_ := sload(_IMPLEMENTATION_SLOT)
         }
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function setup(bytes calldata data) public {}
 
+    // solhint-disable-next-line no-complex-fallback
     fallback() external payable {
         address implementaion_ = implementation();
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             calldatacopy(0, 0, calldatasize())
 
