@@ -12,7 +12,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable {
     // solhint-disable-next-line no-empty-blocks
     constructor() Ownable() {}
 
-    function setup(bytes calldata data) public {
+    function setup(bytes calldata data) public override {
         (owner) = abi.decode(data, (address));
     }
 
@@ -81,7 +81,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable {
         );
     }
 
-    function retrieveFees(address payable receiver, address[] memory tokens) external onlyOwner {
+    function collectFees(address payable receiver, address[] memory tokens) external onlyOwner {
         receiver.transfer(address(this).balance);
         for (uint256 i = 0; i < tokens.length; i++) {
             uint256 amount = IERC20(tokens[i]).balanceOf(address(this));
@@ -93,7 +93,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable {
         address newImplementation,
         bytes32 newImplementationCodeHash,
         bytes calldata params
-    ) external onlyOwner {
+    ) external override onlyOwner {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(this.setup.selector, params));

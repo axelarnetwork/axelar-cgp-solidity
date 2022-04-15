@@ -2,8 +2,6 @@
 
 pragma solidity 0.8.9;
 
-import { AxelarGasReceiver } from './AxelarGasReceiver.sol';
-
 contract AxelarGasReceiverProxy {
     error SetupFailed();
 
@@ -16,7 +14,8 @@ contract AxelarGasReceiverProxy {
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = gasReceiverImplementation.delegatecall(
-            abi.encodeWithSelector(AxelarGasReceiver.setup.selector, params)
+            //0x9ded06df is the setup selector.
+            abi.encodeWithSelector(0x9ded06df, params)
         );
 
         if (!success) revert SetupFailed();

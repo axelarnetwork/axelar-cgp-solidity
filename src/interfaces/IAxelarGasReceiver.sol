@@ -82,5 +82,12 @@ interface IAxelarGasReceiver {
         uint256 amountThrough
     ) external payable;
 
-    function retrieveFees(address payable receiver, address[] memory tokens) external;
+    function collectFees(address payable receiver, address[] memory tokens) external;
+
+    function setup(bytes calldata data) external;
+
+    function upgrade(
+        address newImplementation,
+        bytes32 newImplementationCodeHash,
+        bytes calldata params) external;
 }
