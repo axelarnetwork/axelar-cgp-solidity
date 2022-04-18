@@ -13,7 +13,6 @@ const { get } = require('lodash/fp');
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const ROLE_OWNER = 1;
-const ROLE_OPERATOR = 2;
 
 const TokenDeployer = require('../../build/TokenDeployer.json');
 const AxelarGatewayProxy = require('../../build/AxelarGatewayProxy.json');
