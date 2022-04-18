@@ -3,17 +3,31 @@
 pragma solidity 0.8.9;
 
 import { IERC20 } from '../interfaces/IERC20.sol';
-import { Ownable } from '../Ownable.sol';
 import { IAxelarGasReceiver } from '../interfaces/IAxelarGasReceiver.sol';
 
 // This should be owned by the microservice that is paying for gas.
-contract AxelarGasReceiver is IAxelarGasReceiver, Ownable {
+contract AxelarGasReceiver is IAxelarGasReceiver {
+    error NotOwner();
+
+    // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-    // solhint-disable-next-line no-empty-blocks
-    constructor() Ownable() {}
+    // keccak256('owner');
+    bytes32 internal constant _OWNER_SLOT = 0x02016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0;
+
+    modifier onlyOwner() {
+        address owner;
+        assembly {
+            owner := sload(_OWNER_SLOT)
+        }
+        if (owner != msg.sender) revert NotOwner();
+        _;
+    }
 
     function setup(bytes calldata data) public override {
-        (owner) = abi.decode(data, (address));
+        address owner = abi.decode(data, (address));
+        assembly {
+            sstore(_OWNER_SLOT, owner)
+        }
     }
 
     //This is called by contracts that do stuff on the source chain before calling a remote contract.
@@ -25,7 +39,14 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable {
         uint256 gasAmount
     ) external {
         IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
-        emit GasPaidForContractCall(msg.sender, destinationChain, destinationAddress, payload, gasToken, gasAmount);
+        emit GasPaidForContractCall(
+            msg.sender,
+            destinationChain,
+            destinationAddress,
+            keccak256(payload),
+            gasToken,
+            gasAmount
+        );
     }
 
     //This is called by contracts that do stuff on the source chain before calling a remote contract.
@@ -43,7 +64,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable {
             msg.sender,
             destinationChain,
             destinationAddress,
-            payload,
+            keccak256(payload),
             symbol,
             amountThrough,
             gasToken,
@@ -58,7 +79,13 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable {
         bytes calldata payload
     ) external payable {
         if (msg.value == 0) revert NothingReceived();
-        emit NativeGasPaidForContractCall(msg.sender, destinationChain, destinationAddress, payload, msg.value);
+        emit NativeGasPaidForContractCall(
+            msg.sender,
+            destinationChain,
+            destinationAddress,
+            keccak256(payload),
+            msg.value
+        );
     }
 
     //This is called by contracts that do stuff on the source chain before calling a remote contract.
@@ -74,7 +101,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver, Ownable {
             msg.sender,
             destinationChain,
             destinationAddress,
-            payload,
+            keccak256(payload),
             symbol,
             amountThrough,
             msg.value

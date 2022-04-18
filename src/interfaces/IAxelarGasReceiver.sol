@@ -14,7 +14,7 @@ interface IAxelarGasReceiver {
         address sourceAddress,
         string destinationChain,
         string destinationAddress,
-        bytes payload,
+        bytes32 payloadHash,
         address gasToken,
         uint256 gasAmount
     );
@@ -22,7 +22,7 @@ interface IAxelarGasReceiver {
         address sourceAddress,
         string destinationChain,
         string destinationAddress,
-        bytes payload,
+        bytes32 payloadHash,
         string symbol,
         uint256 amountThrough,
         address gasToken,
@@ -33,14 +33,14 @@ interface IAxelarGasReceiver {
         address sourceAddress,
         string destinationChain,
         string destinationAddress,
-        bytes payload,
+        bytes32 payloadHash,
         uint256 gasAmount
     );
     event NativeGasPaidForContractCallWithToken(
         address sourceAddress,
         string destinationChain,
         string destinationAddress,
-        bytes payload,
+        bytes32 payloadHash,
         string symbol,
         uint256 amountThrough,
         uint256 gasAmount
@@ -89,5 +89,6 @@ interface IAxelarGasReceiver {
     function upgrade(
         address newImplementation,
         bytes32 newImplementationCodeHash,
-        bytes calldata params) external;
+        bytes calldata params
+    ) external;
 }
