@@ -4,28 +4,28 @@ pragma solidity 0.8.9;
 
 import { IERC20 } from '../interfaces/IERC20.sol';
 
-contract TokenSwapper {
-    address tokenA;
-    address tokenB;
+contract ChainBTokenSwapper {
+    address tokenX;
+    address tokenY;
 
-    constructor(address tokenA_, address tokenB_) {
-        tokenA = tokenA_;
-        tokenB = tokenB_;
+    constructor(address tokenX_, address tokenY_) {
+        tokenX = tokenX_;
+        tokenY = tokenY_;
     }
 
     function swap(
         address tokenAddress,
-        uint256 amount,
         address toTokenAddress,
+        uint256 amount,
         address recipient
     ) external returns (uint256 convertedAmount) {
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
 
-        if (tokenAddress == tokenA) {
-            require(toTokenAddress == tokenB, 'WRONG TOKEN PAIR');
+        if (tokenAddress == tokenX) {
+            require(toTokenAddress == tokenY, 'WRONG TOKEN PAIR');
             convertedAmount = amount * 2;
         } else {
-            require(tokenAddress == tokenB && toTokenAddress == tokenA, 'WRONG TOKEN PAIR');
+            require(tokenAddress == tokenY && toTokenAddress == tokenX, 'WRONG TOKEN PAIR');
             convertedAmount = amount / 2;
         }
 
