@@ -246,9 +246,7 @@ describe('AxelarGasReceiver', () => {
           .upgrade(
             receiverImplementation.address,
             newImplementationCodeHash,
-            arrayify(
-              defaultAbiCoder.encode(['address'], [userWallet.address]),
-            ),
+            arrayify(defaultAbiCoder.encode(['address'], [userWallet.address])),
           ),
       )
         .to.emit(gasReceiver, 'Upgraded')
