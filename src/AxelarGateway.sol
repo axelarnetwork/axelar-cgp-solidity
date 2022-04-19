@@ -4,12 +4,13 @@ pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
+import { IERC20Burn } from './interfaces/IERC20Burn.sol';
 import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
+import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
+import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
-import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
-import { TokenDeployer } from './TokenDeployer.sol';
 
 abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     error NotSelf();
@@ -322,14 +323,14 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             abi.encodeWithSelector(
                 IERC20.transferFrom.selector,
                 sender,
-                BurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0)),
+                IBurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0)),
                 amount
             )
         );
 
         if (!burnSuccess) revert BurnFailed(symbol);
 
-        BurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
+        IERC20Burn(tokenAddress).burn(bytes32(0));
     }
 
     function _deployToken(
@@ -347,7 +348,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             bytes32 salt = keccak256(abi.encodePacked(symbol));
 
             (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
-                abi.encodeWithSelector(TokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
+                abi.encodeWithSelector(ITokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
             );
 
             if (!success) revert TokenDeployFailed(symbol);
@@ -387,7 +388,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
             if (!success) revert MintFailed(symbol);
         } else {
-            BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
+            IBurnableMintableCappedERC20(tokenAddress).mint(account, amount);
         }
     }
 
@@ -416,7 +417,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
             depositHandler.destroy(address(this));
         } else {
-            BurnableMintableCappedERC20(tokenAddress).burn(salt);
+            IERC20Burn(tokenAddress).burn(salt);
         }
     }
 

@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.9;
 
-abstract contract Ownable {
-    address public owner;
+import { IOwnable } from './interfaces/IOwnable.sol';
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+abstract contract Ownable is IOwnable {
+    address public owner;
 
     constructor() {
         owner = msg.sender;

@@ -2,9 +2,11 @@
 
 pragma solidity 0.8.9;
 
+import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
+
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 
-contract TokenDeployer {
+contract TokenDeployer is ITokenDeployer{
     function deployToken(
         string memory name,
         string memory symbol,

@@ -2,11 +2,13 @@
 
 pragma solidity 0.8.9;
 
+import { IMintableCappedERC20 } from './interfaces/IMintableCappedERC20.sol';
+
 import { ERC20 } from './ERC20.sol';
 import { ERC20Permit } from './ERC20Permit.sol';
 import { Ownable } from './Ownable.sol';
 
-contract MintableCappedERC20 is ERC20, ERC20Permit, Ownable {
+contract MintableCappedERC20 is IMintableCappedERC20, ERC20, ERC20Permit, Ownable {
     uint256 public cap;
 
     constructor(
