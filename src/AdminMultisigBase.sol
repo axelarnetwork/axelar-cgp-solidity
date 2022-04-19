@@ -12,7 +12,6 @@ contract AdminMultisigBase is EternalStorage {
     error DuplicateAdmin(address admin);
 
     // AUDIT: slot names should be prefixed with some standard string
-    // AUDIT: constants should be literal and their derivation should be in comments
     bytes32 internal constant KEY_ADMIN_EPOCH = keccak256('admin-epoch');
 
     bytes32 internal constant PREFIX_ADMIN = keccak256('admin');

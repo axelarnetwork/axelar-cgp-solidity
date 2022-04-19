@@ -2,9 +2,10 @@
 
 pragma solidity 0.8.9;
 
+import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
+
 import { MintableCappedERC20 } from './MintableCappedERC20.sol';
 import { DepositHandler } from './DepositHandler.sol';
-import { EternalStorage } from './EternalStorage.sol';
 
 contract BurnableMintableCappedERC20 is MintableCappedERC20 {
     // keccak256('token-frozen')
@@ -55,7 +56,9 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
         address,
         uint256
     ) internal view override {
-        require(!EternalStorage(owner).getBool(KEY_ALL_TOKENS_FROZEN), 'IS_FROZEN');
-        require(!EternalStorage(owner).getBool(keccak256(abi.encodePacked(PREFIX_TOKEN_FROZEN, symbol))), 'IS_FROZEN');
+        require(
+            !IAxelarGateway(owner).allTokensFrozen() && !IAxelarGateway(owner).tokenFrozen(symbol),
+            'IS_FROZEN'
+        );
     }
 }
