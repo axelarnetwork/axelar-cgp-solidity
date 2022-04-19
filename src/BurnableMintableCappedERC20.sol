@@ -3,11 +3,12 @@
 pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
+import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
 
 import { MintableCappedERC20 } from './MintableCappedERC20.sol';
 import { DepositHandler } from './DepositHandler.sol';
 
-contract BurnableMintableCappedERC20 is MintableCappedERC20 {
+contract BurnableMintableCappedERC20 is IERC20BurnFrom, MintableCappedERC20 {
     // keccak256('token-frozen')
     bytes32 private constant PREFIX_TOKEN_FROZEN =
         bytes32(0x1a7261d3a36c4ce4235d10859911c9444a6963a3591ec5725b96871d9810626b);
@@ -49,6 +50,11 @@ contract BurnableMintableCappedERC20 is MintableCappedERC20 {
     function burn(bytes32 salt) public onlyOwner {
         address account = depositAddress(salt);
         _burn(account, balanceOf[account]);
+    }
+
+    function burnFrom(address account, uint256 amount) external onlyOwner {
+        _approve(account, owner, allowance[account][owner] - amount);
+        _burn(account, amount);
     }
 
     function _beforeTokenTransfer(
