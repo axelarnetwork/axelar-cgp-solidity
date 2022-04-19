@@ -20,7 +20,7 @@ contract MintableCappedERC20 is ERC20, ERC20Permit, Ownable, IERC20BurnFrom {
         cap = capacity;
     }
 
-    function mint(address account, uint256 amount) public onlyOwner {
+    function mint(address account, uint256 amount) external onlyOwner {
         uint256 capacity = cap;
         require(capacity == 0 || totalSupply + amount <= capacity, 'CAP_EXCEEDED');
 

@@ -16,6 +16,8 @@ contract AxelarGatewayProxy is EternalStorage {
     constructor(address gatewayImplementation, bytes memory params) {
         _setAddress(KEY_IMPLEMENTATION, gatewayImplementation);
 
+        require(gatewayImplementation.code.length != 0, 'INVALID_IMPLEMENTATION');
+
         (bool success, ) = gatewayImplementation.delegatecall(
             abi.encodeWithSelector(IAxelarGateway.setup.selector, params)
         );

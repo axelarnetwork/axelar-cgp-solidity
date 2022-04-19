@@ -21,7 +21,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     error InvalidCommands();
 
     // AUDIT: slot names should be prefixed with some standard string
-    // AUDIT: constants should be literal and their derivation should be in comments
     bytes32 internal constant KEY_OWNER_EPOCH = keccak256('owner-epoch');
 
     bytes32 internal constant PREFIX_OWNER = keccak256('owner');

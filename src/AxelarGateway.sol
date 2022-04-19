@@ -41,7 +41,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
 
     // AUDIT: slot names should be prefixed with some standard string
-    // AUDIT: constants should be literal and their derivation should be in comments
     bytes32 internal constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
@@ -187,7 +186,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Getters *|
     \***********/
 
-    function allTokensFrozen() public view override returns (bool) {
+    function allTokensFrozen() external view override returns (bool) {
         return getBool(KEY_ALL_TOKENS_FROZEN);
     }
 
@@ -557,7 +556,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     function _checkTokenStatus(string memory symbol) internal view {
-        if (getBool(_getFreezeTokenKey(symbol)) || getBool(KEY_ALL_TOKENS_FROZEN)) revert TokenIsFrozen(symbol);
+        if (tokenFrozen(symbol) || getBool(KEY_ALL_TOKENS_FROZEN)) revert TokenIsFrozen(symbol);
     }
 
     /********************\

@@ -17,7 +17,7 @@ abstract contract Ownable {
         _;
     }
 
-    function transferOwnership(address newOwner) public virtual onlyOwner {
+    function transferOwnership(address newOwner) external virtual onlyOwner {
         require(newOwner != address(0), 'ZERO_ADDR');
 
         emit OwnershipTransferred(owner, newOwner);
