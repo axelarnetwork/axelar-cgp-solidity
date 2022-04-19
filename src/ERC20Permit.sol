@@ -2,9 +2,11 @@
 
 pragma solidity 0.8.9;
 
+import { IERC20Permit } from './interfaces/IERC20Permit.sol';
+
 import { ERC20 } from './ERC20.sol';
 
-abstract contract ERC20Permit is ERC20 {
+abstract contract ERC20Permit is IERC20Permit, ERC20 {
     bytes32 public immutable DOMAIN_SEPARATOR;
 
     string private constant EIP191_PREFIX_FOR_EIP712_STRUCTURED_DATA = '\x19\x01';
