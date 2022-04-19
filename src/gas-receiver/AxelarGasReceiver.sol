@@ -23,10 +23,13 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         _;
     }
 
-    function setup(bytes calldata data) public override {
+    function setup(bytes calldata data) external override {
         address owner = abi.decode(data, (address));
-        assembly {
-            sstore(_OWNER_SLOT, owner)
+        if (owner != address(0)) {
+            emit OwnershipTransferred(owner);
+            assembly {
+                sstore(_OWNER_SLOT, owner)
+            }
         }
     }
 
@@ -111,8 +114,12 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
     function collectFees(address payable receiver, address[] memory tokens) external onlyOwner {
         receiver.transfer(address(this).balance);
         for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 amount = IERC20(tokens[i]).balanceOf(address(this));
-            IERC20(tokens[i]).transfer(receiver, amount);
+            if (tokens[i] == address(0)) {
+                receiver.transfer(address(this).balance);
+            } else {
+                uint256 amount = IERC20(tokens[i]).balanceOf(address(this));
+                IERC20(tokens[i]).transfer(receiver, amount);
+            }
         }
     }
 

@@ -25,7 +25,7 @@ const ChainBSwapExecutable = require('../../build/ChainBSwapExecutable.json');
 const ChainBTokenSwapper = require('../../build/ChainBTokenSwapper.json');
 const { getSignedExecuteInput, getRandomID } = require('../utils');
 
-describe('AxelarGatewaySingleSig', () => {
+describe('GeneralMessagePassing', () => {
   const [
     ownerWallet,
     operatorWallet,
@@ -250,7 +250,7 @@ describe('AxelarGatewaySingleSig', () => {
       )
         .to.emit(chainAGasReceiver, 'GasPaidForContractCallWithToken')
         .withArgs(
-          chainASwapCaller.address.toString(),
+          chainASwapCaller.address,
           destinationChain,
           chainBSwapExecutable.address.toString(),
           payloadHash,

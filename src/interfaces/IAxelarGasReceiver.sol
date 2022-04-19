@@ -8,7 +8,8 @@ interface IAxelarGasReceiver {
     error InvalidCodeHash();
     error SetupFailed();
 
-    event Upgraded(address newImplementation);
+    event Upgraded(address indexed newImplementation);
+    event OwnershipTransferred(address indexed newOwner);
 
     event GasPaidForContractCall(
         address sourceAddress,
