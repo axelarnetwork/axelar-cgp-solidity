@@ -69,6 +69,9 @@ contract ERC20 is IERC20 {
     /**
      * @dev See {IERC20-approve}.
      *
+     * NOTE: If `amount` is the maximum `uint256`, the allowance is not updated on
+     * `transferFrom`. This is semantically equivalent to an infinite approval.
+     *
      * Requirements:
      *
      * - `spender` cannot be the zero address.
@@ -96,8 +99,14 @@ contract ERC20 is IERC20 {
         address recipient,
         uint256 amount
     ) external virtual override returns (bool) {
+        uint256 _allowance = allowance[sender][msg.sender];
+
+        if (_allowance != type(uint256).max) {
+            _approve(sender, msg.sender, _allowance - amount);
+        }
+
         _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, allowance[sender][msg.sender] - amount);
+
         return true;
     }
 
