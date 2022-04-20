@@ -22,8 +22,11 @@ contract MintableCappedERC20 is IMintableCappedERC20, ERC20, ERC20Permit, Ownabl
 
     function mint(address account, uint256 amount) external onlyOwner {
         uint256 capacity = cap;
-        require(capacity == 0 || totalSupply + amount <= capacity, 'CAP_EXCEEDED');
 
         _mint(account, amount);
+
+        if (capacity == 0) return;
+
+        if (totalSupply > capacity) revert CapExceeded();
     }
 }

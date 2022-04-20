@@ -17,6 +17,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     error InvalidCodeHash();
     error SetupFailed();
     error InvalidAmount();
+    error InvalidTokenDeployer();
     error TokenDoesNotExist(string symbol);
     error TokenAlreadyExists(string symbol);
     error TokenDeployFailed(string symbol);
@@ -64,6 +65,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
     constructor(address tokenDeployerImplementation) {
+        if (tokenDeployerImplementation.code.length == 0) revert InvalidTokenDeployer();
+
         TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation;
     }
 
@@ -266,7 +269,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
         //        if `upgrade` is entered within the context of _this_ implementation itself.
-        if (setupParams.length > 0) {
+        if (setupParams.length != 0) {
             (bool success, ) = newImplementation.delegatecall(
                 abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams)
             );
@@ -544,6 +547,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \********************/
 
     function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
+        if (tokenAddress.code.length == 0) return false;
+
         (bool success, bytes memory returnData) = tokenAddress.call(callData);
         return success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
     }

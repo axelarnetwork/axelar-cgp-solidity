@@ -21,6 +21,7 @@ contract AdminMultisigBase is EternalStorage {
     bytes32 internal constant PREFIX_ADMIN_VOTED = keccak256('admin-voted');
     bytes32 internal constant PREFIX_IS_ADMIN = keccak256('is-admin');
 
+    // NOTE: Given the early void return, this modifier should be used with care on functions that return data.
     modifier onlyAdmin() {
         uint256 adminEpoch = _adminEpoch();
 

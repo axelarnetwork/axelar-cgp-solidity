@@ -7,6 +7,11 @@ import { IERC20Permit } from './interfaces/IERC20Permit.sol';
 import { ERC20 } from './ERC20.sol';
 
 abstract contract ERC20Permit is IERC20Permit, ERC20 {
+    error PermitExpired();
+    error InvalidS();
+    error InvalidV();
+    error InvalidSignature();
+
     bytes32 public immutable DOMAIN_SEPARATOR;
 
     string private constant EIP191_PREFIX_FOR_EIP712_STRUCTURED_DATA = '\x19\x01';
@@ -42,9 +47,11 @@ abstract contract ERC20Permit is IERC20Permit, ERC20 {
         bytes32 r,
         bytes32 s
     ) external {
-        require(block.timestamp < deadline, 'EXPIRED');
-        require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, 'INV_S');
-        require(v == 27 || v == 28, 'INV_V');
+        if (block.timestamp > deadline) revert PermitExpired();
+
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) revert InvalidS();
+
+        if (v != 27 && v != 28) revert InvalidV();
 
         bytes32 digest = keccak256(
             abi.encodePacked(
@@ -55,7 +62,8 @@ abstract contract ERC20Permit is IERC20Permit, ERC20 {
         );
 
         address recoveredAddress = ecrecover(digest, v, r, s);
-        require(recoveredAddress == issuer, 'INV_SIG');
+
+        if (recoveredAddress != issuer) revert InvalidSignature();
 
         // _approve will revert if issuer is address(0x0)
         _approve(issuer, spender, value);

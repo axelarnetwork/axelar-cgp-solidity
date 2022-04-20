@@ -59,9 +59,6 @@ contract BurnableMintableCappedERC20 is IBurnableMintableCappedERC20, MintableCa
         address,
         uint256
     ) internal view override {
-        require(
-            !IAxelarGateway(owner).allTokensFrozen() && !IAxelarGateway(owner).tokenFrozen(symbol),
-            'IS_FROZEN'
-        );
+        if (IAxelarGateway(owner).allTokensFrozen() || IAxelarGateway(owner).tokenFrozen(symbol)) revert IsFrozen();
     }
 }
