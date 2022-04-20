@@ -547,8 +547,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \********************/
 
     function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
-        if (tokenAddress.code.length == 0) return false;
-
         (bool success, bytes memory returnData) = tokenAddress.call(callData);
         return success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
     }

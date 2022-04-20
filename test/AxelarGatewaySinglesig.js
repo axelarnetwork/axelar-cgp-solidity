@@ -1,5 +1,8 @@
 'use strict';
 
+// TODO: create test to demonstrate that this is not an issue: https://github.com/code-423n4/2022-04-axelar-findings/issues/7
+// TODO: create test to demonstrate that this is not an issue: https://github.com/code-423n4/2022-04-axelar-findings/issues/23
+
 const chai = require('chai');
 const {
   Contract,
