@@ -52,6 +52,7 @@ interface IAxelarGasReceiver {
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCall(
+        address sender,
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -61,6 +62,7 @@ interface IAxelarGasReceiver {
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCallWithToken(
+        address sender,
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -72,6 +74,7 @@ interface IAxelarGasReceiver {
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payNativeGasForContractCall(
+        address sender,
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload
@@ -79,6 +82,7 @@ interface IAxelarGasReceiver {
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payNativeGasForContractCallWithToken(
+        address sender,
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,

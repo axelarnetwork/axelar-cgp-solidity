@@ -38,6 +38,7 @@ contract ChainASwapCaller {
 
         IERC20(tokenX).approve(address(gasReceiver), gasFee);
         gasReceiver.payGasForContractCallWithToken(
+            address(this),
             destinationChain,
             executableAddress,
             payload,

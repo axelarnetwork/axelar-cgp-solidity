@@ -37,6 +37,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCall(
+        address sender,
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -45,7 +46,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
     ) external {
         IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
         emit GasPaidForContractCall(
-            msg.sender,
+            sender,
             destinationChain,
             destinationAddress,
             keccak256(payload),
@@ -56,6 +57,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCallWithToken(
+        address sender,
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -66,7 +68,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
     ) external {
         IERC20(gasToken).transferFrom(msg.sender, address(this), gasAmount);
         emit GasPaidForContractCallWithToken(
-            msg.sender,
+            sender,
             destinationChain,
             destinationAddress,
             keccak256(payload),
@@ -79,22 +81,18 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payNativeGasForContractCall(
+        address sender,
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload
     ) external payable {
         if (msg.value == 0) revert NothingReceived();
-        emit NativeGasPaidForContractCall(
-            msg.sender,
-            destinationChain,
-            destinationAddress,
-            keccak256(payload),
-            msg.value
-        );
+        emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value);
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payNativeGasForContractCallWithToken(
+        address sender,
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload,
@@ -103,7 +101,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
     ) external payable {
         if (msg.value == 0) revert NothingReceived();
         emit NativeGasPaidForContractCallWithToken(
-            msg.sender,
+            sender,
             destinationChain,
             destinationAddress,
             keccak256(payload),

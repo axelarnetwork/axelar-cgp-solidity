@@ -73,6 +73,7 @@ describe('AxelarGasReceiver', () => {
         gasReceiver
           .connect(userWallet)
           .payGasForContractCall(
+            userWallet.address,
             destinationChain,
             destinationAddress,
             payload,
@@ -96,6 +97,7 @@ describe('AxelarGasReceiver', () => {
         gasReceiver
           .connect(userWallet)
           .payGasForContractCallWithToken(
+            userWallet.address,
             destinationChain,
             destinationAddress,
             payload,
@@ -123,6 +125,7 @@ describe('AxelarGasReceiver', () => {
         await gasReceiver
           .connect(userWallet)
           .payNativeGasForContractCall(
+            userWallet.address,
             destinationChain,
             destinationAddress,
             payload,
@@ -143,6 +146,7 @@ describe('AxelarGasReceiver', () => {
         await gasReceiver
           .connect(userWallet)
           .payNativeGasForContractCallWithToken(
+            userWallet.address,
             destinationChain,
             destinationAddress,
             payload,
@@ -182,6 +186,7 @@ describe('AxelarGasReceiver', () => {
       await gasReceiver
         .connect(userWallet)
         .payGasForContractCall(
+          userWallet.address,
           destinationChain,
           destinationAddress,
           payload,
@@ -192,6 +197,7 @@ describe('AxelarGasReceiver', () => {
       await gasReceiver
         .connect(userWallet)
         .payGasForContractCallWithToken(
+          userWallet.address,
           destinationChain,
           destinationAddress,
           payload,
@@ -204,6 +210,7 @@ describe('AxelarGasReceiver', () => {
       await gasReceiver
         .connect(userWallet)
         .payNativeGasForContractCall(
+          userWallet.address,
           destinationChain,
           destinationAddress,
           payload,
@@ -213,6 +220,7 @@ describe('AxelarGasReceiver', () => {
       await gasReceiver
         .connect(userWallet)
         .payNativeGasForContractCall(
+          userWallet.address,
           destinationChain,
           destinationAddress,
           payload,
