@@ -220,6 +220,12 @@ describe('AxelarGasReceiver', () => {
         );
 
       await expect(
+        gasReceiver
+          .connect(userWallet)
+          .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address]),
+      ).to.be.reverted;
+
+      await expect(
         await gasReceiver
           .connect(ownerWallet)
           .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address]),
@@ -240,6 +246,8 @@ describe('AxelarGasReceiver', () => {
         );
       const newImplementationCodeHash = keccak256(newImplementationCode);
 
+      await expect(await gasReceiver.owner()).to.be.equal(ownerWallet.address);
+
       await expect(
         gasReceiver
           .connect(ownerWallet)
@@ -253,6 +261,8 @@ describe('AxelarGasReceiver', () => {
         .withArgs(receiverImplementation.address)
         .and.to.emit(gasReceiver, 'OwnershipTransferred')
         .withArgs(userWallet.address);
+
+      await expect(await gasReceiver.owner()).to.be.equal(userWallet.address);
     });
   });
 });

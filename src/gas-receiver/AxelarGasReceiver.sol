@@ -15,25 +15,27 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
     bytes32 internal constant _OWNER_SLOT = 0x02016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0;
 
     modifier onlyOwner() {
-        address owner;
-        assembly {
-            owner := sload(_OWNER_SLOT)
-        }
-        if (owner != msg.sender) revert NotOwner();
+        if (owner() != msg.sender) revert NotOwner();
         _;
     }
 
+    function owner() public view returns (address owner_) {
+        assembly {
+            owner_ := sload(_OWNER_SLOT)
+        }
+    }
+
     function setup(bytes calldata data) external override {
-        address owner = abi.decode(data, (address));
-        if (owner != address(0)) {
-            emit OwnershipTransferred(owner);
+        address newOwner = abi.decode(data, (address));
+        if (newOwner != address(0)) {
+            emit OwnershipTransferred(newOwner);
             assembly {
-                sstore(_OWNER_SLOT, owner)
+                sstore(_OWNER_SLOT, newOwner)
             }
         }
     }
 
-    //This is called by contracts that do stuff on the source chain before calling a remote contract.
+    // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCall(
         string memory destinationChain,
         string memory destinationAddress,
@@ -52,7 +54,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         );
     }
 
-    //This is called by contracts that do stuff on the source chain before calling a remote contract.
+    // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCallWithToken(
         string memory destinationChain,
         string memory destinationAddress,
@@ -75,7 +77,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         );
     }
 
-    //This is called by contracts that do stuff on the source chain before calling a remote contract.
+    // This is called on the source chain before calling the gateway to execute a remote contract.
     function payNativeGasForContractCall(
         string memory destinationChain,
         string memory destinationAddress,
@@ -91,7 +93,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         );
     }
 
-    //This is called by contracts that do stuff on the source chain before calling a remote contract.
+    // This is called on the source chain before calling the gateway to execute a remote contract.
     function payNativeGasForContractCallWithToken(
         string memory destinationChain,
         string memory destinationAddress,
@@ -112,7 +114,6 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
     }
 
     function collectFees(address payable receiver, address[] memory tokens) external onlyOwner {
-        receiver.transfer(address(this).balance);
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i] == address(0)) {
                 receiver.transfer(address(this).balance);

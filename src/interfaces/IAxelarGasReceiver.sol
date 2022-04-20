@@ -47,7 +47,10 @@ interface IAxelarGasReceiver {
         uint256 gasAmount
     );
 
-    //This is called by contracts that do stuff on the source chain before calling a remote contract.
+    // Get current owner
+    function owner() external view returns (address);
+
+    // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCall(
         string memory destinationChain,
         string memory destinationAddress,
@@ -56,7 +59,7 @@ interface IAxelarGasReceiver {
         uint256 gasAmount
     ) external;
 
-    //This is called by contracts that do stuff on the source chain before calling a remote contract.
+    // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCallWithToken(
         string memory destinationChain,
         string memory destinationAddress,
@@ -67,14 +70,14 @@ interface IAxelarGasReceiver {
         uint256 gasAmount
     ) external;
 
-    //This is called by contracts that do stuff on the source chain before calling a remote contract.
+    // This is called on the source chain before calling the gateway to execute a remote contract.
     function payNativeGasForContractCall(
         string memory destinationChain,
         string memory destinationAddress,
         bytes calldata payload
     ) external payable;
 
-    //This is called by contracts that do stuff on the source chain before calling a remote contract.
+    // This is called on the source chain before calling the gateway to execute a remote contract.
     function payNativeGasForContractCallWithToken(
         string memory destinationChain,
         string memory destinationAddress,
