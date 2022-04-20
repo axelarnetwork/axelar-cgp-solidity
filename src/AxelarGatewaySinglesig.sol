@@ -267,7 +267,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             isValidRecentOperator = _isValidRecentOperator(signer);
         }
 
-        for (uint256 i; i < commandsLength; i++) {
+        for (uint256 i; i < commandsLength; ++i) {
             bytes32 commandId = commandIds[i];
 
             if (isCommandExecuted(commandId)) continue; /* Ignore if duplicate commandId received */

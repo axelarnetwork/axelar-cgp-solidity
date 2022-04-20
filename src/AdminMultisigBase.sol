@@ -47,7 +47,7 @@ contract AdminMultisigBase is EternalStorage {
 
         uint256 adminCount = _getAdminCount(adminEpoch);
 
-        for (uint256 i; i < adminCount; i++) {
+        for (uint256 i; i < adminCount; ++i) {
             _setHasVoted(adminEpoch, topic, _getAdmin(adminEpoch, i), false);
         }
     }
@@ -154,7 +154,7 @@ contract AdminMultisigBase is EternalStorage {
         _setAdminThreshold(adminEpoch, threshold);
         _setAdminCount(adminEpoch, adminLength);
 
-        for (uint256 i; i < adminLength; i++) {
+        for (uint256 i; i < adminLength; ++i) {
             address account = accounts[i];
 
             // Check that the account wasn't already set as an admin for this epoch.
