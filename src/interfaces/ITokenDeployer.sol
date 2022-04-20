@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 
 interface ITokenDeployer {
     function deployToken(
-        string memory name,
-        string memory symbol,
+        string calldata name,
+        string calldata symbol,
         uint8 decimals,
         uint256 cap,
         bytes32 salt

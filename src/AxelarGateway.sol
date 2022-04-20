@@ -78,9 +78,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \******************/
 
     function sendToken(
-        string memory destinationChain,
-        string memory destinationAddress,
-        string memory symbol,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        string calldata symbol,
         uint256 amount
     ) external {
         _burnTokenFrom(msg.sender, symbol, amount);
@@ -88,18 +88,18 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     function callContract(
-        string memory destinationChain,
-        string memory destinationContractAddress,
-        bytes memory payload
+        string calldata destinationChain,
+        string calldata destinationContractAddress,
+        bytes calldata payload
     ) external {
         emit ContractCall(msg.sender, destinationChain, destinationContractAddress, keccak256(payload), payload);
     }
 
     function callContractWithToken(
-        string memory destinationChain,
-        string memory destinationContractAddress,
-        bytes memory payload,
-        string memory symbol,
+        string calldata destinationChain,
+        string calldata destinationContractAddress,
+        bytes calldata payload,
+        string calldata symbol,
         uint256 amount
     ) external {
         _burnTokenFrom(msg.sender, symbol, amount);
@@ -116,8 +116,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function isContractCallApproved(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         address contractAddress,
         bytes32 payloadHash
     ) external view override returns (bool) {
@@ -127,11 +127,11 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function isContractCallAndMintApproved(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         address contractAddress,
         bytes32 payloadHash,
-        string memory symbol,
+        string calldata symbol,
         uint256 amount
     ) external view override returns (bool) {
         return
@@ -150,8 +150,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function validateContractCall(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         bytes32 payloadHash
     ) external override returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash);
@@ -161,10 +161,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function validateContractCallAndMint(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         bytes32 payloadHash,
-        string memory symbol,
+        string calldata symbol,
         uint256 amount
     ) external override returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedWithMintKey(
@@ -222,7 +222,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         uint256 adminCount = _getAdminCount(epoch);
         results = new address[](adminCount);
 
-        for (uint256 i; i < adminCount; i++) {
+        for (uint256 i; i < adminCount; ++i) {
             results[i] = _getAdmin(epoch, i);
         }
     }
@@ -231,13 +231,13 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Admin Functions *|
     \*******************/
 
-    function freezeToken(string memory symbol) external override onlyAdmin {
+    function freezeToken(string calldata symbol) external override onlyAdmin {
         _setBool(_getFreezeTokenKey(symbol), true);
 
         emit TokenFrozen(symbol);
     }
 
-    function unfreezeToken(string memory symbol) external override onlyAdmin {
+    function unfreezeToken(string calldata symbol) external override onlyAdmin {
         _setBool(_getFreezeTokenKey(symbol), false);
 
         emit TokenUnfrozen(symbol);
