@@ -4,8 +4,6 @@ pragma solidity 0.8.9;
 
 import { IERC20 } from './interfaces/IERC20.sol';
 
-import { Context } from './Context.sol';
-
 /**
  * @dev Implementation of the {IERC20} interface.
  *
@@ -30,7 +28,7 @@ import { Context } from './Context.sol';
  * functions have been added to mitigate the well-known issues around setting
  * allowances. See {IERC20-approve}.
  */
-contract ERC20 is Context, IERC20 {
+contract ERC20 is IERC20 {
     mapping(address => uint256) public override balanceOf;
 
     mapping(address => mapping(address => uint256)) public override allowance;
@@ -67,7 +65,7 @@ contract ERC20 is Context, IERC20 {
      * - the caller must have a balance of at least `amount`.
      */
     function transfer(address recipient, uint256 amount) external virtual override returns (bool) {
-        _transfer(_msgSender(), recipient, amount);
+        _transfer(msg.sender, recipient, amount);
         return true;
     }
 
@@ -79,7 +77,7 @@ contract ERC20 is Context, IERC20 {
      * - `spender` cannot be the zero address.
      */
     function approve(address spender, uint256 amount) external virtual override returns (bool) {
-        _approve(_msgSender(), spender, amount);
+        _approve(msg.sender, spender, amount);
         return true;
     }
 
@@ -102,7 +100,7 @@ contract ERC20 is Context, IERC20 {
         uint256 amount
     ) external virtual override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, _msgSender(), allowance[sender][_msgSender()] - amount);
+        _approve(sender, msg.sender, allowance[sender][msg.sender] - amount);
         return true;
     }
 
@@ -119,7 +117,7 @@ contract ERC20 is Context, IERC20 {
      * - `spender` cannot be the zero address.
      */
     function increaseAllowance(address spender, uint256 addedValue) external virtual returns (bool) {
-        _approve(_msgSender(), spender, allowance[_msgSender()][spender] + addedValue);
+        _approve(msg.sender, spender, allowance[msg.sender][spender] + addedValue);
         return true;
     }
 
@@ -138,7 +136,7 @@ contract ERC20 is Context, IERC20 {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue) external virtual returns (bool) {
-        _approve(_msgSender(), spender, allowance[_msgSender()][spender] - subtractedValue);
+        _approve(msg.sender, spender, allowance[msg.sender][spender] - subtractedValue);
         return true;
     }
 
