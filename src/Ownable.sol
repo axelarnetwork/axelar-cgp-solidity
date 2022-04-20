@@ -13,12 +13,13 @@ abstract contract Ownable is IOwnable {
     }
 
     modifier onlyOwner() {
-        require(owner == msg.sender, 'NOT_OWNER');
+        if (owner != msg.sender) revert NotOwner();
+
         _;
     }
 
     function transferOwnership(address newOwner) external virtual onlyOwner {
-        require(newOwner != address(0), 'ZERO_ADDR');
+        if (newOwner == address(0)) revert InvalidOwner();
 
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;

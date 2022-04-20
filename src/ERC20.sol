@@ -42,9 +42,6 @@ contract ERC20 is IERC20 {
 
     /**
      * @dev Sets the values for {name}, {symbol}, and {decimals}.
-     *
-     * All three of these values are immutable: they can only be set once during
-     * construction.
      */
     constructor(
         string memory name_,
@@ -159,7 +156,7 @@ contract ERC20 is IERC20 {
         address recipient,
         uint256 amount
     ) internal virtual {
-        require(sender != address(0) && recipient != address(0), 'ZERO_ADDR');
+        if (sender == address(0) || recipient == address(0)) revert InvalidAccount();
 
         _beforeTokenTransfer(sender, recipient, amount);
 
@@ -178,7 +175,7 @@ contract ERC20 is IERC20 {
      * - `to` cannot be the zero address.
      */
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), 'ZERO_ADDR');
+        if (account == address(0)) revert InvalidAccount();
 
         _beforeTokenTransfer(address(0), account, amount);
 
@@ -199,7 +196,7 @@ contract ERC20 is IERC20 {
      * - `account` must have at least `amount` tokens.
      */
     function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), 'ZERO_ADDR');
+        if (account == address(0)) revert InvalidAccount();
 
         _beforeTokenTransfer(account, address(0), amount);
 
@@ -226,7 +223,7 @@ contract ERC20 is IERC20 {
         address spender,
         uint256 amount
     ) internal virtual {
-        require(owner != address(0) && spender != address(0), 'ZERO_ADDR');
+        if (owner == address(0) || spender == address(0)) revert InvalidAccount();
 
         allowance[owner][spender] = amount;
         emit Approval(owner, spender, amount);

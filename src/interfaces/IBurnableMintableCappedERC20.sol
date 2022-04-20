@@ -7,8 +7,7 @@ import { IERC20BurnFrom } from './IERC20BurnFrom.sol';
 import { IMintableCappedERC20 } from './IMintableCappedERC20.sol';
 
 interface IBurnableMintableCappedERC20 is IERC20Burn, IERC20BurnFrom, IMintableCappedERC20 {
-    event Frozen(address indexed owner);
-    event Unfrozen(address indexed owner);
+    error IsFrozen();
 
     function depositAddress(bytes32 salt) external view returns (address);
 

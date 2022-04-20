@@ -7,6 +7,7 @@ import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { EternalStorage } from './EternalStorage.sol';
 
 contract AxelarGatewayProxy is EternalStorage {
+    error InvalidImplementation();
     error SetupFailed();
 
     /// @dev Storage slot with the address of the current factory. `keccak256('eip1967.proxy.implementation') - 1`.
@@ -16,7 +17,7 @@ contract AxelarGatewayProxy is EternalStorage {
     constructor(address gatewayImplementation, bytes memory params) {
         _setAddress(KEY_IMPLEMENTATION, gatewayImplementation);
 
-        require(gatewayImplementation.code.length != 0, 'INVALID_IMPLEMENTATION');
+        if (gatewayImplementation.code.length == 0) revert InvalidImplementation();
 
         (bool success, ) = gatewayImplementation.delegatecall(
             abi.encodeWithSelector(IAxelarGateway.setup.selector, params)
