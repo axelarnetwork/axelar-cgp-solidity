@@ -216,6 +216,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
         (address[] memory adminAddresses, uint256 adminThreshold, address ownerAddress, address operatorAddress) = abi
             .decode(params, (address[], uint256, address, address));
 
+        // NOTE: Admin epoch is incremented to easily invalidate current admin-related state.
         uint256 adminEpoch = _adminEpoch() + uint256(1);
         _setAdminEpoch(adminEpoch);
         _setAdmins(adminEpoch, adminAddresses, adminThreshold);
@@ -266,7 +267,7 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
             isValidRecentOperator = _isValidRecentOperator(signer);
         }
 
-        for (uint256 i; i < commandsLength; i++) {
+        for (uint256 i; i < commandsLength; ++i) {
             bytes32 commandId = commandIds[i];
 
             if (isCommandExecuted(commandId)) continue; /* Ignore if duplicate commandId received */

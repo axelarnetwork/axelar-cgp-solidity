@@ -15,8 +15,8 @@ abstract contract IAxelarExecutable {
 
     function execute(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         bytes calldata payload
     ) external {
         bytes32 payloadHash = keccak256(payload);
@@ -27,10 +27,10 @@ abstract contract IAxelarExecutable {
 
     function executeWithToken(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         bytes calldata payload,
-        string memory tokenSymbol,
+        string calldata tokenSymbol,
         uint256 amount
     ) external {
         bytes32 payloadHash = keccak256(payload);

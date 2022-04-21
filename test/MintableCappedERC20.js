@@ -9,7 +9,6 @@ chai.use(solidity);
 const { expect } = chai;
 
 const CHAIN_ID = 1;
-const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
 
@@ -33,24 +32,9 @@ describe('MintableCappedERC20', () => {
     ]);
 
     const amount = 1000000;
-    await token.mint(userWallet.address, amount);
+    await token.mint(userWallet.address, amount, { gasLimit: 3000000 });
   });
 
-  describe('burnFrom', () => {
-    it('should burnFrom address after approval', async () => {
-      const issuer = userWallet.address;
-      const spender = ownerWallet.address;
-      const amount = 1000;
-
-      await expect(await token.connect(userWallet).approve(spender, amount))
-        .to.emit(token, 'Approval')
-        .withArgs(issuer, spender, amount);
-
-      await expect(await token.burnFrom(issuer, amount))
-        .to.emit(token, 'Transfer')
-        .withArgs(issuer, ADDRESS_ZERO, amount);
-    });
-  });
   describe('ERC20 Permit', () => {
     it('should should set allowance by verifying permit', async () => {
       const issuer = userWallet.address;

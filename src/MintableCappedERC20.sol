@@ -2,14 +2,14 @@
 
 pragma solidity 0.8.9;
 
-import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
+import { IMintableCappedERC20 } from './interfaces/IMintableCappedERC20.sol';
 
 import { ERC20 } from './ERC20.sol';
 import { ERC20Permit } from './ERC20Permit.sol';
 import { Ownable } from './Ownable.sol';
 
-contract MintableCappedERC20 is ERC20, ERC20Permit, Ownable, IERC20BurnFrom {
-    uint256 public cap;
+contract MintableCappedERC20 is IMintableCappedERC20, ERC20, ERC20Permit, Ownable {
+    uint256 public immutable cap;
 
     constructor(
         string memory name,
@@ -20,16 +20,13 @@ contract MintableCappedERC20 is ERC20, ERC20Permit, Ownable, IERC20BurnFrom {
         cap = capacity;
     }
 
-    function mint(address account, uint256 amount) public onlyOwner {
+    function mint(address account, uint256 amount) external onlyOwner {
         uint256 capacity = cap;
-        require(capacity == 0 || totalSupply + amount <= capacity, 'CAP_EXCEEDED');
 
         _mint(account, amount);
-    }
 
-    // TODO move burnFrom into a separate BurnableERC20 contract
-    function burnFrom(address account, uint256 amount) external onlyOwner {
-        _approve(account, owner, allowance[account][owner] - amount);
-        _burn(account, amount);
+        if (capacity == 0) return;
+
+        if (totalSupply > capacity) revert CapExceeded();
     }
 }

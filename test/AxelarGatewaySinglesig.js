@@ -223,7 +223,7 @@ describe('AxelarGatewaySingleSig', () => {
           .then(() =>
             expect(
               tokenContract.transfer(ownerWallet.address, 1),
-            ).to.be.revertedWith('IS_FROZEN'),
+            ).to.be.reverted,
           )
           .then(() =>
             expect(
@@ -246,6 +246,21 @@ describe('AxelarGatewaySingleSig', () => {
               .withArgs(nonOwnerWallet.address, ownerWallet.address, amount),
           );
       });
+
+      it('unfreeze should not count as a freeze vote', () => {
+        return expect(contract.connect(adminWallet1).freezeToken(symbol))
+          .to.not.emit(contract, 'TokenFrozen')
+          .then(() =>
+            expect(
+              contract.connect(adminWallet2).freezeToken(symbol),
+            ).to.not.emit(contract, 'TokenFrozen'),
+          )
+          .then(() =>
+            expect(
+              contract.connect(adminWallet3).unfreezeToken(symbol),
+            ).to.not.emit(contract, 'TokenFrozen').and.to.not.emit(contract, 'TokenUnfrozen'),
+          )
+      });
     });
 
     describe('freezeAllTokens and unfreezeAllTokens', () => {
@@ -265,7 +280,7 @@ describe('AxelarGatewaySingleSig', () => {
           .then(() =>
             expect(
               tokenContract.transfer(ownerWallet.address, amount / 2),
-            ).to.be.revertedWith('IS_FROZEN'),
+            ).to.be.reverted,
           )
           .then(() =>
             expect(
@@ -309,7 +324,7 @@ describe('AxelarGatewaySingleSig', () => {
           .then(() =>
             expect(
               tokenContract.transfer(ownerWallet.address, amount / 2),
-            ).to.be.revertedWith('IS_FROZEN'),
+            ).to.be.reverted,
           )
           .then(() =>
             expect(
@@ -865,6 +880,7 @@ describe('AxelarGatewaySingleSig', () => {
 
         return tokenContract
           .transfer(depositHandlerAddress, burnAmount)
+          .then(() => ownerWallet.sendTransaction({ to: depositHandlerAddress, value: 1 }))  // TODO: make this ETH injection its own test
           .then(() => getSignedExecuteInput(dataFirstBurn, ownerWallet))
           .then((input) =>
             expect(contract.execute(input))
