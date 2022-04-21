@@ -2,9 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import { IERC20 } from './IERC20.sol';
-
-interface IERC20Permit is IERC20 {
+interface IERC20Permit {
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 
     function nonces(address account) external view returns (uint256);
