@@ -5,6 +5,8 @@ pragma solidity 0.8.9;
 import { IERC20 } from '../interfaces/IERC20.sol';
 
 contract TokenSwapper {
+    error WrongTokenPair();
+
     address tokenA;
     address tokenB;
 
@@ -22,10 +24,12 @@ contract TokenSwapper {
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
 
         if (tokenAddress == tokenA) {
-            require(toTokenAddress == tokenB, 'WRONG TOKEN PAIR');
+            if (toTokenAddress != tokenB) revert WrongTokenPair();
+
             convertedAmount = amount * 2;
         } else {
-            require(tokenAddress == tokenB && toTokenAddress == tokenA, 'WRONG TOKEN PAIR');
+            if (tokenAddress != tokenB || toTokenAddress != tokenA) revert WrongTokenPair();
+
             convertedAmount = amount / 2;
         }
 

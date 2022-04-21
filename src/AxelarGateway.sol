@@ -4,18 +4,20 @@ pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
+import { IERC20Burn } from './interfaces/IERC20Burn.sol';
 import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
+import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
+import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
-import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
-import { TokenDeployer } from './TokenDeployer.sol';
 
 abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     error NotSelf();
     error InvalidCodeHash();
     error SetupFailed();
     error InvalidAmount();
+    error InvalidTokenDeployer();
     error TokenDoesNotExist(string symbol);
     error TokenAlreadyExists(string symbol);
     error TokenDeployFailed(string symbol);
@@ -41,7 +43,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
 
     // AUDIT: slot names should be prefixed with some standard string
-    // AUDIT: constants should be literal and their derivation should be in comments
     bytes32 internal constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
@@ -64,6 +65,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
     constructor(address tokenDeployerImplementation) {
+        if (tokenDeployerImplementation.code.length == 0) revert InvalidTokenDeployer();
+
         TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation;
     }
 
@@ -78,9 +81,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \******************/
 
     function sendToken(
-        string memory destinationChain,
-        string memory destinationAddress,
-        string memory symbol,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        string calldata symbol,
         uint256 amount
     ) external {
         _burnTokenFrom(msg.sender, symbol, amount);
@@ -88,18 +91,18 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     function callContract(
-        string memory destinationChain,
-        string memory destinationContractAddress,
-        bytes memory payload
+        string calldata destinationChain,
+        string calldata destinationContractAddress,
+        bytes calldata payload
     ) external {
         emit ContractCall(msg.sender, destinationChain, destinationContractAddress, keccak256(payload), payload);
     }
 
     function callContractWithToken(
-        string memory destinationChain,
-        string memory destinationContractAddress,
-        bytes memory payload,
-        string memory symbol,
+        string calldata destinationChain,
+        string calldata destinationContractAddress,
+        bytes calldata payload,
+        string calldata symbol,
         uint256 amount
     ) external {
         _burnTokenFrom(msg.sender, symbol, amount);
@@ -116,8 +119,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function isContractCallApproved(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         address contractAddress,
         bytes32 payloadHash
     ) external view override returns (bool) {
@@ -127,11 +130,11 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function isContractCallAndMintApproved(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         address contractAddress,
         bytes32 payloadHash,
-        string memory symbol,
+        string calldata symbol,
         uint256 amount
     ) external view override returns (bool) {
         return
@@ -150,8 +153,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function validateContractCall(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         bytes32 payloadHash
     ) external override returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash);
@@ -161,10 +164,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function validateContractCallAndMint(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         bytes32 payloadHash,
-        string memory symbol,
+        string calldata symbol,
         uint256 amount
     ) external override returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedWithMintKey(
@@ -187,7 +190,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Getters *|
     \***********/
 
-    function allTokensFrozen() public view override returns (bool) {
+    function allTokensFrozen() external view override returns (bool) {
         return getBool(KEY_ALL_TOKENS_FROZEN);
     }
 
@@ -222,7 +225,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         uint256 adminCount = _getAdminCount(epoch);
         results = new address[](adminCount);
 
-        for (uint256 i; i < adminCount; i++) {
+        for (uint256 i; i < adminCount; ++i) {
             results[i] = _getAdmin(epoch, i);
         }
     }
@@ -231,13 +234,13 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Admin Functions *|
     \*******************/
 
-    function freezeToken(string memory symbol) external override onlyAdmin {
+    function freezeToken(string calldata symbol) external override onlyAdmin {
         _setBool(_getFreezeTokenKey(symbol), true);
 
         emit TokenFrozen(symbol);
     }
 
-    function unfreezeToken(string memory symbol) external override onlyAdmin {
+    function unfreezeToken(string calldata symbol) external override onlyAdmin {
         _setBool(_getFreezeTokenKey(symbol), false);
 
         emit TokenUnfrozen(symbol);
@@ -266,7 +269,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
         //        if `upgrade` is entered within the context of _this_ implementation itself.
-        if (setupParams.length > 0) {
+        if (setupParams.length != 0) {
             (bool success, ) = newImplementation.delegatecall(
                 abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams)
             );
@@ -323,14 +326,14 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             abi.encodeWithSelector(
                 IERC20.transferFrom.selector,
                 sender,
-                BurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0)),
+                IBurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0)),
                 amount
             )
         );
 
         if (!burnSuccess) revert BurnFailed(symbol);
 
-        BurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
+        IERC20Burn(tokenAddress).burn(bytes32(0));
     }
 
     function _deployToken(
@@ -348,7 +351,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             bytes32 salt = keccak256(abi.encodePacked(symbol));
 
             (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
-                abi.encodeWithSelector(TokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
+                abi.encodeWithSelector(ITokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
             );
 
             if (!success) revert TokenDeployFailed(symbol);
@@ -357,7 +360,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
             _setTokenType(symbol, TokenType.InternalBurnableFrom);
         } else {
-            // If token address is specified, ensure that there is a contact at the specified addressed.
+            // If token address is specified, ensure that there is a contact at the specified address.
             if (tokenAddress.code.length == uint256(0)) revert TokenContractDoesNotExist(tokenAddress);
 
             // Mark that this symbol is an external token, which is needed to differentiate between operations on mint and burn.
@@ -388,7 +391,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
             if (!success) revert MintFailed(symbol);
         } else {
-            BurnableMintableCappedERC20(tokenAddress).mint(account, amount);
+            IBurnableMintableCappedERC20(tokenAddress).mint(account, amount);
         }
     }
 
@@ -414,9 +417,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool))))
                 revert BurnFailed(symbol);
 
+            // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
             depositHandler.destroy(address(this));
         } else {
-            BurnableMintableCappedERC20(tokenAddress).burn(salt);
+            IERC20Burn(tokenAddress).burn(salt);
         }
     }
 
@@ -556,7 +560,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     function _checkTokenStatus(string memory symbol) internal view {
-        if (getBool(_getFreezeTokenKey(symbol)) || getBool(KEY_ALL_TOKENS_FROZEN)) revert TokenIsFrozen(symbol);
+        if (tokenFrozen(symbol) || getBool(KEY_ALL_TOKENS_FROZEN)) revert TokenIsFrozen(symbol);
     }
 
     /********************\

@@ -11,7 +11,7 @@ library AddressFormat {
         byteString[0] = '0';
         byteString[1] = 'x';
 
-        for (uint256 i = 0; i < data.length; i++) {
+        for (uint256 i; i < data.length; ++i) {
             byteString[2 + i * 2] = characters[uint256(uint8(data[i] >> 4))];
             byteString[3 + i * 2] = characters[uint256(uint8(data[i] & 0x0f))];
         }

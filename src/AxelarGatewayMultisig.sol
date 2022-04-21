@@ -21,7 +21,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
     error InvalidCommands();
 
     // AUDIT: slot names should be prefixed with some standard string
-    // AUDIT: constants should be literal and their derivation should be in comments
     bytes32 internal constant KEY_OWNER_EPOCH = keccak256('owner-epoch');
 
     bytes32 internal constant PREFIX_OWNER = keccak256('owner');
@@ -115,7 +114,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         uint256 threshold = _getOwnerThreshold(epoch);
         uint256 validSignerCount;
 
-        for (uint256 i; i < accounts.length; i++) {
+        for (uint256 i; i < accounts.length; ++i) {
             if (_isOwner(epoch, accounts[i]) && ++validSignerCount >= threshold) return true;
         }
 
@@ -137,7 +136,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         uint256 ownerCount = _getOwnerCount(epoch);
         results = new address[](ownerCount);
 
-        for (uint256 i; i < ownerCount; i++) {
+        for (uint256 i; i < ownerCount; ++i) {
             results[i] = _getOwner(epoch, i);
         }
     }
@@ -178,7 +177,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         _setOwnerThreshold(epoch, threshold);
         _setOwnerCount(epoch, accountLength);
 
-        for (uint256 i; i < accountLength; i++) {
+        for (uint256 i; i < accountLength; ++i) {
             address account = accounts[i];
 
             // Check that the account wasn't already set as an owner for this ownerEpoch.
@@ -186,7 +185,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
             if (account == address(0)) revert InvalidOwners();
 
-            // Set this account as the i-th owner in this ownerEpoch (needed to we can get all the owners for `owners`).
+            // Set this account as the i-th owner in this ownerEpoch (needed so we can get all the owners for `owners`).
             _setOwner(epoch, i, account);
             _setIsOwner(epoch, account, true);
         }
@@ -270,7 +269,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         uint256 threshold = _getOperatorThreshold(epoch);
         uint256 validSignerCount;
 
-        for (uint256 i; i < accounts.length; i++) {
+        for (uint256 i; i < accounts.length; ++i) {
             if (_isOperator(epoch, accounts[i]) && ++validSignerCount >= threshold) return true;
         }
 
@@ -292,7 +291,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         uint256 operatorCount = _getOperatorCount(epoch);
         results = new address[](operatorCount);
 
-        for (uint256 i; i < operatorCount; i++) {
+        for (uint256 i; i < operatorCount; ++i) {
             results[i] = _getOperator(epoch, i);
         }
     }
@@ -331,7 +330,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
         _setOperatorThreshold(epoch, threshold);
         _setOperatorCount(epoch, accountLength);
 
-        for (uint256 i; i < accountLength; i++) {
+        for (uint256 i; i < accountLength; ++i) {
             address account = accounts[i];
 
             // Check that the account wasn't already set as an operator for this operatorEpoch.
@@ -339,7 +338,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
             if (account == address(0)) revert InvalidOperators();
 
-            // Set this account as the i-th operator in this operatorEpoch (needed to we can get all the operators for `operators`).
+            // Set this account as the i-th operator in this operatorEpoch (needed so we can get all the operators for `operators`).
             _setOperator(epoch, i, account);
             _setIsOperator(epoch, account, true);
         }
@@ -467,6 +466,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             uint256 newOperatorThreshold
         ) = abi.decode(params, (address[], uint256, address[], uint256, address[], uint256));
 
+        // NOTE: Admin epoch is incremented to easily invalidate current admin-related state.
         uint256 newAdminEpoch = _adminEpoch() + uint256(1);
         _setAdminEpoch(newAdminEpoch);
         _setAdmins(newAdminEpoch, adminAddresses, newAdminThreshold);
@@ -494,8 +494,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         address[] memory signers = new address[](signatureCount);
 
-        for (uint256 i; i < signatureCount; i++) {
-            signers[i] = ECDSA.recover(ECDSA.toEthSignedMessageHash(keccak256(data)), signatures[i]);
+        bytes32 messageHash = ECDSA.toEthSignedMessageHash(keccak256(data));
+
+        for (uint256 i; i < signatureCount; ++i) {
+            signers[i] = ECDSA.recover(messageHash, signatures[i]);
         }
 
         (
@@ -525,7 +527,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             areValidRecentOperators = _areValidRecentOperators(signers);
         }
 
-        for (uint256 i; i < commandsLength; i++) {
+        for (uint256 i; i < commandsLength; ++i) {
             bytes32 commandId = commandIds[i];
 
             if (isCommandExecuted(commandId)) continue; /* Ignore if duplicate commandId received */
