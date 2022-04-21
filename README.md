@@ -9,22 +9,6 @@ send arbitrary messages between EVM chains.
 Axelar network's decentralized validators confirm events emitted on EVM chains (such as deposit confirmation and message send),
 and sign off on commands submitted (by automated services) to the gateway smart contracts (such as minting token, and approving message on the destination).
 
-## Design Notes
-
-- `AxelarGatewayMultisig.execute()` takes a signed batched of commands.
-  Each command has a corresponding `commandID`. This is guaranteed to be unique from the Axelar network. `execute` intentionally allows retrying
-  a `commandID` if the `command` failed to be processed; this is because commands are state dependent, and someone might submit command 2 before command 1 causing it to fail.
-- Axelar network supports sending any Cosmos/ERC-20 token to any other Cosmos/EVM chain.
-- Supported tokens have 3 different types:
-    - `External`: An external ERC-20 token on it's native chain is registered as external, e.g. `USDC` on Ethereum.
-    - `InternalBurnableFrom`: Axelar wrapped tokens that are minted by the Axelar network when transferring over the original token, e.g. `axlATOM`, `axlUSDC` on Avalanche.
-    - `InternalBurnable`: `v1.0.0` version of Axelar wrapped tokens that used a different deposit address contract, e.g. `UST` (native to Terra) on Avalanche.
-      New tokens cannot be of this type, and this is only present for legacy support.
-- Deploying gateway contract:
-    - Deploy the `TokenDeployer` contract.
-    - Deploy the `AxelarGatewayMultisig` contract with the token deployer address.
-    - Deploy the `AxelarGatewayProxy` contract with the implementation contract address (from above) and `setup` params obtained from the current network state.
-
 ## Example flows
 
 ### Token transfer
@@ -61,6 +45,22 @@ and sign off on commands submitted (by automated services) to the gateway smart 
 ### Cross-chain NFT transfer/minter
 
 See this [example](https://github.com/axelarnetwork/axelar-local-dev-sample/tree/main/examples/nft-linker) cross-chain NFT application.
+
+## Design Notes
+
+- `AxelarGatewayMultisig.execute()` takes a signed batched of commands.
+  Each command has a corresponding `commandID`. This is guaranteed to be unique from the Axelar network. `execute` intentionally allows retrying
+  a `commandID` if the `command` failed to be processed; this is because commands are state dependent, and someone might submit command 2 before command 1 causing it to fail.
+- Axelar network supports sending any Cosmos/ERC-20 token to any other Cosmos/EVM chain.
+- Supported tokens have 3 different types:
+    - `External`: An external ERC-20 token on it's native chain is registered as external, e.g. `USDC` on Ethereum.
+    - `InternalBurnableFrom`: Axelar wrapped tokens that are minted by the Axelar network when transferring over the original token, e.g. `axlATOM`, `axlUSDC` on Avalanche.
+    - `InternalBurnable`: `v1.0.0` version of Axelar wrapped tokens that used a different deposit address contract, e.g. `UST` (native to Terra) on Avalanche.
+      New tokens cannot be of this type, and this is only present for legacy support.
+- Deploying gateway contract:
+    - Deploy the `TokenDeployer` contract.
+    - Deploy the `AxelarGatewayMultisig` contract with the token deployer address.
+    - Deploy the `AxelarGatewayProxy` contract with the implementation contract address (from above) and `setup` params obtained from the current network state.
 
 ## Smart Contracts
 
