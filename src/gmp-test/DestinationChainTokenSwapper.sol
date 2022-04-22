@@ -4,15 +4,15 @@ pragma solidity 0.8.9;
 
 import { IERC20 } from '../interfaces/IERC20.sol';
 
-contract ChainBTokenSwapper {
+contract DestinationChainTokenSwapper {
     error WrongTokenPair();
 
-    address tokenX;
-    address tokenY;
+    address tokenA;
+    address tokenB;
 
-    constructor(address tokenX_, address tokenY_) {
-        tokenX = tokenX_;
-        tokenY = tokenY_;
+    constructor(address tokenA_, address tokenB_) {
+        tokenA = tokenA_;
+        tokenB = tokenB_;
     }
 
     function swap(
@@ -23,12 +23,12 @@ contract ChainBTokenSwapper {
     ) external returns (uint256 convertedAmount) {
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
 
-        if (tokenAddress == tokenX) {
-            if (toTokenAddress != tokenY) revert WrongTokenPair();
+        if (tokenAddress == tokenA) {
+            if (toTokenAddress != tokenB) revert WrongTokenPair();
 
             convertedAmount = amount * 2;
         } else {
-            if (tokenAddress != tokenY || toTokenAddress != tokenX) revert WrongTokenPair();
+            if (tokenAddress != tokenB || toTokenAddress != tokenA) revert WrongTokenPair();
 
             convertedAmount = amount / 2;
         }

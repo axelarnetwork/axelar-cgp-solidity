@@ -6,7 +6,7 @@ import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IAxelarGasReceiver } from '../interfaces/IAxelarGasReceiver.sol';
 import { IERC20 } from '../interfaces/IERC20.sol';
 
-contract ChainASwapCaller {
+contract SourceChainSwapCaller {
     IAxelarGateway public gateway;
     IAxelarGasReceiver public gasReceiver;
     string public destinationChain;

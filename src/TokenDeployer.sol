@@ -6,7 +6,7 @@ import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
 import { BurnableMintableCappedERC20 } from './BurnableMintableCappedERC20.sol';
 
-contract TokenDeployer is ITokenDeployer{
+contract TokenDeployer is ITokenDeployer {
     function deployToken(
         string calldata name,
         string calldata symbol,
