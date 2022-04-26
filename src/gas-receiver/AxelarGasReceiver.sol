@@ -38,8 +38,9 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         string calldata destinationAddress,
         bytes calldata payload,
         address gasToken,
-        uint256 gasFeeAmount
-    ) external {
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external override {
         _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
 
         emit GasPaidForContractCall(
@@ -48,7 +49,8 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
             destinationAddress,
             keccak256(payload),
             gasToken,
-            gasFeeAmount
+            gasFeeAmount,
+            refundAddress
         );
     }
 
@@ -58,13 +60,16 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         string calldata destinationChain,
         string calldata destinationAddress,
         bytes calldata payload,
-        string calldata symbol,
+        string memory symbol,
         uint256 amount,
         address gasToken,
-        uint256 gasFeeAmount
-    ) external {
-        _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
-
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external override {
+        {
+            _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
+        }
+        
         emit GasPaidForContractCallWithToken(
             sender,
             destinationChain,
@@ -73,7 +78,8 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
             symbol,
             amount,
             gasToken,
-            gasFeeAmount
+            gasFeeAmount,
+            refundAddress
         );
     }
 
@@ -82,11 +88,19 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         address sender,
         string calldata destinationChain,
         string calldata destinationAddress,
-        bytes calldata payload
-    ) external payable {
+        bytes calldata payload,
+        address refundAddress
+    ) external payable override {
         if (msg.value == 0) revert NothingReceived();
 
-        emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value);
+        emit NativeGasPaidForContractCall(
+            sender, 
+            destinationChain, 
+            destinationAddress, 
+            keccak256(payload), 
+            msg.value,
+            refundAddress
+        );
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
@@ -96,8 +110,9 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         string calldata destinationAddress,
         bytes calldata payload,
         string calldata symbol,
-        uint256 amount
-    ) external payable {
+        uint256 amount,
+        address refundAddress
+    ) external payable override {
         if (msg.value == 0) revert NothingReceived();
 
         emit NativeGasPaidForContractCallWithToken(
@@ -107,7 +122,8 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
             keccak256(payload),
             symbol,
             amount,
-            msg.value
+            msg.value,
+            refundAddress
         );
     }
 

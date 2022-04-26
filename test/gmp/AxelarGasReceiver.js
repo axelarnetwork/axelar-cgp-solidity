@@ -79,6 +79,7 @@ describe('AxelarGasReceiver', () => {
             payload,
             gasToken,
             gasFeeAmount,
+            userWallet.address
           ),
       )
         .to.emit(gasReceiver, 'GasPaidForContractCall')
@@ -89,6 +90,7 @@ describe('AxelarGasReceiver', () => {
           payloadHash,
           gasToken,
           gasFeeAmount,
+          userWallet.address,
         )
         .and.to.emit(testToken, 'Transfer')
         .withArgs(userWallet.address, gasReceiver.address, gasFeeAmount);
@@ -105,6 +107,7 @@ describe('AxelarGasReceiver', () => {
             amount,
             gasToken,
             gasFeeAmount,
+            userWallet.address,
           ),
       )
         .to.emit(gasReceiver, 'GasPaidForContractCallWithToken')
@@ -117,6 +120,7 @@ describe('AxelarGasReceiver', () => {
           amount,
           gasToken,
           gasFeeAmount,
+          userWallet.address,
         )
         .and.to.emit(testToken, 'Transfer')
         .withArgs(userWallet.address, gasReceiver.address, gasFeeAmount);
@@ -129,6 +133,7 @@ describe('AxelarGasReceiver', () => {
             destinationChain,
             destinationAddress,
             payload,
+            userWallet.address,
             { value: nativeGasFeeAmount },
           ),
       )
@@ -139,6 +144,7 @@ describe('AxelarGasReceiver', () => {
           destinationAddress,
           payloadHash,
           nativeGasFeeAmount,
+          userWallet.address
         )
         .and.to.changeEtherBalance(gasReceiver, nativeGasFeeAmount);
 
@@ -152,6 +158,7 @@ describe('AxelarGasReceiver', () => {
             payload,
             symbol,
             amount,
+            userWallet.address,
             { value: nativeGasFeeAmount },
           ),
       )
@@ -164,6 +171,7 @@ describe('AxelarGasReceiver', () => {
           symbol,
           amount,
           nativeGasFeeAmount,
+          userWallet.address,
         )
         .and.to.changeEtherBalance(gasReceiver, nativeGasFeeAmount);
     });
@@ -192,6 +200,7 @@ describe('AxelarGasReceiver', () => {
           payload,
           gasToken,
           gasFeeAmount,
+          userWallet.address,
         );
 
       await gasReceiver
@@ -205,6 +214,7 @@ describe('AxelarGasReceiver', () => {
           amount,
           gasToken,
           gasFeeAmount,
+          userWallet.address,
         );
 
       await gasReceiver
@@ -214,6 +224,7 @@ describe('AxelarGasReceiver', () => {
           destinationChain,
           destinationAddress,
           payload,
+          userWallet.address,
           { value: nativeGasFeeAmount },
         );
 
@@ -224,6 +235,7 @@ describe('AxelarGasReceiver', () => {
           destinationChain,
           destinationAddress,
           payload,
+          userWallet.address,
           { value: nativeGasFeeAmount },
         );
 
