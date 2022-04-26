@@ -263,7 +263,7 @@ describe('GeneralMessagePassing', () => {
           swapAmount,
           sourceChainTokenA.address,
           gasFeeAmount,
-          userWallet.address
+          userWallet.address,
         )
         .and.to.emit(sourceChainGateway, 'ContractCallWithToken')
         .withArgs(

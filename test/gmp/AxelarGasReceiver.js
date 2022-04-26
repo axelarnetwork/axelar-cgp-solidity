@@ -79,7 +79,7 @@ describe('AxelarGasReceiver', () => {
             payload,
             gasToken,
             gasFeeAmount,
-            userWallet.address
+            userWallet.address,
           ),
       )
         .to.emit(gasReceiver, 'GasPaidForContractCall')
@@ -144,7 +144,7 @@ describe('AxelarGasReceiver', () => {
           destinationAddress,
           payloadHash,
           nativeGasFeeAmount,
-          userWallet.address
+          userWallet.address,
         )
         .and.to.changeEtherBalance(gasReceiver, nativeGasFeeAmount);
 
