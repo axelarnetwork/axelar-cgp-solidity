@@ -9,6 +9,19 @@ send arbitrary messages between EVM chains.
 Axelar network's decentralized validators confirm events emitted on EVM chains (such as deposit confirmation and message send),
 and sign off on commands submitted (by automated services) to the gateway smart contracts (such as minting token, and approving message on the destination).
 
+## Build
+
+```bash
+npm ci
+
+npm run build
+
+# Might need
+# npm install mocha -g
+
+npm run test  # Test with mocha
+```
+
 ## Example flows
 
 ### Token transfer
@@ -150,19 +163,6 @@ Storage contract for the proxy.
 #### ECDSA.sol
 
 Modified version of OpenZeppelin ECDSA signature authentication check.
-
-## Build
-
-```bash
-npm ci
-
-npm run build
-
-# Might need
-# npm install mocha -g
-
-npm run test  # Test with mocha
-```
 
 ## References
 
