@@ -105,6 +105,12 @@ interface IAxelarGasReceiver {
 
     function collectFees(address payable receiver, address[] calldata tokens) external;
 
+    function refund(
+        address payable receiver,
+        address token,
+        uint256 amount
+    ) external;
+
     function setup(bytes calldata data) external;
 
     function upgrade(

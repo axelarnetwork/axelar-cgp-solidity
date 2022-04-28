@@ -176,7 +176,7 @@ describe('AxelarGasReceiver', () => {
         .and.to.changeEtherBalance(gasReceiver, nativeGasFeeAmount);
     });
 
-    it('should allow to collect accumulated payments', async () => {
+    it('should allow to collect accumulated payments and refund', async () => {
       const destinationChain = 'ethereum';
       const destinationAddress = ownerWallet.address;
       const payload = defaultAbiCoder.encode(
@@ -242,6 +242,32 @@ describe('AxelarGasReceiver', () => {
       await expect(
         gasReceiver
           .connect(userWallet)
+          .refund(userWallet.address, ADDRESS_ZERO, nativeGasFeeAmount),
+      ).to.be.reverted;
+
+      await expect(
+        await gasReceiver
+          .connect(ownerWallet)
+          .refund(userWallet.address, ADDRESS_ZERO, nativeGasFeeAmount),
+      ).to.changeEtherBalance(userWallet, nativeGasFeeAmount);
+
+      await expect(
+        gasReceiver
+          .connect(userWallet)
+          .refund(userWallet.address, testToken.address, gasFeeAmount),
+      ).to.be.reverted;
+
+      await expect(
+        await gasReceiver
+          .connect(ownerWallet)
+          .refund(userWallet.address, testToken.address, gasFeeAmount),
+      )
+        .and.to.emit(testToken, 'Transfer')
+        .withArgs(gasReceiver.address, userWallet.address, gasFeeAmount);
+
+      await expect(
+        gasReceiver
+          .connect(userWallet)
           .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address]),
       ).to.be.reverted;
 
@@ -250,9 +276,9 @@ describe('AxelarGasReceiver', () => {
           .connect(ownerWallet)
           .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address]),
       )
-        .to.changeEtherBalance(ownerWallet, nativeGasFeeAmount.mul(2))
+        .to.changeEtherBalance(ownerWallet, nativeGasFeeAmount)
         .and.to.emit(testToken, 'Transfer')
-        .withArgs(gasReceiver.address, ownerWallet.address, gasFeeAmount * 2);
+        .withArgs(gasReceiver.address, ownerWallet.address, gasFeeAmount);
     });
 
     it('should upgrade the gas receiver implementation', async () => {

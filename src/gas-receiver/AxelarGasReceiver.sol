@@ -69,7 +69,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         {
             _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
         }
-        
+
         emit GasPaidForContractCallWithToken(
             sender,
             destinationChain,
@@ -94,10 +94,10 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         if (msg.value == 0) revert NothingReceived();
 
         emit NativeGasPaidForContractCall(
-            sender, 
-            destinationChain, 
-            destinationAddress, 
-            keccak256(payload), 
+            sender,
+            destinationChain,
+            destinationAddress,
+            keccak256(payload),
             msg.value,
             refundAddress
         );
@@ -137,6 +137,18 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
                 uint256 amount = IERC20(token).balanceOf(address(this));
                 IERC20(token).transfer(receiver, amount);
             }
+        }
+    }
+
+    function refund(
+        address payable receiver,
+        address token,
+        uint256 amount
+    ) external onlyOwner {
+        if (token == address(0)) {
+            receiver.transfer(amount);
+        } else {
+            IERC20(token).transfer(receiver, amount);
         }
     }
 
