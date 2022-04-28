@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 
 import { IERC20 } from '../interfaces/IERC20.sol';
 
-contract TokenSwapper {
+contract DestinationChainTokenSwapper {
     error WrongTokenPair();
 
     address tokenA;
@@ -17,8 +17,8 @@ contract TokenSwapper {
 
     function swap(
         address tokenAddress,
-        uint256 amount,
         address toTokenAddress,
+        uint256 amount,
         address recipient
     ) external returns (uint256 convertedAmount) {
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);

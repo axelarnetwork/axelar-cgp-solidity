@@ -29,8 +29,7 @@ const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
 const DepositHandler = require('../build/DepositHandler.json');
-const DestinationSwapExecutable = require('../build/DestinationSwapExecutable.json');
-const TokenSwapper = require('../build/TokenSwapper.json');
+
 const {
   bigNumberToNumber,
   getSignedExecuteInput,
@@ -1868,12 +1867,100 @@ describe('AxelarGatewaySingleSig', () => {
     });
   });
 
-  describe('external contract execution', () => {
-    it('should approve to call external TokenSwapper contract', async () => {
+  describe('external contract approval and execution', () => {
+    it('should approve and validate contract call', async () => {
+      const payload = defaultAbiCoder.encode(
+        ['address'],
+        [nonOwnerWallet.address],
+      );
+      const payloadHash = keccak256(payload);
+      const commandId = getRandomID();
+      const sourceChain = 'polygon';
+      const sourceAddress = 'address0x123';
+      const sourceTxHash = keccak256('0x123abc123abc');
+      const sourceEventIndex = 17;
+
+      const approveWithMintData = arrayify(
+        defaultAbiCoder.encode(
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [
+            CHAIN_ID,
+            ROLE_OWNER,
+            [commandId],
+            ['approveContractCall'],
+            [
+              defaultAbiCoder.encode(
+                [
+                  'string',
+                  'string',
+                  'address',
+                  'bytes32',
+                  'bytes32',
+                  'uint256',
+                ],
+                [
+                  sourceChain,
+                  sourceAddress,
+                  nonOwnerWallet.address,
+                  payloadHash,
+                  sourceTxHash,
+                  sourceEventIndex,
+                ],
+              ),
+            ],
+          ],
+        ),
+      );
+
+      const approveExecute = await contract.execute(
+        await getSignedExecuteInput(approveWithMintData, ownerWallet),
+      );
+
+      await expect(approveExecute)
+        .to.emit(contract, 'ContractCallApproved')
+        .withArgs(
+          commandId,
+          sourceChain,
+          sourceAddress,
+          nonOwnerWallet.address,
+          payloadHash,
+          sourceTxHash,
+          sourceEventIndex,
+        );
+
+      await contract
+        .isContractCallApproved(
+          commandId,
+          sourceChain,
+          sourceAddress,
+          nonOwnerWallet.address,
+          payloadHash,
+        )
+        .then((result) => expect(result).to.be.true);
+
+      await contract
+        .connect(nonOwnerWallet)
+        .validateContractCall(
+          commandId,
+          sourceChain,
+          sourceAddress,
+          payloadHash,
+        );
+
+      await contract
+        .isContractCallApproved(
+          commandId,
+          sourceChain,
+          sourceAddress,
+          nonOwnerWallet.address,
+          payloadHash,
+        )
+        .then((result) => expect(result).to.be.false);
+    });
+
+    it('should approve and validate contract call with token', async () => {
       const nameA = 'testA';
       const symbolA = 'testA';
-      const nameB = 'testB';
-      const symbolB = 'testB';
       const decimals = 16;
       const capacity = 0;
 
@@ -1884,26 +1971,7 @@ describe('AxelarGatewaySingleSig', () => {
         capacity,
       ]);
 
-      const tokenB = await deployContract(ownerWallet, MintableCappedERC20, [
-        nameB,
-        symbolB,
-        decimals,
-        capacity,
-      ]);
-
-      const swapper = await deployContract(ownerWallet, TokenSwapper, [
-        tokenA.address,
-        tokenB.address,
-      ]);
-
-      const swapExecutable = await deployContract(
-        ownerWallet,
-        DestinationSwapExecutable,
-        [contract.address, swapper.address],
-      );
-
       await tokenA.mint(contract.address, 1e6);
-      await tokenB.mint(swapper.address, 1e6);
 
       const deployTokenData = arrayify(
         defaultAbiCoder.encode(
@@ -1931,10 +1999,10 @@ describe('AxelarGatewaySingleSig', () => {
 
       const payload = defaultAbiCoder.encode(
         ['address', 'address'],
-        [tokenB.address, nonOwnerWallet.address],
+        [tokenA.address, nonOwnerWallet.address],
       );
       const payloadHash = keccak256(payload);
-      const swapAmount = 20000;
+      const mintAmount = 20000;
       const commandId = getRandomID();
       const sourceChain = 'polygon';
       const sourceAddress = 'address0x123';
@@ -1964,10 +2032,10 @@ describe('AxelarGatewaySingleSig', () => {
                 [
                   sourceChain,
                   sourceAddress,
-                  swapExecutable.address,
+                  nonOwnerWallet.address,
                   payloadHash,
                   symbolA,
-                  swapAmount,
+                  mintAmount,
                   sourceTxHash,
                   sourceEventIndex,
                 ],
@@ -1987,10 +2055,10 @@ describe('AxelarGatewaySingleSig', () => {
           commandId,
           sourceChain,
           sourceAddress,
-          swapExecutable.address,
+          nonOwnerWallet.address,
           payloadHash,
           symbolA,
-          swapAmount,
+          mintAmount,
           sourceTxHash,
           sourceEventIndex,
         );
@@ -2000,37 +2068,37 @@ describe('AxelarGatewaySingleSig', () => {
           commandId,
           sourceChain,
           sourceAddress,
-          swapExecutable.address,
+          nonOwnerWallet.address,
           payloadHash,
           symbolA,
-          swapAmount,
+          mintAmount,
         )
         .then((result) => expect(result).to.be.true);
 
-      const swap = await swapExecutable.executeWithToken(
-        commandId,
-        sourceChain,
-        sourceAddress,
-        payload,
-        symbolA,
-        swapAmount,
-      );
+      const contractCallWithToken = await contract
+        .connect(nonOwnerWallet)
+        .validateContractCallAndMint(
+          commandId,
+          sourceChain,
+          sourceAddress,
+          payloadHash,
+          symbolA,
+          mintAmount,
+        );
 
-      await expect(swap)
+      await expect(contractCallWithToken)
         .to.emit(tokenA, 'Transfer')
-        .withArgs(contract.address, swapExecutable.address, swapAmount)
-        .and.to.emit(tokenB, 'Transfer')
-        .withArgs(swapper.address, nonOwnerWallet.address, swapAmount * 2);
+        .withArgs(contract.address, nonOwnerWallet.address, mintAmount);
 
       await contract
         .isContractCallAndMintApproved(
           commandId,
           sourceChain,
           sourceAddress,
-          swapExecutable.address,
+          nonOwnerWallet.address,
           payloadHash,
           symbolA,
-          swapAmount,
+          mintAmount,
         )
         .then((result) => expect(result).to.be.false);
     });

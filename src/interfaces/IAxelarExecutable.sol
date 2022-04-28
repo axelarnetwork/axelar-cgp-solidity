@@ -20,7 +20,7 @@ abstract contract IAxelarExecutable {
         bytes calldata payload
     ) external {
         bytes32 payloadHash = keccak256(payload);
-        if (!IAxelarGateway(gateway).validateContractCall(commandId, sourceChain, sourceAddress, payloadHash))
+        if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, payloadHash))
             revert NotApprovedByGateway();
         _execute(sourceChain, sourceAddress, payload);
     }
@@ -35,7 +35,7 @@ abstract contract IAxelarExecutable {
     ) external {
         bytes32 payloadHash = keccak256(payload);
         if (
-            !IAxelarGateway(gateway).validateContractCallAndMint(
+            !gateway.validateContractCallAndMint(
                 commandId,
                 sourceChain,
                 sourceAddress,
@@ -46,10 +46,6 @@ abstract contract IAxelarExecutable {
         ) revert NotApprovedByGateway();
 
         _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
-    }
-
-    function _getTokenAddress(string memory tokenSymbol) internal view returns (address) {
-        return IAxelarGateway(gateway).tokenAddresses(tokenSymbol);
     }
 
     function _execute(
