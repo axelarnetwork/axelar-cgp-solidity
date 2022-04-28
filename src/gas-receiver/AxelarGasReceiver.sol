@@ -135,7 +135,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
                 receiver.transfer(address(this).balance);
             } else {
                 uint256 amount = IERC20(token).balanceOf(address(this));
-                IERC20(token).transfer(receiver, amount);
+                _safeTransfer(token, receiver, amount);
             }
         }
     }
@@ -148,7 +148,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         if (token == address(0)) {
             receiver.transfer(amount);
         } else {
-            IERC20(token).transfer(receiver, amount);
+            _safeTransfer(token, receiver, amount);
         }
     }
 
@@ -183,6 +183,19 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
                 sstore(_OWNER_SLOT, newOwner)
             }
         }
+    }
+
+    function _safeTransfer(
+        address tokenAddress,
+        address receiver,
+        uint256 amount
+    ) internal {
+        (bool success, bytes memory returnData) = tokenAddress.call(
+            abi.encodeWithSelector(IERC20.transfer.selector, receiver, amount)
+        );
+        bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
+
+        if (!transferred) revert TransferFailed();
     }
 
     function _safeTransferFrom(
