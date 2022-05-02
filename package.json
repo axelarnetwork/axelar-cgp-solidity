@@ -9,7 +9,7 @@
     "build": "rm -rf build && waffle waffle.json",
     "lint": "solhint 'src/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'test/**/*.js' && prettier --write 'src/**/*.sol'",
-    "flatten": "bash scripts/flatten-contracts.sh && prettier --write 'flattened/**/*.sol'"
+    "flatten": "rm -rf flattened && waffle waffle.json flatten"
   },
   "repository": {
     "type": "git",
@@ -37,8 +37,7 @@
     "mocha": "^9.1.3",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
-    "solhint": "^3.3.6",
-    "@poanet/solidity-flattener": "^3.0.7"
+    "solhint": "^3.3.6"
   },
   "engines": {
     "node": ">=14"
