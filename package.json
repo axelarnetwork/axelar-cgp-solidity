@@ -8,11 +8,12 @@
     "test-evm-versions": "bash test/test-evm-versions.bash",
     "build": "rm -rf build && waffle waffle.json",
     "lint": "solhint 'src/**/*.sol' && eslint 'test/**/*.js'",
-    "prettier": "prettier --write 'test/**/*.js' && prettier --write 'src/**/*.sol'"
+    "prettier": "prettier --write 'test/**/*.js' && prettier --write 'src/**/*.sol'",
+    "flatten": "rm -rf build/flattened && waffle waffle.json flatten"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/axelarnetwork/ethereum-bridge.git"
+    "url": "git+https://github.com/axelarnetwork/axelar-cgp-solidity.git"
   },
   "keywords": [
     "ethereum",
@@ -21,9 +22,9 @@
   "author": "axelar-network",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/axelarnetwork/ethereum-bridge/issues"
+    "url": "https://github.com/axelarnetwork/axelar-cgp-solidity/issues"
   },
-  "homepage": "https://github.com/axelarnetwork/ethereum-bridge#readme",
+  "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
     "ethereum-waffle": "^3.4.0",
     "lodash": "^4.17.21"
