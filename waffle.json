@@ -23,5 +23,5 @@
       }
     }
   },
-  "flattenOutputDirectory": "./flattened"
+  "flattenOutputDirectory": "./build/flattened"
 }

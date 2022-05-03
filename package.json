@@ -9,7 +9,7 @@
     "build": "rm -rf build && waffle waffle.json",
     "lint": "solhint 'src/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'test/**/*.js' && prettier --write 'src/**/*.sol'",
-    "flatten": "rm -rf flattened && waffle waffle.json flatten"
+    "flatten": "rm -rf build/flattened && waffle waffle.json flatten"
   },
   "repository": {
     "type": "git",

@@ -30,8 +30,6 @@ jobs:
       - name: Flatten contracts
         run: npm run flatten
 
-      - run: mv flattened build/
-
       - name: Get the tag
         id: release_tag
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
