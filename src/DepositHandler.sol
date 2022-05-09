@@ -16,11 +16,7 @@ contract DepositHandler {
         _lockedStatus = IS_NOT_LOCKED;
     }
 
-    function execute(address callee, bytes calldata data)
-        external
-        noReenter
-        returns (bool success, bytes memory returnData)
-    {
+    function execute(address callee, bytes calldata data) external noReenter returns (bool success, bytes memory returnData) {
         (success, returnData) = callee.call(data);
     }
 
