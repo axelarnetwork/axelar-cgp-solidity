@@ -11,8 +11,6 @@ const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
 
-const CHAIN_ID = 1;
-
 const ConstAddressDeployer = require('../build/ConstAddressDeployer.json');
 const BurnableMintableCappedERC20 = require('../build/BurnableMintableCappedERC20.json');
 
@@ -21,22 +19,25 @@ const { it } = require('mocha');
 const getSaltFromKey = (key) => {
   return keccak256(defaultAbiCoder.encode(['string'], [key]));
 }
+
 const deployContractConstant = async (deployer, wallet, contract, key, args = []) => {
   const salt = getSaltFromKey(key);
   const factory = new ContractFactory(
       contract.abi,
-      contract.bytecode
+      contract.bytecode,
   );
   const bytecode = (await factory.getDeployTransaction(...args)).data;
   await (await deployer.connect(wallet).deploy(bytecode, salt)).wait();
   const address = await deployer.predict(bytecode, salt);
   return new Contract(address, contract.abi, wallet);
 };
+
 const predictContractConstant = async (deployer, contract, key, args = []) => {
   const salt = getSaltFromKey(key);
+
   const factory = new ContractFactory(
       contract.abi,
-      contract.bytecode
+      contract.bytecode,
   );
   const bytecode = (await factory.getDeployTransaction(...args)).data;
   return await deployer.predict(bytecode, salt);
@@ -61,14 +62,14 @@ describe('ConstAddressDeployer', () => {
       deployer, 
       BurnableMintableCappedERC20, 
       key, 
-      [name, symbol, decimals, capacity]
+      [name, symbol, decimals, capacity],
     );
     const contract = await deployContractConstant(
       deployer,
       userWallet,
       BurnableMintableCappedERC20, 
       key, 
-      [name, symbol, decimals, capacity]
+      [name, symbol, decimals, capacity],
     );
     expect(await contract.address).to.equal(address);
     expect(await contract.name()).to.equal(name);
@@ -82,19 +83,19 @@ describe('ConstAddressDeployer', () => {
       deployer, 
       BurnableMintableCappedERC20, 
       key, 
-      [name, symbol, decimals, capacity]
+      [name, symbol, decimals, capacity],
     );
     const contract = await deployContractConstant(
       deployer,
       userWallet,
       BurnableMintableCappedERC20, 
       key, 
-      [name, symbol, decimals, capacity]
+      [name, symbol, decimals, capacity],
     );
   // Send an empty transaction to increase nonce.
     await userWallet.sendTransaction({
         to: userWallet.address,
-        value: 0
+        value: 0,
     });
     expect(await contract.address).to.equal(address);
     expect(await contract.name()).to.equal(name);
@@ -105,12 +106,13 @@ describe('ConstAddressDeployer', () => {
   it('should deploy the same contract twice to different addresses with different salts', async () => {
     const keys = ['a test key', 'another test key'];
     const addresses = []
+
     for(const key of keys) {
       const address = await predictContractConstant(
         deployer, 
         BurnableMintableCappedERC20, 
         key, 
-        [name, symbol, decimals, capacity]
+        [name, symbol, decimals, capacity],
       );
       addresses.push(address);
       const contract = await deployContractConstant(
@@ -118,7 +120,7 @@ describe('ConstAddressDeployer', () => {
         userWallet,
         BurnableMintableCappedERC20, 
         key, 
-        [name, symbol, decimals, capacity]
+        [name, symbol, decimals, capacity],
       );
       expect(await contract.address).to.equal(address);
       expect(await contract.name()).to.equal(name);
@@ -126,6 +128,7 @@ describe('ConstAddressDeployer', () => {
       expect(await contract.decimals()).to.equal(decimals);
       expect(await contract.cap()).to.equal(capacity);
     }
+    
     expect(addresses[0]).to.not.equal(addresses[1]);
   });
 });
