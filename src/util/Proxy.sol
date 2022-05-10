@@ -2,20 +2,27 @@
 
 pragma solidity 0.8.9;
 
-contract AxelarGasReceiverProxy {
+contract Proxy {
     error SetupFailed();
     error EtherNotAccepted();
 
     // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+    // keccak256('owner');
+    bytes32 internal constant _OWNER_SLOT = 0x02016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0;
 
-    constructor(address gasReceiverImplementation, bytes memory params) {
+    constructor(
+        address implementationAddress,
+        address owner,
+        bytes memory params
+    ) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            sstore(_IMPLEMENTATION_SLOT, gasReceiverImplementation)
+            sstore(_IMPLEMENTATION_SLOT, implementationAddress)
+            sstore(_OWNER_SLOT, owner)
         }
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = gasReceiverImplementation.delegatecall(
+        (bool success, ) = implementationAddress.delegatecall(
             //0x9ded06df is the setup selector.
             abi.encodeWithSelector(0x9ded06df, params)
         );

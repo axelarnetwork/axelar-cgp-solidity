@@ -18,8 +18,8 @@ const TokenDeployer = require('../../build/TokenDeployer.json');
 const AxelarGatewayProxy = require('../../build/AxelarGatewayProxy.json');
 const AxelarGatewaySinglesig = require('../../build/AxelarGatewaySinglesig.json');
 const MintableCappedERC20 = require('../../build/MintableCappedERC20.json');
-const GasReceiver = require('../../build/AxelarGasReceiver.json');
-const GasReceiverProxy = require('../../build/AxelarGasReceiverProxy.json');
+const GasService = require('../../build/AxelarGasService.json');
+const GasServiceProxy = require('../../build/AxelarGasServiceProxy.json');
 const SourceChainSwapCaller = require('../../build/SourceChainSwapCaller.json');
 const DestinationChainSwapExecutable = require('../../build/DestinationChainSwapExecutable.json');
 const DestinationChainTokenSwapper = require('../../build/DestinationChainTokenSwapper.json');
@@ -49,7 +49,7 @@ describe('GeneralMessagePassing', () => {
 
   let sourceChainGateway;
   let destinationChainGateway;
-  let sourceChainGasReceiver;
+  let sourceChainGasService;
   let sourceChainSwapCaller;
   let destinationChainSwapExecutable;
   let destinationChainTokenSwapper;
@@ -152,17 +152,15 @@ describe('GeneralMessagePassing', () => {
     sourceChainGateway = await deployGateway();
     destinationChainGateway = await deployGateway();
 
-    const receiverImplementation = await deployContract(
-      ownerWallet,
-      GasReceiver,
-    );
-    const receiverProxy = await deployContract(ownerWallet, GasReceiverProxy, [
-      receiverImplementation.address,
-      arrayify(defaultAbiCoder.encode(['address'], [ownerWallet.address])),
+    const gasImplementation = await deployContract(ownerWallet, GasService);
+    const gasProxy = await deployContract(ownerWallet, GasServiceProxy, [
+      gasImplementation.address,
+      ownerWallet.address,
+      arrayify([]),
     ]);
-    sourceChainGasReceiver = new Contract(
-      receiverProxy.address,
-      GasReceiver.abi,
+    sourceChainGasService = new Contract(
+      gasProxy.address,
+      GasService.abi,
       ownerWallet,
     );
 
@@ -204,7 +202,7 @@ describe('GeneralMessagePassing', () => {
       SourceChainSwapCaller,
       [
         sourceChainGateway.address,
-        sourceChainGasReceiver.address,
+        sourceChainGasService.address,
         destinationChain,
         destinationChainSwapExecutable.address.toString(),
       ],
@@ -253,7 +251,7 @@ describe('GeneralMessagePassing', () => {
             gasFeeAmount,
           ),
       )
-        .to.emit(sourceChainGasReceiver, 'GasPaidForContractCallWithToken')
+        .to.emit(sourceChainGasService, 'GasPaidForContractCallWithToken')
         .withArgs(
           sourceChainSwapCaller.address,
           destinationChain,

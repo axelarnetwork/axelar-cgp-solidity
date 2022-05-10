@@ -12,30 +12,24 @@ const { expect } = chai;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 const MintableCappedERC20 = require('../../build/MintableCappedERC20.json');
-const GasReceiver = require('../../build/AxelarGasReceiver.json');
-const GasReceiverProxy = require('../../build/AxelarGasReceiverProxy.json');
+const GasService = require('../../build/AxelarGasService.json');
+const GasServiceProxy = require('../../build/AxelarGasServiceProxy.json');
 
-describe('AxelarGasReceiver', () => {
+describe('AxelarGasService', () => {
   const [ownerWallet, userWallet] = new MockProvider().getWallets();
 
-  let gasReceiver;
+  let gasService;
   let testToken;
 
   beforeEach(async () => {
-    const receiverImplementation = await deployContract(
-      ownerWallet,
-      GasReceiver,
-    );
-    const receiverProxy = await deployContract(ownerWallet, GasReceiverProxy, [
-      receiverImplementation.address,
-      arrayify(defaultAbiCoder.encode(['address'], [ownerWallet.address])),
+    const gasImplementation = await deployContract(ownerWallet, GasService);
+    const gasProxy = await deployContract(ownerWallet, GasServiceProxy, [
+      gasImplementation.address,
+      ownerWallet.address,
+      arrayify([]),
     ]);
 
-    gasReceiver = new Contract(
-      receiverProxy.address,
-      GasReceiver.abi,
-      userWallet,
-    );
+    gasService = new Contract(gasProxy.address, GasService.abi, userWallet);
 
     const name = 'testToken';
     const symbol = 'testToken';
@@ -67,10 +61,10 @@ describe('AxelarGasReceiver', () => {
       const gasFeeAmount = 1000;
       const nativeGasFeeAmount = parseEther('1.0');
 
-      await testToken.connect(userWallet).approve(gasReceiver.address, 1e6);
+      await testToken.connect(userWallet).approve(gasService.address, 1e6);
 
       await expect(
-        gasReceiver
+        gasService
           .connect(userWallet)
           .payGasForContractCall(
             userWallet.address,
@@ -82,7 +76,7 @@ describe('AxelarGasReceiver', () => {
             userWallet.address,
           ),
       )
-        .to.emit(gasReceiver, 'GasPaidForContractCall')
+        .to.emit(gasService, 'GasPaidForContractCall')
         .withArgs(
           userWallet.address,
           destinationChain,
@@ -93,10 +87,10 @@ describe('AxelarGasReceiver', () => {
           userWallet.address,
         )
         .and.to.emit(testToken, 'Transfer')
-        .withArgs(userWallet.address, gasReceiver.address, gasFeeAmount);
+        .withArgs(userWallet.address, gasService.address, gasFeeAmount);
 
       await expect(
-        gasReceiver
+        gasService
           .connect(userWallet)
           .payGasForContractCallWithToken(
             userWallet.address,
@@ -110,7 +104,7 @@ describe('AxelarGasReceiver', () => {
             userWallet.address,
           ),
       )
-        .to.emit(gasReceiver, 'GasPaidForContractCallWithToken')
+        .to.emit(gasService, 'GasPaidForContractCallWithToken')
         .withArgs(
           userWallet.address,
           destinationChain,
@@ -123,10 +117,10 @@ describe('AxelarGasReceiver', () => {
           userWallet.address,
         )
         .and.to.emit(testToken, 'Transfer')
-        .withArgs(userWallet.address, gasReceiver.address, gasFeeAmount);
+        .withArgs(userWallet.address, gasService.address, gasFeeAmount);
 
       await expect(
-        await gasReceiver
+        await gasService
           .connect(userWallet)
           .payNativeGasForContractCall(
             userWallet.address,
@@ -137,7 +131,7 @@ describe('AxelarGasReceiver', () => {
             { value: nativeGasFeeAmount },
           ),
       )
-        .to.emit(gasReceiver, 'NativeGasPaidForContractCall')
+        .to.emit(gasService, 'NativeGasPaidForContractCall')
         .withArgs(
           userWallet.address,
           destinationChain,
@@ -146,10 +140,10 @@ describe('AxelarGasReceiver', () => {
           nativeGasFeeAmount,
           userWallet.address,
         )
-        .and.to.changeEtherBalance(gasReceiver, nativeGasFeeAmount);
+        .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
 
       await expect(
-        await gasReceiver
+        await gasService
           .connect(userWallet)
           .payNativeGasForContractCallWithToken(
             userWallet.address,
@@ -162,7 +156,7 @@ describe('AxelarGasReceiver', () => {
             { value: nativeGasFeeAmount },
           ),
       )
-        .to.emit(gasReceiver, 'NativeGasPaidForContractCallWithToken')
+        .to.emit(gasService, 'NativeGasPaidForContractCallWithToken')
         .withArgs(
           userWallet.address,
           destinationChain,
@@ -173,7 +167,7 @@ describe('AxelarGasReceiver', () => {
           nativeGasFeeAmount,
           userWallet.address,
         )
-        .and.to.changeEtherBalance(gasReceiver, nativeGasFeeAmount);
+        .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
     });
 
     it('should allow to collect accumulated payments and refund', async () => {
@@ -189,9 +183,9 @@ describe('AxelarGasReceiver', () => {
       const gasFeeAmount = 1000;
       const nativeGasFeeAmount = parseEther('1.0');
 
-      await testToken.connect(userWallet).approve(gasReceiver.address, 1e6);
+      await testToken.connect(userWallet).approve(gasService.address, 1e6);
 
-      await gasReceiver
+      await gasService
         .connect(userWallet)
         .payGasForContractCall(
           userWallet.address,
@@ -203,7 +197,7 @@ describe('AxelarGasReceiver', () => {
           userWallet.address,
         );
 
-      await gasReceiver
+      await gasService
         .connect(userWallet)
         .payGasForContractCallWithToken(
           userWallet.address,
@@ -217,7 +211,7 @@ describe('AxelarGasReceiver', () => {
           userWallet.address,
         );
 
-      await gasReceiver
+      await gasService
         .connect(userWallet)
         .payNativeGasForContractCall(
           userWallet.address,
@@ -228,7 +222,7 @@ describe('AxelarGasReceiver', () => {
           { value: nativeGasFeeAmount },
         );
 
-      await gasReceiver
+      await gasService
         .connect(userWallet)
         .payNativeGasForContractCall(
           userWallet.address,
@@ -240,51 +234,51 @@ describe('AxelarGasReceiver', () => {
         );
 
       await expect(
-        gasReceiver
+        gasService
           .connect(userWallet)
           .refund(userWallet.address, ADDRESS_ZERO, nativeGasFeeAmount),
       ).to.be.reverted;
 
       await expect(
-        await gasReceiver
+        await gasService
           .connect(ownerWallet)
           .refund(userWallet.address, ADDRESS_ZERO, nativeGasFeeAmount),
       ).to.changeEtherBalance(userWallet, nativeGasFeeAmount);
 
       await expect(
-        gasReceiver
+        gasService
           .connect(userWallet)
           .refund(userWallet.address, testToken.address, gasFeeAmount),
       ).to.be.reverted;
 
       await expect(
-        await gasReceiver
+        await gasService
           .connect(ownerWallet)
           .refund(userWallet.address, testToken.address, gasFeeAmount),
       )
         .and.to.emit(testToken, 'Transfer')
-        .withArgs(gasReceiver.address, userWallet.address, gasFeeAmount);
+        .withArgs(gasService.address, userWallet.address, gasFeeAmount);
 
       await expect(
-        gasReceiver
+        gasService
           .connect(userWallet)
           .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address]),
       ).to.be.reverted;
 
       await expect(
-        await gasReceiver
+        await gasService
           .connect(ownerWallet)
           .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address]),
       )
         .to.changeEtherBalance(ownerWallet, nativeGasFeeAmount)
         .and.to.emit(testToken, 'Transfer')
-        .withArgs(gasReceiver.address, ownerWallet.address, gasFeeAmount);
+        .withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
     });
 
     it('should upgrade the gas receiver implementation', async () => {
       const receiverImplementation = await deployContract(
         ownerWallet,
-        GasReceiver,
+        GasService,
       );
       const newImplementationCode =
         await receiverImplementation.provider.getCode(
@@ -292,10 +286,10 @@ describe('AxelarGasReceiver', () => {
         );
       const newImplementationCodeHash = keccak256(newImplementationCode);
 
-      await expect(await gasReceiver.owner()).to.be.equal(ownerWallet.address);
+      await expect(await gasService.owner()).to.be.equal(ownerWallet.address);
 
       await expect(
-        gasReceiver
+        gasService
           .connect(ownerWallet)
           .upgrade(
             receiverImplementation.address,
@@ -303,12 +297,16 @@ describe('AxelarGasReceiver', () => {
             arrayify(defaultAbiCoder.encode(['address'], [userWallet.address])),
           ),
       )
-        .to.emit(gasReceiver, 'Upgraded')
-        .withArgs(receiverImplementation.address)
-        .and.to.emit(gasReceiver, 'OwnershipTransferred')
+        .to.emit(gasService, 'Upgraded')
+        .withArgs(receiverImplementation.address);
+
+      await expect(
+        gasService.connect(ownerWallet).transferOwnership(userWallet.address),
+      )
+        .and.to.emit(gasService, 'OwnershipTransferred')
         .withArgs(userWallet.address);
 
-      await expect(await gasReceiver.owner()).to.be.equal(userWallet.address);
+      await expect(await gasService.owner()).to.be.equal(userWallet.address);
     });
   });
 });

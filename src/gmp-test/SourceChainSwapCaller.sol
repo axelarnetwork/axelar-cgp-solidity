@@ -3,23 +3,23 @@
 pragma solidity 0.8.9;
 
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
-import { IAxelarGasReceiver } from '../interfaces/IAxelarGasReceiver.sol';
+import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
 import { IERC20 } from '../interfaces/IERC20.sol';
 
 contract SourceChainSwapCaller {
     IAxelarGateway public gateway;
-    IAxelarGasReceiver public gasReceiver;
+    IAxelarGasService public gasService;
     string public destinationChain;
     string public executableAddress;
 
     constructor(
         address gateway_,
-        address gasReceiver_,
+        address gasService_,
         string memory destinationChain_,
         string memory executableAddress_
     ) {
         gateway = IAxelarGateway(gateway_);
-        gasReceiver = IAxelarGasReceiver(gasReceiver_);
+        gasService = IAxelarGasService(gasService_);
         destinationChain = destinationChain_;
         executableAddress = executableAddress_;
     }
@@ -36,8 +36,8 @@ contract SourceChainSwapCaller {
 
         IERC20(tokenX).transferFrom(msg.sender, address(this), amount + gasFee);
 
-        IERC20(tokenX).approve(address(gasReceiver), gasFee);
-        gasReceiver.payGasForContractCallWithToken(
+        IERC20(tokenX).approve(address(gasService), gasFee);
+        gasService.payGasForContractCallWithToken(
             address(this),
             destinationChain,
             executableAddress,
