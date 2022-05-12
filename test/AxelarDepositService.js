@@ -3,10 +3,7 @@
 const chai = require('chai');
 const {
   Contract,
-  utils: {
-    defaultAbiCoder,
-    arrayify,
-  },
+  utils: { defaultAbiCoder, arrayify, formatBytes32String },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
@@ -23,10 +20,7 @@ const TestWeth = require('../build/TestWeth.json');
 const DepositService = require('../build/AxelarDepositService.json');
 const DepositServiceProxy = require('../build/AxelarDepositServiceProxy.json');
 
-const {
-  getSignedExecuteInput,
-  getRandomID,
-} = require('./utils');
+const { getSignedExecuteInput, getRandomID } = require('./utils');
 
 describe('AxelarDepositService', () => {
   const [
@@ -129,11 +123,10 @@ describe('AxelarDepositService', () => {
       DepositServiceProxy,
       [
         depositImplementation.address,
-        ownerWallet.address,
         arrayify(
           defaultAbiCoder.encode(
-            ['address', 'address', 'string'],
-            [gateway.address, token.address, tokenSymbol],
+            ['address', 'string'],
+            [gateway.address, tokenSymbol],
           ),
         ),
       ],
@@ -148,30 +141,29 @@ describe('AxelarDepositService', () => {
   describe('deposit service', () => {
     it('should handle and send ERC20 token', async () => {
       const destinationAddress = userWallet.address.toString();
-      const senderAddress = ownerWallet.address.toString();
+      const nonce = formatBytes32String(1);
       const amount = 1e6;
 
-      const depositAddress = await depositService.depositAddressForTokenSend(
+      const depositAddress = await depositService.depositAddressForSendToken(
+        nonce,
         destinationChain,
         destinationAddress,
-        senderAddress,
         tokenSymbol,
       );
 
       await token.connect(ownerWallet).transfer(depositAddress, amount);
 
       await expect(
-        depositService.handleTokenSend(
+        depositService.sendToken(
+          nonce,
           destinationChain,
           destinationAddress,
-          senderAddress,
           tokenSymbol,
-          token.address,
         ),
       )
         .to.emit(gateway, 'TokenSent')
         .withArgs(
-          depositService.address,
+          depositAddress,
           destinationChain,
           destinationAddress,
           tokenSymbol,
@@ -181,13 +173,13 @@ describe('AxelarDepositService', () => {
 
     it('should wrap and send native currency', async () => {
       const destinationAddress = userWallet.address.toString();
-      const senderAddress = ownerWallet.address.toString();
+      const nonce = formatBytes32String(1);
       const amount = 1e6;
 
-      const depositAddress = await depositService.depositAddressForNativeSend(
+      const depositAddress = await depositService.depositAddressForSendNative(
+        nonce,
         destinationChain,
         destinationAddress,
-        senderAddress,
       );
 
       await ownerWallet.sendTransaction({
@@ -196,15 +188,15 @@ describe('AxelarDepositService', () => {
       });
 
       await expect(
-        await depositService.handleNativeSend(
+        await depositService.sendNative(
+          nonce,
           destinationChain,
           destinationAddress,
-          senderAddress,
         ),
       )
         .to.emit(gateway, 'TokenSent')
         .withArgs(
-          depositService.address,
+          depositAddress,
           destinationChain,
           destinationAddress,
           tokenSymbol,
@@ -214,18 +206,16 @@ describe('AxelarDepositService', () => {
 
     it('should unwrap native currency', async () => {
       const recipient = userWallet.address;
-      const senderAddress = ownerWallet.address.toString();
+      const nonce = formatBytes32String(1);
       const amount = 1e6;
 
-      const depositAddress = await depositService.depositAddressForTokenUnwrap(
-        recipient,
-        senderAddress,
-      );
+      const depositAddress =
+        await depositService.depositAddressForWithdrawNative(nonce, recipient);
 
       await token.connect(ownerWallet).transfer(depositAddress, amount);
 
       await expect(
-        await depositService.handleTokenUnwrap(recipient, senderAddress),
+        await depositService.withdrawNative(nonce, recipient),
       ).to.changeEtherBalance(userWallet, amount);
     });
   });

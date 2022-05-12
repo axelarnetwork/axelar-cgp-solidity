@@ -25,7 +25,6 @@ describe('AxelarGasService', () => {
     const gasImplementation = await deployContract(ownerWallet, GasService);
     const gasProxy = await deployContract(ownerWallet, GasServiceProxy, [
       gasImplementation.address,
-      ownerWallet.address,
       arrayify([]),
     ]);
 

@@ -7,6 +7,7 @@ interface IUpgradable {
     error NotOwner();
     error InvalidOwner();
     error InvalidCodeHash();
+    error InvalidContract();
     error SetupFailed();
     error NotProxy();
 
@@ -16,11 +17,13 @@ interface IUpgradable {
     // Get current owner
     function owner() external view returns (address);
 
-    function setup(bytes calldata data) external;
+    function contractId() external view returns (bytes32);
 
     function upgrade(
         address newImplementation,
         bytes32 newImplementationCodeHash,
         bytes calldata params
     ) external;
+
+    function setup(bytes calldata data) external;
 }

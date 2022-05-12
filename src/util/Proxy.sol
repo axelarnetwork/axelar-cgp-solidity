@@ -11,15 +11,11 @@ contract Proxy {
     // keccak256('owner');
     bytes32 internal constant _OWNER_SLOT = 0x02016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0;
 
-    constructor(
-        address implementationAddress,
-        address owner,
-        bytes memory params
-    ) {
+    constructor(address implementationAddress, bytes memory params) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(_IMPLEMENTATION_SLOT, implementationAddress)
-            sstore(_OWNER_SLOT, owner)
+            sstore(_OWNER_SLOT, caller())
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = implementationAddress.delegatecall(

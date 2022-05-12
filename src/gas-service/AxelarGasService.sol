@@ -154,4 +154,8 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
 
         if (!transferred) revert TransferFailed();
     }
+
+    function contractId() public pure returns (bytes32) {
+        return keccak256(abi.encodePacked('axelar-gas-service'));
+    }
 }

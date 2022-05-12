@@ -4,10 +4,10 @@ pragma solidity 0.8.9;
 
 import '../interfaces/IUpgradable.sol';
 
-contract Upgradable is IUpgradable {
+abstract contract Upgradable is IUpgradable {
     // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-    // keccak256('owner');
+    // keccak256('owner')
     bytes32 internal constant _OWNER_SLOT = 0x02016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0;
 
     modifier onlyOwner() {
@@ -43,7 +43,9 @@ contract Upgradable is IUpgradable {
         bytes32 newImplementationCodeHash,
         bytes calldata params
     ) external override onlyOwner {
+        if (IUpgradable(newImplementation).contractId() != IUpgradable(this).contractId()) revert InvalidContract();
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
+
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(this.setup.selector, params));
 
