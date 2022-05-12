@@ -27,7 +27,8 @@ const deployContractConstant = async (deployer, wallet, contract, key, args = []
       contract.bytecode,
   );
   const bytecode = (await factory.getDeployTransaction(...args)).data;
-  await (await deployer.connect(wallet).deploy(bytecode, salt)).wait();
+  const tx = await deployer.connect(wallet).deploy(bytecode, salt)
+  await tx.wait();
   const address = await deployer.predict(bytecode, salt);
   return new Contract(address, contract.abi, wallet);
 };
@@ -77,6 +78,7 @@ describe('ConstAddressDeployer', () => {
     expect(await contract.decimals()).to.equal(decimals);
     expect(await contract.cap()).to.equal(capacity);
   });
+
   it('should deploy to the predicted address even with a different nonce', async () => {
     const key = 'a test key';
     const address = await predictContractConstant(
@@ -103,6 +105,7 @@ describe('ConstAddressDeployer', () => {
     expect(await contract.decimals()).to.equal(decimals);
     expect(await contract.cap()).to.equal(capacity);
   });
+
   it('should deploy the same contract twice to different addresses with different salts', async () => {
     const keys = ['a test key', 'another test key'];
     const addresses = []
