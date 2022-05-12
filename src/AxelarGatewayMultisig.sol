@@ -481,11 +481,6 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
 
         emit OwnershipTransferred(new address[](uint256(0)), uint256(0), ownerAddresses, newOwnerThreshold);
         emit OperatorshipTransferred(new address[](uint256(0)), uint256(0), operatorAddresses, newOperatorThreshold);
-
-        // We would need to delete AXL token for the very release and therefore and re-deploy it
-        // with the latest token code that has the potential to support token refund in the future.
-        // This is a one-time thing and should be gotten rid of right after release.
-        _setTokenAddress('AXL', address(0));
     }
 
     function execute(bytes calldata input) external override {
