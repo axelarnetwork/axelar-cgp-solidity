@@ -213,7 +213,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     }
 
     function contractId() public pure returns (bytes32) {
-        return keccak256(abi.encodePacked('axelar-deposit-service'));
+        return keccak256('axelar-deposit-service');
     }
 
     function _setup(bytes calldata data) internal override {
