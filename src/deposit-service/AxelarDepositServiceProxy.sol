@@ -10,4 +10,6 @@ contract AxelarDepositServiceProxy is Proxy {
         address owner,
         bytes memory params
     ) Proxy(implementationAddress, owner, params) {}
+
+    receive() external payable override {}
 }

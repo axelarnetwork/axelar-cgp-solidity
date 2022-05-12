@@ -45,8 +45,12 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         return _depositAddress(salt);
     }
 
-    function depositAddressForTokenUnwrap(address recipient) external view returns (address) {
-        bytes32 salt = keccak256(abi.encode(PREFIX_DEPOSIT_TOKEN_UNWRAP, recipient));
+    function depositAddressForTokenUnwrap(address recipient, string calldata senderAddress)
+        external
+        view
+        returns (address)
+    {
+        bytes32 salt = keccak256(abi.encode(PREFIX_DEPOSIT_TOKEN_UNWRAP, recipient, senderAddress));
         return _depositAddress(salt);
     }
 
@@ -109,8 +113,8 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         IAxelarGateway(gatewayAddress).sendToken(destinationChain, destinationAddress, symbol, amount);
     }
 
-    function handleTokenUnwrap(address payable recipient) external {
-        bytes32 salt = keccak256(abi.encode(PREFIX_DEPOSIT_TOKEN_UNWRAP, recipient));
+    function handleTokenUnwrap(address payable recipient, string calldata senderAddress) external {
+        bytes32 salt = keccak256(abi.encode(PREFIX_DEPOSIT_TOKEN_UNWRAP, recipient, senderAddress));
         address token = wrappedToken();
 
         DepositHandler depositHandler = new DepositHandler{ salt: salt }();
@@ -132,9 +136,9 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         recipient.transfer(amount);
     }
 
-    function gateway() public view returns (address gateway_) {
+    function gateway() public view returns (address gatewayAddress) {
         assembly {
-            gateway_ := sload(_GATEWAY_SLOT)
+            gatewayAddress := sload(_GATEWAY_SLOT)
         }
     }
 
@@ -145,8 +149,24 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     }
 
     function wrappedSymbol() public view returns (string memory symbol) {
+        bytes32 symbolData;
+
         assembly {
-            symbol := sload(_TOKEN_SYMBOL_SLOT)
+            symbolData := sload(_TOKEN_SYMBOL_SLOT)
+        }
+
+        // recovering string length as the last 2 bytes of the data
+        uint256 length = 0xff & uint256(symbolData);
+
+        // restoring the string with the correct length
+        assembly {
+            symbol := mload(0x40)
+            // new "memory end" including padding (the string isn't larger than 32 bytes)
+            mstore(0x40, add(symbol, 0x40))
+            // store length in memory
+            mstore(symbol, length)
+            // write actual data
+            mstore(add(symbol, 0x20), symbolData)
         }
     }
 
@@ -176,10 +196,17 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         if (gatewayAddress == address(0)) revert InvalidAddress();
         if (token == address(0)) revert InvalidAddress();
 
+        bytes32 symbolData = bytes32(abi.encodePacked(symbol));
+        uint256 symbolNumber = uint256(symbolData);
+
+        // storing string length as last 2 bytes of the data
+        symbolNumber |= 0xff & bytes(symbol).length;
+        symbolData = bytes32(abi.encodePacked(symbolNumber));
+
         assembly {
             sstore(_GATEWAY_SLOT, gatewayAddress)
             sstore(_WRAPPED_TOKEN_SLOT, token)
-            sstore(_TOKEN_SYMBOL_SLOT, symbol)
+            sstore(_TOKEN_SYMBOL_SLOT, symbolData)
         }
     }
 }

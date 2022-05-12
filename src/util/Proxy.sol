@@ -60,7 +60,7 @@ contract Proxy {
         }
     }
 
-    receive() external payable {
+    receive() external payable virtual {
         revert EtherNotAccepted();
     }
 }

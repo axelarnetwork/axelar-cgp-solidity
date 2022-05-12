@@ -23,7 +23,10 @@ interface IAxelarDepositService is IUpgradable {
         string calldata senderAddress
     ) external view returns (address);
 
-    function depositAddressForTokenUnwrap(address recipient) external view returns (address);
+    function depositAddressForTokenUnwrap(address recipient, string calldata senderAddress)
+        external
+        view
+        returns (address);
 
     function handleTokenSend(
         string calldata destinationChain,
@@ -39,5 +42,5 @@ interface IAxelarDepositService is IUpgradable {
         string calldata senderAddress
     ) external;
 
-    function handleTokenUnwrap(address payable recipient) external;
+    function handleTokenUnwrap(address payable recipient, string calldata senderAddress) external;
 }
