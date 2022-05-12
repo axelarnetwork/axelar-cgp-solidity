@@ -7,7 +7,7 @@ import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IERC20 } from '../interfaces/IERC20.sol';
 import { IWETH9 } from '../interfaces/IWETH9.sol';
 import { Upgradable } from '../util/Upgradable.sol';
-import { DepositHandler } from '../DepositHandler.sol';
+import { DepositReceiver } from './DepositReceiver.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarDepositService is Upgradable, IAxelarDepositService {
@@ -61,24 +61,24 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         string calldata tokenSymbol,
         address tokenAddress
     ) external {
-        DepositHandler depositHandler = new DepositHandler{
+        DepositReceiver depositReceiver = new DepositReceiver{
             salt: keccak256(
                 abi.encode(PREFIX_DEPOSIT_TOKEN_SEND, destinationChain, destinationAddress, senderAddress, tokenSymbol)
             )
         }();
-        uint256 amount = IERC20(tokenAddress).balanceOf(address(depositHandler));
+        uint256 amount = IERC20(tokenAddress).balanceOf(address(depositReceiver));
 
         if (amount == 0) revert NothingDeposited();
 
-        (bool success, bytes memory returnData) = depositHandler.execute(
+        (bool success, bytes memory returnData) = depositReceiver.execute(
             tokenAddress,
             abi.encodeWithSelector(IERC20.transfer.selector, address(this), amount)
         );
 
         if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert TransferFailed();
 
-        // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
-        depositHandler.destroy(address(this));
+        // NOTE: `depositReceiver` must always be destroyed in the same runtime context that it is deployed.
+        depositReceiver.destroy(address(this));
 
         address gatewayAddress = gateway();
 
@@ -96,9 +96,9 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
             abi.encode(PREFIX_DEPOSIT_NATIVE_SEND, destinationChain, destinationAddress, senderAddress)
         );
 
-        DepositHandler depositHandler = new DepositHandler{ salt: salt }();
-        // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
-        depositHandler.destroy(address(this));
+        DepositReceiver depositReceiver = new DepositReceiver{ salt: salt }();
+        // NOTE: `depositReceiver` must always be destroyed in the same runtime context that it is deployed.
+        depositReceiver.destroy(address(this));
 
         uint256 amount = address(this).balance - oldBalance;
 
@@ -117,23 +117,20 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         bytes32 salt = keccak256(abi.encode(PREFIX_DEPOSIT_TOKEN_UNWRAP, recipient, senderAddress));
         address token = wrappedToken();
 
-        DepositHandler depositHandler = new DepositHandler{ salt: salt }();
-        uint256 amount = IERC20(token).balanceOf(address(depositHandler));
+        DepositReceiver depositReceiver = new DepositReceiver{ salt: salt }();
+        uint256 amount = IERC20(token).balanceOf(address(depositReceiver));
 
         if (amount == 0) revert NothingDeposited();
 
-        (bool success, bytes memory returnData) = depositHandler.execute(
+        (bool success, bytes memory returnData) = depositReceiver.execute(
             token,
-            abi.encodeWithSelector(IERC20.transfer.selector, address(this), amount)
+            abi.encodeWithSelector(IWETH9.withdraw.selector, amount)
         );
 
         if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert TransferFailed();
 
-        // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
-        depositHandler.destroy(address(this));
-
-        IWETH9(token).withdraw(amount);
-        recipient.transfer(amount);
+        // NOTE: `depositReceiver` must always be destroyed in the same runtime context that it is deployed.
+        depositReceiver.destroy(recipient);
     }
 
     function gateway() public view returns (address gatewayAddress) {
@@ -182,7 +179,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
                                 bytes1(0xff),
                                 address(this),
                                 salt,
-                                keccak256(abi.encodePacked(type(DepositHandler).creationCode))
+                                keccak256(abi.encodePacked(type(DepositReceiver).creationCode))
                             )
                         )
                     )
