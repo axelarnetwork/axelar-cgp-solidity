@@ -25,8 +25,8 @@ const TokenDeployer = require('../build/TokenDeployer.json');
 const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
 const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
 
-const printLog = (msg) => {process.stdout.write(JSON.stringify({log: msg}).concat("\n"))}
-const printObj = (obj) => {process.stdout.write(JSON.stringify(obj).concat("\n"))}
+const printLog = (log) => { console.log(JSON.stringify({ log })) }
+const printObj = (obj) => { console.log(JSON.stringify(obj)) }
 
 printLog("retrieving admin addresses")
 const adminKeyIDs = JSON.parse(execSync(`${prefix} "axelard q tss external-key-id ${chain} --output json"`)).key_ids;
@@ -44,8 +44,8 @@ const getAddresses = (role) => {
   const keys = JSON.parse(output).multisig_key.key;
  
     const addresses = keys.map(key => {
-        const x = ("0".repeat(64) + `${key.x}`).slice(-64);
-        const y = ("0".repeat(64) + `${key.y}`).slice(-64);
+        const x = `${'0'.repeat(64)}${key.x}`.slice(-64);
+        const y = `${'0'.repeat(64)}${key.y}`.slice(-64);
         return computeAddress(`0x04${x}${y}`)
     });
 
@@ -104,19 +104,19 @@ tokenDeployerFactory
   .then((tokenDeployer) => tokenDeployer.deployed())
   .then(({ address }) => {
     printLog(`deployed token deployer at address ${address}`);
-    contracts["tokenDeployed"] = `${address}`
+    contracts.tokenDeployed = address
     return axelarGatewayMultisigFactory.deploy(address)
   })
   .then((axelarGatewayMultisig) => axelarGatewayMultisig.deployed())
   .then(({ address }) => {
     printLog(`deployed axelar gateway multisig at address ${address}`);
-    contracts["gatewayMultisig"] = `${address}`
+    contracts.gatewayMultisig = address
     return axelarGatewayProxyFactory.deploy(address, params)
   })
   .then((axelarGatewayProxy) => axelarGatewayProxy.deployed())
   .then(({ address }) => {
     printLog(`deployed axelar gateway proxy at address ${address}`);
-    contracts["gatewayProxy"] = `${address}`
+    contracts.gatewayProxy = address
     printObj(contracts)
     process.exit(0);
   })
