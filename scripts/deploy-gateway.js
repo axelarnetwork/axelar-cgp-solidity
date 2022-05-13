@@ -25,6 +25,10 @@ const TokenDeployer = require('../build/TokenDeployer.json');
 const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
 const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
 
+const printLog = (msg) => {process.stdout.write(JSON.stringify({log: msg}).concat("\n"))}
+const printObj = (obj) => {process.stdout.write(JSON.stringify(obj).concat("\n"))}
+
+printLog("retrieving admin addresses")
 const adminKeyIDs = JSON.parse(execSync(`${prefix} "axelard q tss external-key-id ${chain} --output json"`)).key_ids;
 
 const admins = adminKeyIDs.map(adminKeyID => {
@@ -39,7 +43,11 @@ const getAddresses = (role) => {
   const output = execSync(`${prefix} "axelard q tss key ${keyID} --output json"`);
   const keys = JSON.parse(output).multisig_key.key;
  
-  const addresses = keys.map(key => computeAddress(`0x04${key.x}${key.y}`));
+    const addresses = keys.map(key => {
+        const x = ("0".repeat(64) + `${key.x}`).slice(-64);
+        const y = ("0".repeat(64) + `${key.y}`).slice(-64);
+        return computeAddress(`0x04${x}${y}`)
+    });
 
   return {
     addresses: addresses,
@@ -47,13 +55,15 @@ const getAddresses = (role) => {
   }
 }
 
-console.log({admins: {addresses: admins, threshold: adminThreshold}});
+printObj({admins: {addresses: admins, threshold: adminThreshold}});
 
+printLog("retrieving owner addresses")
 const { addresses: owners, threshold: ownerThreshold } = getAddresses("master")
-console.log({owners: owners, threshold: ownerThreshold })
+printObj({owners: owners, threshold: ownerThreshold })
 
+printLog("retrieving operator addresses")
 const { addresses: operators, threshold: operatorThreshold } = getAddresses("secondary")
-console.log({operators: operators, threshold: operatorThreshold })
+printObj({operators: operators, threshold: operatorThreshold })
 
 const params = arrayify(
   defaultAbiCoder.encode(
@@ -85,22 +95,29 @@ const axelarGatewayProxyFactory = new ContractFactory(
   wallet,
 );
 
+let contracts = {}
+
+printLog("deploying contracts")
+
 tokenDeployerFactory
   .deploy()
   .then((tokenDeployer) => tokenDeployer.deployed())
   .then(({ address }) => {
-    console.log(`deployed token deployer at address ${address}`);
+    printLog(`deployed token deployer at address ${address}`);
+    contracts["tokenDeployed"] = `${address}`
     return axelarGatewayMultisigFactory.deploy(address)
   })
   .then((axelarGatewayMultisig) => axelarGatewayMultisig.deployed())
   .then(({ address }) => {
-    console.log(`deployed axelar gateway multisig at address ${address}`);
+    printLog(`deployed axelar gateway multisig at address ${address}`);
+    contracts["gatewayMultisig"] = `${address}`
     return axelarGatewayProxyFactory.deploy(address, params)
   })
   .then((axelarGatewayProxy) => axelarGatewayProxy.deployed())
   .then(({ address }) => {
-    console.log(`deployed axelar gateway proxy at address ${address}`);
-
+    printLog(`deployed axelar gateway proxy at address ${address}`);
+    contracts["gatewayProxy"] = `${address}`
+    printObj(contracts)
     process.exit(0);
   })
   .catch((err) => {
