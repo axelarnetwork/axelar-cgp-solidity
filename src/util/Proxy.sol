@@ -3,6 +3,7 @@
 pragma solidity 0.8.9;
 
 contract Proxy {
+    error InvalidImplementation();
     error SetupFailed();
     error EtherNotAccepted();
 

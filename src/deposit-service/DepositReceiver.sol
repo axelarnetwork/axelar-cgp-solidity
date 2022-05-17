@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 
 contract DepositReceiver {
     error NotOwner();
+    error NotContract();
 
     address internal _owner;
 
@@ -12,7 +13,7 @@ contract DepositReceiver {
     }
 
     modifier onlyOwner() {
-        if (_owner != msg.sender) revert NotOwner();
+        if (msg.sender != _owner) revert NotOwner();
         _;
     }
 
@@ -21,9 +22,9 @@ contract DepositReceiver {
         uint256 value,
         bytes calldata data
     ) external onlyOwner returns (bool success, bytes memory returnData) {
-        if (callee.code.length != 0) {
-            (success, returnData) = callee.call{ value: value }(data);
-        }
+        if (callee.code.length == 0) revert NotContract();
+
+        (success, returnData) = callee.call{ value: value }(data);
     }
 
     // NOTE: The gateway should always destroy the `DepositHandler` in the same runtime context that deploys it.

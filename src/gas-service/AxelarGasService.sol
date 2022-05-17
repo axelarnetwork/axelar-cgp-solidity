@@ -139,7 +139,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         );
         bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
 
-        if (!transferred) revert TransferFailed();
+        if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
     }
 
     function _safeTransferFrom(
@@ -152,7 +152,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         );
         bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
 
-        if (!transferred) revert TransferFailed();
+        if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
     }
 
     function contractId() public pure returns (bytes32) {

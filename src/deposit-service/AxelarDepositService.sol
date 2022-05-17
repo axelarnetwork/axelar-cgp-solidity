@@ -27,10 +27,12 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         string calldata destinationAddress,
         string calldata tokenSymbol
     ) external view returns (address) {
-        bytes32 salt = keccak256(
-            abi.encode(PREFIX_DEPOSIT_SEND_TOKEN, nonce, destinationChain, destinationAddress, tokenSymbol)
-        );
-        return _depositAddress(salt);
+        return
+            _depositAddress(
+                keccak256(
+                    abi.encode(PREFIX_DEPOSIT_SEND_TOKEN, nonce, destinationChain, destinationAddress, tokenSymbol)
+                )
+            );
     }
 
     function depositAddressForSendNative(
@@ -38,13 +40,14 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         string calldata destinationChain,
         string calldata destinationAddress
     ) external view returns (address) {
-        bytes32 salt = keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, nonce, destinationChain, destinationAddress));
-        return _depositAddress(salt);
+        return
+            _depositAddress(
+                keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, nonce, destinationChain, destinationAddress))
+            );
     }
 
     function depositAddressForWithdrawNative(bytes32 nonce, address recipient) external view returns (address) {
-        bytes32 salt = keccak256(abi.encode(PREFIX_DEPOSIT_WITHDRAW_NATIVE, nonce, recipient));
-        return _depositAddress(salt);
+        return _depositAddress(keccak256(abi.encode(PREFIX_DEPOSIT_WITHDRAW_NATIVE, nonce, recipient)));
     }
 
     function sendToken(
@@ -66,13 +69,14 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
 
         if (amount == 0) revert NothingDeposited();
 
-        (bool success, bytes memory returnData) = depositReceiver.execute(
-            tokenAddress,
-            0,
-            abi.encodeWithSelector(IERC20.approve.selector, gatewayAddress, amount)
-        );
-
-        if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert TransferFailed();
+        if (
+            !_execute(
+                depositReceiver,
+                tokenAddress,
+                0,
+                abi.encodeWithSelector(IERC20.approve.selector, gatewayAddress, amount)
+            )
+        ) revert ApproveFailed();
 
         bytes memory sendPayload = abi.encodeWithSelector(
             IAxelarGateway.sendToken.selector,
@@ -82,9 +86,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
             amount
         );
 
-        (success, returnData) = depositReceiver.execute(gatewayAddress, 0, sendPayload);
-
-        if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert TransferFailed();
+        if (!_execute(depositReceiver, gatewayAddress, 0, sendPayload)) revert TokenSendFailed();
 
         // NOTE: `depositReceiver` must always be destroyed in the same runtime context that it is deployed.
         depositReceiver.destroy(address(this));
@@ -107,21 +109,17 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         string memory symbol = wrappedSymbol();
         address wrappedTokenAddress = IAxelarGateway(gatewayAddress).tokenAddresses(symbol);
 
-        (bool success, bytes memory returnData) = depositReceiver.execute(
-            wrappedTokenAddress,
-            amount,
-            abi.encodeWithSelector(IWETH9.deposit.selector)
-        );
+        if (!_execute(depositReceiver, wrappedTokenAddress, amount, abi.encodeWithSelector(IWETH9.deposit.selector)))
+            revert WrapFailed();
 
-        if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert TransferFailed();
-
-        (success, returnData) = depositReceiver.execute(
-            wrappedTokenAddress,
-            0,
-            abi.encodeWithSelector(IERC20.approve.selector, gatewayAddress, amount)
-        );
-
-        if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert TransferFailed();
+        if (
+            !_execute(
+                depositReceiver,
+                wrappedTokenAddress,
+                0,
+                abi.encodeWithSelector(IERC20.approve.selector, gatewayAddress, amount)
+            )
+        ) revert ApproveFailed();
 
         bytes memory sendPayload = abi.encodeWithSelector(
             IAxelarGateway.sendToken.selector,
@@ -131,9 +129,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
             amount
         );
 
-        (success, returnData) = depositReceiver.execute(gatewayAddress, 0, sendPayload);
-
-        if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert TransferFailed();
+        if (!_execute(depositReceiver, gatewayAddress, 0, sendPayload)) revert TokenSendFailed();
 
         // NOTE: `depositReceiver` must always be destroyed in the same runtime context that it is deployed.
         depositReceiver.destroy(address(this));
@@ -148,13 +144,8 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
 
         if (amount == 0) revert NothingDeposited();
 
-        (bool success, bytes memory returnData) = depositReceiver.execute(
-            token,
-            0,
-            abi.encodeWithSelector(IWETH9.withdraw.selector, amount)
-        );
-
-        if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert TransferFailed();
+        if (!_execute(depositReceiver, token, 0, abi.encodeWithSelector(IWETH9.withdraw.selector, amount)))
+            revert UnwrapFailed();
 
         // NOTE: `depositReceiver` must always be destroyed in the same runtime context that it is deployed.
         depositReceiver.destroy(recipient);
@@ -210,6 +201,16 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
                     )
                 )
             );
+    }
+
+    function _execute(
+        DepositReceiver depositReceiver,
+        address callee,
+        uint256 nativeValue,
+        bytes memory payload
+    ) internal returns (bool) {
+        (bool success, bytes memory returnData) = depositReceiver.execute(callee, nativeValue, payload);
+        return success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
     }
 
     function contractId() public pure returns (bytes32) {

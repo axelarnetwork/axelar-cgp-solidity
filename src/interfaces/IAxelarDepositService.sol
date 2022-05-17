@@ -9,7 +9,10 @@ interface IAxelarDepositService is IUpgradable {
     error InvalidAddress();
     error InvalidSymbol();
     error NothingDeposited();
-    error TransferFailed();
+    error ApproveFailed();
+    error WrapFailed();
+    error UnwrapFailed();
+    error TokenSendFailed();
 
     function depositAddressForSendToken(
         bytes32 nonce,

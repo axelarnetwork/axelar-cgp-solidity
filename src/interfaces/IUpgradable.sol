@@ -7,7 +7,7 @@ interface IUpgradable {
     error NotOwner();
     error InvalidOwner();
     error InvalidCodeHash();
-    error InvalidContract();
+    error InvalidImplementation();
     error SetupFailed();
     error NotProxy();
 
