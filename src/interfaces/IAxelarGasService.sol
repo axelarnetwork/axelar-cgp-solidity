@@ -2,17 +2,12 @@
 
 pragma solidity 0.8.9;
 
-// This should be owned by the microservice that is paying for gas.
-interface IAxelarGasReceiver {
-    error NotOwner();
-    error TransferFailed();
-    error NothingReceived();
-    error InvalidCodeHash();
-    error SetupFailed();
-    error NotProxy();
+import './IUpgradable.sol';
 
-    event Upgraded(address indexed newImplementation);
-    event OwnershipTransferred(address indexed newOwner);
+// This should be owned by the microservice that is paying for gas.
+interface IAxelarGasService is IUpgradable {
+    error NothingReceived();
+    error TransferFailed();
 
     event GasPaidForContractCall(
         address indexed sourceAddress,
@@ -55,9 +50,6 @@ interface IAxelarGasReceiver {
         uint256 gasFeeAmount,
         address refundAddress
     );
-
-    // Get current owner
-    function owner() external view returns (address);
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCall(
@@ -109,13 +101,5 @@ interface IAxelarGasReceiver {
         address payable receiver,
         address token,
         uint256 amount
-    ) external;
-
-    function setup(bytes calldata data) external;
-
-    function upgrade(
-        address newImplementation,
-        bytes32 newImplementationCodeHash,
-        bytes calldata params
     ) external;
 }

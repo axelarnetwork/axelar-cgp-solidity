@@ -2,35 +2,12 @@
 
 pragma solidity 0.8.9;
 
+import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
 import { IERC20 } from '../interfaces/IERC20.sol';
-import { IAxelarGasReceiver } from '../interfaces/IAxelarGasReceiver.sol';
+import '../util/Upgradable.sol';
 
 // This should be owned by the microservice that is paying for gas.
-contract AxelarGasReceiver is IAxelarGasReceiver {
-    // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
-    bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-    // keccak256('owner');
-    bytes32 internal constant _OWNER_SLOT = 0x02016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0;
-
-    modifier onlyOwner() {
-        if (owner() != msg.sender) revert NotOwner();
-        _;
-    }
-
-    function owner() public view returns (address owner_) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            owner_ := sload(_OWNER_SLOT)
-        }
-    }
-
-    function implementation() public view returns (address implementation_) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            implementation_ := sload(_IMPLEMENTATION_SLOT)
-        }
-    }
-
+contract AxelarGasService is Upgradable, IAxelarGasService {
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCall(
         address sender,
@@ -152,39 +129,6 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         }
     }
 
-    function upgrade(
-        address newImplementation,
-        bytes32 newImplementationCodeHash,
-        bytes calldata params
-    ) external override onlyOwner {
-        if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(this.setup.selector, params));
-
-        if (!success) revert SetupFailed();
-
-        emit Upgraded(newImplementation);
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            sstore(_IMPLEMENTATION_SLOT, newImplementation)
-        }
-    }
-
-    function setup(bytes calldata data) external override {
-        // Prevent setup from being called on the implementation
-        if (implementation() == address(0)) revert NotProxy();
-
-        address newOwner = abi.decode(data, (address));
-
-        if (newOwner != address(0)) {
-            emit OwnershipTransferred(newOwner);
-            // solhint-disable-next-line no-inline-assembly
-            assembly {
-                sstore(_OWNER_SLOT, newOwner)
-            }
-        }
-    }
-
     function _safeTransfer(
         address tokenAddress,
         address receiver,
@@ -195,7 +139,7 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         );
         bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
 
-        if (!transferred) revert TransferFailed();
+        if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
     }
 
     function _safeTransferFrom(
@@ -208,6 +152,10 @@ contract AxelarGasReceiver is IAxelarGasReceiver {
         );
         bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
 
-        if (!transferred) revert TransferFailed();
+        if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
+    }
+
+    function contractId() public pure returns (bytes32) {
+        return keccak256('axelar-gas-service');
     }
 }
