@@ -10,27 +10,31 @@ const {
 } = require('ethers');
 
 const { execSync }  = require('child_process');
+const path = require('node:path');
+
+const {
+  printLog,
+  printObj,
+} = require('./logging');
 
 // these environment variables should be defined in an '.env' file
+const contractsPath = process.env.CONTRACTS_PATH;
 const prefix = process.env.PREFIX;
 const chain = process.env.CHAIN;
 const url = process.env.URL;
 const privKey = process.env.PRIVATE_KEY;
 const adminThreshold = parseInt(process.env.ADMIN_THRESHOLD);
 
+// the ABIs for the contracts below must be manually downloaded/compiled
+const TokenDeployer = require(path.join(contractsPath,'TokenDeployer.json'));
+const AxelarGatewayMultisig = require(path.join(contractsPath,'AxelarGatewayMultisig.json'));
+const AxelarGatewayProxy = require(path.join(contractsPath,'AxelarGatewayProxy.json'));
+
 const provider = new JsonRpcProvider(url);
 const wallet = new Wallet(privKey, provider);
 
-const TokenDeployer = require('../build/TokenDeployer.json');
-const AxelarGatewayMultisig = require('../build/AxelarGatewayMultisig.json');
-const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
-
-const printLog = (log) => { console.log(JSON.stringify({ log })) }
-const printObj = (obj) => { console.log(JSON.stringify(obj)) }
-
 printLog("retrieving admin addresses")
 const adminKeyIDs = JSON.parse(execSync(`${prefix} "axelard q tss external-key-id ${chain} --output json"`)).key_ids;
-
 const admins = adminKeyIDs.map(adminKeyID => {
   const output = execSync(`${prefix} "axelard q tss key ${adminKeyID} --output json"`);
   const key = JSON.parse(output).ecdsa_key.key;
@@ -56,7 +60,6 @@ const getAddresses = (role) => {
 }
 
 printObj({admins: {addresses: admins, threshold: adminThreshold}});
-
 printLog("retrieving owner addresses")
 const { addresses: owners, threshold: ownerThreshold } = getAddresses("master")
 printObj({owners: owners, threshold: ownerThreshold })
