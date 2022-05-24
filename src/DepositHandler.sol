@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 
 contract DepositHandler {
     error IsLocked();
+    error NotContract();
 
     uint256 internal constant IS_NOT_LOCKED = uint256(1);
     uint256 internal constant IS_LOCKED = uint256(2);
@@ -23,9 +24,9 @@ contract DepositHandler {
         noReenter
         returns (bool success, bytes memory returnData)
     {
-        if (callee.code.length != 0) {
-            (success, returnData) = callee.call(data);
-        }
+        if (callee.code.length == 0) revert NotContract();
+
+        (success, returnData) = callee.call(data);
     }
 
     // NOTE: The gateway should always destroy the `DepositHandler` in the same runtime context that deploys it.
