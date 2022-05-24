@@ -1,6 +1,6 @@
 {
   "name": "@axelar-network/axelar-cgp-solidity",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Ethereum Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
@@ -25,11 +25,9 @@
     "url": "https://github.com/axelarnetwork/axelar-cgp-solidity/issues"
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
-  "dependencies": {
-    "ethereum-waffle": "^3.4.0",
-    "lodash": "^4.17.21"
-  },
   "devDependencies": {
+    "ethereum-waffle": "^3.4.0",
+    "lodash": "^4.17.21",
     "chai": "^4.3.4",
     "eslint": "^8.4.1",
     "eslint-config-richardpringle": "^2.0.0",
