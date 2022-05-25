@@ -442,16 +442,18 @@ describe('GeneralMessagePassing', () => {
           symbolA,
           swapAmount,
         );
-      
+
       const approveCommandId = getRandomID();
       const sourceTxHash = keccak256('0x123abc123abc');
       const sourceEventIndex = 17;
 
       await (await tokenA.mint(ownerWallet.address, swapAmount)).wait();
-      await (await tokenA.approve(
-        destinationChainSwapExecutableFortellable.address,
-        swapAmount,
-      )).wait();
+      await (
+        await tokenA.approve(
+          destinationChainSwapExecutableFortellable.address,
+          swapAmount,
+        )
+      ).wait();
 
       const fortell = await destinationChainSwapExecutableFortellable.fortell(
         sourceChain,
@@ -461,7 +463,7 @@ describe('GeneralMessagePassing', () => {
         swapAmount,
         ownerWallet.address,
       );
-      
+
       await expect(fortell)
         .to.emit(tokenA, 'Transfer')
         .withArgs(
@@ -489,62 +491,63 @@ describe('GeneralMessagePassing', () => {
           symbolB,
           convertedAmount,
         );
-        
-        const approveWithMintData = arrayify(
-          defaultAbiCoder.encode(
-            ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+
+      const approveWithMintData = arrayify(
+        defaultAbiCoder.encode(
+          ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+          [
+            CHAIN_ID,
+            ROLE_OWNER,
+            [approveCommandId],
+            ['approveContractCallWithMint'],
             [
-              CHAIN_ID,
-              ROLE_OWNER,
-              [approveCommandId],
-              ['approveContractCallWithMint'],
-              [
-                defaultAbiCoder.encode(
-                  [
-                    'string',
-                    'string',
-                    'address',
-                    'bytes32',
-                    'string',
-                    'uint256',
-                    'bytes32',
-                    'uint256',
-                  ],
-                  [
-                    sourceChain,
-                    sourceChainSwapCallerFortellable.address.toString(),
-                    destinationChainSwapExecutableFortellable.address,
-                    payloadHash,
-                    symbolA,
-                    swapAmount,
-                    sourceTxHash,
-                    sourceEventIndex,
-                  ],
-                ),
-              ],
+              defaultAbiCoder.encode(
+                [
+                  'string',
+                  'string',
+                  'address',
+                  'bytes32',
+                  'string',
+                  'uint256',
+                  'bytes32',
+                  'uint256',
+                ],
+                [
+                  sourceChain,
+                  sourceChainSwapCallerFortellable.address.toString(),
+                  destinationChainSwapExecutableFortellable.address,
+                  payloadHash,
+                  symbolA,
+                  swapAmount,
+                  sourceTxHash,
+                  sourceEventIndex,
+                ],
+              ),
             ],
-          ),
+          ],
+        ),
+      );
+
+      const approveExecute = await destinationChainGateway.execute(
+        await getSignedExecuteInput(approveWithMintData, ownerWallet),
+      );
+
+      await expect(approveExecute)
+        .to.emit(destinationChainGateway, 'ContractCallApprovedWithMint')
+        .withArgs(
+          approveCommandId,
+          sourceChain,
+          sourceChainSwapCallerFortellable.address.toString(),
+          destinationChainSwapExecutableFortellable.address,
+          payloadHash,
+          symbolA,
+          swapAmount,
+          sourceTxHash,
+          sourceEventIndex,
         );
 
-        const approveExecute = await destinationChainGateway.execute(
-          await getSignedExecuteInput(approveWithMintData, ownerWallet),
-        );
-  
-        await expect(approveExecute)
-          .to.emit(destinationChainGateway, 'ContractCallApprovedWithMint')
-          .withArgs(
-            approveCommandId,
-            sourceChain,
-            sourceChainSwapCallerFortellable.address.toString(),
-            destinationChainSwapExecutableFortellable.address,
-            payloadHash,
-            symbolA,
-            swapAmount,
-            sourceTxHash,
-            sourceEventIndex,
-          );  
-        
-        const executeWithToken = await destinationChainSwapExecutableFortellable.executeWithToken(
+      const executeWithToken =
+        await destinationChainSwapExecutableFortellable.executeWithToken(
           approveCommandId,
           sourceChain,
           sourceChainSwapCallerFortellable.address.toString(),
@@ -553,7 +556,7 @@ describe('GeneralMessagePassing', () => {
           swapAmount,
         );
 
-        await expect(executeWithToken)
+      await expect(executeWithToken)
         .to.emit(tokenA, 'Transfer')
         .withArgs(
           destinationChainGateway.address,
@@ -565,8 +568,7 @@ describe('GeneralMessagePassing', () => {
           destinationChainSwapExecutableFortellable.address,
           ownerWallet.address,
           swapAmount,
-        )
-        
+        );
     });
   });
 });

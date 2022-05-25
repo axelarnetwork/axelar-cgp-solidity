@@ -11,7 +11,8 @@ abstract contract IAxelarExecutableFortellable {
     error NotAuthorizedToFortell();
 
     IAxelarGateway public gateway;
-    mapping(string => mapping(string => mapping(bytes => mapping(string => mapping(uint256 => address))))) public fortellers;
+    mapping(string => mapping(string => mapping(bytes => mapping(string => mapping(uint256 => address)))))
+        public fortellers;
 
     constructor(address gateway_) {
         gateway = IAxelarGateway(gateway_);
@@ -39,20 +40,13 @@ abstract contract IAxelarExecutableFortellable {
     ) external {
         address token = gateway.tokenAddresses(tokenSymbol);
         IERC20(token).transferFrom(msg.sender, address(this), amount);
-        _checkFortell(
-            sourceChain,
-            sourceAddress,
-            payload,
-            tokenSymbol,
-            amount,
-            forteller
-        );
-        if(fortellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] != address(0)) revert AlreadyFortold();
+        _checkFortell(sourceChain, sourceAddress, payload, tokenSymbol, amount, forteller);
+        if (fortellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] != address(0)) revert AlreadyFortold();
         fortellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] = forteller;
         _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
     }
 
-        function executeWithToken(
+    function executeWithToken(
         bytes32 commandId,
         string calldata sourceChain,
         string calldata sourceAddress,
@@ -72,7 +66,7 @@ abstract contract IAxelarExecutableFortellable {
             )
         ) revert NotApprovedByGateway();
         address forteller = fortellers[sourceChain][sourceAddress][payload][tokenSymbol][amount];
-        if(forteller != address(0)) {
+        if (forteller != address(0)) {
             fortellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] = address(0);
             address token = gateway.tokenAddresses(tokenSymbol);
             IERC20(token).transfer(forteller, amount);
@@ -96,7 +90,7 @@ abstract contract IAxelarExecutableFortellable {
     ) internal virtual {}
 
     // Override this and revert if you want to only allow certain people/calls to be able to fortell.
-    function _checkFortell (
+    function _checkFortell(
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload,
