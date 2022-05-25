@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import { StringToAddress, AddressToString } from './StringAddressUtils.sol';
+import { StringToAddress, AddressToString } from '../util/StringAddressUtils.sol';
 
 contract UtilTest {
     using AddressToString for address;
