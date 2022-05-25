@@ -5,14 +5,14 @@ pragma solidity 0.8.9;
 import { IAxelarGateway } from './IAxelarGateway.sol';
 import { IERC20 } from './IERC20.sol';
 
-abstract contract IAxelarExecutableFortellable {
+abstract contract IAxelarExecutableForetellable {
     error NotApprovedByGateway();
     error AlreadyFortold();
-    error NotAuthorizedToFortell();
+    error NotAuthorizedToForetell();
 
     IAxelarGateway public gateway;
     mapping(string => mapping(string => mapping(bytes => mapping(string => mapping(uint256 => address)))))
-        public fortellers;
+        public foretellers;
 
     constructor(address gateway_) {
         gateway = IAxelarGateway(gateway_);
@@ -30,19 +30,19 @@ abstract contract IAxelarExecutableFortellable {
         _execute(sourceChain, sourceAddress, payload);
     }
 
-    function fortell(
+    function foretell(
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload,
         string calldata tokenSymbol,
         uint256 amount,
-        address forteller
+        address foreteller
     ) external {
         address token = gateway.tokenAddresses(tokenSymbol);
         IERC20(token).transferFrom(msg.sender, address(this), amount);
-        _checkFortell(sourceChain, sourceAddress, payload, tokenSymbol, amount, forteller);
-        if (fortellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] != address(0)) revert AlreadyFortold();
-        fortellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] = forteller;
+        _checkForetell(sourceChain, sourceAddress, payload, tokenSymbol, amount, foreteller);
+        if (foretellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] != address(0)) revert AlreadyFortold();
+        foretellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] = foreteller;
         _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
     }
 
@@ -65,11 +65,11 @@ abstract contract IAxelarExecutableFortellable {
                 amount
             )
         ) revert NotApprovedByGateway();
-        address forteller = fortellers[sourceChain][sourceAddress][payload][tokenSymbol][amount];
-        if (forteller != address(0)) {
-            fortellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] = address(0);
+        address foreteller = foretellers[sourceChain][sourceAddress][payload][tokenSymbol][amount];
+        if (foreteller != address(0)) {
+            foretellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] = address(0);
             address token = gateway.tokenAddresses(tokenSymbol);
-            IERC20(token).transfer(forteller, amount);
+            IERC20(token).transfer(foreteller, amount);
         } else {
             _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
         }
@@ -89,13 +89,13 @@ abstract contract IAxelarExecutableFortellable {
         uint256 amount
     ) internal virtual {}
 
-    // Override this and revert if you want to only allow certain people/calls to be able to fortell.
-    function _checkFortell(
+    // Override this and revert if you want to only allow certain people/calls to be able to foretell.
+    function _checkForetell(
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload,
         string calldata tokenSymbol,
         uint256 amount,
-        address forteller
+        address foreteller
     ) internal virtual {}
 }
