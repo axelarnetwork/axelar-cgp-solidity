@@ -2,15 +2,14 @@
 
 pragma solidity 0.8.9;
 
-import { AddressFormat } from './AddressFormat.sol';
-import { StringToAddress } from './StringToAddress.sol';
+import { StringToAddress, AddressToString } from './StringAddressUtils.sol';
 
 contract UtilTest {
-    using AddressFormat for address;
+    using AddressToString for address;
     using StringToAddress for string;
 
     function addressToString(address address_) external pure returns (string memory) {
-        return address_.toLowerString();
+        return address_.toString();
     }
 
     function stringToAddress(string calldata string_) external pure returns (address) {
