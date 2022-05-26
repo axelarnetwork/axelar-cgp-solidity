@@ -15,32 +15,32 @@ interface IAxelarDepositService is IUpgradable {
     error TokenSendFailed();
 
     function depositAddressForSendToken(
-        bytes32 nonce,
+        bytes32 salt,
         string calldata destinationChain,
         string calldata destinationAddress,
         string calldata tokenSymbol
     ) external view returns (address);
 
     function depositAddressForSendNative(
-        bytes32 nonce,
+        bytes32 salt,
         string calldata destinationChain,
         string calldata destinationAddress
     ) external view returns (address);
 
-    function depositAddressForWithdrawNative(bytes32 nonce, address recipient) external view returns (address);
+    function depositAddressForWithdrawNative(bytes32 salt, address recipient) external view returns (address);
 
     function sendToken(
-        bytes32 nonce,
+        bytes32 salt,
         string calldata destinationChain,
         string calldata destinationAddress,
         string calldata tokenSymbol
     ) external;
 
     function sendNative(
-        bytes32 nonce,
+        bytes32 salt,
         string calldata destinationChain,
         string calldata destinationAddress
     ) external;
 
-    function withdrawNative(bytes32 nonce, address payable recipient) external;
+    function withdrawNative(bytes32 salt, address payable recipient) external;
 }
