@@ -37,6 +37,11 @@ interface IERC20 {
     function allowance(address owner, address spender) external view returns (uint256);
 
     /**
+     * @dev Returns the amount of decimal points for displaying a token amount.
+     */
+    function decimals() external view returns (uint256);
+
+    /**
      * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
      *
      * Returns a boolean value indicating whether the operation succeeded.
