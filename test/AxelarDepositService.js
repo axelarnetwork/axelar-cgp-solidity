@@ -204,19 +204,19 @@ describe('AxelarDepositService', () => {
       const amount = 1e6;
 
       const expectedDepositAddress = getCreate2Address(
-          depositService.address,
-          keccak256(
-              defaultAbiCoder.encode(
-                  ['bytes32', 'bytes32', 'string', 'string'],
-                  [
-                    keccak256(toUtf8Bytes('deposit-send-native')),
-                    salt,
-                    destinationChain,
-                    destinationAddress,
-                  ],
-              ),
+        depositService.address,
+        keccak256(
+          defaultAbiCoder.encode(
+            ['bytes32', 'bytes32', 'string', 'string'],
+            [
+              keccak256(toUtf8Bytes('deposit-send-native')),
+              salt,
+              destinationChain,
+              destinationAddress,
+            ],
           ),
-          keccak256(`0x${DepositReceiver.bytecode}`),
+        ),
+        keccak256(`0x${DepositReceiver.bytecode}`),
       );
 
       const depositAddress = await depositService.depositAddressForSendNative(
@@ -255,18 +255,18 @@ describe('AxelarDepositService', () => {
       const amount = 1e6;
 
       const expectedDepositAddress = getCreate2Address(
-          depositService.address,
-          keccak256(
-              defaultAbiCoder.encode(
-                  ['bytes32', 'bytes32', 'address'],
-                  [
-                    keccak256(toUtf8Bytes('deposit-withdraw-native')),
-                    salt,
-                    recipient
-                  ],
-              ),
+        depositService.address,
+        keccak256(
+          defaultAbiCoder.encode(
+            ['bytes32', 'bytes32', 'address'],
+            [
+              keccak256(toUtf8Bytes('deposit-withdraw-native')),
+              salt,
+              recipient,
+            ],
           ),
-          keccak256(`0x${DepositReceiver.bytecode}`),
+        ),
+        keccak256(`0x${DepositReceiver.bytecode}`),
       );
 
       const depositAddress =
