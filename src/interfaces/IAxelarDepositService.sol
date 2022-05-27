@@ -14,6 +14,12 @@ interface IAxelarDepositService is IUpgradable {
     error UnwrapFailed();
     error TokenSendFailed();
 
+    function PREFIX_DEPOSIT_SEND_TOKEN() external view returns (bytes32);
+
+    function PREFIX_DEPOSIT_SEND_NATIVE() external view returns (bytes32);
+
+    function PREFIX_DEPOSIT_WITHDRAW_NATIVE() external view returns (bytes32);
+
     function depositAddressForSendToken(
         bytes32 salt,
         string calldata destinationChain,

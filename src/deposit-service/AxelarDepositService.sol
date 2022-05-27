@@ -17,9 +17,9 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     bytes32 internal constant _WRAPPED_TOKEN_SYMBOL_SLOT =
         0x91d2f5305ae2a8f5b319f6c3a690eff002c3e572220774ba5f7e957f079e55df;
 
-    bytes32 internal constant PREFIX_DEPOSIT_SEND_TOKEN = keccak256('deposit-send-token');
-    bytes32 internal constant PREFIX_DEPOSIT_SEND_NATIVE = keccak256('deposit-send-native');
-    bytes32 internal constant PREFIX_DEPOSIT_WITHDRAW_NATIVE = keccak256('deposit-withdraw-native');
+    bytes32 public constant override PREFIX_DEPOSIT_SEND_TOKEN = keccak256('deposit-send-token');
+    bytes32 public constant override PREFIX_DEPOSIT_SEND_NATIVE = keccak256('deposit-send-native');
+    bytes32 public constant override PREFIX_DEPOSIT_WITHDRAW_NATIVE = keccak256('deposit-withdraw-native');
 
     function depositAddressForSendToken(
         bytes32 salt,
@@ -97,7 +97,9 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         string calldata destinationChain,
         string calldata destinationAddress
     ) external {
-        DepositReceiver depositReceiver = new DepositReceiver{ salt: keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, salt, destinationChain, destinationAddress)) }();
+        DepositReceiver depositReceiver = new DepositReceiver{
+            salt: keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, salt, destinationChain, destinationAddress))
+        }();
 
         uint256 amount = address(depositReceiver).balance;
 
@@ -136,7 +138,9 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     function withdrawNative(bytes32 salt, address payable recipient) external {
         address token = wrappedToken();
 
-        DepositReceiver depositReceiver = new DepositReceiver{ salt: keccak256(abi.encode(PREFIX_DEPOSIT_WITHDRAW_NATIVE, salt, recipient)) }();
+        DepositReceiver depositReceiver = new DepositReceiver{
+            salt: keccak256(abi.encode(PREFIX_DEPOSIT_WITHDRAW_NATIVE, salt, recipient))
+        }();
         uint256 amount = IERC20(token).balanceOf(address(depositReceiver));
 
         if (amount == 0) revert NothingDeposited();
