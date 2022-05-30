@@ -20,7 +20,6 @@ library StringToAddress {
     }
 }
 
-
 library AddressToString {
     function toString(address a) internal pure returns (string memory) {
         bytes memory data = abi.encodePacked(a);

@@ -43,7 +43,8 @@ abstract contract Upgradable is IUpgradable {
         bytes32 newImplementationCodeHash,
         bytes calldata params
     ) external override onlyOwner {
-        if (IUpgradable(newImplementation).contractId() != IUpgradable(this).contractId()) revert InvalidImplementation();
+        if (IUpgradable(newImplementation).contractId() != IUpgradable(this).contractId())
+            revert InvalidImplementation();
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
         // solhint-disable-next-line avoid-low-level-calls

@@ -23,7 +23,7 @@ describe('UtilTest', () => {
       address.toLowerCase(),
     );
   });
-  
+
   it('should convert string of any format to address', async () => {
     const address = ownerWallet.address;
     expect(await utilTest.stringToAddress(address)).to.equal(address);
