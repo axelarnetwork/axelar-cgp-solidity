@@ -25,13 +25,13 @@ const amount = process.env.AMOUNT;
 const gatewayAddress = process.env.GATEWAY_ADDRESS;
 
 printObj({"enviroment_variables:" : {
-  "CONTRACTS_PATH" : contractsPath,
-  "URL" : url,
-  "PRIVATE_KEY" : privKey,
-  "DESTINATION_CHAIN" : destinationChain, 
-  "SYMBOL": symbol, 
-  "AMOUNT" : amount, 
-  "GATEWAY_ADDRESS" : gatewayAddress
+  "CONTRACTS_PATH" : contractsPath || null,
+  "URL" : url || null,
+  "PRIVATE_KEY" : privKey || null,
+  "DESTINATION_CHAIN" : destinationChain || null, 
+  "SYMBOL": symbol || null, 
+  "AMOUNT" : amount || null, 
+  "GATEWAY_ADDRESS" : gatewayAddress || null
 }});
 
 if (!(url && privKey && destinationChain && symbol && amount &&  gatewayAddress)) {
@@ -56,8 +56,8 @@ gateway.tokenAddresses(symbol)
   const token = new Contract(tokenAddress, IERC20.abi, wallet);
   return token.approve(gatewayAddress, amount);
 })
-.then((tx) => {
-  tx.wait();
+.then(async (tx) => {
+  await tx.wait();
   printLog(`successfully approved amount of ${amount}${symbol} at tx ${tx.hash}`);
   printLog(`calling contract with token for chain ${destinationChain} and destination address ${wallet.address}`);
   transactions.approve = tx.hash;
@@ -69,8 +69,8 @@ gateway.tokenAddresses(symbol)
   symbol,
   amount,
 ))
-.then((tx) => {
-  tx.wait();
+.then(async (tx) => {
+  await tx.wait();
   printLog(`successfully called contract with token for chain ${destinationChain} and destination address ${wallet.address} at tx ${tx.hash}`);
   transactions.mint = tx.hash;
   printObj(transactions);

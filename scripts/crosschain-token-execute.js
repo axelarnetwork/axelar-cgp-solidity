@@ -27,14 +27,14 @@ const amount = process.env.AMOUNT;
 const gatewayAddress = process.env.GATEWAY_ADDRESS;
 
 printObj({"enviroment_variables:" : {
-    "CONTRACTS_PATH" : contractsPath,
-    "URL" : url,
-    "PRIVATE_KEY" : privKey,
-    "SOURCE_CHAIN" : sourceChain, 
-    "COMMAND_ID" : commandIDhex, 
-    "SYMBOL": symbol, 
-    "AMOUNT" : amount, 
-    "GATEWAY_ADDRESS" : gatewayAddress
+    "CONTRACTS_PATH" : contractsPath || null,
+    "URL" : url || null,
+    "PRIVATE_KEY" : privKey || null,
+    "SOURCE_CHAIN" : sourceChain || null, 
+    "COMMAND_ID" : commandIDhex || null, 
+    "SYMBOL": symbol || null, 
+    "AMOUNT" : amount || null, 
+    "GATEWAY_ADDRESS" : gatewayAddress || null
   }});
 
 if (!(url && privKey && sourceChain && commandIDhex && symbol && amount &&  gatewayAddress)) {
@@ -55,7 +55,7 @@ const commandID = utils.arrayify(commandIDhex.startsWith("0x") ? commandIDhex : 
 printLog(`validating contract call with token for chain ${sourceChain} and destination address ${wallet.address}`);
 
 gateway.validateContractCallAndMint(commandID,sourceChain,wallet.address,hash,symbol,amount)
-.then((tx) => {
+.then(async (tx) => {
     await tx.wait();
     printLog(`successfully validated contract call with token for chain ${sourceChain} and destination address ${wallet.address} at tx ${tx.hash}`);
     printObj({"validated" : tx.hash});
