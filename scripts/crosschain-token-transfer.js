@@ -35,7 +35,7 @@ printObj({"environment_variables:" : {
 }});
 
 if (!(url && privKey && destinationChain && symbol && amount &&  gatewayAddress)) {
-  console.error(`one or more of the required environment variable not defined`);
+  console.error(`one or more of the required environment variable not defined. Make sure to declare these variables in an .env file.`);
   process.exit(1);
 }
 

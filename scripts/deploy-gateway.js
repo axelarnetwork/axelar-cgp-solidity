@@ -18,12 +18,26 @@ const {
 } = require('./logging');
 
 // these environment variables should be defined in an '.env' file
-const contractsPath = process.env.CONTRACTS_PATH;
+const contractsPath = process.env.CONTRACTS_PATH || '../build';
 const prefix = process.env.PREFIX;
 const chain = process.env.CHAIN;
 const url = process.env.URL;
 const privKey = process.env.PRIVATE_KEY;
 const adminThreshold = parseInt(process.env.ADMIN_THRESHOLD);
+
+printObj({"environment_variables:" : {
+  "CONTRACTS_PATH" : contractsPath || null,
+  "PREFIX" : prefix || null,
+  "CHAIN" : chain || null,
+  "URL" : url || null,
+  "PRIVATE_KEY" : privKey || null,
+  "ADMIN_THRESHOLD" : adminThreshold || null
+}});
+
+if (!(prefix && chain && url && privKey && adminThreshold)) {
+  console.error(`one or more of the required environment variable not defined. Make sure to declare these variables in an .env file.`);
+  process.exit(1);
+}
 
 // the ABIs for the contracts below must be manually downloaded/compiled
 const TokenDeployer = require(path.join(contractsPath,'TokenDeployer.json'));
