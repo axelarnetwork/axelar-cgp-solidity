@@ -10,9 +10,9 @@ const {
 } = require('ethers');
 
 const { execSync } = require('child_process');
-const {join, resolve} = require('node:path');
+const { join, resolve } = require('node:path');
 
-const { existsSync } = require('node:fs')
+const { existsSync } = require('node:fs');
 
 const { printLog, printObj } = require('./logging');
 
@@ -44,11 +44,22 @@ if (!(prefix && chain && url && privKey && adminThreshold)) {
 
 // the ABIs for the contracts below must be manually downloaded/compiled
 const TokenDeployerPath = join(contractsPath, 'TokenDeployer.json');
-const AxelarGatewayMultisigPath = join(contractsPath, 'AxelarGatewayMultisig.json');
-const AxelarGatewayProxyPath = join(contractsPath,'AxelarGatewayProxy.json');
+const AxelarGatewayMultisigPath = join(
+  contractsPath,
+  'AxelarGatewayMultisig.json',
+);
+const AxelarGatewayProxyPath = join(contractsPath, 'AxelarGatewayProxy.json');
 
-if (!(existsSync(TokenDeployerPath) && existsSync(AxelarGatewayMultisigPath) && existsSync(AxelarGatewayProxyPath))) {
-  console.error(`Missing one or more ABIs/bytecodes. Make sure TokenDeployer.json, AxelarGatewayMultisig.json, and AxelarGatewayProxy.json are present in ${contractsPath}`);
+if (
+  !(
+    existsSync(TokenDeployerPath) &&
+    existsSync(AxelarGatewayMultisigPath) &&
+    existsSync(AxelarGatewayProxyPath)
+  )
+) {
+  console.error(
+    `Missing one or more ABIs/bytecodes. Make sure TokenDeployer.json, AxelarGatewayMultisig.json, and AxelarGatewayProxy.json are present in ${contractsPath}`,
+  );
   process.exit(1);
 }
 

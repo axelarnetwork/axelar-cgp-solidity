@@ -10,9 +10,9 @@ const {
 
 const { printLog, printObj } = require('./logging');
 
-const {join, resolve} = require('node:path');
+const { join, resolve } = require('node:path');
 
-const { existsSync } = require('node:fs')
+const { existsSync } = require('node:fs');
 
 // these environment variables should be defined in an '.env' file
 const contractsPath = resolve(process.env.CONTRACTS_PATH || './build');
@@ -49,7 +49,9 @@ const IAxelarGatewayPath = join(contractsPath, 'IAxelarGateway.json');
 const IERC20Path = join(contractsPath, 'IERC20.json');
 
 if (!(existsSync(IAxelarGatewayPath) && existsSync(IERC20Path))) {
-  console.error(`Missing one or more ABIs/bytecodes. Make sure IAxelarGateway.json and IERC20.json are present in ${contractsPath}`);
+  console.error(
+    `Missing one or more ABIs/bytecodes. Make sure IAxelarGateway.json and IERC20.json are present in ${contractsPath}`,
+  );
   process.exit(1);
 }
 

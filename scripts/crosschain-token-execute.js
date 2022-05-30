@@ -11,9 +11,9 @@ const {
 
 const { printLog, printObj } = require('./logging');
 
-const {join, resolve} = require('node:path');
+const { join, resolve } = require('node:path');
 
-const { existsSync } = require('node:fs')
+const { existsSync } = require('node:fs');
 
 // these environment variables should be defined in an '.env' file
 const contractsPath = resolve(process.env.CONTRACTS_PATH || './build');
@@ -58,9 +58,11 @@ if (
 // the ABIs for the contracts below must be manually downloaded/compiled
 const IAxelarGatewayPath = join(contractsPath, 'IAxelarGateway.json');
 
-if (!(existsSync(IAxelarGatewayPath))) {
-    console.error(`Missing IAxelarGateway ABI. Make sure IAxelarGateway.json is present in ${contractsPath}`);
-    process.exit(1);
+if (!existsSync(IAxelarGatewayPath)) {
+  console.error(
+    `Missing IAxelarGateway ABI. Make sure IAxelarGateway.json is present in ${contractsPath}`,
+  );
+  process.exit(1);
 }
 
 const IAxelarGateway = require(IAxelarGatewayPath);
