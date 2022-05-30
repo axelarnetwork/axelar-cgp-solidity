@@ -51,11 +51,11 @@ let transactions = {};
 
 printLog(`approving amount of ${amount}${symbol}`);
 
-(async () => {
-  const tokenAddress = await gateway.tokenAddresses(symbol);
+gateway.tokenAddresses(symbol)
+.then(tokenAddress => {
   const token = new Contract(tokenAddress, IERC20.abi, wallet);
   return token.approve(gatewayAddress, amount);
-})()
+})
 .then((tx) => {
   tx.wait();
   printLog(`successfully approved amount of ${amount}${symbol} at tx ${tx.hash}`);

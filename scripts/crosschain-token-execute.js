@@ -56,7 +56,7 @@ printLog(`validating contract call with token for chain ${sourceChain} and desti
 
 gateway.validateContractCallAndMint(commandID,sourceChain,wallet.address,hash,symbol,amount)
 .then((tx) => {
-    tx.wait();
+    await tx.wait();
     printLog(`successfully validated contract call with token for chain ${sourceChain} and destination address ${wallet.address} at tx ${tx.hash}`);
     printObj({"validated" : tx.hash});
     process.exit(0);
