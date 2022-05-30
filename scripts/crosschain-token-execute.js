@@ -54,9 +54,7 @@ const commandID = utils.arrayify(commandIDhex.startsWith("0x") ? commandIDhex : 
 
 printLog(`validating contract call with token for chain ${sourceChain} and destination address ${wallet.address}`);
 
-(async () => {
-    return gateway.validateContractCallAndMint(commandID,sourceChain,wallet.address,hash,symbol,amount);
-})()
+gateway.validateContractCallAndMint(commandID,sourceChain,wallet.address,hash,symbol,amount)
 .then((tx) => {
     tx.wait();
     printLog(`successfully validated contract call with token for chain ${sourceChain} and destination address ${wallet.address} at tx ${tx.hash}`);
