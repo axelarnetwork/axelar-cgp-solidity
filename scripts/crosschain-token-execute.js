@@ -27,20 +27,20 @@ const amount = process.env.AMOUNT;
 const gatewayAddress = process.env.GATEWAY_ADDRESS;
 
 printObj({"environment_variables:" : {
-    "CONTRACTS_PATH" : contractsPath || null,
-    "URL" : url || null,
-    "PRIVATE_KEY" : privKey || null,
-    "SOURCE_CHAIN" : sourceChain || null, 
-    "COMMAND_ID" : commandIDhex || null, 
-    "SYMBOL": symbol || null, 
-    "AMOUNT" : amount || null, 
-    "GATEWAY_ADDRESS" : gatewayAddress || null
-  }});
+  "CONTRACTS_PATH" : contractsPath || null,
+  "URL" : url || null,
+  "PRIVATE_KEY" : privKey || null,
+  "SOURCE_CHAIN" : sourceChain || null, 
+  "COMMAND_ID" : commandIDhex || null, 
+  "SYMBOL": symbol || null, 
+  "AMOUNT" : amount || null, 
+  "GATEWAY_ADDRESS" : gatewayAddress || null
+}});
 
 if (!(url && privKey && sourceChain && commandIDhex && symbol && amount &&  gatewayAddress)) {
-    console.error(`one or more of the required environment variable not defined`);
-    process.exit(1);
-  }
+  console.error(`one or more of the required environment variable not defined`);
+  process.exit(1);
+}
 
 // the ABIs for the contract below must be manually downloaded/compiled
 const IAxelarGateway = require(path.join(contractsPath,'IAxelarGateway.json'));
@@ -56,12 +56,12 @@ printLog(`validating contract call with token for chain ${sourceChain} and desti
 
 gateway.validateContractCallAndMint(commandID,sourceChain,wallet.address,hash,symbol,amount)
 .then(async (tx) => {
-    await tx.wait();
-    printLog(`successfully validated contract call with token for chain ${sourceChain} and destination address ${wallet.address} at tx ${tx.hash}`);
-    printObj({"validated" : tx.hash});
-    process.exit(0);
-  })
+  await tx.wait();
+  printLog(`successfully validated contract call with token for chain ${sourceChain} and destination address ${wallet.address} at tx ${tx.hash}`);
+  printObj({"validated" : tx.hash});
+  process.exit(0);
+})
 .catch((err) => {
-    console.error(err);
-    process.exit(1);
+  console.error(err);
+  process.exit(1);
 });
