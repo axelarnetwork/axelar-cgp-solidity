@@ -24,7 +24,7 @@ const symbol = process.env.SYMBOL;
 const amount = process.env.AMOUNT;
 const gatewayAddress = process.env.GATEWAY_ADDRESS;
 
-printObj({"enviroment_variables:" : {
+printObj({"environment_variables:" : {
   "CONTRACTS_PATH" : contractsPath || null,
   "URL" : url || null,
   "PRIVATE_KEY" : privKey || null,
