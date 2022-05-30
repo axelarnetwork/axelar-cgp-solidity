@@ -17,7 +17,7 @@ const {
 const path = require('node:path');
 
 // these environment variables should be defined in an '.env' file
-const contractsPath = process.env.CONTRACTS_PATH;
+const contractsPath = process.env.CONTRACTS_PATH || '../build';
 const url = process.env.URL;
 const privKey = process.env.PRIVATE_KEY;
 const sourceChain = process.env.SOURCE_CHAIN;
@@ -25,6 +25,22 @@ const commandIDhex = process.env.COMMAND_ID;
 const symbol = process.env.SYMBOL;
 const amount = process.env.AMOUNT;
 const gatewayAddress = process.env.GATEWAY_ADDRESS;
+
+printObj({"enviroment_variables:" : {
+    "CONTRACTS_PATH" : contractsPath,
+    "URL" : url,
+    "PRIVATE_KEY" : privKey,
+    "SOURCE_CHAIN" : sourceChain, 
+    "COMMAND_ID" : commandIDhex, 
+    "SYMBOL": symbol, 
+    "AMOUNT" : amount, 
+    "GATEWAY_ADDRESS" : gatewayAddress
+  }});
+
+if (!(url && privKey && sourceChain && commandIDhex && symbol && amount &&  gatewayAddress)) {
+    console.error(`one or more of the required environment variable not defined`);
+    process.exit(1);
+  }
 
 // the ABIs for the contract below must be manually downloaded/compiled
 const IAxelarGateway = require(path.join(contractsPath,'IAxelarGateway.json'));
