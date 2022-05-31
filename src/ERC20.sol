@@ -35,10 +35,10 @@ contract ERC20 is IERC20 {
 
     uint256 public override totalSupply;
 
-    string public override name;
-    string public override symbol;
+    string public name;
+    string public symbol;
 
-    uint8 public immutable override decimals;
+    uint8 public immutable decimals;
 
     /**
      * @dev Sets the values for {name}, {symbol}, and {decimals}.
