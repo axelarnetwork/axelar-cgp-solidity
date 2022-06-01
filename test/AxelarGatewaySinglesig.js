@@ -885,38 +885,6 @@ describe('AxelarGatewaySinglesig', () => {
                     const tokenAddress = await gateway.tokenAddresses(symbol);
                     token = burnableMintableCappedERC20Factory.attach(tokenAddress);
                 });
-
-                it('should freeze internal token transfers after passing threshold', async () => {
-                    await expect(gateway.connect(admins[0]).freezeToken(symbol)).to.not.emit(gateway, 'TokenFrozen');
-                    await expect(gateway.connect(admins[1]).freezeToken(symbol)).to.not.emit(gateway, 'TokenFrozen');
-                    await expect(gateway.connect(admins[2]).freezeToken(symbol)).to.emit(gateway, 'TokenFrozen').withArgs(symbol);
-
-                    await expect(token.transfer(wallets[1].address, 1)).to.be.revertedWith('IsFrozen()');
-
-                    await expect(gateway.connect(admins[0]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
-                    await expect(gateway.connect(admins[1]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
-                    await expect(gateway.connect(admins[2]).unfreezeToken(symbol)).to.emit(gateway, 'TokenUnfrozen').withArgs(symbol);
-
-                    await expect(token.transfer(wallets[1].address, amount))
-                        .to.emit(token, 'Transfer')
-                        .withArgs(wallets[0].address, wallets[1].address, amount);
-                });
-
-                it('should freeze all internal token transfers after passing threshold', async () => {
-                    await expect(gateway.connect(admins[0]).freezeAllTokens()).to.not.emit(gateway, 'AllTokensFrozen');
-                    await expect(gateway.connect(admins[1]).freezeAllTokens()).to.not.emit(gateway, 'AllTokensFrozen');
-                    await expect(gateway.connect(admins[2]).freezeAllTokens()).to.emit(gateway, 'AllTokensFrozen').withArgs();
-
-                    await expect(token.transfer(wallets[1].address, amount)).to.be.revertedWith('IsFrozen()');
-
-                    await expect(gateway.connect(admins[0]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
-                    await expect(gateway.connect(admins[1]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
-                    await expect(gateway.connect(admins[2]).unfreezeAllTokens()).to.emit(gateway, 'AllTokensUnfrozen').withArgs();
-
-                    await expect(token.transfer(wallets[1].address, amount))
-                        .to.emit(token, 'Transfer')
-                        .withArgs(wallets[0].address, wallets[1].address, amount);
-                });
             });
 
             describe('external tokens', () => {
@@ -935,58 +903,6 @@ describe('AxelarGatewaySinglesig', () => {
                     await gateway.execute(input);
 
                     await token.mint(wallets[0].address, amount);
-                });
-
-                it('should freeze external token sends after passing threshold', async () => {
-                    const destination = 'destination';
-
-                    await expect(token.approve(gateway.address, amount))
-                        .to.emit(token, 'Approval')
-                        .withArgs(wallets[0].address, gateway.address, amount);
-
-                    await expect(gateway.connect(admins[0]).freezeToken(symbol)).to.not.emit(gateway, 'TokenFrozen');
-                    await expect(gateway.connect(admins[1]).freezeToken(symbol)).to.not.emit(gateway, 'TokenFrozen');
-                    await expect(gateway.connect(admins[2]).freezeToken(symbol)).to.emit(gateway, 'TokenFrozen').withArgs(symbol);
-
-                    await expect(gateway.sendToken('polygon', destination, symbol, amount)).to.be.revertedWith(
-                        `TokenIsFrozen("${symbol}")`,
-                    );
-
-                    await expect(gateway.connect(admins[0]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
-                    await expect(gateway.connect(admins[1]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
-                    await expect(gateway.connect(admins[2]).unfreezeToken(symbol)).to.emit(gateway, 'TokenUnfrozen').withArgs(symbol);
-
-                    await expect(gateway.sendToken('polygon', destination, symbol, amount))
-                        .to.emit(token, 'Transfer')
-                        .withArgs(wallets[0].address, gateway.address, amount)
-                        .to.emit(gateway, 'TokenSent')
-                        .withArgs(wallets[0].address, 'polygon', destination, symbol, amount);
-                });
-
-                it('should freeze all external token sends after passing threshold', async () => {
-                    const destination = 'destination';
-
-                    await expect(token.approve(gateway.address, amount))
-                        .to.emit(token, 'Approval')
-                        .withArgs(wallets[0].address, gateway.address, amount);
-
-                    await expect(gateway.connect(admins[0]).freezeAllTokens()).to.not.emit(gateway, 'AllTokensFrozen');
-                    await expect(gateway.connect(admins[1]).freezeAllTokens()).to.not.emit(gateway, 'AllTokensFrozen');
-                    await expect(gateway.connect(admins[2]).freezeAllTokens()).to.emit(gateway, 'AllTokensFrozen').withArgs();
-
-                    await expect(gateway.sendToken('polygon', destination, symbol, amount)).to.be.revertedWith(
-                        `TokenIsFrozen("${symbol}")`,
-                    );
-
-                    await expect(gateway.connect(admins[0]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
-                    await expect(gateway.connect(admins[1]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
-                    await expect(gateway.connect(admins[2]).unfreezeAllTokens()).to.emit(gateway, 'AllTokensUnfrozen').withArgs();
-
-                    await expect(gateway.sendToken('polygon', destination, symbol, amount))
-                        .to.emit(token, 'Transfer')
-                        .withArgs(wallets[0].address, gateway.address, amount)
-                        .to.emit(gateway, 'TokenSent')
-                        .withArgs(wallets[0].address, 'polygon', destination, symbol, amount);
                 });
             });
         });
