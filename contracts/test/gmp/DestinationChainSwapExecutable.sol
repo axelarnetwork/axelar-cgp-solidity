@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.9;
 
-import { IAxelarExecutable } from '../interfaces/IAxelarExecutable.sol';
-import { IERC20 } from '../interfaces/IERC20.sol';
+import { IAxelarExecutable } from '../../interfaces/IAxelarExecutable.sol';
+import { IERC20 } from '../../interfaces/IERC20.sol';
 import { DestinationChainTokenSwapper } from './DestinationChainTokenSwapper.sol';
 
 contract DestinationChainSwapExecutable is IAxelarExecutable {

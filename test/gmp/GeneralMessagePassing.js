@@ -20,9 +20,9 @@ const AxelarGatewaySinglesig = require('../../artifacts/contracts/AxelarGatewayS
 const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC20.sol/MintableCappedERC20.json');
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
-const SourceChainSwapCaller = require('../../artifacts/contracts/gmp-test/SourceChainSwapCaller.sol/SourceChainSwapCaller.json');
-const DestinationChainSwapExecutable = require('../../artifacts/contracts/gmp-test/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
-const DestinationChainTokenSwapper = require('../../artifacts/contracts/gmp-test/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
+const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/SourceChainSwapCaller.sol/SourceChainSwapCaller.json');
+const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
+const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
 const { getSignedExecuteInput, getRandomID } = require('../utils');
 
 describe('GeneralMessagePassing', () => {

@@ -16,7 +16,7 @@ const ROLE_OWNER = 1;
 const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
 const AxelarGatewayProxy = require('../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
 const AxelarGatewaySinglesig = require('../artifacts/contracts/AxelarGatewaySinglesig.sol/AxelarGatewaySinglesig.json');
-const TestWeth = require('../artifacts/contracts/deposit-service/TestWeth.sol/TestWeth.json');
+const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json');
 const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 
