@@ -17,9 +17,9 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     bytes32 internal constant _WRAPPED_TOKEN_SYMBOL_SLOT =
         0x91d2f5305ae2a8f5b319f6c3a690eff002c3e572220774ba5f7e957f079e55df;
 
-    bytes32 public constant override PREFIX_DEPOSIT_SEND_TOKEN = keccak256('deposit-send-token');
-    bytes32 public constant override PREFIX_DEPOSIT_SEND_NATIVE = keccak256('deposit-send-native');
-    bytes32 public constant override PREFIX_DEPOSIT_WITHDRAW_NATIVE = keccak256('deposit-withdraw-native');
+    bytes32 internal constant PREFIX_DEPOSIT_SEND_TOKEN = keccak256('deposit-send-token');
+    bytes32 internal constant PREFIX_DEPOSIT_SEND_NATIVE = keccak256('deposit-send-native');
+    bytes32 internal constant PREFIX_DEPOSIT_WITHDRAW_NATIVE = keccak256('deposit-withdraw-native');
 
     function depositAddressForSendToken(
         bytes32 salt,
