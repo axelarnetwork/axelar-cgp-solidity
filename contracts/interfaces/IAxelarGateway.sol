@@ -72,57 +72,57 @@ interface IAxelarGateway {
     \******************/
 
     function sendToken(
-        string memory destinationChain,
-        string memory destinationAddress,
-        string memory symbol,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        string calldata symbol,
         uint256 amount
     ) external;
 
     function callContract(
-        string memory destinationChain,
-        string memory contractAddress,
-        bytes memory payload
+        string calldata destinationChain,
+        string calldata contractAddress,
+        bytes calldata payload
     ) external;
 
     function callContractWithToken(
-        string memory destinationChain,
-        string memory contractAddress,
-        bytes memory payload,
-        string memory symbol,
+        string calldata destinationChain,
+        string calldata contractAddress,
+        bytes calldata payload,
+        string calldata symbol,
         uint256 amount
     ) external;
 
     function isContractCallApproved(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         address contractAddress,
         bytes32 payloadHash
     ) external view returns (bool);
 
     function isContractCallAndMintApproved(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         address contractAddress,
         bytes32 payloadHash,
-        string memory symbol,
+        string calldata symbol,
         uint256 amount
     ) external view returns (bool);
 
     function validateContractCall(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         bytes32 payloadHash
     ) external returns (bool);
 
     function validateContractCallAndMint(
         bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
+        string calldata sourceChain,
+        string calldata sourceAddress,
         bytes32 payloadHash,
-        string memory symbol,
+        string calldata symbol,
         uint256 amount
     ) external returns (bool);
 
@@ -150,9 +150,9 @@ interface IAxelarGateway {
     |* Admin Functions *|
     \*******************/
 
-    function freezeToken(string memory symbol) external;
+    function freezeToken(string calldata symbol) external;
 
-    function unfreezeToken(string memory symbol) external;
+    function unfreezeToken(string calldata symbol) external;
 
     function freezeAllTokens() external;
 

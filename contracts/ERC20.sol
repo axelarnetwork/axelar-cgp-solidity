@@ -4,8 +4,6 @@ pragma solidity 0.8.9;
 
 import { IERC20 } from './interfaces/IERC20.sol';
 
-import { Context } from './Context.sol';
-
 /**
  * @dev Implementation of the {IERC20} interface.
  *
@@ -30,7 +28,7 @@ import { Context } from './Context.sol';
  * functions have been added to mitigate the well-known issues around setting
  * allowances. See {IERC20-approve}.
  */
-contract ERC20 is Context, IERC20 {
+contract ERC20 is IERC20 {
     mapping(address => uint256) public override balanceOf;
 
     mapping(address => mapping(address => uint256)) public override allowance;
@@ -44,9 +42,6 @@ contract ERC20 is Context, IERC20 {
 
     /**
      * @dev Sets the values for {name}, {symbol}, and {decimals}.
-     *
-     * All three of these values are immutable: they can only be set once during
-     * construction.
      */
     constructor(
         string memory name_,
@@ -66,20 +61,23 @@ contract ERC20 is Context, IERC20 {
      * - `recipient` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
      */
-    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
-        _transfer(_msgSender(), recipient, amount);
+    function transfer(address recipient, uint256 amount) external virtual override returns (bool) {
+        _transfer(msg.sender, recipient, amount);
         return true;
     }
 
     /**
      * @dev See {IERC20-approve}.
      *
+     * NOTE: If `amount` is the maximum `uint256`, the allowance is not updated on
+     * `transferFrom`. This is semantically equivalent to an infinite approval.
+     *
      * Requirements:
      *
      * - `spender` cannot be the zero address.
      */
-    function approve(address spender, uint256 amount) public virtual override returns (bool) {
-        _approve(_msgSender(), spender, amount);
+    function approve(address spender, uint256 amount) external virtual override returns (bool) {
+        _approve(msg.sender, spender, amount);
         return true;
     }
 
@@ -100,9 +98,15 @@ contract ERC20 is Context, IERC20 {
         address sender,
         address recipient,
         uint256 amount
-    ) public virtual override returns (bool) {
+    ) external virtual override returns (bool) {
+        uint256 _allowance = allowance[sender][msg.sender];
+
+        if (_allowance != type(uint256).max) {
+            _approve(sender, msg.sender, _allowance - amount);
+        }
+
         _transfer(sender, recipient, amount);
-        _approve(sender, _msgSender(), allowance[sender][_msgSender()] - amount);
+
         return true;
     }
 
@@ -118,8 +122,8 @@ contract ERC20 is Context, IERC20 {
      *
      * - `spender` cannot be the zero address.
      */
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, allowance[_msgSender()][spender] + addedValue);
+    function increaseAllowance(address spender, uint256 addedValue) external virtual returns (bool) {
+        _approve(msg.sender, spender, allowance[msg.sender][spender] + addedValue);
         return true;
     }
 
@@ -137,8 +141,8 @@ contract ERC20 is Context, IERC20 {
      * - `spender` must have allowance for the caller of at least
      * `subtractedValue`.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, allowance[_msgSender()][spender] - subtractedValue);
+    function decreaseAllowance(address spender, uint256 subtractedValue) external virtual returns (bool) {
+        _approve(msg.sender, spender, allowance[msg.sender][spender] - subtractedValue);
         return true;
     }
 
@@ -161,8 +165,7 @@ contract ERC20 is Context, IERC20 {
         address recipient,
         uint256 amount
     ) internal virtual {
-        require(sender != address(0), 'ZERO_ADDR');
-        require(recipient != address(0), 'ZERO_ADDR');
+        if (sender == address(0) || recipient == address(0)) revert InvalidAccount();
 
         _beforeTokenTransfer(sender, recipient, amount);
 
@@ -181,7 +184,7 @@ contract ERC20 is Context, IERC20 {
      * - `to` cannot be the zero address.
      */
     function _mint(address account, uint256 amount) internal virtual {
-        require(account != address(0), 'ZERO_ADDR');
+        if (account == address(0)) revert InvalidAccount();
 
         _beforeTokenTransfer(address(0), account, amount);
 
@@ -202,7 +205,7 @@ contract ERC20 is Context, IERC20 {
      * - `account` must have at least `amount` tokens.
      */
     function _burn(address account, uint256 amount) internal virtual {
-        require(account != address(0), 'ZERO_ADDR');
+        if (account == address(0)) revert InvalidAccount();
 
         _beforeTokenTransfer(account, address(0), amount);
 
@@ -229,8 +232,7 @@ contract ERC20 is Context, IERC20 {
         address spender,
         uint256 amount
     ) internal virtual {
-        require(owner != address(0), 'ZERO_ADDR');
-        require(spender != address(0), 'ZERO_ADDR');
+        if (owner == address(0) || spender == address(0)) revert InvalidAccount();
 
         allowance[owner][spender] = amount;
         emit Approval(owner, spender, amount);

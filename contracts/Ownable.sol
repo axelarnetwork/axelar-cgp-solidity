@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.9;
 
-abstract contract Ownable {
-    address public owner;
+import { IOwnable } from './interfaces/IOwnable.sol';
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+abstract contract Ownable is IOwnable {
+    address public owner;
 
     constructor() {
         owner = msg.sender;
@@ -13,12 +13,13 @@ abstract contract Ownable {
     }
 
     modifier onlyOwner() {
-        require(owner == msg.sender, 'NOT_OWNER');
+        if (owner != msg.sender) revert NotOwner();
+
         _;
     }
 
-    function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), 'ZERO_ADDR');
+    function transferOwnership(address newOwner) external virtual onlyOwner {
+        if (newOwner == address(0)) revert InvalidOwner();
 
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;

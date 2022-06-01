@@ -1,6 +1,6 @@
 {
   "name": "@axelar-network/axelar-cgp-solidity",
-  "version": "3.1.0",
+  "version": "3.2.1",
   "description": "Ethereum Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
@@ -8,11 +8,12 @@
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
-    "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'"
+    "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js' && prettier --write 'scripts/**/*.js'",
+    "flatten": "rm -rf build/flattened && waffle flatten waffle.json"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/axelarnetwork/ethereum-bridge.git"
+    "url": "git+https://github.com/axelarnetwork/axelar-cgp-solidity.git"
   },
   "keywords": [
     "ethereum",
@@ -21,9 +22,9 @@
   "author": "axelar-network",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/axelarnetwork/ethereum-bridge/issues"
+    "url": "https://github.com/axelarnetwork/axelar-cgp-solidity/issues"
   },
-  "homepage": "https://github.com/axelarnetwork/ethereum-bridge#readme",
+  "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.5",
     "@nomiclabs/hardhat-waffle": "^2.0.3",

@@ -12,7 +12,6 @@ contract AdminMultisigBase is EternalStorage {
     error DuplicateAdmin(address admin);
 
     // AUDIT: slot names should be prefixed with some standard string
-    // AUDIT: constants should be literal and their derivation should be in comments
     bytes32 internal constant KEY_ADMIN_EPOCH = keccak256('admin-epoch');
 
     bytes32 internal constant PREFIX_ADMIN = keccak256('admin');
@@ -22,6 +21,7 @@ contract AdminMultisigBase is EternalStorage {
     bytes32 internal constant PREFIX_ADMIN_VOTED = keccak256('admin-voted');
     bytes32 internal constant PREFIX_IS_ADMIN = keccak256('is-admin');
 
+    // NOTE: Given the early void return, this modifier should be used with care on functions that return data.
     modifier onlyAdmin() {
         uint256 adminEpoch = _adminEpoch();
 
@@ -48,7 +48,7 @@ contract AdminMultisigBase is EternalStorage {
 
         uint256 adminCount = _getAdminCount(adminEpoch);
 
-        for (uint256 i; i < adminCount; i++) {
+        for (uint256 i; i < adminCount; ++i) {
             _setHasVoted(adminEpoch, topic, _getAdmin(adminEpoch, i), false);
         }
     }
@@ -155,11 +155,13 @@ contract AdminMultisigBase is EternalStorage {
         _setAdminThreshold(adminEpoch, threshold);
         _setAdminCount(adminEpoch, adminLength);
 
-        for (uint256 i; i < adminLength; i++) {
+        for (uint256 i; i < adminLength; ++i) {
             address account = accounts[i];
 
             // Check that the account wasn't already set as an admin for this epoch.
             if (_isAdmin(adminEpoch, account)) revert DuplicateAdmin(account);
+
+            if (account == address(0)) revert InvalidAdmins();
 
             // Set this account as the i-th admin in this epoch (needed to we can clear topic votes in `onlyAdmin`).
             _setAdmin(adminEpoch, i, account);
