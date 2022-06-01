@@ -99,11 +99,15 @@ describe('AxelarGatewaySinglesig', () => {
 
             const params = getSinglesigProxyDeployParams(newAdminAddresses, 2, wallets[5].address, wallets[6].address);
 
-            await Promise.all(admins.slice(0, threshold - 1).map(admin =>
-                expect(
-                    gateway.connect(admin).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-                ).to.not.emit(gateway, 'Upgraded'),
-            ))
+            await Promise.all(
+                admins
+                    .slice(0, threshold - 1)
+                    .map((admin) =>
+                        expect(
+                            gateway.connect(admin).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
+                        ).to.not.emit(gateway, 'Upgraded'),
+                    ),
+            );
 
             await expect(
                 gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
@@ -120,11 +124,15 @@ describe('AxelarGatewaySinglesig', () => {
 
             const params = getSinglesigProxyDeployParams(newAdminAddresses, 2, wallets[5].address, wallets[6].address);
 
-            await Promise.all(admins.slice(0, threshold - 1).map(admin =>
-                expect(
-                    gateway.connect(admin).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
-                ).to.not.emit(gateway, 'Upgraded'),
-            ))
+            await Promise.all(
+                admins
+                    .slice(0, threshold - 1)
+                    .map((admin) =>
+                        expect(
+                            gateway.connect(admin).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
+                        ).to.not.emit(gateway, 'Upgraded'),
+                    ),
+            );
 
             await expect(
                 gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
@@ -956,9 +964,7 @@ describe('AxelarGatewaySinglesig', () => {
             const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
             const payload = defaultAbiCoder.encode(['address', 'address'], [wallets[0].address, destination]);
 
-            await expect(token.approve(locker, amount))
-                .to.emit(token, 'Approval')
-                .withArgs(issuer, locker, amount);
+            await expect(token.approve(locker, amount)).to.emit(token, 'Approval').withArgs(issuer, locker, amount);
 
             await expect(gateway.callContractWithToken(chain, destination, payload, tokenSymbol, amount))
                 .to.emit(token, 'Transfer')
