@@ -99,11 +99,11 @@ describe('AxelarGatewaySinglesig', () => {
 
             const params = getSinglesigProxyDeployParams(newAdminAddresses, 2, wallets[5].address, wallets[6].address);
 
-            for (let i = 0; i < threshold - 1; ++i) {
-                await expect(
-                    gateway.connect(admins[i]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-                ).to.not.emit(gateway, 'Upgraded');
-            }
+            await Promise.all(admins.slice(0, threshold - 1).map(admin =>
+                expect(
+                    gateway.connect(admin).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
+                ).to.not.emit(gateway, 'Upgraded'),
+            ))
 
             await expect(
                 gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
@@ -120,11 +120,11 @@ describe('AxelarGatewaySinglesig', () => {
 
             const params = getSinglesigProxyDeployParams(newAdminAddresses, 2, wallets[5].address, wallets[6].address);
 
-            for (let i = 0; i < threshold - 1; ++i) {
-                await expect(
-                    gateway.connect(admins[i]).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
-                ).to.not.emit(gateway, 'Upgraded');
-            }
+            await Promise.all(admins.slice(0, threshold - 1).map(admin =>
+                expect(
+                    gateway.connect(admin).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
+                ).to.not.emit(gateway, 'Upgraded'),
+            ))
 
             await expect(
                 gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
