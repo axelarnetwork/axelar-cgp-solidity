@@ -22,7 +22,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     error TokenContractDoesNotExist(address token);
     error BurnFailed(string symbol);
     error MintFailed(string symbol);
-    error TokenIsFrozen(string symbol);
 
     enum Role {
         Admin,
@@ -40,12 +39,9 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant KEY_IMPLEMENTATION = bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
 
     // AUDIT: slot names should be prefixed with some standard string
-    bytes32 internal constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
-
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
     bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
-    bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED = keccak256('contract-call-approved');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT = keccak256('contract-call-approved-with-mint');
 
@@ -162,8 +158,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Getters *|
     \***********/
 
-    function allTokensFrozen() external view override returns (bool) {
-        return getBool(KEY_ALL_TOKENS_FROZEN);
+    function allTokensFrozen() external pure override returns (bool) {
+        return false;
     }
 
     function implementation() public view override returns (address) {
@@ -174,8 +170,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getAddress(_getTokenAddressKey(symbol));
     }
 
-    function tokenFrozen(string memory symbol) public view override returns (bool) {
-        return getBool(_getFreezeTokenKey(symbol));
+    function tokenFrozen(string memory) external pure override returns (bool) {
+        return false;
     }
 
     function isCommandExecuted(bytes32 commandId) public view override returns (bool) {
@@ -205,30 +201,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /*******************\
     |* Admin Functions *|
     \*******************/
-
-    function freezeToken(string calldata symbol) external override onlyAdmin {
-        _setBool(_getFreezeTokenKey(symbol), true);
-
-        emit TokenFrozen(symbol);
-    }
-
-    function unfreezeToken(string calldata symbol) external override onlyAdmin {
-        _setBool(_getFreezeTokenKey(symbol), false);
-
-        emit TokenUnfrozen(symbol);
-    }
-
-    function freezeAllTokens() external override onlyAdmin {
-        _setBool(KEY_ALL_TOKENS_FROZEN, true);
-
-        emit AllTokensFrozen();
-    }
-
-    function unfreezeAllTokens() external override onlyAdmin {
-        _setBool(KEY_ALL_TOKENS_FROZEN, false);
-
-        emit AllTokensUnfrozen();
-    }
 
     function upgrade(
         address newImplementation,
@@ -268,8 +240,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         bool burnSuccess;
 
         if (tokenType == TokenType.External) {
-            _checkTokenStatus(symbol);
-
             burnSuccess = _callERC20Token(
                 tokenAddress,
                 abi.encodeWithSelector(IERC20.transferFrom.selector, sender, address(this), amount)
@@ -349,8 +319,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
         if (_getTokenType(symbol) == TokenType.External) {
-            _checkTokenStatus(symbol);
-
             bool success = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20.transfer.selector, account, amount));
 
             if (!success) revert MintFailed(symbol);
@@ -365,8 +333,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
         if (_getTokenType(symbol) == TokenType.External) {
-            _checkTokenStatus(symbol);
-
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
 
             (bool success, bytes memory returnData) = depositHandler.execute(
@@ -429,10 +395,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return keccak256(abi.encodePacked(PREFIX_TOKEN_TYPE, symbol));
     }
 
-    function _getFreezeTokenKey(string memory symbol) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_TOKEN_FROZEN, symbol));
-    }
-
     function _getTokenAddressKey(string memory symbol) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(PREFIX_TOKEN_ADDRESS, symbol));
     }
@@ -490,10 +452,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _getTokenType(string memory symbol) internal view returns (TokenType) {
         return TokenType(getUint(_getTokenTypeKey(symbol)));
-    }
-
-    function _checkTokenStatus(string memory symbol) internal view {
-        if (tokenFrozen(symbol) || getBool(KEY_ALL_TOKENS_FROZEN)) revert TokenIsFrozen(symbol);
     }
 
     /********************\

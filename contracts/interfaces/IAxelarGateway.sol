@@ -53,18 +53,6 @@ interface IAxelarGateway {
         uint256 sourceEventIndex
     );
 
-    event TokenFrozen(string symbol);
-
-    event TokenUnfrozen(string symbol);
-
-    event AllTokensFrozen();
-
-    event AllTokensUnfrozen();
-
-    event AccountBlacklisted(address indexed account);
-
-    event AccountWhitelisted(address indexed account);
-
     event Upgraded(address indexed implementation);
 
     /******************\
@@ -149,14 +137,6 @@ interface IAxelarGateway {
     /*******************\
     |* Admin Functions *|
     \*******************/
-
-    function freezeToken(string calldata symbol) external;
-
-    function unfreezeToken(string calldata symbol) external;
-
-    function freezeAllTokens() external;
-
-    function unfreezeAllTokens() external;
 
     function upgrade(
         address newImplementation,

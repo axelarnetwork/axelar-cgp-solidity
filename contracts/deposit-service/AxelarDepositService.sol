@@ -22,7 +22,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     bytes32 internal constant PREFIX_DEPOSIT_WITHDRAW_NATIVE = keccak256('deposit-withdraw-native');
 
     function depositAddressForSendToken(
-        bytes32 nonce,
+        bytes32 salt,
         string calldata destinationChain,
         string calldata destinationAddress,
         string calldata tokenSymbol
@@ -30,19 +30,19 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         return
             _depositAddress(
                 keccak256(
-                    abi.encode(PREFIX_DEPOSIT_SEND_TOKEN, nonce, destinationChain, destinationAddress, tokenSymbol)
+                    abi.encode(PREFIX_DEPOSIT_SEND_TOKEN, salt, destinationChain, destinationAddress, tokenSymbol)
                 )
             );
     }
 
     function depositAddressForSendNative(
-        bytes32 nonce,
+        bytes32 salt,
         string calldata destinationChain,
         string calldata destinationAddress
     ) external view returns (address) {
         return
             _depositAddress(
-                keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, nonce, destinationChain, destinationAddress))
+                keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, salt, destinationChain, destinationAddress))
             );
     }
 
@@ -51,7 +51,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     }
 
     function sendToken(
-        bytes32 nonce,
+        bytes32 salt,
         string calldata destinationChain,
         string calldata destinationAddress,
         string calldata tokenSymbol
@@ -61,7 +61,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
 
         DepositReceiver depositReceiver = new DepositReceiver{
             salt: keccak256(
-                abi.encode(PREFIX_DEPOSIT_SEND_TOKEN, nonce, destinationChain, destinationAddress, tokenSymbol)
+                abi.encode(PREFIX_DEPOSIT_SEND_TOKEN, salt, destinationChain, destinationAddress, tokenSymbol)
             )
         }();
 
@@ -93,13 +93,13 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     }
 
     function sendNative(
-        bytes32 nonce,
+        bytes32 salt,
         string calldata destinationChain,
         string calldata destinationAddress
     ) external {
-        bytes32 salt = keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, nonce, destinationChain, destinationAddress));
-
-        DepositReceiver depositReceiver = new DepositReceiver{ salt: salt }();
+        DepositReceiver depositReceiver = new DepositReceiver{
+            salt: keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, salt, destinationChain, destinationAddress))
+        }();
 
         uint256 amount = address(depositReceiver).balance;
 
@@ -135,11 +135,12 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         depositReceiver.destroy(address(this));
     }
 
-    function withdrawNative(bytes32 nonce, address payable recipient) external {
-        bytes32 salt = keccak256(abi.encode(PREFIX_DEPOSIT_WITHDRAW_NATIVE, nonce, recipient));
+    function withdrawNative(bytes32 salt, address payable recipient) external {
         address token = wrappedToken();
 
-        DepositReceiver depositReceiver = new DepositReceiver{ salt: salt }();
+        DepositReceiver depositReceiver = new DepositReceiver{
+            salt: keccak256(abi.encode(PREFIX_DEPOSIT_WITHDRAW_NATIVE, salt, recipient))
+        }();
         uint256 amount = IERC20(token).balanceOf(address(depositReceiver));
 
         if (amount == 0) revert NothingDeposited();
@@ -183,7 +184,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         }
     }
 
-    function _depositAddress(bytes32 salt) internal view returns (address) {
+    function _depositAddress(bytes32 create2Salt) internal view returns (address) {
         /* Convert a hash which is bytes32 to an address which is 20-byte long
         according to https://docs.soliditylang.org/en/v0.8.1/control-structures.html?highlight=create2#salted-contract-creations-create2 */
         return
@@ -194,7 +195,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
                             abi.encodePacked(
                                 bytes1(0xff),
                                 address(this),
-                                salt,
+                                create2Salt,
                                 keccak256(abi.encodePacked(type(DepositReceiver).creationCode))
                             )
                         )
