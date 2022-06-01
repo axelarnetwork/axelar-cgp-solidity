@@ -5,7 +5,7 @@ const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
 
-const UtilTest = require('../build/UtilTest.json');
+const UtilTest = require('../artifacts/contracts/test/UtilTest.sol/UtilTest.json');
 
 const { it } = require('mocha');
 

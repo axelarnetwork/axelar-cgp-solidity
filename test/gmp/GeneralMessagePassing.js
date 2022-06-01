@@ -14,15 +14,15 @@ const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const ROLE_OWNER = 1;
 
-const TokenDeployer = require('../../build/TokenDeployer.json');
-const AxelarGatewayProxy = require('../../build/AxelarGatewayProxy.json');
-const AxelarGatewaySinglesig = require('../../build/AxelarGatewaySinglesig.json');
-const MintableCappedERC20 = require('../../build/MintableCappedERC20.json');
-const GasService = require('../../build/AxelarGasService.json');
-const GasServiceProxy = require('../../build/AxelarGasServiceProxy.json');
-const SourceChainSwapCaller = require('../../build/SourceChainSwapCaller.json');
-const DestinationChainSwapExecutable = require('../../build/DestinationChainSwapExecutable.json');
-const DestinationChainTokenSwapper = require('../../build/DestinationChainTokenSwapper.json');
+const TokenDeployer = require('../../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
+const AxelarGatewayProxy = require('../../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
+const AxelarGatewaySinglesig = require('../../artifacts/contracts/AxelarGatewaySinglesig.sol/AxelarGatewaySinglesig.json');
+const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC20.sol/MintableCappedERC20.json');
+const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
+const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
+const SourceChainSwapCaller = require('../../artifacts/contracts/gmp-test/SourceChainSwapCaller.sol/SourceChainSwapCaller.json');
+const DestinationChainSwapExecutable = require('../../artifacts/contracts/gmp-test/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
+const DestinationChainTokenSwapper = require('../../artifacts/contracts/gmp-test/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
 const { getSignedExecuteInput, getRandomID } = require('../utils');
 
 describe('GeneralMessagePassing', () => {

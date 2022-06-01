@@ -13,12 +13,12 @@ const { get } = require('lodash/fp');
 const CHAIN_ID = 1;
 const ROLE_OWNER = 1;
 
-const TokenDeployer = require('../build/TokenDeployer.json');
-const AxelarGatewayProxy = require('../build/AxelarGatewayProxy.json');
-const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
-const TestWeth = require('../build/TestWeth.json');
-const DepositService = require('../build/AxelarDepositService.json');
-const DepositServiceProxy = require('../build/AxelarDepositServiceProxy.json');
+const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
+const AxelarGatewayProxy = require('../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
+const AxelarGatewaySinglesig = require('../artifacts/contracts/AxelarGatewaySinglesig.sol/AxelarGatewaySinglesig.json');
+const TestWeth = require('../artifacts/contracts/deposit-service/TestWeth.sol/TestWeth.json');
+const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
+const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 
 const { getSignedExecuteInput, getRandomID } = require('./utils');
 

@@ -4,8 +4,6 @@ pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
-import { IERC20Burn } from './interfaces/IERC20Burn.sol';
-import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
@@ -283,7 +281,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         }
 
         if (tokenType == TokenType.InternalBurnableFrom) {
-            burnSuccess = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20BurnFrom.burnFrom.selector, sender, amount));
+            burnSuccess = _callERC20Token(tokenAddress, abi.encodeWithSelector(IBurnableMintableCappedERC20.burnFrom.selector, sender, amount));
 
             if (!burnSuccess) revert BurnFailed(symbol);
 
@@ -302,7 +300,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         if (!burnSuccess) revert BurnFailed(symbol);
 
-        IERC20Burn(tokenAddress).burn(bytes32(0));
+        IBurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
     }
 
     function _deployToken(
@@ -381,7 +379,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
             depositHandler.destroy(address(this));
         } else {
-            IERC20Burn(tokenAddress).burn(salt);
+            IBurnableMintableCappedERC20(tokenAddress).burn(salt);
         }
     }
 

@@ -23,7 +23,6 @@ const {
     getTransferMultiOperatorshipCommand,
     buildCommandBatch,
     getAddresses,
-    getApproveContractCallWithMint,
 } = require('./utils');
 
 describe('AxelarGatewayMultisig', () => {
@@ -911,7 +910,7 @@ describe('AxelarGatewayMultisig', () => {
                     await expect(gateway.connect(admins[1]).freezeToken(symbol)).to.not.emit(gateway, 'TokenFrozen');
                     await expect(gateway.connect(admins[2]).freezeToken(symbol)).to.emit(gateway, 'TokenFrozen').withArgs(symbol);
 
-                    await expect(token.transfer(wallets[1].address, 1)).to.be.revertedWith('IS_FROZEN');
+                    await expect(token.transfer(wallets[1].address, 1)).to.be.revertedWith('IsFrozen()');
 
                     await expect(gateway.connect(admins[0]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
                     await expect(gateway.connect(admins[1]).unfreezeToken(symbol)).to.not.emit(gateway, 'TokenUnfrozen');
@@ -927,7 +926,7 @@ describe('AxelarGatewayMultisig', () => {
                     await expect(gateway.connect(admins[1]).freezeAllTokens()).to.not.emit(gateway, 'AllTokensFrozen');
                     await expect(gateway.connect(admins[2]).freezeAllTokens()).to.emit(gateway, 'AllTokensFrozen').withArgs();
 
-                    await expect(token.transfer(wallets[1].address, amount)).to.be.revertedWith('IS_FROZEN');
+                    await expect(token.transfer(wallets[1].address, amount)).to.be.revertedWith('IsFrozen()');
 
                     await expect(gateway.connect(admins[0]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
                     await expect(gateway.connect(admins[1]).unfreezeAllTokens()).to.not.emit(gateway, 'AllTokensUnfrozen');
@@ -1096,121 +1095,6 @@ describe('AxelarGatewayMultisig', () => {
                     .withArgs(issuer, locker, amount)
                     .to.emit(gateway, 'ContractCallWithToken')
                     .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
-            });
-        });
-
-        describe('external contract execution', () => {
-            it('should approve to call external TokenSwapper contract', async () => {
-                const nameA = 'testA';
-                const symbolA = 'testA';
-                const nameB = 'testB';
-                const symbolB = 'testB';
-                const decimals = 16;
-                const capacity = 0;
-
-                const tokenA = await mintableCappedERC20Factory.deploy(nameA, symbolA, decimals, capacity).then((d) => d.deployed());
-                const tokenB = await mintableCappedERC20Factory.deploy(nameB, symbolB, decimals, capacity).then((d) => d.deployed());
-
-                const tokenSwapperFactory = await ethers.getContractFactory('TokenSwapper', wallets[0]);
-
-                const swapper = await tokenSwapperFactory.deploy(tokenA.address, tokenB.address).then((d) => d.deployed());
-
-                const destinationSwapExecutableFactory = await ethers.getContractFactory('DestinationSwapExecutable', wallets[0]);
-
-                const swapExecutable = await destinationSwapExecutableFactory
-                    .deploy(gateway.address, swapper.address)
-                    .then((d) => d.deployed());
-
-                await tokenA.mint(gateway.address, 1e6);
-                await tokenB.mint(swapper.address, 1e6);
-
-                const deployTokenData = buildCommandBatch(
-                    CHAIN_ID,
-                    ROLE_OWNER,
-                    [getRandomID()],
-                    ['deployToken'],
-                    [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address)],
-                );
-
-                const deployTokenInput = await getSignedMultisigExecuteInput(deployTokenData, owners.slice(0, threshold));
-
-                await expect(gateway.execute(deployTokenInput)).to.emit(gateway, 'TokenDeployed').withArgs(symbolA, tokenA.address);
-
-                const payload = defaultAbiCoder.encode(['address', 'address'], [tokenB.address, wallets[0].address]);
-                const payloadHash = keccak256(payload);
-                const swapAmount = 20000;
-                const commandId = getRandomID();
-                const sourceChain = 'polygon';
-                const sourceAddress = 'address0x123';
-                const sourceTxHash = keccak256('0x123abc123abc');
-                const sourceEventIndex = 17;
-
-                const approveWithMintData = buildCommandBatch(
-                    CHAIN_ID,
-                    ROLE_OWNER,
-                    [commandId],
-                    ['approveContractCallWithMint'],
-                    [
-                        getApproveContractCallWithMint(
-                            sourceChain,
-                            sourceAddress,
-                            swapExecutable.address,
-                            payloadHash,
-                            symbolA,
-                            swapAmount,
-                            sourceTxHash,
-                            sourceEventIndex,
-                        ),
-                    ],
-                );
-
-                const approveWithMintInput = await getSignedMultisigExecuteInput(approveWithMintData, owners.slice(0, threshold));
-
-                await expect(gateway.execute(approveWithMintInput))
-                    .to.emit(gateway, 'ContractCallApprovedWithMint')
-                    .withArgs(
-                        commandId,
-                        sourceChain,
-                        sourceAddress,
-                        swapExecutable.address,
-                        payloadHash,
-                        symbolA,
-                        swapAmount,
-                        sourceTxHash,
-                        sourceEventIndex,
-                    );
-
-                const isApprovedBefore = await gateway.isContractCallAndMintApproved(
-                    commandId,
-                    sourceChain,
-                    sourceAddress,
-                    swapExecutable.address,
-                    payloadHash,
-                    symbolA,
-                    swapAmount,
-                );
-
-                expect(isApprovedBefore).to.be.true;
-
-                const swap = await swapExecutable.executeWithToken(commandId, sourceChain, sourceAddress, payload, symbolA, swapAmount);
-
-                await expect(swap)
-                    .to.emit(tokenA, 'Transfer')
-                    .withArgs(gateway.address, swapExecutable.address, swapAmount)
-                    .and.to.emit(tokenB, 'Transfer')
-                    .withArgs(swapper.address, wallets[0].address, swapAmount * 2);
-
-                const isApprovedAfter = await gateway.isContractCallAndMintApproved(
-                    commandId,
-                    sourceChain,
-                    sourceAddress,
-                    swapExecutable.address,
-                    payloadHash,
-                    symbolA,
-                    swapAmount,
-                );
-
-                expect(isApprovedAfter).to.be.false;
             });
         });
     });

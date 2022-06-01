@@ -11,9 +11,9 @@ const { expect } = chai;
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
-const MintableCappedERC20 = require('../../build/MintableCappedERC20.json');
-const GasService = require('../../build/AxelarGasService.json');
-const GasServiceProxy = require('../../build/AxelarGasServiceProxy.json');
+const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC20.sol/MintableCappedERC20.json');
+const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
+const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
 describe('AxelarGasService', () => {
   const [ownerWallet, userWallet] = new MockProvider().getWallets();

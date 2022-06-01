@@ -12,7 +12,7 @@ module.exports = {
             evmVersion: process.env.EVM_VERSION ?? 'london',
             optimizer: {
                 enabled: true,
-                runs: 10000,
+                runs: 1000,
                 details: {
                     peephole: true,
                     inliner: true,

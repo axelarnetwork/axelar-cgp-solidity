@@ -8,7 +8,6 @@ const {
 const { expect } = chai;
 
 const CHAIN_ID = 1;
-const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 describe('MintableCappedERC20', () => {
     let owner;
@@ -23,20 +22,6 @@ describe('MintableCappedERC20', () => {
         token = await mintableCappedERC20Factory.deploy('test', 'test', 16, 0).then((d) => d.deployed());
 
         await token.mint(user.address, 1000000);
-    });
-
-    describe('burnFrom', () => {
-        it('should burnFrom address after approval', async () => {
-            const amount = 1000;
-
-            await expect(await token.connect(user).approve(owner.address, amount))
-                .to.emit(token, 'Approval')
-                .withArgs(user.address, owner.address, amount);
-
-            await expect(await token.burnFrom(user.address, amount))
-                .to.emit(token, 'Transfer')
-                .withArgs(user.address, ADDRESS_ZERO, amount);
-        });
     });
 
     describe('ERC20 Permit', () => {
