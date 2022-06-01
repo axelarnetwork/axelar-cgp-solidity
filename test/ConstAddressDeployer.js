@@ -67,7 +67,7 @@ const predictContractConstant = async (
 
   const factory = new ContractFactory(contractJson.abi, contractJson.bytecode);
   const bytecode = factory.getDeployTransaction(...args).data;
-  return await deployer.deployedAddress(bytecode, salt);
+  return await deployer.deployedAddress(bytecode, deployerWallet, salt);
 };
 
 describe('ConstAddressDeployer', () => {
