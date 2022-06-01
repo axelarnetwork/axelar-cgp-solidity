@@ -3,7 +3,14 @@
 const chai = require('chai');
 const {
   Contract,
-  utils: { defaultAbiCoder, arrayify, formatBytes32String },
+  utils: {
+    defaultAbiCoder,
+    arrayify,
+    formatBytes32String,
+    keccak256,
+    getCreate2Address,
+    toUtf8Bytes,
+  },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
@@ -19,6 +26,7 @@ const AxelarGatewaySinglesig = require('../build/AxelarGatewaySinglesig.json');
 const TestWeth = require('../build/TestWeth.json');
 const DepositService = require('../build/AxelarDepositService.json');
 const DepositServiceProxy = require('../build/AxelarDepositServiceProxy.json');
+const DepositReceiver = require('../build/DepositReceiver.json');
 
 const { getSignedExecuteInput, getRandomID } = require('./utils');
 
@@ -141,21 +149,40 @@ describe('AxelarDepositService', () => {
   describe('deposit service', () => {
     it('should handle and send ERC20 token', async () => {
       const destinationAddress = userWallet.address.toString();
-      const nonce = formatBytes32String(1);
+      const salt = formatBytes32String(1);
       const amount = 1e6;
 
+      const expectedDepositAddress = getCreate2Address(
+        depositService.address,
+        keccak256(
+          defaultAbiCoder.encode(
+            ['bytes32', 'bytes32', 'string', 'string', 'string'],
+            [
+              keccak256(toUtf8Bytes('deposit-send-token')),
+              salt,
+              destinationChain,
+              destinationAddress,
+              tokenSymbol,
+            ],
+          ),
+        ),
+        keccak256(`0x${DepositReceiver.bytecode}`),
+      );
+
       const depositAddress = await depositService.depositAddressForSendToken(
-        nonce,
+        salt,
         destinationChain,
         destinationAddress,
         tokenSymbol,
       );
 
+      expect(depositAddress).to.be.equal(expectedDepositAddress);
+
       await token.connect(ownerWallet).transfer(depositAddress, amount);
 
       await expect(
         depositService.sendToken(
-          nonce,
+          salt,
           destinationChain,
           destinationAddress,
           tokenSymbol,
@@ -173,14 +200,32 @@ describe('AxelarDepositService', () => {
 
     it('should wrap and send native currency', async () => {
       const destinationAddress = userWallet.address.toString();
-      const nonce = formatBytes32String(1);
+      const salt = formatBytes32String(1);
       const amount = 1e6;
 
+      const expectedDepositAddress = getCreate2Address(
+        depositService.address,
+        keccak256(
+          defaultAbiCoder.encode(
+            ['bytes32', 'bytes32', 'string', 'string'],
+            [
+              keccak256(toUtf8Bytes('deposit-send-native')),
+              salt,
+              destinationChain,
+              destinationAddress,
+            ],
+          ),
+        ),
+        keccak256(`0x${DepositReceiver.bytecode}`),
+      );
+
       const depositAddress = await depositService.depositAddressForSendNative(
-        nonce,
+        salt,
         destinationChain,
         destinationAddress,
       );
+
+      expect(depositAddress).to.be.equal(expectedDepositAddress);
 
       await ownerWallet.sendTransaction({
         to: depositAddress,
@@ -189,7 +234,7 @@ describe('AxelarDepositService', () => {
 
       await expect(
         await depositService.sendNative(
-          nonce,
+          salt,
           destinationChain,
           destinationAddress,
         ),
@@ -206,16 +251,33 @@ describe('AxelarDepositService', () => {
 
     it('should unwrap native currency', async () => {
       const recipient = userWallet.address;
-      const nonce = formatBytes32String(1);
+      const salt = formatBytes32String(1);
       const amount = 1e6;
 
+      const expectedDepositAddress = getCreate2Address(
+        depositService.address,
+        keccak256(
+          defaultAbiCoder.encode(
+            ['bytes32', 'bytes32', 'address'],
+            [
+              keccak256(toUtf8Bytes('deposit-withdraw-native')),
+              salt,
+              recipient,
+            ],
+          ),
+        ),
+        keccak256(`0x${DepositReceiver.bytecode}`),
+      );
+
       const depositAddress =
-        await depositService.depositAddressForWithdrawNative(nonce, recipient);
+        await depositService.depositAddressForWithdrawNative(salt, recipient);
+
+      expect(depositAddress).to.be.equal(expectedDepositAddress);
 
       await token.connect(ownerWallet).transfer(depositAddress, amount);
 
       await expect(
-        await depositService.withdrawNative(nonce, recipient),
+        await depositService.withdrawNative(salt, recipient),
       ).to.changeEtherBalance(userWallet, amount);
     });
   });
