@@ -4,12 +4,12 @@
   "description": "Ethereum Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
-    "build": "hardhat compile",
+    "build": "rm -rf artifacts && hardhat compile",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js' && prettier --write 'scripts/**/*.js'",
-    "flatten": "rm -rf build/flattened && waffle flatten waffle.json"
+    "flatten": "rm -rf artifacts/flattened && hardhat flatten > artifacts/Flattened.sol"
   },
   "repository": {
     "type": "git",
