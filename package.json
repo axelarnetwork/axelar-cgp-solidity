@@ -4,7 +4,7 @@
   "description": "Ethereum Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
-    "compile": "hardhat compile",
+    "build": "hardhat compile",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
