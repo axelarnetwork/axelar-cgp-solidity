@@ -251,7 +251,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         }
 
         if (tokenType == TokenType.InternalBurnableFrom) {
-            burnSuccess = _callERC20Token(tokenAddress, abi.encodeWithSelector(IBurnableMintableCappedERC20.burnFrom.selector, sender, amount));
+            burnSuccess = _callERC20Token(
+                tokenAddress,
+                abi.encodeWithSelector(IBurnableMintableCappedERC20.burnFrom.selector, sender, amount)
+            );
 
             if (!burnSuccess) revert BurnFailed(symbol);
 

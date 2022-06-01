@@ -7,7 +7,6 @@ import { IUpgradable } from '../interfaces/IUpgradable.sol';
 
 contract AxelarGasServiceProxy is Proxy {
     constructor(address implementationAddress, bytes memory params) Proxy(implementationAddress, params) {
-        if (IUpgradable(implementationAddress).contractId() != keccak256('axelar-gas-service'))
-            revert InvalidImplementation();
+        if (IUpgradable(implementationAddress).contractId() != keccak256('axelar-gas-service')) revert InvalidImplementation();
     }
 }

@@ -53,6 +53,12 @@ module.exports = {
 
     getTransferOperatorshipCommand: (newOperator) => defaultAbiCoder.encode(['address'], [newOperator]),
 
+    getApproveContractCall: (sourceChain, source, destination, payloadHash, sourceTxHash, sourceEventIndex) =>
+        defaultAbiCoder.encode(
+            ['string', 'string', 'address', 'bytes32', 'bytes32', 'uint256'],
+            [sourceChain, source, destination, payloadHash, sourceTxHash, sourceEventIndex],
+        ),
+
     getApproveContractCallWithMint: (sourceChain, source, destination, payloadHash, symbol, amount, sourceTxHash, sourceEventIndex) =>
         defaultAbiCoder.encode(
             ['string', 'string', 'address', 'bytes32', 'string', 'uint256', 'bytes32', 'uint256'],
