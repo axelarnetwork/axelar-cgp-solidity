@@ -978,11 +978,11 @@ describe('AxelarGatewayMultisig', () => {
             const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
             const payload = defaultAbiCoder.encode(['address', 'address'], [wallets[0].address, destination]);
 
-            await expect(await token.approve(locker, amount))
+            await expect(token.approve(locker, amount))
                 .to.emit(token, 'Approval')
                 .withArgs(issuer, locker, amount);
 
-            await expect(await gateway.callContractWithToken(chain, destination, payload, tokenSymbol, amount))
+            await expect(gateway.callContractWithToken(chain, destination, payload, tokenSymbol, amount))
                 .to.emit(token, 'Transfer')
                 .withArgs(issuer, locker, amount)
                 .to.emit(gateway, 'ContractCallWithToken')

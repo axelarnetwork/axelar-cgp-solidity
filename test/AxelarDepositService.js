@@ -117,7 +117,7 @@ describe('AxelarDepositService', () => {
                 value: amount,
             });
 
-            await expect(await depositService.sendNative(nonce, destinationChain, destinationAddress))
+            await expect(depositService.sendNative(nonce, destinationChain, destinationAddress))
                 .to.emit(gateway, 'TokenSent')
                 .withArgs(depositAddress, destinationChain, destinationAddress, tokenSymbol, amount);
         });
