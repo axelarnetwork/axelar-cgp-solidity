@@ -103,6 +103,6 @@ dist
 # TernJS port file
 .tern-port
 
-build
-cache
-flattened
+build/*
+cache/*
+artifacts/*

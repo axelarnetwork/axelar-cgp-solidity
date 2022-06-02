@@ -7,12 +7,7 @@ import { IAxelarGateway } from './IAxelarGateway.sol';
 interface IAxelarGatewayMultisig is IAxelarGateway {
     event OwnershipTransferred(address[] preOwners, uint256 prevThreshold, address[] newOwners, uint256 newThreshold);
 
-    event OperatorshipTransferred(
-        address[] preOperators,
-        uint256 prevThreshold,
-        address[] newOperators,
-        uint256 newThreshold
-    );
+    event OperatorshipTransferred(address[] preOperators, uint256 prevThreshold, address[] newOperators, uint256 newThreshold);
 
     function ownerEpoch() external view returns (uint256);
 
