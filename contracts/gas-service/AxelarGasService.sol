@@ -98,36 +98,25 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     }
 
     function addGas(
-        bytes32 txHash, 
-        uint256 logIndex, 
+        bytes32 txHash,
+        uint256 logIndex,
         address gasToken,
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
         _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
 
-        emit GasAdded(
-            txHash,
-            logIndex,
-            gasToken,
-            gasFeeAmount,
-            refundAddress
-        );
+        emit GasAdded(txHash, logIndex, gasToken, gasFeeAmount, refundAddress);
     }
 
     function addNativeGas(
-        bytes32 txHash, 
+        bytes32 txHash,
         uint256 logIndex,
         address refundAddress
     ) external payable override {
         if (msg.value == 0) revert NothingReceived();
 
-        emit NativeGasAdded(
-            txHash,
-            logIndex,
-            msg.value,
-            refundAddress
-        );
+        emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
     function collectFees(address payable receiver, address[] calldata tokens) external onlyOwner {
