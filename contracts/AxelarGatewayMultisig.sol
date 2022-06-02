@@ -391,15 +391,7 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             uint256 sourceEventIndex
         ) = abi.decode(params, (string, string, address, bytes32, bytes32, uint256));
 
-        _approveContractCall(
-            commandId,
-            sourceChain,
-            sourceAddress,
-            contractAddress,
-            payloadHash,
-            sourceTxHash,
-            sourceEventIndex
-        );
+        _approveContractCall(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, sourceTxHash, sourceEventIndex);
     }
 
     function approveContractCallWithMint(bytes calldata params, bytes32 commandId) external onlySelf {
@@ -500,13 +492,10 @@ contract AxelarGatewayMultisig is IAxelarGatewayMultisig, AxelarGateway {
             signers[i] = ECDSA.recover(messageHash, signatures[i]);
         }
 
-        (
-            uint256 chainId,
-            Role signersRole,
-            bytes32[] memory commandIds,
-            string[] memory commands,
-            bytes[] memory params
-        ) = abi.decode(data, (uint256, Role, bytes32[], string[], bytes[]));
+        (uint256 chainId, Role signersRole, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) = abi.decode(
+            data,
+            (uint256, Role, bytes32[], string[], bytes[])
+        );
 
         if (chainId != block.chainid) revert InvalidChainId();
 

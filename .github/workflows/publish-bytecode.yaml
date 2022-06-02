@@ -37,4 +37,4 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: Bytecode-${{ steps.release_tag.outputs.VERSION }}
-          path: build/
+          path: artifacts/

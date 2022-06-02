@@ -24,12 +24,7 @@ contract BurnableMintableCappedERC20 is IBurnableMintableCappedERC20, MintableCa
                 uint160(
                     uint256(
                         keccak256(
-                            abi.encodePacked(
-                                bytes1(0xff),
-                                owner,
-                                salt,
-                                keccak256(abi.encodePacked(type(DepositHandler).creationCode))
-                            )
+                            abi.encodePacked(bytes1(0xff), owner, salt, keccak256(abi.encodePacked(type(DepositHandler).creationCode)))
                         )
                     )
                 )
