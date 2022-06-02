@@ -37,8 +37,11 @@ module.exports = {
             ),
         ),
 
-    getDeployCommand: (name, symbol, decimals, cap, tokenAddress) =>
-        defaultAbiCoder.encode(['string', 'string', 'uint8', 'uint256', 'address'], [name, symbol, decimals, cap, tokenAddress]),
+    getDeployCommand: (name, symbol, decimals, cap, tokenAddress, dailyMintLimit) =>
+        defaultAbiCoder.encode(
+            ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
+            [name, symbol, decimals, cap, tokenAddress, dailyMintLimit],
+        ),
 
     getMintCommand: (symbol, address, amount) => defaultAbiCoder.encode(['string', 'address', 'uint256'], [symbol, address, amount]),
 

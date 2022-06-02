@@ -53,6 +53,8 @@ interface IAxelarGateway {
         uint256 sourceEventIndex
     );
 
+    event TokenDailyMintLimitUpdated(string symbol, uint256 limit);
+
     event Upgraded(address indexed implementation);
 
     /******************\
@@ -118,6 +120,10 @@ interface IAxelarGateway {
     |* Getters *|
     \***********/
 
+    function tokenDailyMintLimit(string memory symbol) external view returns (uint256);
+
+    function tokenDailyMintAmount(string memory symbol) external view returns (uint256);
+
     function allTokensFrozen() external view returns (bool);
 
     function implementation() external view returns (address);
@@ -137,6 +143,8 @@ interface IAxelarGateway {
     /*******************\
     |* Admin Functions *|
     \*******************/
+
+    function setTokenDailyMintLimits(string[] calldata symbols, uint256[] calldata limits) external;
 
     function upgrade(
         address newImplementation,

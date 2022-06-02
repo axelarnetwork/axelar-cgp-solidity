@@ -170,7 +170,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [commandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const { data: tokenInitCode } = burnableMintableCappedERC20Factory.getDeployTransaction(name, symbol, decimals, cap);
@@ -197,7 +197,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const input = await getSignedExecuteInput(data, operator);
@@ -212,7 +212,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [firstCommandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const firstInput = await getSignedExecuteInput(firstData, owner);
@@ -228,7 +228,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [secondCommandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const secondInput = await getSignedExecuteInput(secondData, owner);
@@ -253,7 +253,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const input = await getSignedExecuteInput(data, owner);
@@ -348,7 +348,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO), getMintCommand(symbol, wallets[0].address, amount)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(symbol, wallets[0].address, amount)],
             );
 
             const input = await getSignedExecuteInput(data, owner);
@@ -499,7 +499,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const deployAndMintInput = await getSignedExecuteInput(deployData, owner);
@@ -618,7 +618,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const deployAndMintInput = await getSignedExecuteInput(deployData, owner);
@@ -687,7 +687,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO), getMintCommand(tokenSymbol, owner.address, 1e6)],
+                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(tokenSymbol, owner.address, 1e6)],
             );
 
             const input = await getSignedExecuteInput(deployAndMintData, owner);
@@ -720,7 +720,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address)],
+                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
             );
 
             const input = await getSignedExecuteInput(deployData, owner);
@@ -759,7 +759,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, capacity, token.address)],
+                [getDeployCommand(name, symbol, decimals, capacity, token.address, 0)],
             );
 
             const deployInput = await getSignedExecuteInput(deployData, owner);
@@ -806,7 +806,7 @@ describe('AxelarGatewaySinglesig', () => {
                 [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken', 'mintToken', 'transferOwnership'],
                 [
-                    getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO),
+                    getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0),
                     getMintCommand(symbol, wallets[0].address, amount1),
                     getMintCommand(symbol, wallets[1].address, amount2),
                     getTransferOwnershipCommand(newOwner),
@@ -857,7 +857,7 @@ describe('AxelarGatewaySinglesig', () => {
                     ROLE_OWNER,
                     [getRandomID(), getRandomID()],
                     ['deployToken', 'mintToken'],
-                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO), getMintCommand(symbol, wallets[0].address, amount)],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(symbol, wallets[0].address, amount)],
                 );
 
                 const input = await getSignedExecuteInput(data, owner);
@@ -913,7 +913,7 @@ describe('AxelarGatewaySinglesig', () => {
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
                 [
-                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO),
+                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0),
                     getMintCommand(tokenSymbol, wallets[0].address, 1e6),
                 ],
             );
@@ -950,7 +950,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address)],
+                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
             );
 
             const input = await getSignedExecuteInput(data, owner);
@@ -1036,7 +1036,7 @@ describe('AxelarGatewaySinglesig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address)],
+                [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address, 0)],
             );
 
             const deployTokenInput = await getSignedExecuteInput(deployTokenData, owner);
