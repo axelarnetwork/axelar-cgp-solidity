@@ -10,16 +10,16 @@ Axelar network's decentralized validators confirm events emitted on EVM chains (
 and sign off on commands submitted (by automated services) to the gateway smart contracts (such as minting token, and approving message on the destination).
 
 ## Build
+###### node version
+We recommend using the current Node.js [LTS version](https://nodejs.org/en/about/releases/) for satisfying the hardhat compiler 
 
+Run in your terminal
 ```bash
 npm ci
 
 npm run build
 
-# Might need
-# npm install mocha -g
-
-npm run test  # Test with mocha
+npm run test  # Test with hardhat
 ```
 
 ## Example flows
@@ -91,7 +91,7 @@ See this [example](https://github.com/axelarnetwork/axelar-local-dev-sample/tree
 
 This interface needs to be implemented by the application contract
 to receive cross-chain messages. See the
-[token swapper example](src/test/DestinationSwapExecutable.sol) for an example.
+[token swapper example](/contracts/test/gmp/DestinationChainSwapExecutable.sol) for an example.
 
 ### Contracts
 
@@ -168,7 +168,7 @@ Modified version of OpenZeppelin ECDSA signature authentication check.
 
 Network resources: https://docs.axelar.dev/resources
 
-Token transfer app: https://satellite.axelar.network/
+Token transfer app: https://satellite.money/
 
 General Message Passing Usage: https://docs.axelar.dev/dev/gmp
 
