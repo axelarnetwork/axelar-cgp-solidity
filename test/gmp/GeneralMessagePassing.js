@@ -22,6 +22,7 @@ const GasService = require('../../artifacts/contracts/gas-service/AxelarGasServi
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/SourceChainSwapCaller.sol/SourceChainSwapCaller.json');
 const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
+const DestinationChainSwapForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForecallable.sol/DestinationChainSwapForecallable.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
 const { getSignedExecuteInput, getRandomID } = require('../utils');
 
@@ -36,6 +37,7 @@ describe('GeneralMessagePassing', () => {
     let sourceChainGasService;
     let sourceChainSwapCaller;
     let destinationChainSwapExecutable;
+    let destinationChainSwapForecallable;
     let destinationChainTokenSwapper;
     let tokenA;
     let tokenB;
@@ -121,6 +123,11 @@ describe('GeneralMessagePassing', () => {
             destinationChainTokenSwapper.address,
         ]);
 
+        destinationChainSwapForecallable = await deployContract(ownerWallet, DestinationChainSwapForecallable, [
+            destinationChainGateway.address,
+            destinationChainTokenSwapper.address,
+        ]);
+
         sourceChainSwapCaller = await deployContract(ownerWallet, SourceChainSwapCaller, [
             sourceChainGateway.address,
             sourceChainGasService.address,
@@ -132,6 +139,7 @@ describe('GeneralMessagePassing', () => {
         await tokenB.mint(destinationChainTokenSwapper.address, 1e9);
 
         await sourceChainGateway.execute(await getSignedExecuteInput(getMintData(symbolA, userWallet.address, 1e9), ownerWallet));
+        await tokenA.connect(ownerWallet).mint(userWallet.address, 1e9);
     });
 
     describe('general message passing', () => {
@@ -238,6 +246,129 @@ describe('GeneralMessagePassing', () => {
                 .withArgs(destinationChainSwapExecutable.address, destinationChainGateway.address, convertedAmount)
                 .and.to.emit(destinationChainGateway, 'TokenSent')
                 .withArgs(destinationChainSwapExecutable.address, sourceChain, userWallet.address.toString(), symbolB, convertedAmount);
+        });
+
+        it('should forecall a swap on remote chain', async () => {
+            const swapAmount = 1e6;
+            const gasFeeAmount = 1e3;
+            const convertedAmount = 2 * swapAmount;
+            const payload = defaultAbiCoder.encode(['string', 'string'], [symbolB, userWallet.address.toString()]);
+            const payloadHash = keccak256(payload);
+
+            const sourceChainTokenA = new Contract(await sourceChainGateway.tokenAddresses(symbolA), MintableCappedERC20.abi, userWallet);
+            await sourceChainTokenA.approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount);
+
+            await expect(
+                sourceChainSwapCaller
+                    .connect(userWallet)
+                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), gasFeeAmount),
+            )
+                .to.emit(sourceChainGasService, 'GasPaidForContractCallWithToken')
+                .withArgs(
+                    sourceChainSwapCaller.address,
+                    destinationChain,
+                    destinationChainSwapExecutable.address.toString(),
+                    payloadHash,
+                    symbolA,
+                    swapAmount,
+                    sourceChainTokenA.address,
+                    gasFeeAmount,
+                    userWallet.address,
+                )
+                .and.to.emit(sourceChainGateway, 'ContractCallWithToken')
+                .withArgs(
+                    sourceChainSwapCaller.address.toString(),
+                    destinationChain,
+                    destinationChainSwapExecutable.address.toString(),
+                    payloadHash,
+                    payload,
+                    symbolA,
+                    swapAmount,
+                );
+
+            await tokenA.connect(userWallet).approve(destinationChainSwapForecallable.address, swapAmount);
+
+            await expect(
+                destinationChainSwapForecallable
+                    .connect(userWallet)
+                    .forecallWithToken(sourceChain, sourceChainSwapCaller.address, payload, symbolA, swapAmount, userWallet.address),
+            )
+                .to.emit(tokenA, 'Transfer')
+                .withArgs(userWallet.address, destinationChainSwapForecallable.address, swapAmount)
+                .and.to.emit(tokenB, 'Transfer')
+                .withArgs(destinationChainTokenSwapper.address, destinationChainSwapForecallable.address, convertedAmount)
+                .and.to.emit(tokenB, 'Transfer')
+                .withArgs(destinationChainSwapForecallable.address, destinationChainGateway.address, convertedAmount)
+                .and.to.emit(destinationChainGateway, 'TokenSent')
+                .withArgs(
+                    destinationChainSwapForecallable.address,
+                    sourceChain,
+                    userWallet.address.toString(),
+                    symbolB,
+                    convertedAmount,
+                );
+
+            const approveCommandId = getRandomID();
+            const sourceTxHash = keccak256('0x123abc123abc');
+            const sourceEventIndex = 17;
+
+            const approveWithMintData = arrayify(
+                defaultAbiCoder.encode(
+                    ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                    [
+                        CHAIN_ID,
+                        ROLE_OWNER,
+                        [approveCommandId],
+                        ['approveContractCallWithMint'],
+                        [
+                            defaultAbiCoder.encode(
+                                ['string', 'string', 'address', 'bytes32', 'string', 'uint256', 'bytes32', 'uint256'],
+                                [
+                                    sourceChain,
+                                    sourceChainSwapCaller.address.toString(),
+                                    destinationChainSwapForecallable.address,
+                                    payloadHash,
+                                    symbolA,
+                                    swapAmount,
+                                    sourceTxHash,
+                                    sourceEventIndex,
+                                ],
+                            ),
+                        ],
+                    ],
+                ),
+            );
+
+            const approveExecute = await destinationChainGateway.execute(await getSignedExecuteInput(approveWithMintData, ownerWallet));
+
+            await expect(approveExecute)
+                .to.emit(destinationChainGateway, 'ContractCallApprovedWithMint')
+                .withArgs(
+                    approveCommandId,
+                    sourceChain,
+                    sourceChainSwapCaller.address.toString(),
+                    destinationChainSwapForecallable.address,
+                    payloadHash,
+                    symbolA,
+                    swapAmount,
+                    sourceTxHash,
+                    sourceEventIndex,
+                );
+
+            const swap = await destinationChainSwapForecallable.executeWithToken(
+                approveCommandId,
+                sourceChain,
+                sourceChainSwapCaller.address.toString(),
+                payload,
+                symbolA,
+                swapAmount,
+            );
+
+            await expect(swap)
+                .to.emit(tokenA, 'Transfer')
+                .withArgs(destinationChainGateway.address, destinationChainSwapForecallable.address, swapAmount)
+                .and.to.emit(tokenA, 'Transfer')
+                .withArgs(destinationChainSwapForecallable.address, userWallet.address, swapAmount);
         });
     });
 });
