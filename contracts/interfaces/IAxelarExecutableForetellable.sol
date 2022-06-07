@@ -10,12 +10,24 @@ abstract contract IAxelarExecutableForetellable {
     error AlreadyFortold();
     error NotAuthorizedToForetell();
 
-    IAxelarGateway public gateway;
-    mapping(string => mapping(string => mapping(bytes => mapping(string => mapping(uint256 => address)))))
-        public foretellers;
+    IAxelarGateway public  gateway;
+    mapping (bytes32 => address) foretellers;
 
-    constructor(address gateway_) {
-        gateway = IAxelarGateway(gateway_);
+    constructor(address gatewayAddress) {
+        gateway = IAxelarGateway(gatewayAddress);
+    }
+
+    function foretell(
+        string calldata sourceChain,
+        string calldata sourceAddress,
+        bytes calldata payload,
+        address foreteller
+    ) external {
+        _checkForetell(sourceChain, sourceAddress, payload, foreteller);
+        if (
+        foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] != address(0)) revert AlreadyFortold();
+        foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] = foreteller;
+        _execute(sourceChain, sourceAddress, payload);
     }
 
     function execute(
@@ -27,10 +39,16 @@ abstract contract IAxelarExecutableForetellable {
         bytes32 payloadHash = keccak256(payload);
         if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, payloadHash))
             revert NotApprovedByGateway();
+        address foreteller = foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))];
+        if (foreteller != address(0)) {    
+            foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] = address(0);
+        } else {
+            _execute(sourceChain, sourceAddress, payload);
+        }
         _execute(sourceChain, sourceAddress, payload);
     }
 
-    function foretell(
+    function foretellWithToken(
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload,
@@ -40,9 +58,9 @@ abstract contract IAxelarExecutableForetellable {
     ) external {
         address token = gateway.tokenAddresses(tokenSymbol);
         IERC20(token).transferFrom(msg.sender, address(this), amount);
-        _checkForetell(sourceChain, sourceAddress, payload, tokenSymbol, amount, foreteller);
-        if (foretellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] != address(0)) revert AlreadyFortold();
-        foretellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] = foreteller;
+        _checkForetellWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount, foreteller);
+        if (foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] != address(0)) revert AlreadyFortold();
+        foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] = foreteller;
         _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
     }
 
@@ -65,9 +83,9 @@ abstract contract IAxelarExecutableForetellable {
                 amount
             )
         ) revert NotApprovedByGateway();
-        address foreteller = foretellers[sourceChain][sourceAddress][payload][tokenSymbol][amount];
+        address foreteller = foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))];
         if (foreteller != address(0)) {
-            foretellers[sourceChain][sourceAddress][payload][tokenSymbol][amount] = address(0);
+            foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] = address(0);
             address token = gateway.tokenAddresses(tokenSymbol);
             IERC20(token).transfer(foreteller, amount);
         } else {
@@ -91,6 +109,14 @@ abstract contract IAxelarExecutableForetellable {
 
     // Override this and revert if you want to only allow certain people/calls to be able to foretell.
     function _checkForetell(
+        string calldata sourceChain,
+        string calldata sourceAddress,
+        bytes calldata payload,
+        address foreteller
+    ) internal virtual {}
+
+    // Override this and revert if you want to only allow certain people/calls to be able to foretell.
+    function _checkForetellWithToken(
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload,
