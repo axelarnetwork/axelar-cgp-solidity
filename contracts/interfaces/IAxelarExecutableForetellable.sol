@@ -7,7 +7,7 @@ import { IERC20 } from './IERC20.sol';
 
 abstract contract IAxelarExecutableForetellable {
     error NotApprovedByGateway();
-    error AlreadyFortold();
+    error AlreadyForetold();
     error NotAuthorizedToForetell();
 
     IAxelarGateway public gateway;
@@ -24,7 +24,7 @@ abstract contract IAxelarExecutableForetellable {
         address foreteller
     ) external {
         _checkForetell(sourceChain, sourceAddress, payload, foreteller);
-        if (foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] != address(0)) revert AlreadyFortold();
+        if (foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] != address(0)) revert AlreadyForetold();
         foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] = foreteller;
         _execute(sourceChain, sourceAddress, payload);
     }
@@ -57,7 +57,7 @@ abstract contract IAxelarExecutableForetellable {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         _checkForetellWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount, foreteller);
         if (foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] != address(0))
-            revert AlreadyFortold();
+            revert AlreadyForetold();
         foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] = foreteller;
         _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
     }
