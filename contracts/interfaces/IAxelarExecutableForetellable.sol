@@ -9,6 +9,7 @@ abstract contract IAxelarExecutableForetellable {
     error NotApprovedByGateway();
     error AlreadyForetold();
     error NotAuthorizedToForetell();
+    error TransferFailed();
 
     IAxelarGateway public gateway;
     mapping(bytes32 => address) foretellers;
@@ -54,7 +55,7 @@ abstract contract IAxelarExecutableForetellable {
         address foreteller
     ) external {
         address token = gateway.tokenAddresses(tokenSymbol);
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        _safeTransferFrom(token, msg.sender, amount);
         _checkForetellWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount, foreteller);
         if (foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] != address(0))
             revert AlreadyForetold();
@@ -77,7 +78,7 @@ abstract contract IAxelarExecutableForetellable {
         if (foreteller != address(0)) {
             foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] = address(0);
             address token = gateway.tokenAddresses(tokenSymbol);
-            IERC20(token).transfer(foreteller, amount);
+            _safeTransfer(token, foreteller, amount);
         } else {
             _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
         }
@@ -114,4 +115,28 @@ abstract contract IAxelarExecutableForetellable {
         uint256 amount,
         address foreteller
     ) internal virtual {}
+
+    function _safeTransfer(
+        address tokenAddress,
+        address receiver,
+        uint256 amount
+    ) internal {
+        (bool success, bytes memory returnData) = tokenAddress.call(abi.encodeWithSelector(IERC20.transfer.selector, receiver, amount));
+        bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
+
+        if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
+    }
+
+    function _safeTransferFrom(
+        address tokenAddress,
+        address from,
+        uint256 amount
+    ) internal {
+        (bool success, bytes memory returnData) = tokenAddress.call(
+            abi.encodeWithSelector(IERC20.transferFrom.selector, from, address(this), amount)
+        );
+        bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
+
+        if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
+    }
 }
