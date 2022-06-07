@@ -25,6 +25,7 @@ const {
     getAddresses,
     getApproveContractCall,
     getApproveContractCallWithMint,
+    tickBlockTime,
 } = require('./utils');
 
 describe('AxelarGatewayMultisig', () => {
@@ -88,6 +89,46 @@ describe('AxelarGatewayMultisig', () => {
     describe('admins', () => {
         it('should get the correct admins', async () => {
             expect(await gateway.admins(1)).to.deep.eq(getAddresses(admins));
+        });
+    });
+
+    describe('setTokenDailyMintLimits', () => {
+        const symbols = ['tokenA', 'tokenB'];
+        const decimals = 8;
+
+        beforeEach(() => {
+            const data = buildCommandBatch(
+                CHAIN_ID,
+                ROLE_OWNER,
+                symbols.map(getRandomID),
+                symbols.map(() => 'deployToken'),
+                symbols.map((symbol) => getDeployCommand(symbol, symbol, decimals, 0, ADDRESS_ZERO, 0)),
+            );
+
+            return getSignedMultisigExecuteInput(data, owners.slice(0, threshold)).then((input) => gateway.execute(input));
+        });
+
+        it("should allow admins to set a token's daily limit", () => {
+            const limit = getRandomInt(Number.MAX_SAFE_INTEGER);
+            const limits = symbols.map(() => limit);
+
+            return expect(gateway.connect(admins[0]).setTokenDailyMintLimits(symbols, limits))
+                .to.not.emit(gateway, 'TokenDailyMintLimitUpdated')
+                .then(() =>
+                    expect(gateway.connect(admins[1]).setTokenDailyMintLimits(symbols, limits)).to.not.emit(
+                        gateway,
+                        'TokenDailyMintLimitUpdated',
+                    ),
+                )
+                .then(() => gateway.connect(admins[2]).setTokenDailyMintLimits(symbols, limits))
+                .then((tx) =>
+                    Promise.all(symbols.map((symbol) => expect(tx).to.emit(gateway, 'TokenDailyMintLimitUpdated').withArgs(symbol, limit))),
+                )
+                .then(() => Promise.all(symbols.map((symbol) => gateway.tokenDailyMintLimit(symbol))))
+                .then((limits) => limits.map((limit) => limit.toNumber()))
+                .then((actual) => {
+                    expect(actual).to.deep.eq(limits);
+                });
         });
     });
 
@@ -172,6 +213,7 @@ describe('AxelarGatewayMultisig', () => {
         const symbol = 'AAT';
         const decimals = 18;
         const cap = 10000;
+        const limit = 1000;
 
         it('should allow the owners to deploy a new token', async () => {
             const commandID = getRandomID();
@@ -181,14 +223,19 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [commandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, limit)],
             );
 
             const { data: tokenInitCode } = burnableMintableCappedERC20Factory.getDeployTransaction(name, symbol, decimals, cap);
             const expectedTokenAddress = getCreate2Address(gateway.address, id(symbol), keccak256(tokenInitCode));
 
             const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
-            await expect(gateway.execute(input)).to.emit(gateway, 'TokenDeployed').and.to.emit(gateway, 'Executed').withArgs(commandID);
+            await expect(gateway.execute(input))
+                .to.emit(gateway, 'TokenDeployed')
+                .and.to.emit(gateway, 'Executed')
+                .withArgs(commandID)
+                .and.to.emit(gateway, 'TokenDailyMintLimitUpdated')
+                .withArgs(symbol, limit);
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
 
@@ -208,7 +255,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const input = await getSignedMultisigExecuteInput(data, operators.slice(0, threshold));
@@ -223,7 +270,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [firstCommandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const firstInput = await getSignedMultisigExecuteInput(firstData, owners.slice(0, threshold));
@@ -239,7 +286,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [secondCommandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const secondInput = await getSignedMultisigExecuteInput(secondData, owners.slice(0, threshold));
@@ -264,7 +311,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const input = await getSignedMultisigExecuteInput(data, owners);
@@ -299,6 +346,50 @@ describe('AxelarGatewayMultisig', () => {
             const secondMintInput = getSignedMultisigExecuteInput(secondMintData, owners.slice(0, threshold));
 
             await expect(gateway.execute(secondMintInput)).to.not.emit(gateway, 'Executed');
+        });
+
+        it('should not allow the owners to mint tokens exceeding the daily limit', () => {
+            const limit = getRandomInt(cap / 2);
+
+            return Promise.all(admins.slice(0, threshold).map((admin) => gateway.connect(admin).setTokenDailyMintLimits([symbol], [limit])))
+                .then(() => {
+                    const data = buildCommandBatch(
+                        CHAIN_ID,
+                        ROLE_OWNER,
+                        [getRandomID()],
+                        ['mintToken'],
+                        [getMintCommand(symbol, wallets[0].address, limit)],
+                    );
+
+                    return getSignedMultisigExecuteInput(data, owners.slice(0, threshold)).then((input) =>
+                        expect(gateway.execute(input))
+                            .to.emit(token, 'Transfer')
+                            .withArgs(ADDRESS_ZERO, wallets[0].address, limit)
+                            .and.to.emit(gateway, 'Executed'),
+                    );
+                })
+                .then(async () => {
+                    const mintAmount = await gateway.tokenDailyMintAmount(symbol);
+                    expect(mintAmount.toNumber()).to.eq(limit);
+                })
+                .then(async () => {
+                    const amount = 1;
+                    const data = buildCommandBatch(
+                        CHAIN_ID,
+                        ROLE_OWNER,
+                        [getRandomID()],
+                        ['mintToken'],
+                        [getMintCommand(symbol, wallets[0].address, amount)],
+                    );
+                    const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
+
+                    await expect(gateway.execute(input)).to.not.emit(gateway, 'Executed');
+                    await tickBlockTime(gateway.provider, 24 * 60 * 60);
+                    await expect(gateway.execute(input))
+                        .to.emit(token, 'Transfer')
+                        .withArgs(ADDRESS_ZERO, wallets[0].address, amount)
+                        .and.to.emit(gateway, 'Executed');
+                });
         });
 
         it('should allow the owners to mint tokens', async () => {
@@ -359,7 +450,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO), getMintCommand(symbol, wallets[0].address, amount)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(symbol, wallets[0].address, amount)],
             );
 
             const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
@@ -514,7 +605,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const deployAndMintInput = await getSignedMultisigExecuteInput(deployData, owners.slice(0, threshold));
@@ -637,7 +728,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO)],
+                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
             const deployAndMintInput = await getSignedMultisigExecuteInput(deployData, owners.slice(0, threshold));
@@ -707,7 +798,7 @@ describe('AxelarGatewayMultisig', () => {
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
                 [
-                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO),
+                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0),
                     getMintCommand(tokenSymbol, owners[0].address, 1e6),
                 ],
             );
@@ -742,7 +833,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address)],
+                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
             );
 
             const input = await getSignedMultisigExecuteInput(deployData, owners.slice(0, threshold));
@@ -781,7 +872,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, capacity, token.address)],
+                [getDeployCommand(name, symbol, decimals, capacity, token.address, 0)],
             );
 
             const deployInput = await getSignedMultisigExecuteInput(deployData, owners.slice(0, threshold));
@@ -828,7 +919,7 @@ describe('AxelarGatewayMultisig', () => {
                 [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken', 'mintToken', 'transferOwnership'],
                 [
-                    getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO),
+                    getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0),
                     getMintCommand(symbol, wallets[0].address, amount1),
                     getMintCommand(symbol, wallets[1].address, amount2),
                     getTransferMultiOwnershipCommand(newOwners, 2),
@@ -879,7 +970,7 @@ describe('AxelarGatewayMultisig', () => {
                     ROLE_OWNER,
                     [getRandomID(), getRandomID()],
                     ['deployToken', 'mintToken'],
-                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO), getMintCommand(symbol, wallets[0].address, amount)],
+                    [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(symbol, wallets[0].address, amount)],
                 );
 
                 const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
@@ -935,7 +1026,7 @@ describe('AxelarGatewayMultisig', () => {
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
                 [
-                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO),
+                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0),
                     getMintCommand(tokenSymbol, wallets[0].address, 1e6),
                 ],
             );
@@ -972,7 +1063,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address)],
+                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
             );
 
             const input = await getSignedMultisigExecuteInput(data, owners.slice(0, threshold));
@@ -1058,7 +1149,7 @@ describe('AxelarGatewayMultisig', () => {
                 ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address)],
+                [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address, 0)],
             );
 
             const deployTokenInput = await getSignedMultisigExecuteInput(deployTokenData, owners.slice(0, threshold));

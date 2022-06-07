@@ -88,12 +88,12 @@ describe('GeneralMessagePassing', () => {
                         ['deployToken', 'deployToken'],
                         [
                             defaultAbiCoder.encode(
-                                ['string', 'string', 'uint8', 'uint256', 'address'],
-                                [nameA, symbolA, decimals, capacity, withAddress ? tokenA.address : ADDRESS_ZERO],
+                                ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
+                                [nameA, symbolA, decimals, capacity, withAddress ? tokenA.address : ADDRESS_ZERO, 0],
                             ),
                             defaultAbiCoder.encode(
-                                ['string', 'string', 'uint8', 'uint256', 'address'],
-                                [nameB, symbolB, decimals, capacity, withAddress ? tokenB.address : ADDRESS_ZERO],
+                                ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
+                                [nameB, symbolB, decimals, capacity, withAddress ? tokenB.address : ADDRESS_ZERO, 0],
                             ),
                         ],
                     ],

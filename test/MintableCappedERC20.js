@@ -15,6 +15,7 @@ describe('MintableCappedERC20', () => {
     let token;
 
     beforeEach(async () => {
+        await ethers.provider.send('hardhat_reset');
         [owner, user] = await ethers.getSigners();
 
         const mintableCappedERC20Factory = await ethers.getContractFactory('MintableCappedERC20', owner);
