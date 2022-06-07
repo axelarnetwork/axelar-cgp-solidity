@@ -22,6 +22,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     error TokenContractDoesNotExist(address token);
     error BurnFailed(string symbol);
     error MintFailed(string symbol);
+    error InvalidSetDailyMintLimitsParams();
+    error ExceedDailyMintLimit(string symbol);
 
     enum Role {
         Admin,
@@ -35,6 +37,10 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         External
     }
 
+    /// @dev Removed slots; Should avoid re-using
+    // bytes32 internal constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
+    // bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
+
     /// @dev Storage slot with the address of the current factory. `keccak256('eip1967.proxy.implementation') - 1`.
     bytes32 internal constant KEY_IMPLEMENTATION = bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
 
@@ -44,6 +50,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED = keccak256('contract-call-approved');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT = keccak256('contract-call-approved-with-mint');
+    bytes32 internal constant PREFIX_TOKEN_DAILY_MINT_LIMIT = keccak256('token-daily-mint-limit');
+    bytes32 internal constant PREFIX_TOKEN_DAILY_MINT_AMOUNT = keccak256('token-daily-mint-amount');
 
     bytes32 internal constant SELECTOR_BURN_TOKEN = keccak256('burnToken');
     bytes32 internal constant SELECTOR_DEPLOY_TOKEN = keccak256('deployToken');
@@ -158,6 +166,14 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Getters *|
     \***********/
 
+    function tokenDailyMintLimit(string memory symbol) public view override returns (uint256) {
+        return getUint(_getTokenDailyMintLimitKey(symbol));
+    }
+
+    function tokenDailyMintAmount(string memory symbol) public view override returns (uint256) {
+        return getUint(_getTokenDailyMintAmountKey(symbol, block.timestamp / 1 days));
+    }
+
     function allTokensFrozen() external pure override returns (bool) {
         return false;
     }
@@ -201,6 +217,19 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /*******************\
     |* Admin Functions *|
     \*******************/
+
+    function setTokenDailyMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyAdmin {
+        if (symbols.length != limits.length) revert InvalidSetDailyMintLimitsParams();
+
+        for (uint256 i = 0; i < symbols.length; i++) {
+            string memory symbol = symbols[i];
+            uint256 limit = limits[i];
+
+            if (tokenAddresses(symbol) == address(0)) revert TokenDoesNotExist(symbol);
+
+            _setTokenDailyMintLimit(symbol, limit);
+        }
+    }
 
     function upgrade(
         address newImplementation,
@@ -281,7 +310,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         string memory symbol,
         uint8 decimals,
         uint256 cap,
-        address tokenAddress
+        address tokenAddress,
+        uint256 dailyMintLimit
     ) internal {
         // Ensure that this symbol has not been taken.
         if (tokenAddresses(symbol) != address(0)) revert TokenAlreadyExists(symbol);
@@ -308,6 +338,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         }
 
         _setTokenAddress(symbol, tokenAddress);
+        _setTokenDailyMintLimit(symbol, dailyMintLimit);
 
         emit TokenDeployed(symbol, tokenAddress);
     }
@@ -320,6 +351,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address tokenAddress = tokenAddresses(symbol);
 
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
+
+        _setTokenDailyMintAmount(symbol, tokenDailyMintAmount(symbol) + amount);
 
         if (_getTokenType(symbol) == TokenType.External) {
             bool success = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20.transfer.selector, account, amount));
@@ -394,6 +427,14 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Pure Key Getters *|
     \********************/
 
+    function _getTokenDailyMintLimitKey(string memory symbol) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_TOKEN_DAILY_MINT_LIMIT, symbol));
+    }
+
+    function _getTokenDailyMintAmountKey(string memory symbol, uint256 day) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_TOKEN_DAILY_MINT_AMOUNT, symbol, day));
+    }
+
     function _getTokenTypeKey(string memory symbol) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(PREFIX_TOKEN_TYPE, symbol));
     }
@@ -460,6 +501,19 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /********************\
     |* Internal Setters *|
     \********************/
+
+    function _setTokenDailyMintLimit(string memory symbol, uint256 limit) internal {
+        _setUint(_getTokenDailyMintLimitKey(symbol), limit);
+
+        emit TokenDailyMintLimitUpdated(symbol, limit);
+    }
+
+    function _setTokenDailyMintAmount(string memory symbol, uint256 amount) internal {
+        uint256 limit = tokenDailyMintLimit(symbol);
+        if (limit > 0 && amount > limit) revert ExceedDailyMintLimit(symbol);
+
+        _setUint(_getTokenDailyMintAmountKey(symbol, block.timestamp / 1 days), amount);
+    }
 
     function _setTokenType(string memory symbol, TokenType tokenType) internal {
         _setUint(_getTokenTypeKey(symbol), uint256(tokenType));

@@ -115,12 +115,12 @@ contract AxelarGatewaySinglesig is IAxelarGatewaySinglesig, AxelarGateway {
     \**********************/
 
     function deployToken(bytes calldata params, bytes32) external onlySelf {
-        (string memory name, string memory symbol, uint8 decimals, uint256 cap, address tokenAddr) = abi.decode(
+        (string memory name, string memory symbol, uint8 decimals, uint256 cap, address tokenAddr, uint256 dailyMintLimit) = abi.decode(
             params,
-            (string, string, uint8, uint256, address)
+            (string, string, uint8, uint256, address, uint256)
         );
 
-        _deployToken(name, symbol, decimals, cap, tokenAddr);
+        _deployToken(name, symbol, decimals, cap, tokenAddr, dailyMintLimit);
     }
 
     function mintToken(bytes calldata params, bytes32) external onlySelf {
