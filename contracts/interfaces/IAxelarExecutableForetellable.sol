@@ -43,7 +43,6 @@ abstract contract IAxelarExecutableForetellable {
         } else {
             _execute(sourceChain, sourceAddress, payload);
         }
-        _execute(sourceChain, sourceAddress, payload);
     }
 
     function foretellWithToken(
