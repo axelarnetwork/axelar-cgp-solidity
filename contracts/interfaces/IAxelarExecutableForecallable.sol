@@ -5,28 +5,28 @@ pragma solidity 0.8.9;
 import { IAxelarGateway } from './IAxelarGateway.sol';
 import { IERC20 } from './IERC20.sol';
 
-abstract contract IAxelarExecutableForetellable {
+abstract contract IAxelarExecutableForecallable {
     error NotApprovedByGateway();
-    error AlreadyForetold();
-    error NotAuthorizedToForetell();
+    error AlreadyForecalled();
+    error NotAuthorizedToForecall();
     error TransferFailed();
 
     IAxelarGateway public gateway;
-    mapping(bytes32 => address) foretellers;
+    mapping(bytes32 => address) forecallers;
 
     constructor(address gatewayAddress) {
         gateway = IAxelarGateway(gatewayAddress);
     }
 
-    function foretell(
+    function forecall(
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload,
-        address foreteller
+        address forecaller
     ) external {
-        _checkForetell(sourceChain, sourceAddress, payload, foreteller);
-        if (foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] != address(0)) revert AlreadyForetold();
-        foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] = foreteller;
+        _checkForecall(sourceChain, sourceAddress, payload, forecaller);
+        if (forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] != address(0)) revert AlreadyForecalled();
+        forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] = forecaller;
         _execute(sourceChain, sourceAddress, payload);
     }
 
@@ -38,28 +38,28 @@ abstract contract IAxelarExecutableForetellable {
     ) external {
         bytes32 payloadHash = keccak256(payload);
         if (!gateway.validateContractCall(commandId, sourceChain, sourceAddress, payloadHash)) revert NotApprovedByGateway();
-        address foreteller = foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))];
-        if (foreteller != address(0)) {
-            foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] = address(0);
+        address forecaller = forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload))];
+        if (forecaller != address(0)) {
+            forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload))] = address(0);
         } else {
             _execute(sourceChain, sourceAddress, payload);
         }
     }
 
-    function foretellWithToken(
+    function forecallWithToken(
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload,
         string calldata tokenSymbol,
         uint256 amount,
-        address foreteller
+        address forecaller
     ) external {
         address token = gateway.tokenAddresses(tokenSymbol);
         _safeTransferFrom(token, msg.sender, amount);
-        _checkForetellWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount, foreteller);
-        if (foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] != address(0))
-            revert AlreadyForetold();
-        foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] = foreteller;
+        _checkForecallWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount, forecaller);
+        if (forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] != address(0))
+            revert AlreadyForecalled();
+        forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] = forecaller;
         _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
     }
 
@@ -74,11 +74,11 @@ abstract contract IAxelarExecutableForetellable {
         bytes32 payloadHash = keccak256(payload);
         if (!gateway.validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, tokenSymbol, amount))
             revert NotApprovedByGateway();
-        address foreteller = foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))];
-        if (foreteller != address(0)) {
-            foretellers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] = address(0);
+        address forecaller = forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))];
+        if (forecaller != address(0)) {
+            forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] = address(0);
             address token = gateway.tokenAddresses(tokenSymbol);
-            _safeTransfer(token, foreteller, amount);
+            _safeTransfer(token, forecaller, amount);
         } else {
             _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
         }
@@ -98,22 +98,22 @@ abstract contract IAxelarExecutableForetellable {
         uint256 amount
     ) internal virtual {}
 
-    // Override this and revert if you want to only allow certain people/calls to be able to foretell.
-    function _checkForetell(
+    // Override this and revert if you want to only allow certain people/calls to be able to forecall.
+    function _checkForecall(
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload,
-        address foreteller
+        address forecaller
     ) internal virtual {}
 
-    // Override this and revert if you want to only allow certain people/calls to be able to foretell.
-    function _checkForetellWithToken(
+    // Override this and revert if you want to only allow certain people/calls to be able to forecall.
+    function _checkForecallWithToken(
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload,
         string calldata tokenSymbol,
         uint256 amount,
-        address foreteller
+        address forecaller
     ) internal virtual {}
 
     function _safeTransfer(
