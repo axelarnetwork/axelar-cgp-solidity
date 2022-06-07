@@ -7,13 +7,7 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenSent(
-        address indexed sender,
-        string destinationChain,
-        string destinationAddress,
-        string symbol,
-        uint256 amount
-    );
+    event TokenSent(address indexed sender, string destinationChain, string destinationAddress, string symbol, uint256 amount);
 
     event ContractCall(
         address indexed sender,
@@ -58,18 +52,6 @@ interface IAxelarGateway {
         bytes32 sourceTxHash,
         uint256 sourceEventIndex
     );
-
-    event TokenFrozen(string symbol);
-
-    event TokenUnfrozen(string symbol);
-
-    event AllTokensFrozen();
-
-    event AllTokensUnfrozen();
-
-    event AccountBlacklisted(address indexed account);
-
-    event AccountWhitelisted(address indexed account);
 
     event Upgraded(address indexed implementation);
 
@@ -155,14 +137,6 @@ interface IAxelarGateway {
     /*******************\
     |* Admin Functions *|
     \*******************/
-
-    function freezeToken(string calldata symbol) external;
-
-    function unfreezeToken(string calldata symbol) external;
-
-    function freezeAllTokens() external;
-
-    function unfreezeAllTokens() external;
 
     function upgrade(
         address newImplementation,

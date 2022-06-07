@@ -70,14 +70,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     ) external payable override {
         if (msg.value == 0) revert NothingReceived();
 
-        emit NativeGasPaidForContractCall(
-            sender,
-            destinationChain,
-            destinationAddress,
-            keccak256(payload),
-            msg.value,
-            refundAddress
-        );
+        emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
@@ -134,9 +127,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         address receiver,
         uint256 amount
     ) internal {
-        (bool success, bytes memory returnData) = tokenAddress.call(
-            abi.encodeWithSelector(IERC20.transfer.selector, receiver, amount)
-        );
+        (bool success, bytes memory returnData) = tokenAddress.call(abi.encodeWithSelector(IERC20.transfer.selector, receiver, amount));
         bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
 
         if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();

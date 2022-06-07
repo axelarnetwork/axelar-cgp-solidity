@@ -4,8 +4,6 @@ pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
-import { IERC20Burn } from './interfaces/IERC20Burn.sol';
-import { IERC20BurnFrom } from './interfaces/IERC20BurnFrom.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
@@ -24,7 +22,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     error TokenContractDoesNotExist(address token);
     error BurnFailed(string symbol);
     error MintFailed(string symbol);
-    error TokenIsFrozen(string symbol);
 
     enum Role {
         Admin,
@@ -39,16 +36,12 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     /// @dev Storage slot with the address of the current factory. `keccak256('eip1967.proxy.implementation') - 1`.
-    bytes32 internal constant KEY_IMPLEMENTATION =
-        bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
+    bytes32 internal constant KEY_IMPLEMENTATION = bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
 
     // AUDIT: slot names should be prefixed with some standard string
-    bytes32 internal constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
-
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
     bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
-    bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED = keccak256('contract-call-approved');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT = keccak256('contract-call-approved-with-mint');
 
@@ -106,15 +99,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         uint256 amount
     ) external {
         _burnTokenFrom(msg.sender, symbol, amount);
-        emit ContractCallWithToken(
-            msg.sender,
-            destinationChain,
-            destinationContractAddress,
-            keccak256(payload),
-            payload,
-            symbol,
-            amount
-        );
+        emit ContractCallWithToken(msg.sender, destinationChain, destinationContractAddress, keccak256(payload), payload, symbol, amount);
     }
 
     function isContractCallApproved(
@@ -124,8 +109,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address contractAddress,
         bytes32 payloadHash
     ) external view override returns (bool) {
-        return
-            getBool(_getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, contractAddress, payloadHash));
+        return getBool(_getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, contractAddress, payloadHash));
     }
 
     function isContractCallAndMintApproved(
@@ -139,15 +123,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     ) external view override returns (bool) {
         return
             getBool(
-                _getIsContractCallApprovedWithMintKey(
-                    commandId,
-                    sourceChain,
-                    sourceAddress,
-                    contractAddress,
-                    payloadHash,
-                    symbol,
-                    amount
-                )
+                _getIsContractCallApprovedWithMintKey(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, symbol, amount)
             );
     }
 
@@ -170,15 +146,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         string calldata symbol,
         uint256 amount
     ) external override returns (bool valid) {
-        bytes32 key = _getIsContractCallApprovedWithMintKey(
-            commandId,
-            sourceChain,
-            sourceAddress,
-            msg.sender,
-            payloadHash,
-            symbol,
-            amount
-        );
+        bytes32 key = _getIsContractCallApprovedWithMintKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash, symbol, amount);
         valid = getBool(key);
         if (valid) {
             _setBool(key, false);
@@ -190,8 +158,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Getters *|
     \***********/
 
-    function allTokensFrozen() external view override returns (bool) {
-        return getBool(KEY_ALL_TOKENS_FROZEN);
+    function allTokensFrozen() external pure override returns (bool) {
+        return false;
     }
 
     function implementation() public view override returns (address) {
@@ -202,8 +170,8 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getAddress(_getTokenAddressKey(symbol));
     }
 
-    function tokenFrozen(string memory symbol) public view override returns (bool) {
-        return getBool(_getFreezeTokenKey(symbol));
+    function tokenFrozen(string memory) external pure override returns (bool) {
+        return false;
     }
 
     function isCommandExecuted(bytes32 commandId) public view override returns (bool) {
@@ -234,30 +202,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Admin Functions *|
     \*******************/
 
-    function freezeToken(string calldata symbol) external override onlyAdmin {
-        _setBool(_getFreezeTokenKey(symbol), true);
-
-        emit TokenFrozen(symbol);
-    }
-
-    function unfreezeToken(string calldata symbol) external override onlyAdmin {
-        _setBool(_getFreezeTokenKey(symbol), false);
-
-        emit TokenUnfrozen(symbol);
-    }
-
-    function freezeAllTokens() external override onlyAdmin {
-        _setBool(KEY_ALL_TOKENS_FROZEN, true);
-
-        emit AllTokensFrozen();
-    }
-
-    function unfreezeAllTokens() external override onlyAdmin {
-        _setBool(KEY_ALL_TOKENS_FROZEN, false);
-
-        emit AllTokensUnfrozen();
-    }
-
     function upgrade(
         address newImplementation,
         bytes32 newImplementationCodeHash,
@@ -270,9 +214,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
         //        if `upgrade` is entered within the context of _this_ implementation itself.
         if (setupParams.length != 0) {
-            (bool success, ) = newImplementation.delegatecall(
-                abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams)
-            );
+            (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams));
 
             if (!success) revert SetupFailed();
         }
@@ -298,8 +240,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         bool burnSuccess;
 
         if (tokenType == TokenType.External) {
-            _checkTokenStatus(symbol);
-
             burnSuccess = _callERC20Token(
                 tokenAddress,
                 abi.encodeWithSelector(IERC20.transferFrom.selector, sender, address(this), amount)
@@ -313,7 +253,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenType == TokenType.InternalBurnableFrom) {
             burnSuccess = _callERC20Token(
                 tokenAddress,
-                abi.encodeWithSelector(IERC20BurnFrom.burnFrom.selector, sender, amount)
+                abi.encodeWithSelector(IBurnableMintableCappedERC20.burnFrom.selector, sender, amount)
             );
 
             if (!burnSuccess) revert BurnFailed(symbol);
@@ -333,7 +273,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         if (!burnSuccess) revert BurnFailed(symbol);
 
-        IERC20Burn(tokenAddress).burn(bytes32(0));
+        IBurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
     }
 
     function _deployToken(
@@ -382,12 +322,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
         if (_getTokenType(symbol) == TokenType.External) {
-            _checkTokenStatus(symbol);
-
-            bool success = _callERC20Token(
-                tokenAddress,
-                abi.encodeWithSelector(IERC20.transfer.selector, account, amount)
-            );
+            bool success = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20.transfer.selector, account, amount));
 
             if (!success) revert MintFailed(symbol);
         } else {
@@ -401,26 +336,19 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
         if (_getTokenType(symbol) == TokenType.External) {
-            _checkTokenStatus(symbol);
-
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
 
             (bool success, bytes memory returnData) = depositHandler.execute(
                 tokenAddress,
-                abi.encodeWithSelector(
-                    IERC20.transfer.selector,
-                    address(this),
-                    IERC20(tokenAddress).balanceOf(address(depositHandler))
-                )
+                abi.encodeWithSelector(IERC20.transfer.selector, address(this), IERC20(tokenAddress).balanceOf(address(depositHandler)))
             );
 
-            if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool))))
-                revert BurnFailed(symbol);
+            if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert BurnFailed(symbol);
 
             // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
             depositHandler.destroy(address(this));
         } else {
-            IERC20Burn(tokenAddress).burn(salt);
+            IBurnableMintableCappedERC20(tokenAddress).burn(salt);
         }
     }
 
@@ -434,15 +362,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         uint256 sourceEventIndex
     ) internal {
         _setContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
-        emit ContractCallApproved(
-            commandId,
-            sourceChain,
-            sourceAddress,
-            contractAddress,
-            payloadHash,
-            sourceTxHash,
-            sourceEventIndex
-        );
+        emit ContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, sourceTxHash, sourceEventIndex);
     }
 
     function _approveContractCallWithMint(
@@ -456,15 +376,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         bytes32 sourceTxHash,
         uint256 sourceEventIndex
     ) internal {
-        _setContractCallApprovedWithMint(
-            commandId,
-            sourceChain,
-            sourceAddress,
-            contractAddress,
-            payloadHash,
-            symbol,
-            amount
-        );
+        _setContractCallApprovedWithMint(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, symbol, amount);
         emit ContractCallApprovedWithMint(
             commandId,
             sourceChain,
@@ -486,10 +398,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return keccak256(abi.encodePacked(PREFIX_TOKEN_TYPE, symbol));
     }
 
-    function _getFreezeTokenKey(string memory symbol) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_TOKEN_FROZEN, symbol));
-    }
-
     function _getTokenAddressKey(string memory symbol) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(PREFIX_TOKEN_ADDRESS, symbol));
     }
@@ -505,17 +413,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address contractAddress,
         bytes32 payloadHash
     ) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    PREFIX_CONTRACT_CALL_APPROVED,
-                    commandId,
-                    sourceChain,
-                    sourceAddress,
-                    contractAddress,
-                    payloadHash
-                )
-            );
+        return keccak256(abi.encode(PREFIX_CONTRACT_CALL_APPROVED, commandId, sourceChain, sourceAddress, contractAddress, payloadHash));
     }
 
     function _getIsContractCallApprovedWithMintKey(
@@ -559,10 +457,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return TokenType(getUint(_getTokenTypeKey(symbol)));
     }
 
-    function _checkTokenStatus(string memory symbol) internal view {
-        if (tokenFrozen(symbol) || getBool(KEY_ALL_TOKENS_FROZEN)) revert TokenIsFrozen(symbol);
-    }
-
     /********************\
     |* Internal Setters *|
     \********************/
@@ -586,10 +480,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address contractAddress,
         bytes32 payloadHash
     ) internal {
-        _setBool(
-            _getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, contractAddress, payloadHash),
-            true
-        );
+        _setBool(_getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, contractAddress, payloadHash), true);
     }
 
     function _setContractCallApprovedWithMint(
@@ -602,15 +493,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         uint256 amount
     ) internal {
         _setBool(
-            _getIsContractCallApprovedWithMintKey(
-                commandId,
-                sourceChain,
-                sourceAddress,
-                contractAddress,
-                payloadHash,
-                symbol,
-                amount
-            ),
+            _getIsContractCallApprovedWithMintKey(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, symbol, amount),
             true
         );
     }

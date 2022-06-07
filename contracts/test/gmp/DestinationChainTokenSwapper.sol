@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import { IERC20 } from '../interfaces/IERC20.sol';
+import { IERC20 } from '../../interfaces/IERC20.sol';
 
 contract DestinationChainTokenSwapper {
     error WrongTokenPair();
