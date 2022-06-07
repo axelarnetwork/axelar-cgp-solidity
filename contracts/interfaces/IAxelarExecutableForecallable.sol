@@ -8,7 +8,6 @@ import { IERC20 } from './IERC20.sol';
 abstract contract IAxelarExecutableForecallable {
     error NotApprovedByGateway();
     error AlreadyForecalled();
-    error NotAuthorizedToForecall();
     error TransferFailed();
 
     IAxelarGateway public gateway;
