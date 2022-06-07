@@ -5,7 +5,7 @@ pragma solidity 0.8.9;
 import { IAxelarGateway } from './IAxelarGateway.sol';
 import { IERC20 } from './IERC20.sol';
 
-abstract contract IAxelarExecutableForecallable {
+abstract contract IAxelarForecallable {
     error NotApprovedByGateway();
     error AlreadyForecalled();
     error TransferFailed();
