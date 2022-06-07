@@ -22,7 +22,7 @@ const GasService = require('../../artifacts/contracts/gas-service/AxelarGasServi
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/SourceChainSwapCaller.sol/SourceChainSwapCaller.json');
 const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
-const DestinationChainSwapExecutableForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutableForecallable.sol/DestinationChainSwapExecutableForecallable.json');
+const DestinationChainSwapForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForecallable.sol/DestinationChainSwapForecallable.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
 const { getSignedExecuteInput, getRandomID } = require('../utils');
 
@@ -37,7 +37,7 @@ describe('GeneralMessagePassing', () => {
     let sourceChainGasService;
     let sourceChainSwapCaller;
     let destinationChainSwapExecutable;
-    let destinationChainSwapExecutableForecallable;
+    let destinationChainSwapForecallable;
     let destinationChainTokenSwapper;
     let tokenA;
     let tokenB;
@@ -118,12 +118,12 @@ describe('GeneralMessagePassing', () => {
 
         destinationChainTokenSwapper = await deployContract(ownerWallet, DestinationChainTokenSwapper, [tokenA.address, tokenB.address]);
 
-        destinationChainSwapExecutableForecallable = await deployContract(ownerWallet, DestinationChainSwapExecutableForecallable, [
+        destinationChainSwapExecutable = await deployContract(ownerWallet, DestinationChainSwapExecutable, [
             destinationChainGateway.address,
             destinationChainTokenSwapper.address,
         ]);
 
-        destinationChainSwapExecutable = await deployContract(ownerWallet, DestinationChainSwapExecutable, [
+        destinationChainSwapForecallable = await deployContract(ownerWallet, DestinationChainSwapForecallable, [
             destinationChainGateway.address,
             destinationChainTokenSwapper.address,
         ]);
@@ -247,6 +247,7 @@ describe('GeneralMessagePassing', () => {
                 .and.to.emit(destinationChainGateway, 'TokenSent')
                 .withArgs(destinationChainSwapExecutable.address, sourceChain, userWallet.address.toString(), symbolB, convertedAmount);
         });
+
         it('should forecall a swap on remote chain', async () => {
             const swapAmount = 1e6;
             const gasFeeAmount = 1e3;
@@ -285,22 +286,22 @@ describe('GeneralMessagePassing', () => {
                     swapAmount,
                 );
 
-            await tokenA.connect(userWallet).approve(destinationChainSwapExecutableForecallable.address, swapAmount);
+            await tokenA.connect(userWallet).approve(destinationChainSwapForecallable.address, swapAmount);
 
             await expect(
-                destinationChainSwapExecutableForecallable
+                destinationChainSwapForecallable
                     .connect(userWallet)
                     .forecallWithToken(sourceChain, sourceChainSwapCaller.address, payload, symbolA, swapAmount, userWallet.address),
             )
                 .to.emit(tokenA, 'Transfer')
-                .withArgs(userWallet.address, destinationChainSwapExecutableForecallable.address, swapAmount)
+                .withArgs(userWallet.address, destinationChainSwapForecallable.address, swapAmount)
                 .and.to.emit(tokenB, 'Transfer')
-                .withArgs(destinationChainTokenSwapper.address, destinationChainSwapExecutableForecallable.address, convertedAmount)
+                .withArgs(destinationChainTokenSwapper.address, destinationChainSwapForecallable.address, convertedAmount)
                 .and.to.emit(tokenB, 'Transfer')
-                .withArgs(destinationChainSwapExecutableForecallable.address, destinationChainGateway.address, convertedAmount)
+                .withArgs(destinationChainSwapForecallable.address, destinationChainGateway.address, convertedAmount)
                 .and.to.emit(destinationChainGateway, 'TokenSent')
                 .withArgs(
-                    destinationChainSwapExecutableForecallable.address,
+                    destinationChainSwapForecallable.address,
                     sourceChain,
                     userWallet.address.toString(),
                     symbolB,
@@ -325,7 +326,7 @@ describe('GeneralMessagePassing', () => {
                                 [
                                     sourceChain,
                                     sourceChainSwapCaller.address.toString(),
-                                    destinationChainSwapExecutableForecallable.address,
+                                    destinationChainSwapForecallable.address,
                                     payloadHash,
                                     symbolA,
                                     swapAmount,
@@ -346,7 +347,7 @@ describe('GeneralMessagePassing', () => {
                     approveCommandId,
                     sourceChain,
                     sourceChainSwapCaller.address.toString(),
-                    destinationChainSwapExecutableForecallable.address,
+                    destinationChainSwapForecallable.address,
                     payloadHash,
                     symbolA,
                     swapAmount,
@@ -354,7 +355,7 @@ describe('GeneralMessagePassing', () => {
                     sourceEventIndex,
                 );
 
-            const swap = await destinationChainSwapExecutableForecallable.executeWithToken(
+            const swap = await destinationChainSwapForecallable.executeWithToken(
                 approveCommandId,
                 sourceChain,
                 sourceChainSwapCaller.address.toString(),
@@ -365,9 +366,9 @@ describe('GeneralMessagePassing', () => {
 
             await expect(swap)
                 .to.emit(tokenA, 'Transfer')
-                .withArgs(destinationChainGateway.address, destinationChainSwapExecutableForecallable.address, swapAmount)
+                .withArgs(destinationChainGateway.address, destinationChainSwapForecallable.address, swapAmount)
                 .and.to.emit(tokenA, 'Transfer')
-                .withArgs(destinationChainSwapExecutableForecallable.address, userWallet.address, swapAmount);
+                .withArgs(destinationChainSwapForecallable.address, userWallet.address, swapAmount);
         });
     });
 });
