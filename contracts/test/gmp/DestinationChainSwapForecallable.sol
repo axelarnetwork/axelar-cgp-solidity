@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.9;
 
-import { IAxelarExecutableForecallable } from '../../interfaces/IAxelarExecutableForecallable.sol';
+import { IAxelarForecallable } from '../../interfaces/IAxelarForecallable.sol';
 import { IERC20 } from '../../interfaces/IERC20.sol';
 import { DestinationChainTokenSwapper } from './DestinationChainTokenSwapper.sol';
 
-contract DestinationChainSwapExecutableForecallable is IAxelarExecutableForecallable {
+contract DestinationChainSwapForecallable is IAxelarForecallable {
     DestinationChainTokenSwapper public swapper;
 
     constructor(address gatewayAddress, address swapperAddress) IAxelarExecutableForecallable(gatewayAddress) {
