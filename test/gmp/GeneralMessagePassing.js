@@ -140,7 +140,7 @@ describe('GeneralMessagePassing', () => {
         await tokenB.mint(destinationChainTokenSwapper.address, 1e9);
 
         await sourceChainGateway.execute(await getSignedExecuteInput(getMintData(symbolA, userWallet.address, 1e9), ownerWallet));
-        await destinationChainGateway.execute(await getSignedExecuteInput(getMintData(symbolA, userWallet.address, 1e9), ownerWallet));
+        await tokenA.connect(ownerWallet).mint(userWallet.address, 1e9);
     });
 
     describe('general message passing', () => {
@@ -286,8 +286,8 @@ describe('GeneralMessagePassing', () => {
                   swapAmount,
               );
           
-          await tokenA.approve(destinationChainSwapExecutableForetellable.address, swapAmount);
-
+          await tokenA.connect(userWallet).approve(destinationChainSwapExecutableForetellable.address, swapAmount);
+          
           await expect(
             destinationChainSwapExecutableForetellable
               .connect(userWallet)
@@ -308,7 +308,7 @@ describe('GeneralMessagePassing', () => {
               .withArgs(destinationChainSwapExecutableForetellable.address, destinationChainGateway.address, convertedAmount)
               .and.to.emit(destinationChainGateway, 'TokenSent')
               .withArgs(destinationChainSwapExecutableForetellable.address, sourceChain, userWallet.address.toString(), symbolB, convertedAmount);
-
+          
           const approveCommandId = getRandomID();
           const sourceTxHash = keccak256('0x123abc123abc');
           const sourceEventIndex = 17;
@@ -327,7 +327,7 @@ describe('GeneralMessagePassing', () => {
                               [
                                   sourceChain,
                                   sourceChainSwapCaller.address.toString(),
-                                  destinationChainSwapExecutable.address,
+                                  destinationChainSwapExecutableForetellable.address,
                                   payloadHash,
                                   symbolA,
                                   swapAmount,
@@ -348,14 +348,14 @@ describe('GeneralMessagePassing', () => {
                   approveCommandId,
                   sourceChain,
                   sourceChainSwapCaller.address.toString(),
-                  destinationChainSwapExecutable.address,
+                  destinationChainSwapExecutableForetellable.address,
                   payloadHash,
                   symbolA,
                   swapAmount,
                   sourceTxHash,
                   sourceEventIndex,
               );
-
+              
           const swap = await destinationChainSwapExecutableForetellable.executeWithToken(
               approveCommandId,
               sourceChain,
@@ -367,10 +367,9 @@ describe('GeneralMessagePassing', () => {
 
           await expect(swap)
               .to.emit(tokenA, 'Transfer')
-              .withArgs(destinationChainGateway.address, destinationChainSwapExecutable.address, swapAmount)
+              .withArgs(destinationChainGateway.address, destinationChainSwapExecutableForetellable.address, swapAmount)
               .and.to.emit(tokenA, 'Transfer')
-              .withArgs(destinationChainSwapExecutable.address, userWallet.address, convertedAmount)
-              .and.to.emit(tokenB, 'Transfer');
+              .withArgs(destinationChainSwapExecutableForetellable.address, userWallet.address, swapAmount);
       });
     });
 });
