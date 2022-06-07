@@ -9,7 +9,7 @@ import { DestinationChainTokenSwapper } from './DestinationChainTokenSwapper.sol
 contract DestinationChainSwapForecallable is IAxelarForecallable {
     DestinationChainTokenSwapper public swapper;
 
-    constructor(address gatewayAddress, address swapperAddress) IAxelarExecutableForecallable(gatewayAddress) {
+    constructor(address gatewayAddress, address swapperAddress) IAxelarForecallable(gatewayAddress) {
         swapper = DestinationChainTokenSwapper(swapperAddress);
     }
 
