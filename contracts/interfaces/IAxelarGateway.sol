@@ -4,6 +4,26 @@ pragma solidity 0.8.9;
 
 interface IAxelarGateway {
     /**********\
+    |* Errors *|
+    \**********/
+
+    error NotSelf();
+    error NotProxy();
+    error InvalidCodeHash();
+    error SetupFailed();
+    error InvalidAuthModule();
+    error InvalidTokenDeployer();
+    error InvalidAmount();
+    error InvalidChainId();
+    error InvalidCommands();
+    error TokenDoesNotExist(string symbol);
+    error TokenAlreadyExists(string symbol);
+    error TokenDeployFailed(string symbol);
+    error TokenContractDoesNotExist(address token);
+    error BurnFailed(string symbol);
+    error MintFailed(string symbol);
+
+    /**********\
     |* Events *|
     \**********/
 
@@ -53,11 +73,13 @@ interface IAxelarGateway {
         uint256 sourceEventIndex
     );
 
+    event OperatorshipTransferred(address indexed authModule, bytes transferData);
+
     event Upgraded(address indexed implementation);
 
-    /******************\
-    |* Public Methods *|
-    \******************/
+    /********************\
+    |* Public Functions *|
+    \********************/
 
     function sendToken(
         string calldata destinationChain,

@@ -3,32 +3,16 @@
 pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
+import { IAxelarAuthModule } from './interfaces/IAxelarAuthModule.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
+import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
 
 abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
-    error NotSelf();
-    error InvalidCodeHash();
-    error SetupFailed();
-    error InvalidAmount();
-    error InvalidTokenDeployer();
-    error TokenDoesNotExist(string symbol);
-    error TokenAlreadyExists(string symbol);
-    error TokenDeployFailed(string symbol);
-    error TokenContractDoesNotExist(address token);
-    error BurnFailed(string symbol);
-    error MintFailed(string symbol);
-
-    enum Role {
-        Admin,
-        Owner,
-        Operator
-    }
-
     enum TokenType {
         InternalBurnable,
         InternalBurnableFrom,
@@ -51,15 +35,15 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant SELECTOR_APPROVE_CONTRACT_CALL = keccak256('approveContractCall');
     bytes32 internal constant SELECTOR_APPROVE_CONTRACT_CALL_WITH_MINT = keccak256('approveContractCallWithMint');
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
-    bytes32 internal constant SELECTOR_TRANSFER_OWNERSHIP = keccak256('transferOwnership');
 
-    uint8 internal constant OLD_KEY_RETENTION = 16;
-
+    address internal immutable AUTH_MODULE;
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
-    constructor(address tokenDeployerImplementation) {
+    constructor(address authModule, address tokenDeployerImplementation) {
+        if (authModule.code.length == 0) revert InvalidAuthModule();
         if (tokenDeployerImplementation.code.length == 0) revert InvalidTokenDeployer();
 
+        AUTH_MODULE = authModule;
         TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation;
     }
 
@@ -149,6 +133,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         bytes32 key = _getIsContractCallApprovedWithMintKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash, symbol, amount);
         valid = getBool(key);
         if (valid) {
+            // Prevent re-entrancy
             _setBool(key, false);
             _mintToken(symbol, msg.sender, amount);
         }
@@ -223,8 +208,234 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     /**********************\
-    |* Internal Functions *|
+    |* External Functions *|
     \**********************/
+
+    function setup(bytes calldata params) external override {
+        // Prevent setup from being called on a non-proxy (the implementation).
+        if (implementation() == address(0)) revert NotProxy();
+
+        (address[] memory adminAddresses, uint256 newAdminThreshold, bytes memory operatorshipParams) = abi.decode(
+            params,
+            (address[], uint256, bytes)
+        );
+
+        // NOTE: Admin epoch is incremented to easily invalidate current admin-related state.
+        uint256 newAdminEpoch = _adminEpoch() + uint256(1);
+        _setAdminEpoch(newAdminEpoch);
+        _setAdmins(newAdminEpoch, adminAddresses, newAdminThreshold);
+
+        if (operatorshipParams.length > 0) {
+            IAxelarAuthModule(AUTH_MODULE).transferOperatorship(operatorshipParams);
+
+            emit OperatorshipTransferred(AUTH_MODULE, params);
+        }
+    }
+
+    function execute(bytes calldata input) external override {
+        (bytes memory data, bytes memory signatureData) = abi.decode(input, (bytes, bytes));
+
+        // TODO ask if signatureData comes in old format do we need to support old multisig logic?
+
+        bytes32 messageHash = ECDSA.toEthSignedMessageHash(keccak256(data));
+
+        // TEST auth and getaway separately
+        bool currentOperators = IAxelarAuthModule(AUTH_MODULE).validateSignatureData(messageHash, signatureData);
+
+        // TODO move into fn
+        // try
+        //        (uint256 chainId, Role signersRole, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) = abi.decode(
+        //            data,
+        //            (uint256, Role, bytes32[], string[], bytes[])
+        //        );
+        // catch
+        (uint256 chainId, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) = abi.decode(
+            data,
+            (uint256, bytes32[], string[], bytes[])
+        );
+
+        if (chainId != block.chainid) revert InvalidChainId();
+
+        uint256 commandsLength = commandIds.length;
+
+        if (commandsLength != commands.length || commandsLength != params.length) revert InvalidCommands();
+
+        for (uint256 i; i < commandsLength; ++i) {
+            bytes32 commandId = commandIds[i];
+
+            if (isCommandExecuted(commandId)) continue; /* Ignore if duplicate commandId received */
+
+            bytes4 commandSelector;
+            bytes32 commandHash = keccak256(abi.encodePacked(commands[i]));
+
+            if (commandHash == SELECTOR_DEPLOY_TOKEN) {
+                commandSelector = AxelarGateway.deployToken.selector;
+            } else if (commandHash == SELECTOR_MINT_TOKEN) {
+                commandSelector = AxelarGateway.mintToken.selector;
+            } else if (commandHash == SELECTOR_APPROVE_CONTRACT_CALL) {
+                commandSelector = AxelarGateway.approveContractCall.selector;
+            } else if (commandHash == SELECTOR_APPROVE_CONTRACT_CALL_WITH_MINT) {
+                commandSelector = AxelarGateway.approveContractCallWithMint.selector;
+            } else if (commandHash == SELECTOR_BURN_TOKEN) {
+                commandSelector = AxelarGateway.burnToken.selector;
+            } else if (commandHash == SELECTOR_TRANSFER_OPERATORSHIP) {
+                if (!currentOperators) continue;
+
+                commandSelector = AxelarGateway.transferOperatorship.selector;
+            } else {
+                continue; /* Ignore if unknown command received */
+            }
+
+            // Prevent a re-entrancy from executing this command before it can be marked as successful.
+            _setCommandExecuted(commandId, true);
+            (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i], commandId));
+
+            if (success) emit Executed(commandId);
+            else _setCommandExecuted(commandId, false);
+        }
+    }
+
+    /******************\
+    |* Self Functions *|
+    \******************/
+
+    function deployToken(bytes calldata params, bytes32) external onlySelf {
+        (string memory name, string memory symbol, uint8 decimals, uint256 cap, address tokenAddress) = abi.decode(
+            params,
+            (string, string, uint8, uint256, address)
+        );
+
+        // Ensure that this symbol has not been taken.
+        if (tokenAddresses(symbol) != address(0)) revert TokenAlreadyExists(symbol);
+
+        if (tokenAddress == address(0)) {
+            // If token address is no specified, it indicates a request to deploy one.
+            bytes32 salt = keccak256(abi.encodePacked(symbol));
+
+            (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
+                abi.encodeWithSelector(ITokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
+            );
+
+            if (!success) revert TokenDeployFailed(symbol);
+
+            tokenAddress = abi.decode(data, (address));
+
+            _setTokenType(symbol, TokenType.InternalBurnableFrom);
+        } else {
+            // If token address is specified, ensure that there is a contact at the specified address.
+            if (tokenAddress.code.length == uint256(0)) revert TokenContractDoesNotExist(tokenAddress);
+
+            // Mark that this symbol is an external token, which is needed to differentiate between operations on mint and burn.
+            _setTokenType(symbol, TokenType.External);
+        }
+
+        _setTokenAddress(symbol, tokenAddress);
+
+        emit TokenDeployed(symbol, tokenAddress);
+    }
+
+    function mintToken(bytes calldata params, bytes32) external onlySelf {
+        (string memory symbol, address account, uint256 amount) = abi.decode(params, (string, address, uint256));
+
+        _mintToken(symbol, account, amount);
+    }
+
+    function _mintToken(
+        string memory symbol,
+        address account,
+        uint256 amount
+    ) internal {
+        address tokenAddress = tokenAddresses(symbol);
+
+        if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
+
+        if (_getTokenType(symbol) == TokenType.External) {
+            bool success = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20.transfer.selector, account, amount));
+
+            if (!success) revert MintFailed(symbol);
+        } else {
+            IBurnableMintableCappedERC20(tokenAddress).mint(account, amount);
+        }
+    }
+
+    function burnToken(bytes calldata params, bytes32) external onlySelf {
+        (string memory symbol, bytes32 salt) = abi.decode(params, (string, bytes32));
+
+        address tokenAddress = tokenAddresses(symbol);
+
+        if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
+
+        if (_getTokenType(symbol) == TokenType.External) {
+            DepositHandler depositHandler = new DepositHandler{ salt: salt }();
+
+            (bool success, bytes memory returnData) = depositHandler.execute(
+                tokenAddress,
+                abi.encodeWithSelector(IERC20.transfer.selector, address(this), IERC20(tokenAddress).balanceOf(address(depositHandler)))
+            );
+
+            if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert BurnFailed(symbol);
+
+            // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
+            depositHandler.destroy(address(this));
+        } else {
+            IBurnableMintableCappedERC20(tokenAddress).burn(salt);
+        }
+    }
+
+    function approveContractCall(bytes calldata params, bytes32 commandId) external onlySelf {
+        (
+            string memory sourceChain,
+            string memory sourceAddress,
+            address contractAddress,
+            bytes32 payloadHash,
+            bytes32 sourceTxHash,
+            uint256 sourceEventIndex
+        ) = abi.decode(params, (string, string, address, bytes32, bytes32, uint256));
+
+        _setContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
+        emit ContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, sourceTxHash, sourceEventIndex);
+    }
+
+    function approveContractCallWithMint(bytes calldata params, bytes32 commandId) external onlySelf {
+        (
+            string memory sourceChain,
+            string memory sourceAddress,
+            address contractAddress,
+            bytes32 payloadHash,
+            string memory symbol,
+            uint256 amount,
+            bytes32 sourceTxHash,
+            uint256 sourceEventIndex
+        ) = abi.decode(params, (string, string, address, bytes32, string, uint256, bytes32, uint256));
+
+        _setContractCallApprovedWithMint(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, symbol, amount);
+        emit ContractCallApprovedWithMint(
+            commandId,
+            sourceChain,
+            sourceAddress,
+            contractAddress,
+            payloadHash,
+            symbol,
+            amount,
+            sourceTxHash,
+            sourceEventIndex
+        );
+    }
+
+    function transferOperatorship(bytes calldata params, bytes32) external onlySelf {
+        IAxelarAuthModule(AUTH_MODULE).transferOperatorship(params);
+
+        emit OperatorshipTransferred(AUTH_MODULE, params);
+    }
+
+    /********************\
+    |* Internal Methods *|
+    \********************/
+
+    function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
+        (bool success, bytes memory returnData) = tokenAddress.call(callData);
+        return success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
+    }
 
     function _burnTokenFrom(
         address sender,
@@ -276,120 +487,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         IBurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
     }
 
-    function _deployToken(
-        string memory name,
-        string memory symbol,
-        uint8 decimals,
-        uint256 cap,
-        address tokenAddress
-    ) internal {
-        // Ensure that this symbol has not been taken.
-        if (tokenAddresses(symbol) != address(0)) revert TokenAlreadyExists(symbol);
-
-        if (tokenAddress == address(0)) {
-            // If token address is no specified, it indicates a request to deploy one.
-            bytes32 salt = keccak256(abi.encodePacked(symbol));
-
-            (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
-                abi.encodeWithSelector(ITokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
-            );
-
-            if (!success) revert TokenDeployFailed(symbol);
-
-            tokenAddress = abi.decode(data, (address));
-
-            _setTokenType(symbol, TokenType.InternalBurnableFrom);
-        } else {
-            // If token address is specified, ensure that there is a contact at the specified address.
-            if (tokenAddress.code.length == uint256(0)) revert TokenContractDoesNotExist(tokenAddress);
-
-            // Mark that this symbol is an external token, which is needed to differentiate between operations on mint and burn.
-            _setTokenType(symbol, TokenType.External);
-        }
-
-        _setTokenAddress(symbol, tokenAddress);
-
-        emit TokenDeployed(symbol, tokenAddress);
-    }
-
-    function _mintToken(
-        string memory symbol,
-        address account,
-        uint256 amount
-    ) internal {
-        address tokenAddress = tokenAddresses(symbol);
-
-        if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
-
-        if (_getTokenType(symbol) == TokenType.External) {
-            bool success = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20.transfer.selector, account, amount));
-
-            if (!success) revert MintFailed(symbol);
-        } else {
-            IBurnableMintableCappedERC20(tokenAddress).mint(account, amount);
-        }
-    }
-
-    function _burnToken(string memory symbol, bytes32 salt) internal {
-        address tokenAddress = tokenAddresses(symbol);
-
-        if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
-
-        if (_getTokenType(symbol) == TokenType.External) {
-            DepositHandler depositHandler = new DepositHandler{ salt: salt }();
-
-            (bool success, bytes memory returnData) = depositHandler.execute(
-                tokenAddress,
-                abi.encodeWithSelector(IERC20.transfer.selector, address(this), IERC20(tokenAddress).balanceOf(address(depositHandler)))
-            );
-
-            if (!success || (returnData.length != uint256(0) && !abi.decode(returnData, (bool)))) revert BurnFailed(symbol);
-
-            // NOTE: `depositHandler` must always be destroyed in the same runtime context that it is deployed.
-            depositHandler.destroy(address(this));
-        } else {
-            IBurnableMintableCappedERC20(tokenAddress).burn(salt);
-        }
-    }
-
-    function _approveContractCall(
-        bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
-        address contractAddress,
-        bytes32 payloadHash,
-        bytes32 sourceTxHash,
-        uint256 sourceEventIndex
-    ) internal {
-        _setContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash);
-        emit ContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, sourceTxHash, sourceEventIndex);
-    }
-
-    function _approveContractCallWithMint(
-        bytes32 commandId,
-        string memory sourceChain,
-        string memory sourceAddress,
-        address contractAddress,
-        bytes32 payloadHash,
-        string memory symbol,
-        uint256 amount,
-        bytes32 sourceTxHash,
-        uint256 sourceEventIndex
-    ) internal {
-        _setContractCallApprovedWithMint(commandId, sourceChain, sourceAddress, contractAddress, payloadHash, symbol, amount);
-        emit ContractCallApprovedWithMint(
-            commandId,
-            sourceChain,
-            sourceAddress,
-            contractAddress,
-            payloadHash,
-            symbol,
-            amount,
-            sourceTxHash,
-            sourceEventIndex
-        );
-    }
-
     /********************\
     |* Pure Key Getters *|
     \********************/
@@ -438,15 +535,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
                     amount
                 )
             );
-    }
-
-    /********************\
-    |* Internal Methods *|
-    \********************/
-
-    function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
-        (bool success, bytes memory returnData) = tokenAddress.call(callData);
-        return success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
     }
 
     /********************\
