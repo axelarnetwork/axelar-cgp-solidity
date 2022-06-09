@@ -22,6 +22,8 @@ interface IAxelarGateway {
     error TokenContractDoesNotExist(address token);
     error BurnFailed(string symbol);
     error MintFailed(string symbol);
+    error InvalidSetDailyMintLimitsParams();
+    error ExceedDailyMintLimit(string symbol);
 
     /**********\
     |* Events *|
@@ -72,6 +74,8 @@ interface IAxelarGateway {
         bytes32 sourceTxHash,
         uint256 sourceEventIndex
     );
+
+    event TokenDailyMintLimitUpdated(string symbol, uint256 limit);
 
     event OperatorshipTransferred(address indexed authModule, bytes transferData);
 
@@ -140,6 +144,10 @@ interface IAxelarGateway {
     |* Getters *|
     \***********/
 
+    function tokenDailyMintLimit(string memory symbol) external view returns (uint256);
+
+    function tokenDailyMintAmount(string memory symbol) external view returns (uint256);
+
     function allTokensFrozen() external view returns (bool);
 
     function implementation() external view returns (address);
@@ -159,6 +167,8 @@ interface IAxelarGateway {
     /*******************\
     |* Admin Functions *|
     \*******************/
+
+    function setTokenDailyMintLimits(string[] calldata symbols, uint256[] calldata limits) external;
 
     function upgrade(
         address newImplementation,
