@@ -10,7 +10,7 @@
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js' && prettier --write 'scripts/**/*.js'",
     "flatten-contract": "hardhat flatten",
-    "flatten": "./scripts/flatten-contracts.sh"
+    "flatten": "base scripts/flatten-contracts.sh"
   },
   "repository": {
     "type": "git",
