@@ -300,13 +300,7 @@ describe('GeneralMessagePassing', () => {
                 .and.to.emit(tokenB, 'Transfer')
                 .withArgs(destinationChainSwapForecallable.address, destinationChainGateway.address, convertedAmount)
                 .and.to.emit(destinationChainGateway, 'TokenSent')
-                .withArgs(
-                    destinationChainSwapForecallable.address,
-                    sourceChain,
-                    userWallet.address.toString(),
-                    symbolB,
-                    convertedAmount,
-                );
+                .withArgs(destinationChainSwapForecallable.address, sourceChain, userWallet.address.toString(), symbolB, convertedAmount);
 
             const approveCommandId = getRandomID();
             const sourceTxHash = keccak256('0x123abc123abc');

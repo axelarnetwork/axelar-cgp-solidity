@@ -54,12 +54,13 @@ abstract contract IAxelarForecallable {
         address forecaller
     ) external {
         address token = gateway.tokenAddresses(tokenSymbol);
-        _safeTransferFrom(token, msg.sender, amount);
+        uint256 amountPost = amountPostFee(amount);
+        _safeTransferFrom(token, msg.sender, amountPost);
         _checkForecallWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount, forecaller);
         if (forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] != address(0))
             revert AlreadyForecalled();
         forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] = forecaller;
-        _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
+        _executeWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amountPost);
     }
 
     function executeWithToken(
@@ -96,6 +97,11 @@ abstract contract IAxelarForecallable {
         string memory tokenSymbol,
         uint256 amount
     ) internal virtual {}
+
+    // Override this to keep a fee.
+    function amountPostFee(uint256 amount) public virtual returns (uint256) {
+        return amount;
+    }
 
     // Override this and revert if you want to only allow certain people/calls to be able to forecall.
     function _checkForecall(
