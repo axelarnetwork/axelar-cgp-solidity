@@ -9,7 +9,8 @@
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js' && prettier --write 'scripts/**/*.js'",
-    "flatten": "rm -rf artifacts/flattened && hardhat flatten > artifacts/FlatContracts.sol"
+    "flatten-contract": "hardhat flatten",
+    "flatten": "./scripts/flatten-contracts.sh"
   },
   "repository": {
     "type": "git",
