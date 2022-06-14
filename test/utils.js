@@ -74,12 +74,7 @@ module.exports = {
         ),
 
     buildCommandBatch: (chianId, commandIDs, commandNames, commands) =>
-        arrayify(
-            defaultAbiCoder.encode(
-                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [chianId, commandIDs, commandNames, commands],
-            ),
-        ),
+        arrayify(defaultAbiCoder.encode(['uint256', 'bytes32[]', 'string[]', 'bytes[]'], [chianId, commandIDs, commandNames, commands])),
 
     buildCommandBatchWithRole: (chianId, role, commandIDs, commandNames, commands) =>
         arrayify(

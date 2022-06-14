@@ -1,4 +1,4 @@
-const { sortBy } = require("lodash");
+const { sortBy } = require('lodash');
 const chai = require('chai');
 const { ethers } = require('hardhat');
 const {
@@ -8,7 +8,6 @@ const { expect } = chai;
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-const ROLE_OWNER = 1;
 const ROLE_OPERATOR = 2;
 
 const {
@@ -91,9 +90,8 @@ describe('AxelarGatewayMultisig', () => {
         const decimals = 8;
 
         beforeEach(() => {
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 symbols.map(getRandomID),
                 symbols.map(() => 'deployToken'),
                 symbols.map((symbol) => getDeployCommand(symbol, symbol, decimals, 0, ADDRESS_ZERO, 0)),
@@ -181,9 +179,8 @@ describe('AxelarGatewayMultisig', () => {
 
     describe('execute', () => {
         it('should fail if chain id mismatches', async () => {
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID + 1,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['transferOwnership'],
                 [
@@ -210,9 +207,8 @@ describe('AxelarGatewayMultisig', () => {
         it('should allow the owners to deploy a new token', async () => {
             const commandID = getRandomID();
 
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [commandID],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, limit)],
@@ -242,9 +238,8 @@ describe('AxelarGatewayMultisig', () => {
         });
 
         it('should allow the operators to deploy a new token', async () => {
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
@@ -257,9 +252,8 @@ describe('AxelarGatewayMultisig', () => {
         it('should not deploy a duplicate token', async () => {
             const firstCommandID = getRandomID();
 
-            const firstData = buildCommandBatchWithRole(
+            const firstData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [firstCommandID],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
@@ -273,9 +267,8 @@ describe('AxelarGatewayMultisig', () => {
 
             const secondCommandID = getRandomID();
 
-            const secondData = buildCommandBatchWithRole(
+            const secondData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [secondCommandID],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
@@ -298,9 +291,8 @@ describe('AxelarGatewayMultisig', () => {
         let token;
 
         beforeEach(async () => {
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
@@ -344,9 +336,8 @@ describe('AxelarGatewayMultisig', () => {
 
             return Promise.all(admins.slice(0, threshold).map((admin) => gateway.connect(admin).setTokenDailyMintLimits([symbol], [limit])))
                 .then(() => {
-                    const data = buildCommandBatchWithRole(
+                    const data = buildCommandBatch(
                         CHAIN_ID,
-                        ROLE_OWNER,
                         [getRandomID()],
                         ['mintToken'],
                         [getMintCommand(symbol, owner.address, limit)],
@@ -365,9 +356,8 @@ describe('AxelarGatewayMultisig', () => {
                 })
                 .then(async () => {
                     const amount = 1;
-                    const data = buildCommandBatchWithRole(
+                    const data = buildCommandBatch(
                         CHAIN_ID,
-                        ROLE_OWNER,
                         [getRandomID()],
                         ['mintToken'],
                         [getMintCommand(symbol, owner.address, amount)],
@@ -386,9 +376,8 @@ describe('AxelarGatewayMultisig', () => {
         it('should allow the owners to mint tokens', async () => {
             const amount = getRandomInt(cap);
 
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['mintToken'],
                 [getMintCommand(symbol, owner.address, amount)],
@@ -407,9 +396,8 @@ describe('AxelarGatewayMultisig', () => {
         it('should allow the operators to mint tokens', async () => {
             const amount = getRandomInt(cap);
 
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OPERATOR,
                 [getRandomID()],
                 ['mintToken'],
                 [getMintCommand(symbol, owner.address, amount)],
@@ -436,9 +424,8 @@ describe('AxelarGatewayMultisig', () => {
         let token;
 
         beforeEach(async () => {
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(symbol, owner.address, amount)],
@@ -459,7 +446,12 @@ describe('AxelarGatewayMultisig', () => {
             const burnAmount = amount / 2;
             await token.transfer(depositHandlerAddress, burnAmount);
 
-            const dataFirstBurn = buildCommandBatchWithRole(CHAIN_ID, ROLE_OWNER, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const dataFirstBurn = buildCommandBatch(
+                CHAIN_ID,
+                [getRandomID()],
+                ['burnToken'],
+                [getBurnCommand(symbol, salt)],
+            );
 
             const firstInput = await getSignedMultisigExecuteInput(dataFirstBurn, operators, operators.slice(0, threshold));
 
@@ -467,7 +459,12 @@ describe('AxelarGatewayMultisig', () => {
 
             await token.transfer(depositHandlerAddress, burnAmount);
 
-            const dataSecondBurn = buildCommandBatchWithRole(CHAIN_ID, ROLE_OWNER, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const dataSecondBurn = buildCommandBatch(
+                CHAIN_ID,
+                [getRandomID()],
+                ['burnToken'],
+                [getBurnCommand(symbol, salt)],
+            );
 
             const secondInput = await getSignedMultisigExecuteInput(dataSecondBurn, operators, operators.slice(0, threshold));
 
@@ -498,9 +495,8 @@ describe('AxelarGatewayMultisig', () => {
 
             await token.transfer(depositHandlerAddress, burnAmount);
 
-            const dataSecondBurn = buildCommandBatchWithRole(
+            const dataSecondBurn = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OPERATOR,
                 [getRandomID()],
                 ['burnToken'],
                 [getBurnCommand(symbol, salt)],
@@ -518,9 +514,8 @@ describe('AxelarGatewayMultisig', () => {
         it('should allow operators to transfer operatorship', async () => {
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['transferOperatorship'],
                 [getTransferMultiOperatorshipCommand(newOperators, 2)],
@@ -536,15 +531,18 @@ describe('AxelarGatewayMultisig', () => {
         it('should allow the previous operators to mint and burn token', async () => {
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            const transferOwnershipData = buildCommandBatchWithRole(
+            const transferOwnershipData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['transferOperatorship'],
                 [getTransferMultiOperatorshipCommand(newOperators, 2)],
             );
 
-            const transferOwnershipInput = await getSignedMultisigExecuteInput(transferOwnershipData, operators, operators.slice(0, threshold));
+            const transferOwnershipInput = await getSignedMultisigExecuteInput(
+                transferOwnershipData,
+                operators,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(transferOwnershipInput))
                 .to.emit(gateway, 'OperatorshipTransferred')
@@ -555,9 +553,8 @@ describe('AxelarGatewayMultisig', () => {
             const decimals = 18;
             const cap = 1e8;
 
-            const deployData = buildCommandBatchWithRole(
+            const deployData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
@@ -571,9 +568,8 @@ describe('AxelarGatewayMultisig', () => {
 
             const amount = getRandomInt(cap);
 
-            const mintData = buildCommandBatchWithRole(
+            const mintData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OPERATOR,
                 [getRandomID()],
                 ['mintToken'],
                 [getMintCommand(symbol, owner.address, amount)],
@@ -592,7 +588,12 @@ describe('AxelarGatewayMultisig', () => {
             const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
-            const burnData = buildCommandBatchWithRole(CHAIN_ID, ROLE_OPERATOR, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const burnData = buildCommandBatch(
+                CHAIN_ID,
+                [getRandomID()],
+                ['burnToken'],
+                [getBurnCommand(symbol, salt)],
+            );
 
             await token.transfer(depositHandlerAddress, amount);
             const burnInput = await getSignedMultisigExecuteInput(burnData, operators, operators.slice(0, threshold));
@@ -603,9 +604,8 @@ describe('AxelarGatewayMultisig', () => {
         it('should allow the operators to transfer operatorship', async () => {
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['transferOperatorship'],
                 [getTransferMultiOperatorshipCommand(newOperators, 2)],
@@ -624,15 +624,11 @@ describe('AxelarGatewayMultisig', () => {
         const cap = 1e9;
 
         it('should burn internal token and emit an event', async () => {
-            const deployAndMintData = buildCommandBatchWithRole(
+            const deployAndMintData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
-                [
-                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0),
-                    getMintCommand(tokenSymbol, owner.address, 1e6),
-                ],
+                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(tokenSymbol, owner.address, 1e6)],
             );
 
             const input = await getSignedMultisigExecuteInput(deployAndMintData, operators, operators.slice(0, threshold));
@@ -660,9 +656,8 @@ describe('AxelarGatewayMultisig', () => {
 
             await token.mint(owner.address, 1000000);
 
-            const deployData = buildCommandBatchWithRole(
+            const deployData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
@@ -699,9 +694,8 @@ describe('AxelarGatewayMultisig', () => {
 
             await token.mint(owner.address, amount);
 
-            const deployData = buildCommandBatchWithRole(
+            const deployData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, capacity, token.address, 0)],
@@ -715,15 +709,19 @@ describe('AxelarGatewayMultisig', () => {
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
             await token.transfer(depositHandlerAddress, amount);
 
-            const burnData = buildCommandBatchWithRole(CHAIN_ID, ROLE_OWNER, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const burnData = buildCommandBatch(
+                CHAIN_ID,
+                [getRandomID()],
+                ['burnToken'],
+                [getBurnCommand(symbol, salt)],
+            );
 
             const burnInput = await getSignedMultisigExecuteInput(burnData, operators, operators.slice(0, threshold));
 
             await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, gateway.address, amount);
 
-            const mintData = buildCommandBatchWithRole(
+            const mintData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['mintToken'],
                 [getMintCommand(symbol, wallets[1].address, amount)],
@@ -745,9 +743,8 @@ describe('AxelarGatewayMultisig', () => {
             const amount2 = 20000;
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken', 'mintToken', 'transferOperatorship'],
                 [
@@ -795,9 +792,8 @@ describe('AxelarGatewayMultisig', () => {
 
         describe('internal tokens', () => {
             beforeEach(async () => {
-                const data = buildCommandBatchWithRole(
+                const data = buildCommandBatch(
                     CHAIN_ID,
-                    ROLE_OWNER,
                     [getRandomID(), getRandomID()],
                     ['deployToken', 'mintToken'],
                     [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(symbol, owner.address, amount)],
@@ -815,9 +811,8 @@ describe('AxelarGatewayMultisig', () => {
             beforeEach(async () => {
                 token = await mintableCappedERC20Factory.deploy(name, symbol, decimals, cap).then((d) => d.deployed());
 
-                const data = buildCommandBatchWithRole(
+                const data = buildCommandBatch(
                     CHAIN_ID,
-                    ROLE_OWNER,
                     [getRandomID()],
                     ['deployToken'],
                     [getDeployCommand(name, symbol, decimals, cap, token.address)],
@@ -850,15 +845,11 @@ describe('AxelarGatewayMultisig', () => {
         const cap = 1e9;
 
         it('should burn internal token and emit an event', async () => {
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
-                [
-                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0),
-                    getMintCommand(tokenSymbol, owner.address, 1e6),
-                ],
+                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(tokenSymbol, owner.address, 1e6)],
             );
 
             const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
@@ -888,9 +879,8 @@ describe('AxelarGatewayMultisig', () => {
 
             await token.mint(owner.address, 1000000);
 
-            const data = buildCommandBatchWithRole(
+            const data = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
@@ -927,9 +917,8 @@ describe('AxelarGatewayMultisig', () => {
             const sourceTxHash = keccak256('0x123abc123abc');
             const sourceEventIndex = 17;
 
-            const approveData = buildCommandBatchWithRole(
+            const approveData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [commandId],
                 ['approveContractCall'],
                 [getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex)],
@@ -953,13 +942,7 @@ describe('AxelarGatewayMultisig', () => {
 
             await gateway.connect(owner).validateContractCall(commandId, sourceChain, sourceAddress, payloadHash);
 
-            const isApprovedAfter = await gateway.isContractCallApproved(
-                commandId,
-                sourceChain,
-                sourceAddress,
-                owner.address,
-                payloadHash,
-            );
+            const isApprovedAfter = await gateway.isContractCallApproved(commandId, sourceChain, sourceAddress, owner.address, payloadHash);
 
             expect(isApprovedAfter).to.be.false;
         });
@@ -974,9 +957,8 @@ describe('AxelarGatewayMultisig', () => {
 
             await tokenA.mint(gateway.address, 1e6);
 
-            const deployTokenData = buildCommandBatchWithRole(
+            const deployTokenData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address, 0)],
@@ -995,9 +977,8 @@ describe('AxelarGatewayMultisig', () => {
             const sourceTxHash = keccak256('0x123abc123abc');
             const sourceEventIndex = 17;
 
-            const approveWithMintData = buildCommandBatchWithRole(
+            const approveWithMintData = buildCommandBatch(
                 CHAIN_ID,
-                ROLE_OWNER,
                 [commandId],
                 ['approveContractCallWithMint'],
                 [
@@ -1042,9 +1023,7 @@ describe('AxelarGatewayMultisig', () => {
 
             expect(isApprovedBefore).to.be.true;
 
-            await gateway
-                .connect(owner)
-                .validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, symbolA, amount);
+            await gateway.connect(owner).validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, symbolA, amount);
 
             const isApprovedAfter = await gateway.isContractCallAndMintApproved(
                 commandId,
