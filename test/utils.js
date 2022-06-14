@@ -12,13 +12,15 @@ const getRandomInt = (max) => {
 module.exports = {
     bigNumberToNumber: (bigNumber) => bigNumber.toNumber(),
 
-    getSignedExecuteInput: (data, wallet) =>
-        wallet.signMessage(arrayify(keccak256(data))).then((signature) => defaultAbiCoder.encode(['bytes', 'bytes'], [data, signature])),
-
-    getSignedMultisigExecuteInput: (data, wallets) =>
+    getSignedMultisigExecuteInput: (data, operators, signers) =>
         Promise.all(
-            sortBy(wallets, (wallet) => wallet.address.toLowerCase()).map((wallet) => wallet.signMessage(arrayify(keccak256(data)))),
-        ).then((signatures) => defaultAbiCoder.encode(['bytes', 'bytes[]'], [data, signatures])),
+            sortBy(signers, (wallet) => wallet.address.toLowerCase()).map((wallet) => wallet.signMessage(arrayify(keccak256(data)))),
+        ).then((signatures) =>
+            defaultAbiCoder.encode(
+                ['bytes', 'bytes'],
+                [data, defaultAbiCoder.encode(['address[]', 'bytes[]'], [operators.map(({ address }) => address), signatures])],
+            ),
+        ),
 
     getRandomInt,
 
@@ -26,14 +28,23 @@ module.exports = {
 
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 
-    getSinglesigProxyDeployParams: (admins, adminThreshold, owner, operator) =>
-        arrayify(defaultAbiCoder.encode(['address[]', 'uint8', 'address', 'address'], [admins, adminThreshold, owner, operator])),
-
-    getMultisigProxyDeployParams: (admins, adminThreshold, owners, ownerThreshold, operators, operatorThreshold) =>
+    getAuthDeployParam: (operatorsSets, operatorThresholds) =>
         arrayify(
             defaultAbiCoder.encode(
-                ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
-                [admins, adminThreshold, owners, ownerThreshold, operators, operatorThreshold],
+                ['bytes[]'],
+                [operatorsSets.map((operators, i) => defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThresholds[i]]))],
+            ),
+        ),
+
+    getMultisigProxyDeployParams: (admins, adminThreshold, operators, operatorThreshold) =>
+        arrayify(
+            defaultAbiCoder.encode(
+                ['address[]', 'uint8', 'bytes'],
+                [
+                    admins,
+                    adminThreshold,
+                    operators.length ? defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThreshold]) : '0x',
+                ],
             ),
         ),
 
@@ -47,14 +58,8 @@ module.exports = {
 
     getBurnCommand: (symbol, salt) => defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt]),
 
-    getTransferMultiOwnershipCommand: (newOwners, threshold) => defaultAbiCoder.encode(['address[]', 'uint8'], [newOwners, threshold]),
-
-    getTransferOwnershipCommand: (newOwner) => defaultAbiCoder.encode(['address'], [newOwner]),
-
     getTransferMultiOperatorshipCommand: (newOperators, threshold) =>
-        defaultAbiCoder.encode(['address[]', 'uint8'], [newOperators, threshold]),
-
-    getTransferOperatorshipCommand: (newOperator) => defaultAbiCoder.encode(['address'], [newOperator]),
+        defaultAbiCoder.encode(['address[]', 'uint8'], [newOperators.sort(), threshold]),
 
     getApproveContractCall: (sourceChain, source, destination, payloadHash, sourceTxHash, sourceEventIndex) =>
         defaultAbiCoder.encode(
@@ -68,7 +73,15 @@ module.exports = {
             [sourceChain, source, destination, payloadHash, symbol, amount, sourceTxHash, sourceEventIndex],
         ),
 
-    buildCommandBatch: (chianId, role, commandIDs, commandNames, commands) =>
+    buildCommandBatch: (chianId, commandIDs, commandNames, commands) =>
+        arrayify(
+            defaultAbiCoder.encode(
+                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                [chianId, commandIDs, commandNames, commands],
+            ),
+        ),
+
+    buildCommandBatchWithRole: (chianId, role, commandIDs, commandNames, commands) =>
         arrayify(
             defaultAbiCoder.encode(
                 ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],

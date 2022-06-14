@@ -12,7 +12,7 @@ import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
 
-abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
+contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     enum TokenType {
         InternalBurnable,
         InternalBurnableFrom,

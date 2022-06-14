@@ -13,14 +13,15 @@ const { get } = require('lodash/fp');
 const CHAIN_ID = 1;
 const ROLE_OWNER = 1;
 
+const Auth = require('../artifacts/contracts/AxelarAuthMultisig.sol/AxelarAuthMultisig.json');
 const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
 const AxelarGatewayProxy = require('../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
-const AxelarGatewaySinglesig = require('../artifacts/contracts/AxelarGatewaySinglesig.sol/AxelarGatewaySinglesig.json');
+const AxelarGateway = require('../artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
 const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json');
 const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 
-const { getSignedExecuteInput, getRandomID } = require('./utils');
+const { getSignedMultisigExecuteInput, getRandomID } = require('./utils');
 
 describe('AxelarDepositService', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
@@ -40,22 +41,23 @@ describe('AxelarDepositService', () => {
 
     beforeEach(async () => {
         const params = arrayify(
-            defaultAbiCoder.encode(
-                ['address[]', 'uint8', 'address', 'address'],
-                [adminWallets.map(get('address')), threshold, ownerWallet.address, operatorWallet.address],
-            ),
+            defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
         );
+        const auth = await deployContract(ownerWallet, Auth, [
+            defaultAbiCoder.encode(['bytes[]'], [[defaultAbiCoder.encode(['address[]', 'uint256'], [[operatorWallet.address], 1])]]),
+        ]);
         const tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
-        const gatewayImplementation = await deployContract(ownerWallet, AxelarGatewaySinglesig, [tokenDeployer.address]);
+        const gatewayImplementation = await deployContract(ownerWallet, AxelarGateway, [auth.address, tokenDeployer.address]);
         const gatewayProxy = await deployContract(ownerWallet, AxelarGatewayProxy, [gatewayImplementation.address, params]);
-        gateway = new Contract(gatewayProxy.address, AxelarGatewaySinglesig.abi, ownerWallet);
+        await auth.transferOwnership(gatewayProxy.address);
+        gateway = new Contract(gatewayProxy.address, AxelarGateway.abi, ownerWallet);
 
         token = await deployContract(ownerWallet, TestWeth, [tokenName, tokenSymbol, decimals, capacity]);
 
         await token.connect(ownerWallet).deposit({ value: 1e9 });
 
         await gateway.execute(
-            await getSignedExecuteInput(
+            await getSignedMultisigExecuteInput(
                 arrayify(
                     defaultAbiCoder.encode(
                         ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
@@ -66,14 +68,15 @@ describe('AxelarDepositService', () => {
                             ['deployToken'],
                             [
                                 defaultAbiCoder.encode(
-                                    ['string', 'string', 'uint8', 'uint256', 'address'],
-                                    [tokenName, tokenSymbol, decimals, capacity, token.address],
+                                    ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
+                                    [tokenName, tokenSymbol, decimals, capacity, token.address, 0],
                                 ),
                             ],
                         ],
                     ),
                 ),
-                ownerWallet,
+                [operatorWallet],
+                [operatorWallet],
             ),
         );
 
