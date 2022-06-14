@@ -19,6 +19,9 @@ const AxelarGatewaySinglesig = require('../artifacts/contracts/AxelarGatewaySing
 const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json');
 const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
+const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
+
+const { deployAndInitContractConstant } = require('axelar-utils-solidity');
 
 const { getSignedExecuteInput, getRandomID } = require('./utils');
 
@@ -45,6 +48,7 @@ describe('AxelarDepositService', () => {
                 [adminWallets.map(get('address')), threshold, ownerWallet.address, operatorWallet.address],
             ),
         );
+        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
         const tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
         const gatewayImplementation = await deployContract(ownerWallet, AxelarGatewaySinglesig, [tokenDeployer.address]);
         const gatewayProxy = await deployContract(ownerWallet, AxelarGatewayProxy, [gatewayImplementation.address, params]);
@@ -78,10 +82,18 @@ describe('AxelarDepositService', () => {
         );
 
         const depositImplementation = await deployContract(ownerWallet, DepositService);
-        const depositProxy = await deployContract(ownerWallet, DepositServiceProxy, [
-            depositImplementation.address,
-            arrayify(defaultAbiCoder.encode(['address', 'string'], [gateway.address, tokenSymbol])),
-        ]);
+        const setupParams = arrayify(
+            defaultAbiCoder.encode(['address', 'address', 'string'], [ownerWallet.address, gateway.address, tokenSymbol]),
+        );
+
+        const depositProxy = await deployAndInitContractConstant(
+            constAddressDeployer.address,
+            ownerWallet,
+            DepositServiceProxy,
+            'deposit-service',
+            [],
+            [depositImplementation.address, setupParams],
+        );
         depositService = new Contract(depositProxy.address, DepositService.abi, ownerWallet);
     });
 

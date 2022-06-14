@@ -2,30 +2,52 @@
 
 pragma solidity 0.8.9;
 
+import '../interfaces/IUpgradable.sol';
+
 contract Proxy {
     error InvalidImplementation();
     error SetupFailed();
     error EtherNotAccepted();
+    error NotDeployer();
+    error AlreadyInitialized();
 
     // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
     bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
-    // keccak256('owner');
-    bytes32 internal constant _OWNER_SLOT = 0x02016836a56b71f0d02689e69e326f4f4c1b9057164ef592671cf0d37c8040c0;
+    // keccak256('deployer')
+    bytes32 internal constant _DEPLOYER_SLOT = 0xdbe2b933bb7d57444cdba9c71b5ceb79b60dc455ad691d856e6e4025cf542caa;
 
-    constructor(address implementationAddress, bytes memory params) {
+    constructor() {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            sstore(_DEPLOYER_SLOT, caller())
+        }
+    }
+
+    function init(address implementationAddress, bytes memory params) external {
+        //_checkImplementationAddress(implementationAddress);
+        address deployer;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            deployer := sload(_DEPLOYER_SLOT)
+            sstore(_DEPLOYER_SLOT, 0)
+        }
+        if (msg.sender != deployer) revert NotDeployer();
+        if (implementation() != address(0)) revert AlreadyInitialized();
+
         // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(_IMPLEMENTATION_SLOT, implementationAddress)
-            sstore(_OWNER_SLOT, caller())
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = implementationAddress.delegatecall(
             //0x9ded06df is the setup selector.
             abi.encodeWithSelector(0x9ded06df, params)
         );
-
         if (!success) revert SetupFailed();
     }
+
+    // solhint-disable-next-line no-empty-blocks
+    function _checkImplementationAddress(address implementationAddress) internal virtual {}
 
     function implementation() public view returns (address implementation_) {
         // solhint-disable-next-line no-inline-assembly

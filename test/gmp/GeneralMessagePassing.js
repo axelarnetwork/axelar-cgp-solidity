@@ -9,6 +9,7 @@ const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
 const { get } = require('lodash/fp');
+const { deployAndInitContractConstant } = require('axelar-utils-solidity');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
@@ -24,6 +25,7 @@ const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/Source
 const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
 const DestinationChainSwapForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForecallable.sol/DestinationChainSwapForecallable.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
+const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
 const { getSignedExecuteInput, getRandomID } = require('../utils');
 
 describe('GeneralMessagePassing', () => {
@@ -104,9 +106,17 @@ describe('GeneralMessagePassing', () => {
 
         sourceChainGateway = await deployGateway();
         destinationChainGateway = await deployGateway();
-
+        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
         const gasImplementation = await deployContract(ownerWallet, GasService);
-        const gasProxy = await deployContract(ownerWallet, GasServiceProxy, [gasImplementation.address, arrayify([])]);
+        const gasProxy = await deployAndInitContractConstant(
+            constAddressDeployer.address,
+            ownerWallet,
+            GasServiceProxy,
+            'gas-service',
+            [],
+            [gasImplementation.address, arrayify(defaultAbiCoder.encode(['address'], [ownerWallet.address]))],
+        );
+
         sourceChainGasService = new Contract(gasProxy.address, GasService.abi, ownerWallet);
 
         tokenA = await deployContract(ownerWallet, MintableCappedERC20, [nameA, symbolA, decimals, capacity]);

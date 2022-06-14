@@ -23,9 +23,14 @@ abstract contract Upgradable is IUpgradable {
     }
 
     function transferOwnership(address newOwner) external virtual onlyOwner {
+        _transferOwnership(newOwner);
+    }
+
+    function _transferOwnership(address newOwner) internal {
         if (newOwner == address(0)) revert InvalidOwner();
 
         emit OwnershipTransferred(newOwner);
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(_OWNER_SLOT, newOwner)
         }
@@ -65,5 +70,8 @@ abstract contract Upgradable is IUpgradable {
         _setup(data);
     }
 
-    function _setup(bytes calldata data) internal virtual {}
+    function _setup(bytes calldata data) internal virtual {
+        address owner_ = abi.decode(data, (address));
+        _transferOwnership(owner_);
+    }
 }

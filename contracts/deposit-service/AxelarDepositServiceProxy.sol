@@ -6,7 +6,7 @@ import { Proxy } from '../util/Proxy.sol';
 import { IUpgradable } from '../interfaces/IUpgradable.sol';
 
 contract AxelarDepositServiceProxy is Proxy {
-    constructor(address implementationAddress, bytes memory params) Proxy(implementationAddress, params) {
+    function _checkImplementationAddress(address implementationAddress) internal view override {
         if (IUpgradable(implementationAddress).contractId() != keccak256('axelar-deposit-service')) revert InvalidImplementation();
     }
 

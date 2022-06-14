@@ -8,12 +8,14 @@ const {
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
+const { deployAndInitContractConstant } = require('axelar-utils-solidity');
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC20.sol/MintableCappedERC20.json');
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
+const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
 
 describe('AxelarGasService', () => {
     const [ownerWallet, userWallet] = new MockProvider().getWallets();
@@ -22,8 +24,16 @@ describe('AxelarGasService', () => {
     let testToken;
 
     beforeEach(async () => {
+        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
         const gasImplementation = await deployContract(ownerWallet, GasService);
-        const gasProxy = await deployContract(ownerWallet, GasServiceProxy, [gasImplementation.address, arrayify([])]);
+        const gasProxy = await deployAndInitContractConstant(
+            constAddressDeployer.address,
+            ownerWallet,
+            GasServiceProxy,
+            'gas-service',
+            [],
+            [gasImplementation.address, arrayify(defaultAbiCoder.encode(['address'], [ownerWallet.address]))],
+        );
 
         gasService = new Contract(gasProxy.address, GasService.abi, userWallet);
 
@@ -227,11 +237,11 @@ describe('AxelarGasService', () => {
                 .to.emit(gasService, 'Upgraded')
                 .withArgs(receiverImplementation.address);
 
-            await expect(gasService.connect(ownerWallet).transferOwnership(userWallet.address))
+            await expect(gasService.connect(userWallet).transferOwnership(ownerWallet.address))
                 .and.to.emit(gasService, 'OwnershipTransferred')
-                .withArgs(userWallet.address);
+                .withArgs(ownerWallet.address);
 
-            await expect(await gasService.owner()).to.be.equal(userWallet.address);
+            await expect(await gasService.owner()).to.be.equal(ownerWallet.address);
         });
     });
 

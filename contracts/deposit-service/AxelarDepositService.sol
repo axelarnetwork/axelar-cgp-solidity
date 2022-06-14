@@ -194,7 +194,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     }
 
     function _setup(bytes calldata data) internal override {
-        (address gatewayAddress, string memory symbol) = abi.decode(data, (address, string));
+        (address owner_, address gatewayAddress, string memory symbol) = abi.decode(data, (address, address, string));
 
         if (gatewayAddress == address(0)) revert InvalidAddress();
 
@@ -203,6 +203,8 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         bytes memory symbolBytes = bytes(symbol);
 
         if (symbolBytes.length == 0 || symbolBytes.length > 30) revert InvalidSymbol();
+
+        _transferOwnership(owner_);
 
         uint256 symbolNumber = uint256(bytes32(symbolBytes));
 

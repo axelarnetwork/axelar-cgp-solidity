@@ -28,6 +28,7 @@
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "axelar-utils-solidity": "github:axelarnetwork/axelar-utils-solidity",
     "chai": "^4.3.6",
     "eslint": "^8.17.0",
     "eslint-config-richardpringle": "^2.0.0",
