@@ -3,7 +3,7 @@
 pragma solidity 0.8.9;
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
-import { IAxelarAuthModule } from './interfaces/IAxelarAuthModule.sol';
+import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
 import { IERC20 } from './interfaces/IERC20.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
@@ -242,7 +242,7 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         // Prevent setup from being called on a non-proxy (the implementation).
         if (implementation() == address(0)) revert NotProxy();
 
-        (address[] memory adminAddresses, uint256 newAdminThreshold, bytes memory operatorshipParams) = abi.decode(
+        (address[] memory adminAddresses, uint256 newAdminThreshold, bytes memory newOperatorsData) = abi.decode(
             params,
             (address[], uint256, bytes)
         );
@@ -252,34 +252,36 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setAdminEpoch(newAdminEpoch);
         _setAdmins(newAdminEpoch, adminAddresses, newAdminThreshold);
 
-        if (operatorshipParams.length > 0) {
-            IAxelarAuthModule(AUTH_MODULE).transferOperatorship(operatorshipParams);
+        if (newOperatorsData.length > 0) {
+            IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
 
-            emit OperatorshipTransferred(AUTH_MODULE, params);
+            emit OperatorshipTransferred(newOperatorsData);
         }
     }
 
     function execute(bytes calldata input) external override {
-        (bytes memory data, bytes memory signatureData) = abi.decode(input, (bytes, bytes));
-
-        // TODO ask if signatureData comes in old format do we need to support old multisig logic?
+        (bytes memory data, bytes memory proof) = abi.decode(input, (bytes, bytes));
 
         bytes32 messageHash = ECDSA.toEthSignedMessageHash(keccak256(data));
 
         // TEST auth and getaway separately
-        bool currentOperators = IAxelarAuthModule(AUTH_MODULE).validateSignatureData(messageHash, signatureData);
+        bool currentOperators = IAxelarAuth(AUTH_MODULE).validateProof(messageHash, proof);
 
-        // TODO move into fn
-        // try
-        //        (uint256 chainId, Role signersRole, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) = abi.decode(
-        //            data,
-        //            (uint256, Role, bytes32[], string[], bytes[])
-        //        );
-        // catch
-        (uint256 chainId, bytes32[] memory commandIds, string[] memory commands, bytes[] memory params) = abi.decode(
-            data,
-            (uint256, bytes32[], string[], bytes[])
-        );
+        uint256 chainId;
+        bytes32[] memory commandIds;
+        string[] memory commands;
+        bytes[] memory params;
+
+        try AxelarGateway(this)._unpackLegacyCommands(data) returns (
+            uint256 chainId_,
+            bytes32[] memory commandIds_,
+            string[] memory commands_,
+            bytes[] memory params_
+        ) {
+            (chainId, commandIds, commands, params) = (chainId_, commandIds_, commands_, params_);
+        } catch (bytes memory) {
+            (chainId, commandIds, commands, params) = abi.decode(data, (uint256, bytes32[], string[], bytes[]));
+        }
 
         if (chainId != block.chainid) revert InvalidChainId();
 
@@ -368,26 +370,6 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _mintToken(symbol, account, amount);
     }
 
-    function _mintToken(
-        string memory symbol,
-        address account,
-        uint256 amount
-    ) internal {
-        address tokenAddress = tokenAddresses(symbol);
-
-        if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
-
-        _setTokenDailyMintAmount(symbol, tokenDailyMintAmount(symbol) + amount);
-
-        if (_getTokenType(symbol) == TokenType.External) {
-            bool success = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20.transfer.selector, account, amount));
-
-            if (!success) revert MintFailed(symbol);
-        } else {
-            IBurnableMintableCappedERC20(tokenAddress).mint(account, amount);
-        }
-    }
-
     function burnToken(bytes calldata params, bytes32) external onlySelf {
         (string memory symbol, bytes32 salt) = abi.decode(params, (string, bytes32));
 
@@ -452,19 +434,53 @@ abstract contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         );
     }
 
-    function transferOperatorship(bytes calldata params, bytes32) external onlySelf {
-        IAxelarAuthModule(AUTH_MODULE).transferOperatorship(params);
+    function transferOperatorship(bytes calldata newOperatorsData, bytes32) external onlySelf {
+        IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
 
-        emit OperatorshipTransferred(AUTH_MODULE, params);
+        emit OperatorshipTransferred(newOperatorsData);
     }
 
     /********************\
     |* Internal Methods *|
     \********************/
 
+    function _unpackLegacyCommands(bytes memory executeData)
+        external
+        pure
+        returns (
+            uint256 chainId,
+            bytes32[] memory commandIds,
+            string[] memory commands,
+            bytes[] memory params
+        )
+    {
+        uint256 signersRole;
+        (chainId, signersRole, commandIds, commands, params) = abi.decode(executeData, (uint256, uint256, bytes32[], string[], bytes[]));
+    }
+
     function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
         (bool success, bytes memory returnData) = tokenAddress.call(callData);
         return success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
+    }
+
+    function _mintToken(
+        string memory symbol,
+        address account,
+        uint256 amount
+    ) internal {
+        address tokenAddress = tokenAddresses(symbol);
+
+        if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
+
+        _setTokenDailyMintAmount(symbol, tokenDailyMintAmount(symbol) + amount);
+
+        if (_getTokenType(symbol) == TokenType.External) {
+            bool success = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20.transfer.selector, account, amount));
+
+            if (!success) revert MintFailed(symbol);
+        } else {
+            IBurnableMintableCappedERC20(tokenAddress).mint(account, amount);
+        }
     }
 
     function _burnTokenFrom(

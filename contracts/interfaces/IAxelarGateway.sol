@@ -77,7 +77,7 @@ interface IAxelarGateway {
 
     event TokenDailyMintLimitUpdated(string symbol, uint256 limit);
 
-    event OperatorshipTransferred(address indexed authModule, bytes transferData);
+    event OperatorshipTransferred(bytes newOperatorsData);
 
     event Upgraded(address indexed implementation);
 

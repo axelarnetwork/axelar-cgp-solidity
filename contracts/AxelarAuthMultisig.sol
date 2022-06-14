@@ -4,69 +4,52 @@ pragma solidity 0.8.9;
 
 import { ECDSA } from './ECDSA.sol';
 import { IAxelarAuthMultisig } from './interfaces/IAxelarAuthMultisig.sol';
+import { Ownable } from './Ownable.sol';
 
-contract AxelarAuthMultisig is IAxelarAuthMultisig {
-    error NotGateway();
+contract AxelarAuthMultisig is Ownable, IAxelarAuthMultisig {
     error InvalidOperators();
     error InvalidThreshold();
     error SameOperators();
     error MalformedSigners();
 
-    address public gateway;
     uint256 public currentEpoch;
     mapping(uint256 => bytes32) public hashForEpoch;
     mapping(bytes32 => uint256) public epochForHash;
 
     uint8 internal constant OLD_KEY_RETENTION = 16;
 
-    constructor(address gatewayAddress, bytes memory operatorsData) {
-        bytes[] memory operatorsWithThresholds = abi.decode(operatorsData, (bytes[]));
-        uint256 operatorsLength = operatorsWithThresholds.length;
+    constructor(bytes memory recentOperators) {
+        bytes[] memory operatorsWithThresholds = abi.decode(recentOperators, (bytes[]));
 
-        for (uint256 i; i < operatorsLength; ++i) {
+        for (uint256 i; i < operatorsWithThresholds.length; ++i) {
             _transferOperatorship(operatorsWithThresholds[i]);
         }
-
-        gateway = gatewayAddress;
-    }
-
-    modifier onlyGateway() {
-        if (msg.sender != gateway) revert NotGateway();
-
-        _;
     }
 
     /**************************\
     |* External Functionality *|
     \**************************/
 
-    function validateSignatureData(bytes32 messageHash, bytes calldata signatureData) external view returns (bool currentOperators) {
-        (bytes memory operatorsWithThreshold, bytes[] memory signatures) = abi.decode(signatureData, (bytes, bytes[]));
-        (address[] memory operators, uint256 threshold) = abi.decode(operatorsWithThreshold, (address[], uint256));
+    function validateProof(bytes32 messageHash, bytes calldata proof) external view returns (bool currentOperators) {
+        (address[] memory operators, bytes[] memory signatures) = abi.decode(proof, (address[], bytes[]));
 
-        bytes32 operatorsHash = keccak256(operatorsWithThreshold);
-        uint256 epoch = currentEpoch;
+        bytes32 operatorsHash = keccak256(abi.encode(operators, signatures.length));
         uint256 operatorsEpoch = epochForHash[operatorsHash];
+        uint256 epoch = currentEpoch;
 
-        if (operatorsEpoch == 0 || epoch - operatorsEpoch > OLD_KEY_RETENTION) revert InvalidOperators();
-        // TODO ask if we can have invalid signers mixed with valid ones
-        if (signatures.length < threshold) revert MalformedSigners();
+        if (operatorsEpoch == 0 || epoch - operatorsEpoch >= OLD_KEY_RETENTION) revert InvalidOperators();
 
         _validateSignatures(messageHash, operators, signatures);
 
         currentOperators = operatorsEpoch == epoch;
     }
 
-    /*************************\
-    |* Gateway Functionality *|
-    \*************************/
+    /***********************\
+    |* Owner Functionality *|
+    \***********************/
 
-    function transferOperatorship(bytes calldata params) external onlyGateway {
+    function transferOperatorship(bytes calldata params) external onlyOwner {
         _transferOperatorship(params);
-    }
-
-    function setGateway(address gatewayAddress) external onlyGateway {
-        gateway = gatewayAddress;
     }
 
     /**************************\
@@ -75,7 +58,6 @@ contract AxelarAuthMultisig is IAxelarAuthMultisig {
 
     function _transferOperatorship(bytes memory params) internal {
         (address[] memory newOperators, uint256 newThreshold) = abi.decode(params, (address[], uint256));
-        uint256 epoch = currentEpoch;
         uint256 operatorsLength = newOperators.length;
 
         if (operatorsLength == 0 || !_isSortedAscAndContainsNoDuplicate(newOperators)) revert InvalidOperators();
@@ -84,14 +66,14 @@ contract AxelarAuthMultisig is IAxelarAuthMultisig {
 
         bytes32 newOperatorsHash = keccak256(params);
 
-        if (newOperatorsHash == hashForEpoch[epoch]) revert SameOperators();
+        if (epochForHash[newOperatorsHash] > 0) revert SameOperators();
 
-        ++epoch;
+        uint256 epoch = currentEpoch + 1;
         currentEpoch = epoch;
         hashForEpoch[epoch] = newOperatorsHash;
         epochForHash[newOperatorsHash] = epoch;
 
-        emit OperatorshipTransferred(newOperatorsHash, newOperators, newThreshold);
+        emit OperatorshipTransferred(newOperators, newThreshold);
     }
 
     function _validateSignatures(
@@ -99,29 +81,16 @@ contract AxelarAuthMultisig is IAxelarAuthMultisig {
         address[] memory operators,
         bytes[] memory signatures
     ) internal pure {
-        uint256 operatorsCount = operators.length;
-        uint256 operatorsIndex = 0;
-        uint256 signatureCount = signatures.length;
-
+        uint256 j = 0;
         // looking for signers within operators
-        // assuming that both operators and signers are sorted
-        for (uint256 i; i < signatureCount; ++i) {
+        // assuming that both operators and signatures are sorted
+        for (uint256 i = 0; i < signatures.length; ++i) {
             address signer = ECDSA.recover(messageHash, signatures[i]);
-            if (signer == operators[operatorsIndex]) {
-                ++operatorsIndex;
-            } else {
-                // keep looping through operators to find the signer
-                while (operatorsIndex < operatorsCount) {
-                    ++operatorsIndex;
-                    if (signer == operators[operatorsIndex]) break;
-                }
-                // check if we ran out of operators
-                if (operatorsIndex < operatorsCount) {
-                    ++operatorsIndex;
-                } else {
-                    revert MalformedSigners();
-                }
-            }
+            // looping through remaining operators to find a match
+            for (; j < operators.length && signer != operators[j]; ++j) {}
+            if (j == operators.length) revert MalformedSigners();
+            // increasing operators index if match was found
+            ++j;
         }
     }
 

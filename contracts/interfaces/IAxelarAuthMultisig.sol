@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.9;
 
-import { IAxelarAuthModule } from './IAxelarAuthModule.sol';
+import { IAxelarAuth } from './IAxelarAuth.sol';
 
-interface IAxelarAuthMultisig is IAxelarAuthModule {
-    event OperatorshipTransferred(bytes32 indexed newOperatorsHash, address[] newOperators, uint256 newThreshold);
+interface IAxelarAuthMultisig is IAxelarAuth {
+    event OperatorshipTransferred(address[] newOperators, uint256 newThreshold);
 
     function currentEpoch() external view returns (uint256);
 
