@@ -53,7 +53,7 @@ describe('AxelarGatewayMultisig', () => {
         wallets = await ethers.getSigners();
         admins = wallets.slice(0, 3);
         owner = wallets[0];
-        operators = sortBy(wallets.slice(6, 9), (wallet) => wallet.address.toLowerCase());
+        operators = sortBy(wallets.slice(3, 9), (wallet) => wallet.address.toLowerCase());
 
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', owner);
         authFactory = await ethers.getContractFactory('AxelarAuthMultisig', owner);
@@ -376,12 +376,7 @@ describe('AxelarGatewayMultisig', () => {
         it('should allow the owners to mint tokens', async () => {
             const amount = getRandomInt(cap);
 
-            const data = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['mintToken'],
-                [getMintCommand(symbol, owner.address, amount)],
-            );
+            const data = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
 
             const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
 
@@ -396,12 +391,7 @@ describe('AxelarGatewayMultisig', () => {
         it('should allow the operators to mint tokens', async () => {
             const amount = getRandomInt(cap);
 
-            const data = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['mintToken'],
-                [getMintCommand(symbol, owner.address, amount)],
-            );
+            const data = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
 
             const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
 
@@ -446,12 +436,7 @@ describe('AxelarGatewayMultisig', () => {
             const burnAmount = amount / 2;
             await token.transfer(depositHandlerAddress, burnAmount);
 
-            const dataFirstBurn = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['burnToken'],
-                [getBurnCommand(symbol, salt)],
-            );
+            const dataFirstBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             const firstInput = await getSignedMultisigExecuteInput(dataFirstBurn, operators, operators.slice(0, threshold));
 
@@ -459,12 +444,7 @@ describe('AxelarGatewayMultisig', () => {
 
             await token.transfer(depositHandlerAddress, burnAmount);
 
-            const dataSecondBurn = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['burnToken'],
-                [getBurnCommand(symbol, salt)],
-            );
+            const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             const secondInput = await getSignedMultisigExecuteInput(dataSecondBurn, operators, operators.slice(0, threshold));
 
@@ -495,12 +475,7 @@ describe('AxelarGatewayMultisig', () => {
 
             await token.transfer(depositHandlerAddress, burnAmount);
 
-            const dataSecondBurn = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['burnToken'],
-                [getBurnCommand(symbol, salt)],
-            );
+            const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             const secondInput = await getSignedMultisigExecuteInput(dataSecondBurn, operators, operators.slice(0, threshold));
 
@@ -526,6 +501,21 @@ describe('AxelarGatewayMultisig', () => {
             await expect(gateway.execute(input))
                 .to.emit(gateway, 'OperatorshipTransferred')
                 .withArgs(getTransferMultiOperatorshipCommand(newOperators, 2));
+        });
+
+        it('should not allow transferring operatorship to address zero', async () => {
+            const newOperators = [ADDRESS_ZERO, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+
+            const data = buildCommandBatch(
+                CHAIN_ID,
+                [getRandomID()],
+                ['transferOperatorship'],
+                [getTransferMultiOperatorshipCommand(newOperators, 2)],
+            );
+
+            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+
+            await expect(gateway.execute(input)).not.to.emit(gateway, 'OperatorshipTransferred');
         });
 
         it('should allow the previous operators to mint and burn token', async () => {
@@ -568,12 +558,7 @@ describe('AxelarGatewayMultisig', () => {
 
             const amount = getRandomInt(cap);
 
-            const mintData = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['mintToken'],
-                [getMintCommand(symbol, owner.address, amount)],
-            );
+            const mintData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
 
             const mintInput = await getSignedMultisigExecuteInput(mintData, operators, operators.slice(0, threshold));
 
@@ -588,12 +573,7 @@ describe('AxelarGatewayMultisig', () => {
             const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
-            const burnData = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['burnToken'],
-                [getBurnCommand(symbol, salt)],
-            );
+            const burnData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             await token.transfer(depositHandlerAddress, amount);
             const burnInput = await getSignedMultisigExecuteInput(burnData, operators, operators.slice(0, threshold));
@@ -601,19 +581,50 @@ describe('AxelarGatewayMultisig', () => {
             await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
         });
 
-        it('should allow the operators to transfer operatorship', async () => {
-            const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+        it('should not allow the previous operators to transfer operatorship', async () => {
+            let newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            const data = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['transferOperatorship'],
-                [getTransferMultiOperatorshipCommand(newOperators, 2)],
+            const buildTransferData = () =>
+                buildCommandBatch(
+                    CHAIN_ID,
+                    [getRandomID()],
+                    ['transferOperatorship'],
+                    [getTransferMultiOperatorshipCommand(newOperators, newOperators.length)],
+                );
+
+            let input = await getSignedMultisigExecuteInput(buildTransferData(), operators, operators.slice(0, threshold));
+            await expect(gateway.execute(input)).to.emit(gateway, 'OperatorshipTransferred');
+
+            newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
+
+            input = await getSignedMultisigExecuteInput(buildTransferData(), operators, operators.slice(0, threshold));
+
+            await expect(gateway.execute(input)).not.to.emit(gateway, 'OperatorshipTransferred');
+        });
+
+        it('should not allow operatorship transfer to the previous operators ', async () => {
+            const updatedOperators = getAddresses(operators.slice(0, threshold));
+
+            const buildTransferData = (newOperators, newThreshold = newOperators.length) =>
+                buildCommandBatch(
+                    CHAIN_ID,
+                    [getRandomID()],
+                    ['transferOperatorship'],
+                    [getTransferMultiOperatorshipCommand(newOperators, newThreshold)],
+                );
+
+            let input = await getSignedMultisigExecuteInput(buildTransferData(updatedOperators), operators, operators.slice(0, threshold));
+            await expect(gateway.execute(input)).to.emit(gateway, 'OperatorshipTransferred');
+
+            const oldOperators = getAddresses(operators);
+
+            input = await getSignedMultisigExecuteInput(
+                buildTransferData(oldOperators, threshold),
+                operators,
+                operators.slice(0, threshold),
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
-
-            await expect(gateway.execute(input)).to.emit(gateway, 'OperatorshipTransferred');
+            await expect(gateway.execute(input)).not.to.emit(gateway, 'OperatorshipTransferred');
         });
     });
 
@@ -709,12 +720,7 @@ describe('AxelarGatewayMultisig', () => {
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
             await token.transfer(depositHandlerAddress, amount);
 
-            const burnData = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['burnToken'],
-                [getBurnCommand(symbol, salt)],
-            );
+            const burnData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             const burnInput = await getSignedMultisigExecuteInput(burnData, operators, operators.slice(0, threshold));
 

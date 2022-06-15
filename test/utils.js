@@ -9,18 +9,23 @@ const getRandomInt = (max) => {
     return Math.floor(Math.random() * max);
 };
 
+const getAddresses = (wallets) => wallets.map(({ address }) => address);
+
+const getSignaturesProof = async (data, operators, signers) => {
+    const hash = arrayify(keccak256(data));
+    const signatures = await Promise.all(
+        sortBy(signers, (wallet) => wallet.address.toLowerCase()).map((wallet) => wallet.signMessage(hash)),
+    );
+    return defaultAbiCoder.encode(['address[]', 'bytes[]'], [getAddresses(operators), signatures]);
+};
+
 module.exports = {
     bigNumberToNumber: (bigNumber) => bigNumber.toNumber(),
 
-    getSignedMultisigExecuteInput: (data, operators, signers) =>
-        Promise.all(
-            sortBy(signers, (wallet) => wallet.address.toLowerCase()).map((wallet) => wallet.signMessage(arrayify(keccak256(data)))),
-        ).then((signatures) =>
-            defaultAbiCoder.encode(
-                ['bytes', 'bytes'],
-                [data, defaultAbiCoder.encode(['address[]', 'bytes[]'], [operators.map(({ address }) => address), signatures])],
-            ),
-        ),
+    getSignaturesProof,
+
+    getSignedMultisigExecuteInput: async (data, operators, signers) =>
+        defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),
 
     getRandomInt,
 
@@ -59,7 +64,7 @@ module.exports = {
     getBurnCommand: (symbol, salt) => defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt]),
 
     getTransferMultiOperatorshipCommand: (newOperators, threshold) =>
-        defaultAbiCoder.encode(['address[]', 'uint8'], [newOperators.sort(), threshold]),
+        defaultAbiCoder.encode(['address[]', 'uint256'], [sortBy(newOperators, (address) => address.toLowerCase()), threshold]),
 
     getApproveContractCall: (sourceChain, source, destination, payloadHash, sourceTxHash, sourceEventIndex) =>
         defaultAbiCoder.encode(
@@ -84,5 +89,5 @@ module.exports = {
             ),
         ),
 
-    getAddresses: (wallets) => wallets.map(({ address }) => address),
+    getAddresses,
 };
