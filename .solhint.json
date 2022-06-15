@@ -3,6 +3,7 @@
   "plugins": [],
   "rules": {
     "quotes": ["error", "single"],
-    "compiler-version": ["off"]
+    "compiler-version": ["off"],
+    "func-visibility": ["warn", {"ignoreConstructors": true}]
   }
 }

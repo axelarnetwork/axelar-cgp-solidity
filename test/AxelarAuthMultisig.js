@@ -17,7 +17,7 @@ describe('AxelarAuthMultisig', () => {
     let wallets;
     let owner;
     let operators;
-    let previousOperators = [];
+    const previousOperators = [];
 
     let authFactory;
 
@@ -30,11 +30,13 @@ describe('AxelarAuthMultisig', () => {
         operators = sortBy(wallets.slice(3, 9), (wallet) => wallet.address.toLowerCase());
 
         let previousOperatorsLimit = OLD_KEY_RETENTION;
+
         for (let i = 0; i < wallets.length - 3; i++) {
             for (let j = i; j < wallets.length - 3; j++) {
                 previousOperators.push(sortBy(wallets.slice(i, j + 3), (wallet) => wallet.address.toLowerCase()));
                 --previousOperatorsLimit;
             }
+
             if (previousOperatorsLimit <= 0) break;
         }
 
