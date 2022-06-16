@@ -22,7 +22,7 @@ const DepositService = require('../artifacts/contracts/deposit-service/AxelarDep
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
 
-const { getSignedMultisigExecuteInput, getRandomID } = require('./utils');
+const { getAuthDeployParam, getSignedMultisigExecuteInput, getRandomID } = require('./utils');
 
 describe('AxelarDepositService', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
@@ -44,9 +44,7 @@ describe('AxelarDepositService', () => {
         const params = arrayify(
             defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
         );
-        const auth = await deployContract(ownerWallet, Auth, [
-            defaultAbiCoder.encode(['bytes[]'], [[defaultAbiCoder.encode(['address[]', 'uint256'], [[operatorWallet.address], 1])]]),
-        ]);
+        const auth = await deployContract(ownerWallet, Auth, [getAuthDeployParam([[operatorWallet.address]], [1])]);
         const tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
         const gatewayImplementation = await deployContract(ownerWallet, AxelarGateway, [auth.address, tokenDeployer.address]);
         const gatewayProxy = await deployContract(ownerWallet, AxelarGatewayProxy, [gatewayImplementation.address, params]);

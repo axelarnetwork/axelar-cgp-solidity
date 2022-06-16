@@ -18,11 +18,9 @@ contract AxelarAuthMultisig is Ownable, IAxelarAuthMultisig {
 
     uint8 internal constant OLD_KEY_RETENTION = 16;
 
-    constructor(bytes memory recentOperators) {
-        bytes[] memory operatorsWithThresholds = abi.decode(recentOperators, (bytes[]));
-
-        for (uint256 i; i < operatorsWithThresholds.length; ++i) {
-            _transferOperatorship(operatorsWithThresholds[i]);
+    constructor(bytes[] memory recentOperators) {
+        for (uint256 i; i < recentOperators.length; ++i) {
+            _transferOperatorship(recentOperators[i]);
         }
     }
 

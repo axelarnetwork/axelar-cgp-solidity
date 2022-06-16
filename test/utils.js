@@ -34,12 +34,7 @@ module.exports = {
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 
     getAuthDeployParam: (operatorsSets, operatorThresholds) =>
-        arrayify(
-            defaultAbiCoder.encode(
-                ['bytes[]'],
-                [operatorsSets.map((operators, i) => defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThresholds[i]]))],
-            ),
-        ),
+        operatorsSets.map((operators, i) => defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThresholds[i]])),
 
     getMultisigProxyDeployParams: (admins, adminThreshold, operators, operatorThreshold) =>
         arrayify(

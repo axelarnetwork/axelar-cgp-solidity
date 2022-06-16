@@ -279,7 +279,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             bytes[] memory params_
         ) {
             (chainId, commandIds, commands, params) = (chainId_, commandIds_, commands_, params_);
-        } catch (bytes memory) {
+        } catch {
             (chainId, commandIds, commands, params) = abi.decode(data, (uint256, bytes32[], string[], bytes[]));
         }
 
@@ -454,8 +454,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             bytes[] memory params
         )
     {
-        uint256 signersRole;
-        (chainId, signersRole, commandIds, commands, params) = abi.decode(executeData, (uint256, uint256, bytes32[], string[], bytes[]));
+        (chainId, , commandIds, commands, params) = abi.decode(executeData, (uint256, uint256, bytes32[], string[], bytes[]));
     }
 
     function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {

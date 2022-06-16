@@ -25,7 +25,7 @@ const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/Source
 const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
 const DestinationChainSwapForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForecallable.sol/DestinationChainSwapForecallable.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
-const { getSignedMultisigExecuteInput, getRandomID } = require('../utils');
+const { getAuthDeployParam, getSignedMultisigExecuteInput, getRandomID } = require('../utils');
 
 describe('GeneralMessagePassing', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
@@ -71,9 +71,7 @@ describe('GeneralMessagePassing', () => {
             const params = arrayify(
                 defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
             );
-            const auth = await deployContract(ownerWallet, Auth, [
-                defaultAbiCoder.encode(['bytes[]'], [[defaultAbiCoder.encode(['address[]', 'uint256'], [[operatorWallet.address], 1])]]),
-            ]);
+            const auth = await deployContract(ownerWallet, Auth, [getAuthDeployParam([[operatorWallet.address]], [1])]);
             const tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
             const gateway = await deployContract(ownerWallet, AxelarGateway, [auth.address, tokenDeployer.address]);
             const proxy = await deployContract(ownerWallet, AxelarGatewayProxy, [gateway.address, params]);
