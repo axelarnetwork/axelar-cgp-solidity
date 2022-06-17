@@ -99,7 +99,10 @@ abstract contract IAxelarForecallable {
     ) internal virtual {}
 
     // Override this to keep a fee.
-    function amountPostFee(uint256 amount, bytes calldata /*payload*/) public virtual returns (uint256) {
+    function amountPostFee(
+        uint256 amount,
+        bytes calldata /*payload*/
+    ) public virtual returns (uint256) {
         return amount;
     }
 
