@@ -54,7 +54,7 @@ abstract contract IAxelarForecallable {
         address forecaller
     ) external {
         address token = gateway.tokenAddresses(tokenSymbol);
-        uint256 amountPost = amountPostFee(amount);
+        uint256 amountPost = amountPostFee(amount, payload);
         _safeTransferFrom(token, msg.sender, amountPost);
         _checkForecallWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount, forecaller);
         if (forecallers[keccak256(abi.encode(sourceChain, sourceAddress, payload, tokenSymbol, amount))] != address(0))
@@ -99,7 +99,7 @@ abstract contract IAxelarForecallable {
     ) internal virtual {}
 
     // Override this to keep a fee.
-    function amountPostFee(uint256 amount) public virtual returns (uint256) {
+    function amountPostFee(uint256 amount, bytes calldata /*payload*/) public virtual returns (uint256) {
         return amount;
     }
 
