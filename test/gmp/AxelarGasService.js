@@ -2,20 +2,19 @@
 
 const chai = require('chai');
 const {
-    Contract,
     utils: { defaultAbiCoder, arrayify, keccak256, parseEther },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
-const { deployAndInitContractConstant } = require('axelar-utils-solidity');
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC20.sol/MintableCappedERC20.json');
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
-const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
+
 const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
+const { deployGasService } = require('../../scripts/deploy-gas-service');
 
 describe('AxelarGasService', () => {
     const [ownerWallet, userWallet] = new MockProvider().getWallets();
@@ -25,17 +24,8 @@ describe('AxelarGasService', () => {
 
     beforeEach(async () => {
         const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
-        const gasImplementation = await deployContract(ownerWallet, GasService);
-        const gasProxy = await deployAndInitContractConstant(
-            constAddressDeployer.address,
-            ownerWallet,
-            GasServiceProxy,
-            'gas-service',
-            [],
-            [gasImplementation.address, arrayify(defaultAbiCoder.encode(['address'], [ownerWallet.address]))],
-        );
 
-        gasService = new Contract(gasProxy.address, GasService.abi, userWallet);
+        gasService = await deployGasService(constAddressDeployer.address, ownerWallet);
 
         const name = 'testToken';
         const symbol = 'testToken';

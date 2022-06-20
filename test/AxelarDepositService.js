@@ -18,14 +18,12 @@ const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDep
 const AxelarGatewayProxy = require('../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
 const AxelarGateway = require('../artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
 const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json');
-const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
-const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
 
-const { deployAndInitContractConstant } = require('axelar-utils-solidity');
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
 
 const { getAuthDeployParam, getSignedMultisigExecuteInput, getRandomID } = require('./utils');
+const { deployDepositService } = require('../scripts/deploy-deposit-service');
 
 describe('AxelarDepositService', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
@@ -83,20 +81,7 @@ describe('AxelarDepositService', () => {
             ),
         );
 
-        const depositImplementation = await deployContract(ownerWallet, DepositService);
-        const setupParams = arrayify(
-            defaultAbiCoder.encode(['address', 'address', 'string'], [ownerWallet.address, gateway.address, tokenSymbol]),
-        );
-
-        const depositProxy = await deployAndInitContractConstant(
-            constAddressDeployer.address,
-            ownerWallet,
-            DepositServiceProxy,
-            'deposit-service',
-            [],
-            [depositImplementation.address, setupParams],
-        );
-        depositService = new Contract(depositProxy.address, DepositService.abi, ownerWallet);
+        depositService = await deployDepositService(constAddressDeployer.address, gateway.address, tokenSymbol, ownerWallet);
     });
 
     describe('deposit service', () => {
