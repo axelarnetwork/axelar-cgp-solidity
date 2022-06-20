@@ -37,7 +37,10 @@ contract BurnableMintableCappedERC20 is IBurnableMintableCappedERC20, MintableCa
     }
 
     function burnFrom(address account, uint256 amount) external onlyOwner {
-        _approve(account, owner, allowance[account][owner] - amount);
+        uint256 _allowance = allowance[account][msg.sender];
+        if (_allowance != type(uint256).max) {
+            _approve(account, msg.sender, _allowance - amount);
+        }
         _burn(account, amount);
     }
 }

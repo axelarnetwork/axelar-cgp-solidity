@@ -9,16 +9,23 @@ const getRandomInt = (max) => {
     return Math.floor(Math.random() * max);
 };
 
+const getAddresses = (wallets) => wallets.map(({ address }) => address);
+
+const getSignaturesProof = async (data, operators, signers) => {
+    const hash = arrayify(keccak256(data));
+    const signatures = await Promise.all(
+        sortBy(signers, (wallet) => wallet.address.toLowerCase()).map((wallet) => wallet.signMessage(hash)),
+    );
+    return defaultAbiCoder.encode(['address[]', 'bytes[]'], [getAddresses(operators), signatures]);
+};
+
 module.exports = {
     bigNumberToNumber: (bigNumber) => bigNumber.toNumber(),
 
-    getSignedExecuteInput: (data, wallet) =>
-        wallet.signMessage(arrayify(keccak256(data))).then((signature) => defaultAbiCoder.encode(['bytes', 'bytes'], [data, signature])),
+    getSignaturesProof,
 
-    getSignedMultisigExecuteInput: (data, wallets) =>
-        Promise.all(
-            sortBy(wallets, (wallet) => wallet.address.toLowerCase()).map((wallet) => wallet.signMessage(arrayify(keccak256(data)))),
-        ).then((signatures) => defaultAbiCoder.encode(['bytes', 'bytes[]'], [data, signatures])),
+    getSignedMultisigExecuteInput: async (data, operators, signers) =>
+        defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),
 
     getRandomInt,
 
@@ -26,14 +33,18 @@ module.exports = {
 
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 
-    getSinglesigProxyDeployParams: (admins, adminThreshold, owner, operator) =>
-        arrayify(defaultAbiCoder.encode(['address[]', 'uint8', 'address', 'address'], [admins, adminThreshold, owner, operator])),
+    getAuthDeployParam: (operatorsSets, operatorThresholds) =>
+        operatorsSets.map((operators, i) => defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThresholds[i]])),
 
-    getMultisigProxyDeployParams: (admins, adminThreshold, owners, ownerThreshold, operators, operatorThreshold) =>
+    getMultisigProxyDeployParams: (admins, adminThreshold, operators, operatorThreshold) =>
         arrayify(
             defaultAbiCoder.encode(
-                ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
-                [admins, adminThreshold, owners, ownerThreshold, operators, operatorThreshold],
+                ['address[]', 'uint8', 'bytes'],
+                [
+                    admins,
+                    adminThreshold,
+                    operators.length ? defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThreshold]) : '0x',
+                ],
             ),
         ),
 
@@ -47,14 +58,8 @@ module.exports = {
 
     getBurnCommand: (symbol, salt) => defaultAbiCoder.encode(['string', 'bytes32'], [symbol, salt]),
 
-    getTransferMultiOwnershipCommand: (newOwners, threshold) => defaultAbiCoder.encode(['address[]', 'uint8'], [newOwners, threshold]),
-
-    getTransferOwnershipCommand: (newOwner) => defaultAbiCoder.encode(['address'], [newOwner]),
-
     getTransferMultiOperatorshipCommand: (newOperators, threshold) =>
-        defaultAbiCoder.encode(['address[]', 'uint8'], [newOperators, threshold]),
-
-    getTransferOperatorshipCommand: (newOperator) => defaultAbiCoder.encode(['address'], [newOperator]),
+        defaultAbiCoder.encode(['address[]', 'uint256'], [sortBy(newOperators, (address) => address.toLowerCase()), threshold]),
 
     getApproveContractCall: (sourceChain, source, destination, payloadHash, sourceTxHash, sourceEventIndex) =>
         defaultAbiCoder.encode(
@@ -68,7 +73,10 @@ module.exports = {
             [sourceChain, source, destination, payloadHash, symbol, amount, sourceTxHash, sourceEventIndex],
         ),
 
-    buildCommandBatch: (chianId, role, commandIDs, commandNames, commands) =>
+    buildCommandBatch: (chianId, commandIDs, commandNames, commands) =>
+        arrayify(defaultAbiCoder.encode(['uint256', 'bytes32[]', 'string[]', 'bytes[]'], [chianId, commandIDs, commandNames, commands])),
+
+    buildCommandBatchWithRole: (chianId, role, commandIDs, commandNames, commands) =>
         arrayify(
             defaultAbiCoder.encode(
                 ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
@@ -76,5 +84,5 @@ module.exports = {
             ),
         ),
 
-    getAddresses: (wallets) => wallets.map(({ address }) => address),
+    getAddresses,
 };
