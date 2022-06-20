@@ -27,7 +27,7 @@ const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/g
 const DestinationChainSwapForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForecallable.sol/DestinationChainSwapForecallable.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
 const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
-const { getSignedExecuteInput, getRandomID } = require('../utils');
+
 const { getAuthDeployParam, getSignedMultisigExecuteInput, getRandomID } = require('../utils');
 
 describe('GeneralMessagePassing', () => {
