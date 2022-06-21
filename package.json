@@ -43,6 +43,6 @@
     "solidity-coverage": "^0.7.21"
   },
   "engines": {
-    "node": ">=16 <17"
+    "node": ">=16"
   }
 }
