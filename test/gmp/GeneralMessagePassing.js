@@ -9,8 +9,7 @@ const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
 const { get } = require('lodash/fp');
-const { deployAndInitContractConstant } = require('axelar-utils-solidity');
-const { deployGasService } = require('../../scripts/deploy-gas-service');
+const { deployUpgradable } = require('../../scripts/upgradable');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
@@ -110,7 +109,7 @@ describe('GeneralMessagePassing', () => {
         destinationChainGateway = await deployGateway();
         const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
 
-        sourceChainGasService = await deployGasService(constAddressDeployer.address, ownerWallet);
+        sourceChainGasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy);
         tokenA = await deployContract(ownerWallet, MintableCappedERC20, [nameA, symbolA, decimals, capacity]);
 
         tokenB = await deployContract(ownerWallet, MintableCappedERC20, [nameB, symbolB, decimals, capacity]);

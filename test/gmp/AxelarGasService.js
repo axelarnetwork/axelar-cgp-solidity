@@ -12,9 +12,10 @@ const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC20.sol/MintableCappedERC20.json');
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
+const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
 const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
-const { deployGasService } = require('../../scripts/deploy-gas-service');
+const { deployUpgradable, upgradeUpgradable } = require('../../scripts/upgradable');
 
 describe('AxelarGasService', () => {
     const [ownerWallet, userWallet] = new MockProvider().getWallets();
@@ -25,7 +26,7 @@ describe('AxelarGasService', () => {
     beforeEach(async () => {
         const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
 
-        gasService = await deployGasService(constAddressDeployer.address, ownerWallet);
+        gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy);
 
         const name = 'testToken';
         const symbol = 'testToken';
@@ -209,14 +210,12 @@ describe('AxelarGasService', () => {
         });
 
         it('should upgrade the gas receiver implementation', async () => {
-            const receiverImplementation = await deployContract(ownerWallet, GasService);
-            const newImplementationCode = await receiverImplementation.provider.getCode(receiverImplementation.address);
-            const newImplementationCodeHash = keccak256(newImplementationCode);
+            const prevImpl = await gasService.implementation();
+            await expect(upgradeUpgradable(gasService.address, GasService, '0x', ownerWallet)).to.emit(gasService, 'Upgraded');
 
+            const newImpl = await gasService.implementation();
             expect(await gasService.owner()).to.be.equal(ownerWallet.address);
-            await expect(gasService.connect(ownerWallet).upgrade(receiverImplementation.address, newImplementationCodeHash, '0x'))
-                .to.emit(gasService, 'Upgraded')
-                .withArgs(receiverImplementation.address);
+            expect(prevImpl).to.not.equal(newImpl);
 
             await expect(gasService.connect(ownerWallet).transferOwnership(userWallet.address))
                 .and.to.emit(gasService, 'OwnershipTransferred')

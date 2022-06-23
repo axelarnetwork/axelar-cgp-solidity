@@ -21,9 +21,11 @@ const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json
 const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
 
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
+const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
+const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 
 const { getAuthDeployParam, getSignedMultisigExecuteInput, getRandomID } = require('./utils');
-const { deployDepositService } = require('../scripts/deploy-deposit-service');
+const { deployUpgradable } = require('../scripts/upgradable');
 
 describe('AxelarDepositService', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
@@ -81,7 +83,13 @@ describe('AxelarDepositService', () => {
             ),
         );
 
-        depositService = await deployDepositService(constAddressDeployer.address, gateway.address, tokenSymbol, ownerWallet);
+        depositService = await deployUpgradable(
+            constAddressDeployer.address,
+            ownerWallet,
+            DepositService,
+            DepositServiceProxy,
+            defaultAbiCoder.encode(['address', 'string'], [gateway.address, tokenSymbol]),
+        );
     });
 
     describe('deposit service', () => {

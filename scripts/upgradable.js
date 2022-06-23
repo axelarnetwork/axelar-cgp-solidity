@@ -2,35 +2,45 @@
 
 const {
     Contract,
-    utils: { defaultAbiCoder, arrayify },
+    utils: { keccak256 },
 } = require('ethers');
 const { deployContract } = require('ethereum-waffle');
-
 const { deployAndInitContractConstant } = require('axelar-utils-solidity');
 
-const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
-const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
+const IUpgradable = require('../artifacts/contracts/interfaces/IUpgradable.sol/IUpgradable.json');
 
-async function deployDepositService(constAddressDeployerAddress, gatewayAddress, tokenSymbol, wallet, key = 'gas-deposit') {
-    key = key || 'deposit-service';
+async function deployUpgradable(constAddressDeployerAddress, wallet, implementationJson, proxyJson, setupParams = '0x', key = null) {
+    key = key || new Date();
 
-    const depositImplementation = await deployContract(wallet, DepositService);
-    const setupParams = arrayify(defaultAbiCoder.encode(['address', 'string'], [gatewayAddress, tokenSymbol]));
+    const implementation = await deployContract(wallet, implementationJson);
 
-    const depositProxy = await deployAndInitContractConstant(
+    const proxy = await deployAndInitContractConstant(
         constAddressDeployerAddress,
         wallet,
-        DepositServiceProxy,
-        'deposit-service',
+        proxyJson,
+        key,
         [],
-        [depositImplementation.address, wallet.address, setupParams],
+        [implementation.address, wallet.address, setupParams],
     );
 
-    return new Contract(depositProxy.address, DepositService.abi, wallet);
+    return new Contract(proxy.address, implementationJson.abi, wallet);
+}
+
+async function upgradeUpgradable(proxyAddress, contractJson, setupParams, wallet) {
+    const proxy = new Contract(proxyAddress, IUpgradable.abi, wallet);
+
+    const newImplementation = await deployContract(wallet, contractJson);
+    const newImplementationCode = await wallet.provider.getCode(newImplementation.address);
+    const newImplementationCodeHash = keccak256(newImplementationCode);
+
+    const tx = await proxy.upgrade(newImplementation.address, newImplementationCodeHash, setupParams);
+    await tx.wait();
+    return tx;
 }
 
 module.exports = {
-    deployDepositService,
+    deployUpgradable,
+    upgradeUpgradable,
 };
 
 if (require.main === module) {
