@@ -2,7 +2,7 @@
 
 const chai = require('chai');
 const {
-    utils: { defaultAbiCoder, arrayify, keccak256, parseEther },
+    utils: { defaultAbiCoder, keccak256, parseEther },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
