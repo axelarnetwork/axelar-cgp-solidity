@@ -213,25 +213,16 @@ describe('AxelarGasService', () => {
             const newImplementationCode = await receiverImplementation.provider.getCode(receiverImplementation.address);
             const newImplementationCodeHash = keccak256(newImplementationCode);
 
-            await expect(await gasService.owner()).to.be.equal(ownerWallet.address);
-
-            await expect(
-                gasService
-                    .connect(ownerWallet)
-                    .upgrade(
-                        receiverImplementation.address,
-                        newImplementationCodeHash,
-                        arrayify(defaultAbiCoder.encode(['address'], [userWallet.address])),
-                    ),
-            )
+            expect(await gasService.owner()).to.be.equal(ownerWallet.address);
+            await expect(gasService.connect(ownerWallet).upgrade(receiverImplementation.address, newImplementationCodeHash, '0x'))
                 .to.emit(gasService, 'Upgraded')
                 .withArgs(receiverImplementation.address);
 
-            await expect(gasService.connect(userWallet).transferOwnership(ownerWallet.address))
+            await expect(gasService.connect(ownerWallet).transferOwnership(userWallet.address))
                 .and.to.emit(gasService, 'OwnershipTransferred')
-                .withArgs(ownerWallet.address);
+                .withArgs(userWallet.address);
 
-            await expect(await gasService.owner()).to.be.equal(ownerWallet.address);
+            await expect(await gasService.owner()).to.be.equal(userWallet.address);
         });
     });
 

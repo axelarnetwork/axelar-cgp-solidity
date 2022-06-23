@@ -10,6 +10,7 @@ chai.use(solidity);
 const { expect } = chai;
 const { get } = require('lodash/fp');
 const { deployAndInitContractConstant } = require('axelar-utils-solidity');
+const { deployGasService } = require('../../scripts/deploy-gas-service');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
@@ -108,18 +109,8 @@ describe('GeneralMessagePassing', () => {
         sourceChainGateway = await deployGateway();
         destinationChainGateway = await deployGateway();
         const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
-        const gasImplementation = await deployContract(ownerWallet, GasService);
-        const gasProxy = await deployAndInitContractConstant(
-            constAddressDeployer.address,
-            ownerWallet,
-            GasServiceProxy,
-            'gas-service',
-            [],
-            [gasImplementation.address, arrayify(defaultAbiCoder.encode(['address'], [ownerWallet.address]))],
-        );
 
-        sourceChainGasService = new Contract(gasProxy.address, GasService.abi, ownerWallet);
-
+        sourceChainGasService = await deployGasService(constAddressDeployer.address, ownerWallet);
         tokenA = await deployContract(ownerWallet, MintableCappedERC20, [nameA, symbolA, decimals, capacity]);
 
         tokenB = await deployContract(ownerWallet, MintableCappedERC20, [nameB, symbolB, decimals, capacity]);

@@ -15,7 +15,7 @@ async function deployDepositService(constAddressDeployerAddress, gatewayAddress,
     key = key || 'deposit-service';
 
     const depositImplementation = await deployContract(wallet, DepositService);
-    const setupParams = arrayify(defaultAbiCoder.encode(['address', 'address', 'string'], [wallet.address, gatewayAddress, tokenSymbol]));
+    const setupParams = arrayify(defaultAbiCoder.encode(['address', 'string'], [gatewayAddress, tokenSymbol]));
 
     const depositProxy = await deployAndInitContractConstant(
         constAddressDeployerAddress,
@@ -23,7 +23,7 @@ async function deployDepositService(constAddressDeployerAddress, gatewayAddress,
         DepositServiceProxy,
         'deposit-service',
         [],
-        [depositImplementation.address, setupParams],
+        [depositImplementation.address, wallet.address, setupParams],
     );
 
     return new Contract(depositProxy.address, DepositService.abi, wallet);

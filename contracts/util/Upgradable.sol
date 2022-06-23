@@ -70,8 +70,6 @@ abstract contract Upgradable is IUpgradable {
         _setup(data);
     }
 
-    function _setup(bytes calldata data) internal virtual {
-        address owner_ = abi.decode(data, (address));
-        _transferOwnership(owner_);
-    }
+    // solhint-disable-next-line no-empty-blocks
+    function _setup(bytes calldata data) internal virtual {}
 }

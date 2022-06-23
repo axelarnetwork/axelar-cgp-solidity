@@ -20,7 +20,7 @@ async function deployGasService(constAddressDeployerAddress, wallet, key = 'gas-
         GasServiceProxy,
         key,
         [],
-        [gasImplementation.address, arrayify(defaultAbiCoder.encode(['address'], [wallet.address]))],
+        [gasImplementation.address, wallet.address, '0x'],
     );
 
     return new Contract(gasProxy.address, GasService.abi, wallet);
