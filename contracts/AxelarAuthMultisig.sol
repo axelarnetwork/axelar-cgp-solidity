@@ -94,7 +94,7 @@ contract AxelarAuthMultisig is Ownable, IAxelarAuthMultisig {
 
     function _isSortedAscAndContainsNoDuplicate(address[] memory accounts) internal pure returns (bool) {
         for (uint256 i; i < accounts.length - 1; ++i) {
-            if (accounts[i] >= accounts[i + 1] || accounts[i + 1] == address(0)) {
+            if (accounts[i] >= accounts[i + 1]) {
                 return false;
             }
         }
