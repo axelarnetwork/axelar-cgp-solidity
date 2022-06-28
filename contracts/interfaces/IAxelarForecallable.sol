@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.9;
 
 import { IAxelarGateway } from './IAxelarGateway.sol';
 import { IERC20 } from './IERC20.sol';

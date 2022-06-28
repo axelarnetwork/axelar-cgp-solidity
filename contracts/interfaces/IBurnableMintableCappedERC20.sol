@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.9;
 
 import { IERC20Burn } from './IERC20Burn.sol';
 import { IERC20BurnFrom } from './IERC20BurnFrom.sol';
