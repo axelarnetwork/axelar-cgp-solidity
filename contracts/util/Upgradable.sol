@@ -51,10 +51,12 @@ abstract contract Upgradable is IUpgradable {
         if (IUpgradable(newImplementation).contractId() != IUpgradable(this).contractId()) revert InvalidImplementation();
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(this.setup.selector, params));
+        if(params.length>0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(this.setup.selector, params));
 
-        if (!success) revert SetupFailed();
+            if (!success) revert SetupFailed();
+        }
 
         emit Upgraded(newImplementation);
         // solhint-disable-next-line no-inline-assembly
