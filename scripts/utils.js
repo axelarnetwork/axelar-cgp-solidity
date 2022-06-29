@@ -43,12 +43,14 @@ module.exports = {
             process.exit(1);
         }
 
-        if ((values.CONFIRM_VALUES === 'true')) {
-            const answer = reader.question("\n"+JSON.stringify({ log: "ensure the values above are correct, and if so press 'y' to continue" })+"\n");
-            if (answer != "y") {
-                module.exports.printLog("execution cancelled");
-                process.exit(0);
-            }
+        if ((values.SKIP_CONFIRM === 'true')) {
+            return;
+        }
+
+        const answer = reader.question("\n"+JSON.stringify({ log: "ensure the values above are correct, and if so press 'y' to continue" })+"\n");
+        if (answer != "y") {
+            module.exports.printLog("execution cancelled");
+            process.exit(0);
         }
     },
 

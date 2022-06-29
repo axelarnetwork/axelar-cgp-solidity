@@ -20,7 +20,7 @@ const {
 } = ethers;
  
 // these environment variables should be defined in an '.env' file
-const confirmValues = process.env.CONFIRM_VALUES;
+const skipConfirm = process.env.SKIP_CONFIRM;
 const prefix = process.env.PREFIX;
 const chain = process.env.CHAIN;
 const url = process.env.URL;
@@ -43,7 +43,7 @@ confirm(
         MAX_PRIORITY_FEE_PER_GAS: maxPriorityFeePerGas?.toString() || null,
         GAS_PRICE: gasPrice?.toString() || null,
         GAS_LIMIT: gasLimit || null,
-        CONFIRM_VALUES: confirmValues || null,
+        SKIP_CONFIRM: skipConfirm || null,
     },
     (prefix && chain && url && privKey && adminThreshold),
 );
@@ -123,7 +123,6 @@ const paramsProxy = arrayify(
 
 })().catch((err) => {
     console.error(err);
-    process.exit(1);
 }).finally(() => {
     printObj({contract_addresses: contracts});
 });

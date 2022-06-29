@@ -16,7 +16,7 @@ const { existsSync } = require('node:fs');
 
 // these environment variables should be defined in an '.env' file
 const contractsPath = resolve(process.env.CONTRACTS_PATH || './build');
-const confirmValues = process.env.CONFIRM_VALUES;
+const skipConfirm = process.env.SKIP_CONFIRM;
 const url = process.env.URL;
 const privKey = process.env.PRIVATE_KEY;
 const destinationChain = process.env.DESTINATION_CHAIN;
@@ -33,7 +33,7 @@ confirm(
         SYMBOL: symbol || null,
         AMOUNT: amount || null,
         GATEWAY_ADDRESS: gatewayAddress || null,
-        CONFIRM_VALUES: confirmValues || null,
+        SKIP_CONFIRM: skipConfirm || null,
     },
     (url && privKey && destinationChain && symbol && amount && gatewayAddress),
 );
