@@ -2,8 +2,7 @@
 
 const chai = require('chai');
 const {
-    Contract,
-    utils: { defaultAbiCoder, arrayify, keccak256, parseEther },
+    utils: { defaultAbiCoder, keccak256, parseEther },
 } = require('ethers');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
@@ -15,6 +14,9 @@ const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
+const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
+const { deployUpgradable, upgradeUpgradable } = require('../../scripts/upgradable');
+
 describe('AxelarGasService', () => {
     const [ownerWallet, userWallet] = new MockProvider().getWallets();
 
@@ -22,10 +24,9 @@ describe('AxelarGasService', () => {
     let testToken;
 
     beforeEach(async () => {
-        const gasImplementation = await deployContract(ownerWallet, GasService);
-        const gasProxy = await deployContract(ownerWallet, GasServiceProxy, [gasImplementation.address, arrayify([])]);
+        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
 
-        gasService = new Contract(gasProxy.address, GasService.abi, userWallet);
+        gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy);
 
         const name = 'testToken';
         const symbol = 'testToken';
@@ -209,23 +210,12 @@ describe('AxelarGasService', () => {
         });
 
         it('should upgrade the gas receiver implementation', async () => {
-            const receiverImplementation = await deployContract(ownerWallet, GasService);
-            const newImplementationCode = await receiverImplementation.provider.getCode(receiverImplementation.address);
-            const newImplementationCodeHash = keccak256(newImplementationCode);
+            const prevImpl = await gasService.implementation();
+            await expect(upgradeUpgradable(gasService.address, GasService, '0x', ownerWallet)).to.emit(gasService, 'Upgraded');
 
-            await expect(await gasService.owner()).to.be.equal(ownerWallet.address);
-
-            await expect(
-                gasService
-                    .connect(ownerWallet)
-                    .upgrade(
-                        receiverImplementation.address,
-                        newImplementationCodeHash,
-                        arrayify(defaultAbiCoder.encode(['address'], [userWallet.address])),
-                    ),
-            )
-                .to.emit(gasService, 'Upgraded')
-                .withArgs(receiverImplementation.address);
+            const newImpl = await gasService.implementation();
+            expect(await gasService.owner()).to.be.equal(ownerWallet.address);
+            expect(prevImpl).to.not.equal(newImpl);
 
             await expect(gasService.connect(ownerWallet).transferOwnership(userWallet.address))
                 .and.to.emit(gasService, 'OwnershipTransferred')
@@ -233,26 +223,28 @@ describe('AxelarGasService', () => {
 
             await expect(await gasService.owner()).to.be.equal(userWallet.address);
         });
-    });
 
-    it('should emit events when gas is added', async () => {
-        const txHash = keccak256(defaultAbiCoder.encode(['string'], ['random tx hash']));
-        const logIndex = 13;
-        const gasToken = testToken.address;
-        const gasFeeAmount = 1000;
-        const nativeGasFeeAmount = parseEther('1.0');
+        it('should emit events when gas is added', async () => {
+            const txHash = keccak256(defaultAbiCoder.encode(['string'], ['random tx hash']));
+            const logIndex = 13;
+            const gasToken = testToken.address;
+            const gasFeeAmount = 1000;
+            const nativeGasFeeAmount = parseEther('1.0');
 
-        await testToken.connect(userWallet).approve(gasService.address, 1e6);
+            await testToken.connect(userWallet).approve(gasService.address, 1e6);
 
-        await expect(gasService.connect(userWallet).addGas(txHash, logIndex, gasToken, gasFeeAmount, userWallet.address))
-            .to.emit(gasService, 'GasAdded')
-            .withArgs(txHash, logIndex, gasToken, gasFeeAmount, userWallet.address)
-            .and.to.emit(testToken, 'Transfer')
-            .withArgs(userWallet.address, gasService.address, gasFeeAmount);
+            await expect(gasService.connect(userWallet).addGas(txHash, logIndex, gasToken, gasFeeAmount, userWallet.address))
+                .to.emit(gasService, 'GasAdded')
+                .withArgs(txHash, logIndex, gasToken, gasFeeAmount, userWallet.address)
+                .and.to.emit(testToken, 'Transfer')
+                .withArgs(userWallet.address, gasService.address, gasFeeAmount);
 
-        await expect(await gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address, { value: nativeGasFeeAmount }))
-            .to.emit(gasService, 'NativeGasAdded')
-            .withArgs(txHash, logIndex, nativeGasFeeAmount, userWallet.address)
-            .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
+            await expect(
+                await gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address, { value: nativeGasFeeAmount }),
+            )
+                .to.emit(gasService, 'NativeGasAdded')
+                .withArgs(txHash, logIndex, nativeGasFeeAmount, userWallet.address)
+                .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
+        });
     });
 });

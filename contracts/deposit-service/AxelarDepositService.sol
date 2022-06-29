@@ -128,6 +128,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     }
 
     function gateway() public view returns (address gatewayAddress) {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             gatewayAddress := sload(_GATEWAY_SLOT)
         }
@@ -140,6 +141,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
     function wrappedSymbol() public view returns (string memory symbol) {
         bytes32 symbolData;
 
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             symbolData := sload(_WRAPPED_TOKEN_SYMBOL_SLOT)
         }
@@ -148,6 +150,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         uint256 length = 0xff & uint256(symbolData);
 
         // restoring the string with the correct length
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             symbol := mload(0x40)
             // new "memory end" including padding (the string isn't larger than 32 bytes)
@@ -210,6 +213,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         symbolNumber |= 0xff & symbolBytes.length;
         bytes32 symbolData = bytes32(abi.encodePacked(symbolNumber));
 
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(_GATEWAY_SLOT, gatewayAddress)
             sstore(_WRAPPED_TOKEN_SYMBOL_SLOT, symbolData)

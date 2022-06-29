@@ -9,6 +9,7 @@ const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
 const { get } = require('lodash/fp');
+const { deployUpgradable } = require('../../scripts/upgradable');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
@@ -25,6 +26,8 @@ const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/Source
 const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
 const DestinationChainSwapForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForecallable.sol/DestinationChainSwapForecallable.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
+const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
+
 const { getAuthDeployParam, getSignedMultisigExecuteInput, getRandomID } = require('../utils');
 
 describe('GeneralMessagePassing', () => {
@@ -104,11 +107,9 @@ describe('GeneralMessagePassing', () => {
 
         sourceChainGateway = await deployGateway();
         destinationChainGateway = await deployGateway();
+        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
 
-        const gasImplementation = await deployContract(ownerWallet, GasService);
-        const gasProxy = await deployContract(ownerWallet, GasServiceProxy, [gasImplementation.address, arrayify([])]);
-        sourceChainGasService = new Contract(gasProxy.address, GasService.abi, ownerWallet);
-
+        sourceChainGasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy);
         tokenA = await deployContract(ownerWallet, MintableCappedERC20, [nameA, symbolA, decimals, capacity]);
 
         tokenB = await deployContract(ownerWallet, MintableCappedERC20, [nameB, symbolB, decimals, capacity]);
