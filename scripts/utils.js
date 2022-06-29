@@ -43,7 +43,7 @@ module.exports = {
             process.exit(1);
         }
 
-        if ((values.SKIP_CONFIRM === 'true')) {
+        if ((values?.SKIP_CONFIRM === 'true')) {
             return;
         }
 
