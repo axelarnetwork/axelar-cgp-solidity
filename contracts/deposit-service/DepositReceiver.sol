@@ -24,6 +24,7 @@ contract DepositReceiver {
     ) external onlyOwner returns (bool success, bytes memory returnData) {
         if (callee.code.length == 0) revert NotContract();
 
+        // solhint-disable-next-line avoid-low-level-calls
         (success, returnData) = callee.call{ value: value }(data);
     }
 
@@ -32,5 +33,6 @@ contract DepositReceiver {
         selfdestruct(payable(etherDestination));
     }
 
+    // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 }

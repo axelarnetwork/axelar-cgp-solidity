@@ -26,6 +26,7 @@ abstract contract Upgradable is IUpgradable {
         if (newOwner == address(0)) revert InvalidOwner();
 
         emit OwnershipTransferred(newOwner);
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(_OWNER_SLOT, newOwner)
         }
@@ -46,10 +47,12 @@ abstract contract Upgradable is IUpgradable {
         if (IUpgradable(newImplementation).contractId() != IUpgradable(this).contractId()) revert InvalidImplementation();
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(this.setup.selector, params));
+        if (params.length > 0) {
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(this.setup.selector, params));
 
-        if (!success) revert SetupFailed();
+            if (!success) revert SetupFailed();
+        }
 
         emit Upgraded(newImplementation);
         // solhint-disable-next-line no-inline-assembly
@@ -65,5 +68,6 @@ abstract contract Upgradable is IUpgradable {
         _setup(data);
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function _setup(bytes calldata data) internal virtual {}
 }
