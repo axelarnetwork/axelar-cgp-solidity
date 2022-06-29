@@ -3,48 +3,24 @@
 //imports
 require('dotenv').config();
 
-const { execSync } = require('child_process');
-const { printLog, printObj } = require('./logging');
-const { sortBy } = require('lodash');
+const {
+    printLog,
+    printObj,
+    confirm,
+    getOperators,
+    getAdminAddresses,
+    parseWei,
+} = require('./utils');
 const { ethers } = require('hardhat');
 const {
     getContractFactory,
     Wallet,
     providers: { JsonRpcProvider },
-    utils: { defaultAbiCoder, arrayify, computeAddress, parseUnits },
+    utils: { defaultAbiCoder, arrayify },
 } = ethers;
-
-//helper functions
-function parseWei(str) {
-    if (!str) {
-        return
-    }
-
-    const res = str.match(/(-?[\d.]+)([a-z%]*)/);
-    return parseUnits(res[1], res[2])
-}
-
-const getAddresses = (role) => {
-    const keyID = execSync(`${prefix} "axelard q tss key-id ${chain} ${role}"`, {
-        encoding: 'utf-8',
-    }).replaceAll('\n', '');
-    const output = execSync(`${prefix} "axelard q tss key ${keyID} --output json"`);
-    const keys = JSON.parse(output).multisig_key.key;
-
-    const addresses = keys.map((key) => {
-        const x = `${'0'.repeat(64)}${key.x}`.slice(-64);
-        const y = `${'0'.repeat(64)}${key.y}`.slice(-64);
-        return computeAddress(`0x04${x}${y}`);
-    });
-
-    return {
-        addresses: sortBy(addresses, (address) => address.toLowerCase()),
-        threshold: Number(JSON.parse(output).multisig_key.threshold),
-    };
-};
-
  
 // these environment variables should be defined in an '.env' file
+const confirmValues = process.env.CONFIRM_VALUES;
 const prefix = process.env.PREFIX;
 const chain = process.env.CHAIN;
 const url = process.env.URL;
@@ -56,8 +32,8 @@ const maxPriorityFeePerGas = parseWei(process.env.MAX_PRIORITY_FEE_PER_GAS);
 const gasLimit = process.env.GAS_LIMIT ? Number(process.env.GAS_LIMIT) : Number(21000);
 
 // main execution
-printObj({
-    'environment_variables:': {
+confirm(
+    {
         PREFIX: prefix || null,
         CHAIN: chain || null,
         URL: url || null,
@@ -67,29 +43,20 @@ printObj({
         MAX_PRIORITY_FEE_PER_GAS: maxPriorityFeePerGas?.toString() || null,
         GAS_PRICE: gasPrice?.toString() || null,
         GAS_LIMIT: gasLimit || null,
+        CONFIRM_VALUES: confirmValues || null,
     },
-});
-
-if (!(prefix && chain && url && privKey && adminThreshold)) {
-    console.error(`One or more of the required environment variable not defined. Make sure to declare these variables in an .env file.`);
-    process.exit(1);
-}
+    (prefix && chain && url && privKey && adminThreshold),
+);
 
 const provider = new JsonRpcProvider(url);
 const wallet = new Wallet(privKey, provider);
 
 printLog('retrieving admin addresses');
-const adminKeyIDs = JSON.parse(execSync(`${prefix} "axelard q tss external-key-id ${chain} --output json"`)).key_ids;
-const admins = adminKeyIDs.map((adminKeyID) => {
-    const output = execSync(`${prefix} "axelard q tss key ${adminKeyID} --output json"`);
-    const key = JSON.parse(output).ecdsa_key.key;
-
-    return computeAddress(`0x04${key.x}${key.y}`);
-});
+const admins = getAdminAddresses(prefix, chain);
 printObj({ admins: { addresses: admins, threshold: adminThreshold } });
 
 printLog('retrieving operator addresses');
-const { addresses: operators, threshold: operatorThreshold } = getAddresses('secondary');
+const { addresses: operators, threshold: operatorThreshold } = getOperators(prefix, chain);
 printObj({operators: { addresses: operators, threshold: operatorThreshold }});
 
 const contracts = {};
