@@ -23,10 +23,6 @@ abstract contract Upgradable is IUpgradable {
     }
 
     function transferOwnership(address newOwner) external virtual onlyOwner {
-        _transferOwnership(newOwner);
-    }
-
-    function _transferOwnership(address newOwner) internal {
         if (newOwner == address(0)) revert InvalidOwner();
 
         emit OwnershipTransferred(newOwner);

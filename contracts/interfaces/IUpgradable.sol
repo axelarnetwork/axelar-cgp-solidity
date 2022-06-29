@@ -17,7 +17,7 @@ interface IUpgradable {
     // Get current owner
     function owner() external view returns (address);
 
-    function contractId() external view returns (bytes32);
+    function contractId() external pure returns (bytes32);
 
     function upgrade(
         address newImplementation,

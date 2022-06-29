@@ -170,7 +170,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
     }
 
-    function contractId() public pure returns (bytes32) {
+    function contractId() external pure returns (bytes32) {
         return keccak256('axelar-gas-service');
     }
 }

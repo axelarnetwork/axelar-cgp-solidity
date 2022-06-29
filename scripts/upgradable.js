@@ -2,17 +2,18 @@
 
 const {
     Contract,
+    ContractFactory,
     utils: { keccak256 },
 } = require('ethers');
-const { deployContract } = require('ethereum-waffle');
 const { deployAndInitContractConstant } = require('axelar-utils-solidity');
 
 const IUpgradable = require('../artifacts/contracts/interfaces/IUpgradable.sol/IUpgradable.json');
 
-async function deployUpgradable(constAddressDeployerAddress, wallet, implementationJson, proxyJson, setupParams = '0x', key = null) {
-    key = key || new Date();
+async function deployUpgradable(constAddressDeployerAddress, wallet, implementationJson, proxyJson, setupParams = '0x', key = Date.now()) {
+    const implementationFactory = new ContractFactory(implementationJson.abi, implementationJson.bytecode, wallet);
 
-    const implementation = await deployContract(wallet, implementationJson);
+    const implementation = await implementationFactory.deploy();
+    await implementation.deployed();
 
     const proxy = await deployAndInitContractConstant(
         constAddressDeployerAddress,
@@ -29,11 +30,15 @@ async function deployUpgradable(constAddressDeployerAddress, wallet, implementat
 async function upgradeUpgradable(proxyAddress, contractJson, setupParams, wallet) {
     const proxy = new Contract(proxyAddress, IUpgradable.abi, wallet);
 
-    const newImplementation = await deployContract(wallet, contractJson);
-    const newImplementationCode = await wallet.provider.getCode(newImplementation.address);
-    const newImplementationCodeHash = keccak256(newImplementationCode);
+    const implementationFactory = new ContractFactory(contractJson.abi, contractJson.bytecode, wallet);
 
-    const tx = await proxy.upgrade(newImplementation.address, newImplementationCodeHash, setupParams);
+    const implementation = await implementationFactory.deploy();
+    await implementation.deployed();
+
+    const implementationCode = await wallet.provider.getCode(implementation.address);
+    const implementationCodeHash = keccak256(implementationCode);
+
+    const tx = await proxy.upgrade(implementation.address, implementationCodeHash, setupParams);
     await tx.wait();
     return tx;
 }

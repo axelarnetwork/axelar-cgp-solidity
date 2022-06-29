@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.9;
 
-import '../interfaces/IUpgradable.sol';
+import { IUpgradable } from '../interfaces/IUpgradable.sol';
 
 contract Proxy {
     error InvalidImplementation();
     error SetupFailed();
     error EtherNotAccepted();
-    error NotDeployer();
+    error NotOwner();
     error AlreadyInitialized();
 
     // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
@@ -25,22 +25,22 @@ contract Proxy {
 
     function init(
         address implementationAddress,
-        address owner,
+        address newOwner,
         bytes memory params
     ) external {
-        //_checkImplementationAddress(implementationAddress);
-        address deployer;
+        address owner;
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            deployer := sload(_OWNER_SLOT)
-            sstore(_OWNER_SLOT, owner)
+            owner := sload(_OWNER_SLOT)
         }
-        if (msg.sender != deployer) revert NotDeployer();
+        if (msg.sender != owner) revert NotOwner();
         if (implementation() != address(0)) revert AlreadyInitialized();
+        if (IUpgradable(implementationAddress).contractId() != contractId()) revert InvalidImplementation();
 
         // solhint-disable-next-line no-inline-assembly
         assembly {
             sstore(_IMPLEMENTATION_SLOT, implementationAddress)
+            sstore(_OWNER_SLOT, newOwner)
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = implementationAddress.delegatecall(
@@ -51,7 +51,7 @@ contract Proxy {
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function _checkImplementationAddress(address implementationAddress) internal virtual {}
+    function contractId() internal pure virtual returns (bytes32) {}
 
     function implementation() public view returns (address implementation_) {
         // solhint-disable-next-line no-inline-assembly
