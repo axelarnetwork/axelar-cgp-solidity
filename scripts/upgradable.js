@@ -22,6 +22,7 @@ async function deployUpgradable(constAddressDeployerAddress, wallet, implementat
         key,
         [],
         [implementation.address, wallet.address, setupParams],
+        2e6,
     );
 
     return new Contract(proxy.address, implementationJson.abi, wallet);
