@@ -8,7 +8,7 @@ const {
     providers: { JsonRpcProvider },
 } = require('ethers');
 
-const { printLog, printObj } = require('./logging');
+const { printLog, printObj, confirm } = require('./utils');
 
 const { join, resolve } = require('node:path');
 
@@ -16,6 +16,7 @@ const { existsSync } = require('node:fs');
 
 // these environment variables should be defined in an '.env' file
 const contractsPath = resolve(process.env.CONTRACTS_PATH || './build');
+const skipConfirm = process.env.SKIP_CONFIRM;
 const url = process.env.URL;
 const privKey = process.env.PRIVATE_KEY;
 const destinationChain = process.env.DESTINATION_CHAIN;
@@ -23,8 +24,8 @@ const symbol = process.env.SYMBOL;
 const amount = process.env.AMOUNT;
 const gatewayAddress = process.env.GATEWAY_ADDRESS;
 
-printObj({
-    'environment_variables:': {
+confirm(
+    {
         CONTRACTS_PATH: contractsPath || null,
         URL: url || null,
         PRIVATE_KEY: privKey || null,
@@ -32,13 +33,10 @@ printObj({
         SYMBOL: symbol || null,
         AMOUNT: amount || null,
         GATEWAY_ADDRESS: gatewayAddress || null,
+        SKIP_CONFIRM: skipConfirm || null,
     },
-});
-
-if (!(url && privKey && destinationChain && symbol && amount && gatewayAddress)) {
-    console.error(`One or more of the required environment variable not defined. Make sure to declare these variables in an .env file.`);
-    process.exit(1);
-}
+    (url && privKey && destinationChain && symbol && amount && gatewayAddress),
+);
 
 // the ABIs for the contracts below must be manually downloaded/compiled
 const IAxelarGatewayPath = join(contractsPath, 'IAxelarGateway.json');
