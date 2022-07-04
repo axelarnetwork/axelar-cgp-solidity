@@ -11,140 +11,272 @@ import { DepositReceiver } from './DepositReceiver.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarDepositService is Upgradable, IAxelarDepositService {
-    // keccak256('gateway-address')
-    bytes32 internal constant _GATEWAY_SLOT = 0xf8e5d679403ca38329d1356aeb2f53b4e3a6e4b021834581c8be7443db16066f;
-    // keccak256('wrapped-token-symbol')
-    bytes32 internal constant _WRAPPED_TOKEN_SYMBOL_SLOT = 0x91d2f5305ae2a8f5b319f6c3a690eff002c3e572220774ba5f7e957f079e55df;
+    address public immutable gateway;
+    bytes32 internal immutable wrappedSymbolBytes;
 
-    bytes32 internal constant PREFIX_DEPOSIT_SEND_TOKEN = keccak256('deposit-send-token');
-    bytes32 internal constant PREFIX_DEPOSIT_SEND_NATIVE = keccak256('deposit-send-native');
-    bytes32 internal constant PREFIX_DEPOSIT_WITHDRAW_NATIVE = keccak256('deposit-withdraw-native');
+    // stored and deleted withing the same transaction
+    address public refundToken;
 
-    function depositAddressForSendToken(
+    constructor(address gateway_, string memory wrappedSymbol_) {
+        if (gateway_ == address(0)) revert InvalidAddress();
+
+        gateway = gateway_;
+
+        if (IAxelarGateway(gateway_).tokenAddresses(wrappedSymbol_) == address(0)) revert InvalidSymbol();
+
+        bytes memory symbolBytes = bytes(wrappedSymbol_);
+
+        if (symbolBytes.length == 0 || symbolBytes.length > 31) revert InvalidSymbol();
+
+        uint256 symbolNumber = uint256(bytes32(symbolBytes));
+
+        // storing string length as the last byte of the data
+        symbolNumber |= 0xff & symbolBytes.length;
+        wrappedSymbolBytes = bytes32(abi.encodePacked(symbolNumber));
+    }
+
+    function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable {
+        address wrappedTokenAddress = wrappedToken();
+        uint256 amount = msg.value;
+
+        if (amount == 0) revert NothingDeposited();
+
+        IWETH9(wrappedTokenAddress).deposit{ value: amount }();
+        IERC20(wrappedTokenAddress).approve(gateway, amount);
+        IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
+    }
+
+    function depositAddressForTransferToken(
         bytes32 salt,
+        address refundAddress,
         string calldata destinationChain,
         string calldata destinationAddress,
         string calldata tokenSymbol
     ) external view returns (address) {
-        return _depositAddress(keccak256(abi.encode(PREFIX_DEPOSIT_SEND_TOKEN, salt, destinationChain, destinationAddress, tokenSymbol)));
+        return
+            _depositAddress(
+                salt,
+                abi.encodeWithSelector(
+                    AxelarDepositService.receiveAndTransferToken.selector,
+                    refundAddress,
+                    destinationChain,
+                    destinationAddress,
+                    tokenSymbol
+                )
+            );
     }
 
-    function depositAddressForSendNative(
+    function depositAddressForTransferNative(
         bytes32 salt,
+        address refundAddress,
         string calldata destinationChain,
         string calldata destinationAddress
     ) external view returns (address) {
-        return _depositAddress(keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, salt, destinationChain, destinationAddress)));
+        return
+            _depositAddress(
+                salt,
+                abi.encodeWithSelector(
+                    AxelarDepositService.receiveAndTransferNative.selector,
+                    refundAddress,
+                    destinationChain,
+                    destinationAddress
+                )
+            );
     }
 
-    function depositAddressForWithdrawNative(bytes32 nonce, address recipient) external view returns (address) {
-        return _depositAddress(keccak256(abi.encode(PREFIX_DEPOSIT_WITHDRAW_NATIVE, nonce, recipient)));
-    }
-
-    function sendToken(
+    function depositAddressForWithdrawNative(
         bytes32 salt,
+        address refundAddress,
+        address recipient
+    ) external view returns (address) {
+        return
+            _depositAddress(salt, abi.encodeWithSelector(AxelarDepositService.receiveAndWithdrawNative.selector, refundAddress, recipient));
+    }
+
+    function transferToken(
+        bytes32 salt,
+        address refundAddress,
         string calldata destinationChain,
         string calldata destinationAddress,
         string calldata tokenSymbol
     ) external {
-        address gatewayAddress = gateway();
-        address tokenAddress = IAxelarGateway(gatewayAddress).tokenAddresses(tokenSymbol);
-
-        DepositReceiver depositReceiver = new DepositReceiver{
-            salt: keccak256(abi.encode(PREFIX_DEPOSIT_SEND_TOKEN, salt, destinationChain, destinationAddress, tokenSymbol))
-        }();
-
-        uint256 amount = IERC20(tokenAddress).balanceOf(address(depositReceiver));
-
-        if (amount == 0) revert NothingDeposited();
-
-        if (!_execute(depositReceiver, tokenAddress, 0, abi.encodeWithSelector(IERC20.approve.selector, gatewayAddress, amount)))
-            revert ApproveFailed();
-
-        bytes memory sendPayload = abi.encodeWithSelector(
-            IAxelarGateway.sendToken.selector,
-            destinationChain,
-            destinationAddress,
-            tokenSymbol,
-            amount
+        // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
+        new DepositReceiver{ salt: salt }(
+            abi.encodeWithSelector(
+                AxelarDepositService.receiveAndTransferToken.selector,
+                refundAddress,
+                destinationChain,
+                destinationAddress,
+                tokenSymbol
+            )
         );
-
-        if (!_execute(depositReceiver, gatewayAddress, 0, sendPayload)) revert TokenSendFailed();
-
-        // NOTE: `depositReceiver` must always be destroyed in the same runtime context that it is deployed.
-        depositReceiver.destroy(address(this));
     }
 
-    function sendNative(
+    function refundFromTransferToken(
         bytes32 salt,
+        address refundAddress,
         string calldata destinationChain,
-        string calldata destinationAddress
+        string calldata destinationAddress,
+        string calldata tokenSymbol,
+        address[] calldata refundTokens
     ) external {
-        DepositReceiver depositReceiver = new DepositReceiver{
-            salt: keccak256(abi.encode(PREFIX_DEPOSIT_SEND_NATIVE, salt, destinationChain, destinationAddress))
-        }();
-
-        uint256 amount = address(depositReceiver).balance;
-
-        if (amount == 0) revert NothingDeposited();
-
-        address gatewayAddress = gateway();
-        string memory symbol = wrappedSymbol();
-        address wrappedTokenAddress = IAxelarGateway(gatewayAddress).tokenAddresses(symbol);
-
-        if (!_execute(depositReceiver, wrappedTokenAddress, amount, abi.encodeWithSelector(IWETH9.deposit.selector))) revert WrapFailed();
-
-        if (!_execute(depositReceiver, wrappedTokenAddress, 0, abi.encodeWithSelector(IERC20.approve.selector, gatewayAddress, amount)))
-            revert ApproveFailed();
-
-        bytes memory sendPayload = abi.encodeWithSelector(
-            IAxelarGateway.sendToken.selector,
-            destinationChain,
-            destinationAddress,
-            symbol,
-            amount
-        );
-
-        if (!_execute(depositReceiver, gatewayAddress, 0, sendPayload)) revert TokenSendFailed();
-
-        // NOTE: `depositReceiver` must always be destroyed in the same runtime context that it is deployed.
-        depositReceiver.destroy(address(this));
-    }
-
-    function withdrawNative(bytes32 salt, address payable recipient) external {
-        address token = wrappedToken();
-
-        DepositReceiver depositReceiver = new DepositReceiver{
-            salt: keccak256(abi.encode(PREFIX_DEPOSIT_WITHDRAW_NATIVE, salt, recipient))
-        }();
-        uint256 amount = IERC20(token).balanceOf(address(depositReceiver));
-
-        if (amount == 0) revert NothingDeposited();
-
-        if (!_execute(depositReceiver, token, 0, abi.encodeWithSelector(IWETH9.withdraw.selector, amount))) revert UnwrapFailed();
-
-        // NOTE: `depositReceiver` must always be destroyed in the same runtime context that it is deployed.
-        depositReceiver.destroy(recipient);
-    }
-
-    function gateway() public view returns (address gatewayAddress) {
-        assembly {
-            gatewayAddress := sload(_GATEWAY_SLOT)
+        for (uint256 i; i < refundTokens.length; i++) {
+            refundToken = refundTokens[i];
+            // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
+            new DepositReceiver{ salt: salt }(
+                abi.encodeWithSelector(
+                    AxelarDepositService.receiveAndTransferToken.selector,
+                    refundAddress,
+                    destinationChain,
+                    destinationAddress,
+                    tokenSymbol
+                )
+            );
         }
+
+        refundToken = address(0);
+    }
+
+    function receiveAndTransferToken(
+        address payable refundAddress,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        string calldata symbol
+    ) external {
+        if (address(this).balance > 0) refundAddress.transfer(address(this).balance);
+
+        address tokenAddress = IAxelarGateway(gateway).tokenAddresses(symbol);
+        address refund = AxelarDepositService(msg.sender).refundToken();
+        if (refund != address(0)) {
+            if (refund == tokenAddress) return;
+            IERC20(refund).transfer(refundAddress, IERC20(refund).balanceOf(address(this)));
+            return;
+        }
+
+        uint256 amount = IERC20(tokenAddress).balanceOf(address(this));
+
+        if (amount == 0) revert NothingDeposited();
+
+        IERC20(tokenAddress).approve(gateway, amount);
+        IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, symbol, amount);
+    }
+
+    function transferNative(
+        bytes32 salt,
+        address refundAddress,
+        string calldata destinationChain,
+        string calldata destinationAddress
+    ) external {
+        // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
+        new DepositReceiver{ salt: salt }(
+            abi.encodeWithSelector(
+                AxelarDepositService.receiveAndTransferNative.selector,
+                refundAddress,
+                destinationChain,
+                destinationAddress
+            )
+        );
+    }
+
+    function refundFromTransferNative(
+        bytes32 salt,
+        address refundAddress,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        address[] calldata refundTokens
+    ) external {
+        for (uint256 i; i < refundTokens.length; i++) {
+            refundToken = refundTokens[i];
+            // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
+            new DepositReceiver{ salt: salt }(
+                abi.encodeWithSelector(
+                    AxelarDepositService.receiveAndTransferNative.selector,
+                    refundAddress,
+                    destinationChain,
+                    destinationAddress
+                )
+            );
+        }
+
+        refundToken = address(0);
+    }
+
+    function receiveAndTransferNative(
+        address refundAddress,
+        string calldata destinationChain,
+        string calldata destinationAddress
+    ) external {
+        address refund = AxelarDepositService(msg.sender).refundToken();
+        if (refund != address(0)) {
+            IERC20(refund).transfer(refundAddress, IERC20(refund).balanceOf(address(this)));
+            return;
+        }
+
+        address wrappedTokenAddress = wrappedToken();
+        uint256 amount = address(this).balance;
+
+        if (amount == 0) revert NothingDeposited();
+
+        IWETH9(wrappedTokenAddress).deposit{ value: amount }();
+        IERC20(wrappedTokenAddress).approve(gateway, amount);
+        IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
+    }
+
+    function withdrawNative(
+        bytes32 salt,
+        address refundAddress,
+        address payable recipient
+    ) external {
+        // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
+        new DepositReceiver{ salt: salt }(
+            abi.encodeWithSelector(AxelarDepositService.receiveAndWithdrawNative.selector, refundAddress, recipient)
+        );
+    }
+
+    function refundFromWithdrawNative(
+        bytes32 salt,
+        address refundAddress,
+        address payable recipient,
+        address[] calldata refundTokens
+    ) external {
+        for (uint256 i; i < refundTokens.length; i++) {
+            refundToken = refundTokens[i];
+            // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
+            new DepositReceiver{ salt: salt }(
+                abi.encodeWithSelector(AxelarDepositService.receiveAndWithdrawNative.selector, refundAddress, recipient)
+            );
+        }
+
+        refundToken = address(0);
+    }
+
+    function receiveAndWithdrawNative(address payable refundAddress, address payable recipient) external {
+        if (address(this).balance > 0) refundAddress.transfer(address(this).balance);
+
+        address wrappedTokenAddress = wrappedToken();
+        address refund = AxelarDepositService(msg.sender).refundToken();
+        if (refund != address(0)) {
+            if (refund == wrappedTokenAddress) return;
+            IERC20(refund).transfer(refundAddress, IERC20(refund).balanceOf(address(this)));
+            return;
+        }
+
+        uint256 amount = IERC20(wrappedTokenAddress).balanceOf(address(this));
+
+        if (amount == 0) revert NothingDeposited();
+
+        IWETH9(wrappedTokenAddress).withdraw(amount);
+        recipient.transfer(amount);
     }
 
     function wrappedToken() public view returns (address) {
-        return IAxelarGateway(gateway()).tokenAddresses(wrappedSymbol());
+        return IAxelarGateway(gateway).tokenAddresses(wrappedSymbol());
     }
 
     function wrappedSymbol() public view returns (string memory symbol) {
-        bytes32 symbolData;
+        bytes32 symbolData = wrappedSymbolBytes;
 
-        assembly {
-            symbolData := sload(_WRAPPED_TOKEN_SYMBOL_SLOT)
-        }
-
-        // recovering string length as the last 2 bytes of the data
+        // recovering string length as the last byte of the data
         uint256 length = 0xff & uint256(symbolData);
 
         // restoring the string with the correct length
@@ -159,7 +291,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         }
     }
 
-    function _depositAddress(bytes32 create2Salt) internal view returns (address) {
+    function _depositAddress(bytes32 create2Salt, bytes memory delegateData) internal view returns (address) {
         /* Convert a hash which is bytes32 to an address which is 20-byte long
         according to https://docs.soliditylang.org/en/v0.8.1/control-structures.html?highlight=create2#salted-contract-creations-create2 */
         return
@@ -171,7 +303,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
                                 bytes1(0xff),
                                 address(this),
                                 create2Salt,
-                                keccak256(abi.encodePacked(type(DepositReceiver).creationCode))
+                                keccak256(abi.encodePacked(type(DepositReceiver).creationCode, abi.encode(delegateData)))
                             )
                         )
                     )
@@ -179,40 +311,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
             );
     }
 
-    function _execute(
-        DepositReceiver depositReceiver,
-        address callee,
-        uint256 nativeValue,
-        bytes memory payload
-    ) internal returns (bool) {
-        (bool success, bytes memory returnData) = depositReceiver.execute(callee, nativeValue, payload);
-        return success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
-    }
-
     function contractId() public pure returns (bytes32) {
         return keccak256('axelar-deposit-service');
-    }
-
-    function _setup(bytes calldata data) internal override {
-        (address gatewayAddress, string memory symbol) = abi.decode(data, (address, string));
-
-        if (gatewayAddress == address(0)) revert InvalidAddress();
-
-        if (IAxelarGateway(gatewayAddress).tokenAddresses(symbol) == address(0)) revert InvalidSymbol();
-
-        bytes memory symbolBytes = bytes(symbol);
-
-        if (symbolBytes.length == 0 || symbolBytes.length > 30) revert InvalidSymbol();
-
-        uint256 symbolNumber = uint256(bytes32(symbolBytes));
-
-        // storing string length as last 2 bytes of the data
-        symbolNumber |= 0xff & symbolBytes.length;
-        bytes32 symbolData = bytes32(abi.encodePacked(symbolNumber));
-
-        assembly {
-            sstore(_GATEWAY_SLOT, gatewayAddress)
-            sstore(_WRAPPED_TOKEN_SYMBOL_SLOT, symbolData)
-        }
     }
 }

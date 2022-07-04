@@ -407,18 +407,28 @@ describe('AxelarGatewayMultisig', () => {
     describe('command burnToken', () => {
         const name = 'An Awesome Token';
         const symbol = 'AAT';
+        const externalName = 'An External Token';
+        const externalSymbol = 'AET';
         const decimals = 18;
         const cap = 1e8;
         const amount = 100;
 
         let token;
+        let externalToken;
 
         beforeEach(async () => {
+            externalToken = await mintableCappedERC20Factory.deploy(externalName, externalSymbol, decimals, cap).then((d) => d.deployed());
+            await externalToken.mint(owner.address, amount);
+
             const data = buildCommandBatch(
                 CHAIN_ID,
-                [getRandomID(), getRandomID()],
-                ['deployToken', 'mintToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(symbol, owner.address, amount)],
+                [getRandomID(), getRandomID(), getRandomID()],
+                ['deployToken', 'deployToken', 'mintToken'],
+                [
+                    getDeployCommand(externalName, externalSymbol, decimals, cap, externalToken.address, 0),
+                    getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0),
+                    getMintCommand(symbol, owner.address, amount),
+                ],
             );
 
             const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
@@ -428,7 +438,7 @@ describe('AxelarGatewayMultisig', () => {
             token = burnableMintableCappedERC20Factory.attach(tokenAddress);
         });
 
-        it('should allow the owners to burn tokens', async () => {
+        it('should allow the operators to burn internal tokens', async () => {
             const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
             const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
@@ -448,40 +458,46 @@ describe('AxelarGatewayMultisig', () => {
 
             const secondInput = await getSignedMultisigExecuteInput(dataSecondBurn, operators, operators.slice(0, threshold));
 
-            await expect(gateway.execute(secondInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+            await expect(await gateway.execute(secondInput))
+                .to.emit(token, 'Transfer')
+                .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
 
             expect(await token.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
         });
 
-        it('should allow the operators to burn tokens', async () => {
+        it('should allow the operators to burn external tokens', async () => {
             const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
             const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
             const burnAmount = amount / 2;
-            await token.transfer(depositHandlerAddress, burnAmount);
+            await externalToken.transfer(depositHandlerAddress, burnAmount);
 
             const dataFirstBurn = buildCommandBatchWithRole(
                 CHAIN_ID,
                 ROLE_OPERATOR,
                 [getRandomID()],
                 ['burnToken'],
-                [getBurnCommand(symbol, salt)],
+                [getBurnCommand(externalSymbol, salt)],
             );
 
             const firstInput = await getSignedMultisigExecuteInput(dataFirstBurn, operators, operators.slice(0, threshold));
 
-            await expect(gateway.execute(firstInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+            await expect(gateway.execute(firstInput))
+                .to.emit(externalToken, 'Transfer')
+                .withArgs(depositHandlerAddress, gateway.address, burnAmount);
 
-            await token.transfer(depositHandlerAddress, burnAmount);
+            await externalToken.transfer(depositHandlerAddress, burnAmount);
 
-            const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
 
             const secondInput = await getSignedMultisigExecuteInput(dataSecondBurn, operators, operators.slice(0, threshold));
 
-            await expect(gateway.execute(secondInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+            await expect(await gateway.execute(secondInput))
+                .to.emit(externalToken, 'Transfer')
+                .withArgs(depositHandlerAddress, gateway.address, burnAmount);
 
-            expect(await token.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
+            expect(await externalToken.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
         });
     });
 
