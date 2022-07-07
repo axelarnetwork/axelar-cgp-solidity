@@ -10,6 +10,7 @@ const {
     getOperators,
     getAdminAddresses,
     parseWei,
+    getTxOptions,
 } = require('./utils');
 const { ethers } = require('hardhat');
 const {
@@ -76,17 +77,7 @@ const paramsProxy = arrayify(
     printLog("fetching fee data")
     const feeData = (await provider.getFeeData())
     printObj({feeData: feeData});
-
-    // detect if EIP-1559 is supported by the chain
-    const options = (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) ? {
-        maxFeePerGas: maxFeePerGas || feeData?.maxFeePerGas,
-        maxPriorityFeePerGas: maxPriorityFeePerGas || feeData?.maxPriorityFeePerGas,
-        gasLimit: gasLimit || feeData.gasLimit,
-    } : {
-        gasPrice: gasPrice || feeData?.gasPrice,
-        gasLimit: gasLimit || feeData.gasLimit,
-    };
-
+    const options = getTxOptions(feeData, { maxFeePerGas, maxPriorityFeePerGas, gasPrice, gasLimit });
     printObj({tx_options: options});
 
     printLog("loading contract factories")
