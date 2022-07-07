@@ -69,10 +69,33 @@ module.exports = {
 
     parseWei(str) {
         if (!str) {
-            return
+            return;
         }
     
         const res = str.match(/(-?[\d.]+)([a-z%]*)/);
         return parseUnits(res[1], res[2])
+    },
+
+    getTxOptions(feeData, envOptions) {
+        if (!feeData) {
+            return;
+        }
+
+        // detect if EIP-1559 is supported by the chain
+        if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+            return {
+                maxFeePerGas: envOptions?.maxFeePerGas || feeData.maxFeePerGas,
+                maxPriorityFeePerGas: envOptions?.maxPriorityFeePerGas || feeData.maxPriorityFeePerGas,
+                gasLimit: envOptions?.gasLimit || feeData.gasLimit,
+            };
+        }
+        if (feeData.gasPrice && feeData.gasLimit) {
+            return {
+                gasPrice: envOptions?.gasPrice || feeData.gasPrice,
+                gasLimit: envOptions?.gasLimit || feeData.gasLimit,
+            };
+        }
+
+        return;
     },
 };
