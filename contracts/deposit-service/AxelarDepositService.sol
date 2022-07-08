@@ -318,6 +318,7 @@ contract AxelarDepositService is Upgradable, IAxelarDepositService {
         uint256 length = 0xff & uint256(symbolData);
 
         // restoring the string with the correct length
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             symbol := mload(0x40)
             // new "memory end" including padding (the string isn't larger than 32 bytes)
