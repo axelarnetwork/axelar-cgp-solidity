@@ -18,11 +18,14 @@ const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDep
 const AxelarGatewayProxy = require('../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
 const AxelarGateway = require('../artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
 const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json');
+const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
+
+const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
 const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
-const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
 
 const { getAuthDeployParam, getSignedMultisigExecuteInput, getRandomID } = require('./utils');
+const { deployUpgradable } = require('../scripts/upgradable');
 
 describe('AxelarDepositService', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
@@ -47,6 +50,7 @@ describe('AxelarDepositService', () => {
         const params = arrayify(
             defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
         );
+        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
         const auth = await deployContract(ownerWallet, Auth, [getAuthDeployParam([[operatorWallet.address]], [1])]);
         const tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
         const gatewayImplementation = await deployContract(ownerWallet, AxelarGateway, [auth.address, tokenDeployer.address]);
@@ -84,9 +88,13 @@ describe('AxelarDepositService', () => {
             ),
         );
 
-        const depositImplementation = await deployContract(ownerWallet, DepositService, [gateway.address, tokenSymbol]);
-        const depositProxy = await deployContract(ownerWallet, DepositServiceProxy, [depositImplementation.address, '0x']);
-        depositService = new Contract(depositProxy.address, DepositService.abi, ownerWallet);
+        depositService = await deployUpgradable(
+            constAddressDeployer.address,
+            ownerWallet,
+            DepositService,
+            DepositServiceProxy,
+            defaultAbiCoder.encode(['address', 'string'], [gateway.address, tokenSymbol]),
+        );
     });
 
     describe('deposit service', () => {

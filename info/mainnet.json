@@ -1,0 +1,57 @@
+[
+  {
+    "name": "Ethereum",
+    "chainId": 1,
+    "rpc": "https://mainnet.infura.io/v3/a4812158fbab4a2aaa849e6f4a6dc605",
+    "gateway": "0x4F4495243837681061C4743b74B3eEdf548D56A5",
+    "gasReceiver": "0x4154CF6eea0633DD9c4933E76a077fD7E9260738",
+    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "tokenName": "Ether",
+    "tokenSymbol": "ETH",
+    "wrappedSymbol": "WETH"
+  },
+  {
+    "name": "Avalanche",
+    "chainId": 43114,
+    "rpc": "https://api.avax.network/ext/bc/C/rpc",
+    "gateway": "0x5029C0EFf6C34351a0CEc334542cDb22c7928f78",
+    "gasReceiver": "0xB53C693544363912D2A034f70D9d98808D5E192a",
+    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "tokenName": "Avax",
+    "tokenSymbol": "AVAX",
+    "wrappedSymbol": "WETH"
+  },
+  {
+    "name": "Fantom",
+    "chainId": 250,
+    "gateway": "0x304acf330bbE08d1e512eefaa92F6a57871fD895",
+    "rpc": "https://rpc.ftm.tools/",
+    "gasReceiver": "0x2879da536D9d107D6b92D95D7c4CFaA5De7088f4",
+    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "tokenName": "Fantom",
+    "tokenSymbol": "FTM",
+    "wrappedSymbol": "WFTM"
+  },
+  {
+    "name": "Polygon",
+    "chainId": 137,
+    "gateway": "0x6f015F16De9fC8791b234eF68D486d2bF203FBA8",
+    "rpc": "https://polygon-rpc.com/",
+    "gasReceiver": "0xc8E0b617c388c7E800a7643adDD01218E14a727a",
+    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "tokenName": "Matic",
+    "tokenSymbol": "MATIC",
+    "wrappedSymbol": "WMATIC"
+  },
+  {
+    "name": "Moonbeam",
+    "chainId": 1284,
+    "gateway": "0x4F4495243837681061C4743b74B3eEdf548D56A5",
+    "rpc": "https://rpc.api.moonbeam.network",
+    "gasReceiver": "0x27927CD55db998b720214205e598aA9AD614AEE3",
+    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "tokenName": "Glimmer",
+    "tokenSymbol": "GLMR",
+    "wrappedSymbol": "WGLMR"
+  }
+]
