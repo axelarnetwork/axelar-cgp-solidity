@@ -88,13 +88,10 @@ describe('AxelarDepositService', () => {
             ),
         );
 
-        depositService = await deployUpgradable(
-            constAddressDeployer.address,
-            ownerWallet,
-            DepositService,
-            DepositServiceProxy,
-            defaultAbiCoder.encode(['address', 'string'], [gateway.address, tokenSymbol]),
-        );
+        depositService = await deployUpgradable(constAddressDeployer.address, ownerWallet, DepositService, DepositServiceProxy, [
+            gateway.address,
+            tokenSymbol,
+        ]);
     });
 
     describe('deposit service', () => {

@@ -9,10 +9,18 @@ const { deployAndInitContractConstant } = require('axelar-utils-solidity');
 
 const IUpgradable = require('../artifacts/contracts/interfaces/IUpgradable.sol/IUpgradable.json');
 
-async function deployUpgradable(constAddressDeployerAddress, wallet, implementationJson, proxyJson, setupParams = '0x', key = Date.now()) {
+async function deployUpgradable(
+    constAddressDeployerAddress,
+    wallet,
+    implementationJson,
+    proxyJson,
+    implementationParams = [],
+    setupParams = '0x',
+    key = Date.now(),
+) {
     const implementationFactory = new ContractFactory(implementationJson.abi, implementationJson.bytecode, wallet);
 
-    const implementation = await implementationFactory.deploy();
+    const implementation = await implementationFactory.deploy(...implementationParams);
     await implementation.deployed();
 
     const proxy = await deployAndInitContractConstant(
