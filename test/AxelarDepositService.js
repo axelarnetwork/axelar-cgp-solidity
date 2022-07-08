@@ -163,10 +163,16 @@ describe('AxelarDepositService', () => {
             await wrongToken.transfer(depositAddress, amount * 2);
 
             await expect(
-                depositService.refundFromTransferToken(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [
-                    token.address,
-                ]),
+                depositService
+                    .connect(userWallet)
+                    .refundFromTransferToken(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [token.address]),
             ).not.to.emit(token, 'Transfer');
+
+            await expect(
+                depositService
+                    .connect(ownerWallet)
+                    .refundFromTransferToken(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [token.address]),
+            ).to.emit(token, 'Transfer');
 
             await ownerWallet.sendTransaction({
                 to: depositAddress,
@@ -300,10 +306,13 @@ describe('AxelarDepositService', () => {
             await token.transfer(depositAddress, amount);
             await wrongToken.transfer(depositAddress, amount * 2);
 
-            await expect(depositService.refundFromWithdrawNative(salt, refundAddress, recipient, [token.address])).not.to.emit(
-                token,
-                'Transfer',
-            );
+            await expect(
+                depositService.connect(userWallet).refundFromWithdrawNative(salt, refundAddress, recipient, [token.address]),
+            ).not.to.emit(token, 'Transfer');
+
+            await expect(
+                depositService.connect(ownerWallet).refundFromWithdrawNative(salt, refundAddress, recipient, [token.address]),
+            ).to.emit(token, 'Transfer');
 
             await ownerWallet.sendTransaction({
                 to: depositAddress,
