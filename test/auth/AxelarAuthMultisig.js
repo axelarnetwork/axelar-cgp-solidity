@@ -9,7 +9,7 @@ const { expect } = chai;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const OLD_KEY_RETENTION = 16;
 
-const { getAddresses, getAuthDeployParam, getSignaturesProof, getTransferMultiOperatorshipCommand } = require('./utils');
+const { getAddresses, getAuthDeployParam, getSignaturesProof, getTransferMultiOperatorshipCommand } = require('../utils');
 
 describe('AxelarAuthMultisig', () => {
     const threshold = 3;

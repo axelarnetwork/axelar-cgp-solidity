@@ -24,6 +24,17 @@ module.exports = {
 
     getSignaturesProof,
 
+    async getWeightedSignaturesProof(data, operators, weights, threshold, signers) {
+        const hash = arrayify(keccak256(data));
+        const signatures = await Promise.all(
+            sortBy(signers, (wallet) => wallet.address.toLowerCase()).map((wallet) => wallet.signMessage(hash)),
+        );
+        return defaultAbiCoder.encode(
+            ['address[]', 'uint256[]', 'uint256', 'bytes[]'],
+            [getAddresses(operators), weights, threshold, signatures],
+        );
+    },
+
     getSignedMultisigExecuteInput: async (data, operators, signers) =>
         defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),
 
@@ -33,8 +44,13 @@ module.exports = {
 
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 
-    getAuthDeployParam: (operatorsSets, operatorThresholds) =>
-        operatorsSets.map((operators, i) => defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThresholds[i]])),
+    getAuthDeployParam: (operatorSets, operatorThresholds) =>
+        operatorSets.map((operators, i) => defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThresholds[i]])),
+
+    getWeightedAuthDeployParam: (operatorSets, weightSets, operatorThresholds) =>
+        operatorSets.map((operators, i) =>
+            defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [operators, weightSets[i], operatorThresholds[i]]),
+        ),
 
     getMultisigProxyDeployParams: (admins, adminThreshold, operators, operatorThreshold) =>
         arrayify(
@@ -60,6 +76,12 @@ module.exports = {
 
     getTransferMultiOperatorshipCommand: (newOperators, threshold) =>
         defaultAbiCoder.encode(['address[]', 'uint256'], [sortBy(newOperators, (address) => address.toLowerCase()), threshold]),
+
+    getTransferWeightedOperatorshipCommand: (newOperators, newWeights, threshold) =>
+        defaultAbiCoder.encode(
+            ['address[]', 'uint256[]', 'uint256'],
+            [sortBy(newOperators, (address) => address.toLowerCase()), newWeights, threshold],
+        ),
 
     getApproveContractCall: (sourceChain, source, destination, payloadHash, sourceTxHash, sourceEventIndex) =>
         defaultAbiCoder.encode(

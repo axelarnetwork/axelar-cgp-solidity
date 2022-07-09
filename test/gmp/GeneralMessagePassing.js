@@ -15,7 +15,7 @@ const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const ROLE_OWNER = 1;
 
-const Auth = require('../../artifacts/contracts/AxelarAuthMultisig.sol/AxelarAuthMultisig.json');
+const Auth = require('../../artifacts/contracts/auth/AxelarAuthMultisig.sol/AxelarAuthMultisig.json');
 const TokenDeployer = require('../../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
 const AxelarGatewayProxy = require('../../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
 const AxelarGateway = require('../../artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');

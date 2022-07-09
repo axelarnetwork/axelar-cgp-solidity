@@ -10,13 +10,7 @@ const {
     providers: { JsonRpcProvider },
 } = ethers;
 
-const {
-    printLog,
-    printObj,
-    confirm,
-    parseWei,
-    getTxOptions,
- } = require('./utils');
+const { printLog, printObj, confirm, parseWei, getTxOptions } = require('./utils');
 
 // these environment variables should be defined in an '.env' file
 const skipConfirm = process.env.SKIP_CONFIRM;
@@ -35,7 +29,7 @@ const gasLimit = process.env.GAS_LIMIT ? Number(process.env.GAS_LIMIT) : Number(
 confirm(
     {
         URL: url || null,
-        PRIVATE_KEY: "*****REDACTED*****" || null,
+        PRIVATE_KEY: '*****REDACTED*****' || null,
         SOURCE_CHAIN: sourceChain || null,
         COMMAND_ID: commandIDhex || null,
         SYMBOL: symbol || null,
@@ -47,7 +41,7 @@ confirm(
         GAS_LIMIT: gasLimit || null,
         SKIP_CONFIRM: skipConfirm || null,
     },
-    (url && privKey && sourceChain && commandIDhex && symbol && amount && gatewayAddress),
+    url && privKey && sourceChain && commandIDhex && symbol && amount && gatewayAddress,
 );
 const provider = new JsonRpcProvider(url);
 const wallet = new Wallet(privKey, provider);
@@ -56,26 +50,27 @@ const commandID = utils.arrayify(commandIDhex.startsWith('0x') ? commandIDhex : 
 const transactions = {};
 
 (async () => {
-    printLog("fetching fee data")
-    const feeData = (await provider.getFeeData())
-    printObj({feeData: feeData});
+    printLog('fetching fee data');
+    const feeData = await provider.getFeeData();
+    printObj({ feeData });
 
     const options = getTxOptions(feeData, { maxFeePerGas, maxPriorityFeePerGas, gasPrice, gasLimit });
-    printObj({tx_options: options});
+    printObj({ tx_options: options });
 
     printLog(`validating contract call with token for source chain ${sourceChain} and destination address ${wallet.address}`);
     const tx = await (
-            await getContractAt("IAxelarGateway", gatewayAddress, wallet)
-        ).validateContractCallAndMint(commandID, sourceChain, wallet.address, hash, symbol, amount, options);
+        await getContractAt('IAxelarGateway', gatewayAddress, wallet)
+    ).validateContractCallAndMint(commandID, sourceChain, wallet.address, hash, symbol, amount, options);
     await tx.wait();
     printLog(
-           `successfully validated contract call with token for source chain ${sourceChain} and destination address ${wallet.address} at tx ${tx.hash}`,
-        );
+        `successfully validated contract call with token for source chain ${sourceChain} and destination address ${wallet.address} at tx ${tx.hash}`,
+    );
 
     transactions.validated = tx.hash;
-
-})().catch((err) => {
-    console.error(err);
-}).finally(() => {
-    printObj({transactions_sent: transactions});
-});
+})()
+    .catch((err) => {
+        console.error(err);
+    })
+    .finally(() => {
+        printObj({ transactions_sent: transactions });
+    });
