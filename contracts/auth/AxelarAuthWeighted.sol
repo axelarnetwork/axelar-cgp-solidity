@@ -23,11 +23,7 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
     |* External Functionality *|
     \**************************/
 
-    function validateProof(bytes32 messageHash, bytes calldata proof)
-        external
-        view
-        returns (bool currentOperators)
-    {
+    function validateProof(bytes32 messageHash, bytes calldata proof) external view returns (bool currentOperators) {
         (address[] memory operators, uint256[] memory weights, uint256 threshold, bytes[] memory signatures) = abi.decode(
             proof,
             (address[], uint256[], uint256, bytes[])

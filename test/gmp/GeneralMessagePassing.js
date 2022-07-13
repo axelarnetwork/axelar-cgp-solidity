@@ -15,7 +15,7 @@ const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const ROLE_OWNER = 1;
 
-const Auth = require('../../artifacts/contracts/auth/AxelarAuthMultisig.sol/AxelarAuthMultisig.json');
+const Auth = require('../../artifacts/contracts/auth/AxelarAuthWeighted.sol/AxelarAuthWeighted.json');
 const TokenDeployer = require('../../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
 const AxelarGatewayProxy = require('../../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
 const AxelarGateway = require('../../artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
@@ -28,7 +28,7 @@ const DestinationChainSwapForecallable = require('../../artifacts/contracts/test
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
 const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
 
-const { getAuthDeployParam, getSignedMultisigExecuteInput, getRandomID } = require('../utils');
+const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('../utils');
 
 describe('GeneralMessagePassing', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
@@ -74,7 +74,7 @@ describe('GeneralMessagePassing', () => {
             const params = arrayify(
                 defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
             );
-            const auth = await deployContract(ownerWallet, Auth, [getAuthDeployParam([[operatorWallet.address]], [1])]);
+            const auth = await deployContract(ownerWallet, Auth, [getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])]);
             const tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
             const gateway = await deployContract(ownerWallet, AxelarGateway, [auth.address, tokenDeployer.address]);
             const proxy = await deployContract(ownerWallet, AxelarGatewayProxy, [gateway.address, params]);
@@ -115,10 +115,10 @@ describe('GeneralMessagePassing', () => {
         tokenB = await deployContract(ownerWallet, MintableCappedERC20, [nameB, symbolB, decimals, capacity]);
 
         await sourceChainGateway.execute(
-            await getSignedMultisigExecuteInput(getTokenDeployData(false), [operatorWallet], [operatorWallet]),
+            await getSignedWeightedExecuteInput(getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
         );
         await destinationChainGateway.execute(
-            await getSignedMultisigExecuteInput(getTokenDeployData(true), [operatorWallet], [operatorWallet]),
+            await getSignedWeightedExecuteInput(getTokenDeployData(true), [operatorWallet], [1], 1, [operatorWallet]),
         );
 
         destinationChainTokenSwapper = await deployContract(ownerWallet, DestinationChainTokenSwapper, [tokenA.address, tokenB.address]);
@@ -144,7 +144,7 @@ describe('GeneralMessagePassing', () => {
         await tokenB.mint(destinationChainTokenSwapper.address, 1e9);
 
         await sourceChainGateway.execute(
-            await getSignedMultisigExecuteInput(getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [operatorWallet]),
+            await getSignedWeightedExecuteInput(getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [operatorWallet]),
         );
         await tokenA.connect(ownerWallet).mint(userWallet.address, 1e9);
     });
@@ -220,7 +220,7 @@ describe('GeneralMessagePassing', () => {
             );
 
             const approveExecute = await destinationChainGateway.execute(
-                await getSignedMultisigExecuteInput(approveWithMintData, [operatorWallet], [operatorWallet]),
+                await getSignedWeightedExecuteInput(approveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
             );
 
             await expect(approveExecute)
@@ -343,7 +343,7 @@ describe('GeneralMessagePassing', () => {
             );
 
             const approveExecute = await destinationChainGateway.execute(
-                await getSignedMultisigExecuteInput(approveWithMintData, [operatorWallet], [operatorWallet]),
+                await getSignedWeightedExecuteInput(approveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
             );
 
             await expect(approveExecute)

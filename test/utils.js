@@ -19,27 +19,29 @@ const getSignaturesProof = async (data, operators, signers) => {
     return defaultAbiCoder.encode(['address[]', 'bytes[]'], [getAddresses(operators), signatures]);
 };
 
+const getWeightedSignaturesProof = async (data, operators, weights, threshold, signers) => {
+    const hash = arrayify(keccak256(data));
+    const signatures = await Promise.all(
+        sortBy(signers, (wallet) => wallet.address.toLowerCase()).map((wallet) => wallet.signMessage(hash)),
+    );
+    return defaultAbiCoder.encode(
+        ['address[]', 'uint256[]', 'uint256', 'bytes[]'],
+        [getAddresses(operators), weights, threshold, signatures],
+    );
+};
+
 module.exports = {
     bigNumberToNumber: (bigNumber) => bigNumber.toNumber(),
 
     getSignaturesProof,
 
-    async getWeightedSignaturesProof(data, operators, weights, threshold, signers) {
-        const hash = arrayify(keccak256(data));
-        const signatures = await Promise.all(
-            sortBy(signers, (wallet) => wallet.address.toLowerCase()).map((wallet) => wallet.signMessage(hash)),
-        );
-        return defaultAbiCoder.encode(
-            ['address[]', 'uint256[]', 'uint256', 'bytes[]'],
-            [getAddresses(operators), weights, threshold, signatures],
-        );
-    },
+    getWeightedSignaturesProof,
 
     getSignedMultisigExecuteInput: async (data, operators, signers) =>
         defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),
 
     getSignedWeightedExecuteInput: async (data, operators, weights, threshold, signers) =>
-        defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, weights, threshold, signers)]),
+        defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getWeightedSignaturesProof(data, operators, weights, threshold, signers)]),
 
     getRandomInt,
 
@@ -63,6 +65,20 @@ module.exports = {
                     admins,
                     adminThreshold,
                     operators.length ? defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThreshold]) : '0x',
+                ],
+            ),
+        ),
+
+    getWeightedProxyDeployParams: (admins, adminThreshold, operators, weights, operatorThreshold) =>
+        arrayify(
+            defaultAbiCoder.encode(
+                ['address[]', 'uint8', 'bytes'],
+                [
+                    admins,
+                    adminThreshold,
+                    operators.length
+                        ? defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [operators, weights, operatorThreshold])
+                        : '0x',
                 ],
             ),
         ),
