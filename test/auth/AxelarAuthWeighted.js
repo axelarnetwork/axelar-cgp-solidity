@@ -175,7 +175,7 @@ describe('AxelarAuthWeighted', () => {
             const signleOperator = getAddresses([owner]);
 
             await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(signleOperator, [1], 1)))
-                .to.emit(auth, 'WeightedOperatorshipTransferred')
+                .to.emit(auth, 'OperatorshipTransferred')
                 .withArgs(signleOperator, [1], 1);
 
             const data = '0x123abc123abc';
@@ -197,7 +197,7 @@ describe('AxelarAuthWeighted', () => {
                     ),
                 ),
             )
-                .to.emit(auth, 'WeightedOperatorshipTransferred')
+                .to.emit(auth, 'OperatorshipTransferred')
                 .withArgs(
                     getAddresses(operators),
                     operators.map(() => 1),
@@ -228,7 +228,7 @@ describe('AxelarAuthWeighted', () => {
             const newOperators = ['0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b', '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
 
             await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)))
-                .to.emit(auth, 'WeightedOperatorshipTransferred')
+                .to.emit(auth, 'OperatorshipTransferred')
                 .withArgs(newOperators, [1, 1], 2);
         });
 
@@ -268,7 +268,7 @@ describe('AxelarAuthWeighted', () => {
                     ),
                 ),
             )
-                .to.emit(auth, 'WeightedOperatorshipTransferred')
+                .to.emit(auth, 'OperatorshipTransferred')
                 .withArgs(
                     updatedOperators,
                     updatedOperators.map(() => 1),

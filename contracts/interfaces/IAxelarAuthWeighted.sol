@@ -2,10 +2,20 @@
 
 pragma solidity ^0.8.9;
 
-import { IAxelarAuthMultisig } from './IAxelarAuthMultisig.sol';
+import { IAxelarAuth } from './IAxelarAuth.sol';
 
-interface IAxelarAuthWeighted is IAxelarAuthMultisig {
+interface IAxelarAuthWeighted is IAxelarAuth {
+    error InvalidOperators();
+    error InvalidThreshold();
+    error SameOperators();
+    error MalformedSigners();
     error InvalidWeights();
 
-    event WeightedOperatorshipTransferred(address[] newOperators, uint256[] newWeights, uint256 newThreshold);
+    event OperatorshipTransferred(address[] newOperators, uint256[] newWeights, uint256 newThreshold);
+
+    function currentEpoch() external view returns (uint256);
+
+    function hashForEpoch(uint256 epoch) external view returns (bytes32);
+
+    function epochForHash(bytes32 hash) external view returns (uint256);
 }

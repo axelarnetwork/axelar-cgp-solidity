@@ -38,6 +38,9 @@ module.exports = {
     getSignedMultisigExecuteInput: async (data, operators, signers) =>
         defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),
 
+    getSignedWeightedExecuteInput: async (data, operators, weights, threshold, signers) =>
+        defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, weights, threshold, signers)]),
+
     getRandomInt,
 
     getRandomID: () => id(getRandomInt(1e10).toString()),
