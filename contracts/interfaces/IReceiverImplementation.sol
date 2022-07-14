@@ -13,8 +13,6 @@ interface IReceiverImplementation {
 
     function gateway() external returns (address);
 
-    function refundToken() external returns (address);
-
     function wrappedSymbol() external returns (string memory);
 
     function wrappedToken() external returns (address);

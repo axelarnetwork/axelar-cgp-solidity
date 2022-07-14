@@ -13,11 +13,6 @@ import { ReceiverImplementation } from './ReceiverImplementation.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepositService {
-    // This public storage for ERC20 token intended to be refunded.
-    // It triggers the DepositReceiver to switch into a refund mode.
-    // Address is stored and deleted withing the same refund transaction.
-    address public override(ReceiverImplementation, IReceiverImplementation) refundToken;
-
     constructor(address gateway, string memory wrappedSymbol) ReceiverImplementation(gateway, wrappedSymbol) {}
 
     // @dev This method is meant to called directly by user to send native token cross-chain
@@ -73,16 +68,13 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
     }
 
     // @dev Generates a deposit address for unwrapping WETH-like token into native currency
-    function addressForNativeWithdraw(
+    function addressForNativeUnwrap(
         bytes32 salt,
         address refundAddress,
         address recipient
     ) external view returns (address) {
         return
-            _depositAddress(
-                salt,
-                abi.encodeWithSelector(ReceiverImplementation.receiveAndWithdrawNative.selector, refundAddress, recipient)
-            );
+            _depositAddress(salt, abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient));
     }
 
     // @dev Receives ERC20 token from the deposit address and sends it cross-chain
@@ -188,20 +180,20 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
     }
 
     // @dev Receives WETH-like token, unwraps and send native currency to the recipient
-    function nativeWithdraw(
+    function nativeUnwrap(
         bytes32 salt,
         address refundAddress,
         address payable recipient
     ) external {
         // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
         new DepositReceiver{ salt: salt }(
-            abi.encodeWithSelector(ReceiverImplementation.receiveAndWithdrawNative.selector, refundAddress, recipient)
+            abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient)
         );
     }
 
     // @dev Refunds ERC20 tokens from the deposit address except WETH-like token
     // Only refundAddress can refund the WETH-like token intended to be unwrapped (if not yet)
-    function refundNativeWithdraw(
+    function refundNativeUnwrap(
         bytes32 salt,
         address refundAddress,
         address payable recipient,
@@ -216,7 +208,7 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
             refundToken = refundTokens[i];
             // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
             new DepositReceiver{ salt: salt }(
-                abi.encodeWithSelector(ReceiverImplementation.receiveAndWithdrawNative.selector, refundAddress, recipient)
+                abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient)
             );
         }
 

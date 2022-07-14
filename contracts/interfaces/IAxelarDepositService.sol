@@ -24,7 +24,7 @@ interface IAxelarDepositService is IUpgradable, IReceiverImplementation {
         string calldata destinationAddress
     ) external view returns (address);
 
-    function addressForNativeWithdraw(
+    function addressForNativeUnwrap(
         bytes32 salt,
         address refundAddress,
         address recipient
@@ -62,13 +62,13 @@ interface IAxelarDepositService is IUpgradable, IReceiverImplementation {
         address[] calldata refundTokens
     ) external;
 
-    function nativeWithdraw(
+    function nativeUnwrap(
         bytes32 salt,
         address refundAddress,
         address payable recipient
     ) external;
 
-    function refundNativeWithdraw(
+    function refundNativeUnwrap(
         bytes32 salt,
         address refundAddress,
         address payable recipient,
