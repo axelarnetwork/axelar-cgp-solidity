@@ -9,13 +9,7 @@ const {
     providers: { JsonRpcProvider },
 } = ethers;
 
-const {
-    printLog,
-    printObj,
-    confirm,
-    parseWei,
-    getTxOptions,
-} = require('./utils');
+const { printLog, printObj, confirm, parseWei, getTxOptions } = require('./utils');
 
 // these environment variables should be defined in an '.env' file
 const skipConfirm = process.env.SKIP_CONFIRM;
@@ -33,7 +27,7 @@ const gasLimit = process.env.GAS_LIMIT ? Number(process.env.GAS_LIMIT) : Number(
 confirm(
     {
         URL: url || null,
-        PRIVATE_KEY: "*****REDACTED*****" || null,
+        PRIVATE_KEY: '*****REDACTED*****' || null,
         DESTINATION_CHAIN: destinationChain || null,
         SYMBOL: symbol || null,
         AMOUNT: amount || null,
@@ -44,7 +38,7 @@ confirm(
         GAS_LIMIT: gasLimit || null,
         SKIP_CONFIRM: skipConfirm || null,
     },
-    (url && privKey && destinationChain && symbol && amount && gatewayAddress),
+    url && privKey && destinationChain && symbol && amount && gatewayAddress,
 );
 const provider = new JsonRpcProvider(url);
 const wallet = new Wallet(privKey, provider);
@@ -52,19 +46,19 @@ const payload = Buffer.from([]);
 const transactions = {};
 
 (async () => {
-    printLog("fetching fee data")
-    const feeData = (await provider.getFeeData())
-    printObj({feeData: feeData});
+    printLog('fetching fee data');
+    const feeData = await provider.getFeeData();
+    printObj({ feeData });
     const options = getTxOptions(feeData, { maxFeePerGas, maxPriorityFeePerGas, gasPrice, gasLimit });
-    printObj({tx_options: options});
+    printObj({ tx_options: options });
 
     printLog(`approving amount of ${amount}${symbol}`);
-    const gateway = await getContractAt("IAxelarGateway", gatewayAddress, wallet);
+    const gateway = await getContractAt('IAxelarGateway', gatewayAddress, wallet);
     const tokenAddress = await gateway.tokenAddresses(symbol);
     printLog(`token address for asset ${symbol} available at address ${tokenAddress}`);
 
     printLog(`approving amount of ${amount}${symbol}`);
-    const token = await getContractAt("IERC20", tokenAddress, wallet);
+    const token = await getContractAt('IERC20', tokenAddress, wallet);
     const approveTX = await token.approve(gatewayAddress, amount, options);
     await approveTX.wait();
     transactions.approve = approveTX.hash;
@@ -77,8 +71,10 @@ const transactions = {};
     printLog(
         `successfully called contract with token for chain ${destinationChain} and destination address ${wallet.address} at tx ${callContractTX.hash}`,
     );
-})().catch((err) => {
-    console.error(err);
-}).finally(() => {
-    printObj({transactions_sent: transactions});
-});
+})()
+    .catch((err) => {
+        console.error(err);
+    })
+    .finally(() => {
+        printObj({ transactions_sent: transactions });
+    });
