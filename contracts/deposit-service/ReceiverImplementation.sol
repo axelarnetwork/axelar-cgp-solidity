@@ -40,7 +40,7 @@ contract ReceiverImplementation is IReceiverImplementation {
     }
 
     // @dev This function is used for delegate by DepositReceiver deployed above
-    // Context: tx.origin == user, msg.sender == ReceiverImplementation, this == DepositReceiver
+    // Context: msg.sender == ReceiverImplementation, this == DepositReceiver
     function receiveAndSendToken(
         address payable refundAddress,
         string calldata destinationChain,
@@ -68,7 +68,7 @@ contract ReceiverImplementation is IReceiverImplementation {
     }
 
     // @dev This function is used for delegate by DepositReceiver deployed above
-    // Context: tx.origin == user, msg.sender == ReceiverImplementation, this == DepositReceiver
+    // Context: msg.sender == ReceiverImplementation, this == DepositReceiver
     function receiveAndSendNative(
         address payable refundAddress,
         string calldata destinationChain,
@@ -94,7 +94,7 @@ contract ReceiverImplementation is IReceiverImplementation {
     }
 
     // @dev This function is used for delegate by DepositReceiver deployed above
-    // Context: tx.origin == user, msg.sender == ReceiverImplementation, this == DepositReceiver
+    // Context: msg.sender == ReceiverImplementation, this == DepositReceiver
     function receiveAndWithdrawNative(address payable refundAddress, address payable recipient) external {
         if (address(this).balance > 0) refundAddress.transfer(address(this).balance);
 
