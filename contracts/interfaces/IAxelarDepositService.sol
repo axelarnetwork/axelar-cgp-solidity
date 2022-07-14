@@ -2,21 +2,14 @@
 
 pragma solidity ^0.8.9;
 
-import './IUpgradable.sol';
+import { IUpgradable } from './IUpgradable.sol';
+import { IReceiverImplementation } from './IReceiverImplementation.sol';
 
 // This should be owned by the microservice that is paying for gas.
-interface IAxelarDepositService is IUpgradable {
-    error InvalidAddress();
-    error InvalidSymbol();
-    error NothingDeposited();
-    error ApproveFailed();
-    error WrapFailed();
-    error UnwrapFailed();
-    error TokenTransferFailed();
-
+interface IAxelarDepositService is IUpgradable, IReceiverImplementation {
     function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable;
 
-    function depositAddressForTransferToken(
+    function addressForTokenDeposit(
         bytes32 salt,
         address refundAddress,
         string calldata destinationChain,
@@ -24,20 +17,20 @@ interface IAxelarDepositService is IUpgradable {
         string calldata tokenSymbol
     ) external view returns (address);
 
-    function depositAddressForTransferNative(
+    function addressForNativeDeposit(
         bytes32 salt,
         address refundAddress,
         string calldata destinationChain,
         string calldata destinationAddress
     ) external view returns (address);
 
-    function depositAddressForWithdrawNative(
+    function addressForNativeWithdraw(
         bytes32 salt,
         address refundAddress,
         address recipient
     ) external view returns (address);
 
-    function transferToken(
+    function sendTokenDeposit(
         bytes32 salt,
         address refundAddress,
         string calldata destinationChain,
@@ -45,7 +38,7 @@ interface IAxelarDepositService is IUpgradable {
         string calldata tokenSymbol
     ) external;
 
-    function refundFromTransferToken(
+    function refundTokenDeposit(
         bytes32 salt,
         address refundAddress,
         string calldata destinationChain,
@@ -54,14 +47,14 @@ interface IAxelarDepositService is IUpgradable {
         address[] calldata refundTokens
     ) external;
 
-    function transferNative(
+    function sendNativeDeposit(
         bytes32 salt,
         address refundAddress,
         string calldata destinationChain,
         string calldata destinationAddress
     ) external;
 
-    function refundFromTransferNative(
+    function refundNativeDeposit(
         bytes32 salt,
         address refundAddress,
         string calldata destinationChain,
@@ -69,22 +62,16 @@ interface IAxelarDepositService is IUpgradable {
         address[] calldata refundTokens
     ) external;
 
-    function withdrawNative(
+    function nativeWithdraw(
         bytes32 salt,
         address refundAddress,
         address payable recipient
     ) external;
 
-    function refundFromWithdrawNative(
+    function refundNativeWithdraw(
         bytes32 salt,
         address refundAddress,
         address payable recipient,
         address[] calldata refundTokens
     ) external;
-
-    function gateway() external returns (address);
-
-    function wrappedSymbol() external returns (string memory);
-
-    function wrappedToken() external returns (address);
 }

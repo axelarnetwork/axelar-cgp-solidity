@@ -3,7 +3,6 @@
 pragma solidity 0.8.9;
 
 import { IUpgradable } from '../interfaces/IUpgradable.sol';
-import './AxelarDepositService.sol';
 
 contract DepositReceiver {
     constructor(bytes memory delegateData) {
