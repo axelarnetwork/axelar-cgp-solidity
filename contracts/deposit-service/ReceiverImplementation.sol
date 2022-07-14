@@ -16,7 +16,7 @@ contract ReceiverImplementation is IReceiverImplementation {
     // This public storage for ERC20 token intended to be refunded.
     // It triggers the DepositReceiver to switch into a refund mode.
     // Address is stored and deleted withing the same refund transaction.
-    // solhint-disable-next-line no-inline-assembly
+    // solhint-disable-next-line no-empty-blocks
     function refundToken() external virtual override returns (address) {}
 
     constructor(address gateway_, string memory wrappedSymbol_) {
