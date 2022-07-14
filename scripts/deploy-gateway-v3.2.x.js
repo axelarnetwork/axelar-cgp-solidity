@@ -11,14 +11,7 @@ const {
 
 const { join, resolve } = require('node:path');
 const { existsSync } = require('node:fs');
-const {
-    printLog,
-    printObj,
-    confirm,
-    getAdminAddresses,
-    getOwners,
-    getOperators,
-} = require('./utils');
+const { printLog, printObj, confirm, getAdminAddresses, getOwners, getOperators } = require('./utils');
 
 // these environment variables should be defined in an '.env' file
 const contractsPath = resolve(process.env.CONTRACTS_PATH || './build');
@@ -39,7 +32,7 @@ confirm(
         ADMIN_THRESHOLD: adminThreshold || null,
         SKIP_CONFIRM: skipConfirm || null,
     },
-    (prefix && chain && url && privKey && adminThreshold),
+    prefix && chain && url && privKey && adminThreshold,
 );
 
 // the ABIs for the contracts below must be manually downloaded/compiled
@@ -108,6 +101,7 @@ tokenDeployerFactory
     })
     .catch((err) => {
         console.error(err);
-    }).finally(() => {
-        printObj({contract_addresses: contracts});
+    })
+    .finally(() => {
+        printObj({ contract_addresses: contracts });
     });

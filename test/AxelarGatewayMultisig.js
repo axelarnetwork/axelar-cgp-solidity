@@ -12,22 +12,25 @@ const ROLE_OPERATOR = 2;
 
 const {
     bigNumberToNumber,
-    getSignedMultisigExecuteInput,
+    getSignedWeightedExecuteInput,
     getRandomInt,
     getRandomID,
     getMultisigProxyDeployParams,
     getDeployCommand,
     getMintCommand,
     getBurnCommand,
-    getTransferMultiOperatorshipCommand,
     buildCommandBatch,
     buildCommandBatchWithRole,
     getAddresses,
     getApproveContractCall,
     getApproveContractCallWithMint,
     tickBlockTime,
-    getAuthDeployParam,
+    getWeightedAuthDeployParam,
+    getTransferWeightedOperatorshipCommand,
+    getWeightedProxyDeployParams,
 } = require('./utils');
+
+const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
 describe('AxelarGatewayMultisig', () => {
     const threshold = 3;
@@ -56,7 +59,7 @@ describe('AxelarGatewayMultisig', () => {
         operators = sortBy(wallets.slice(3, 9), (wallet) => wallet.address.toLowerCase());
 
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', owner);
-        authFactory = await ethers.getContractFactory('AxelarAuthMultisig', owner);
+        authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
         tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', owner);
         gatewayProxyFactory = await ethers.getContractFactory('AxelarGatewayProxy', owner);
         burnableMintableCappedERC20Factory = await ethers.getContractFactory('BurnableMintableCappedERC20', owner);
@@ -70,7 +73,9 @@ describe('AxelarGatewayMultisig', () => {
 
         const params = getMultisigProxyDeployParams(adminAddresses, threshold, [], threshold);
 
-        auth = await authFactory.deploy(getAuthDeployParam([operatorAddresses], [threshold])).then((d) => d.deployed());
+        auth = await authFactory
+            .deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]))
+            .then((d) => d.deployed());
         tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
         const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
         const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
@@ -97,7 +102,9 @@ describe('AxelarGatewayMultisig', () => {
                 symbols.map((symbol) => getDeployCommand(symbol, symbol, decimals, 0, ADDRESS_ZERO, 0)),
             );
 
-            return getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold)).then((input) => gateway.execute(input));
+            return getSignedWeightedExecuteInput(data, operators, getWeights(operators), threshold, operators.slice(0, threshold)).then(
+                (input) => gateway.execute(input),
+            );
         });
 
         it("should allow admins to set a token's daily limit", () => {
@@ -133,7 +140,7 @@ describe('AxelarGatewayMultisig', () => {
             const newAdminAddresses = getAddresses(admins.slice(0, 2));
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getMultisigProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, 2);
+            const params = getWeightedProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, getWeights(newOperatorAddresses), 2);
 
             await Promise.all(
                 admins
@@ -184,14 +191,21 @@ describe('AxelarGatewayMultisig', () => {
                 [getRandomID()],
                 ['transferOwnership'],
                 [
-                    getTransferMultiOperatorshipCommand(
+                    getTransferWeightedOperatorshipCommand(
                         ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'],
+                        [1, 1],
                         2,
                     ),
                 ],
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(input)).to.be.reverted;
         });
@@ -217,7 +231,13 @@ describe('AxelarGatewayMultisig', () => {
             const { data: tokenInitCode } = burnableMintableCappedERC20Factory.getDeployTransaction(name, symbol, decimals, cap);
             const expectedTokenAddress = getCreate2Address(gateway.address, id(symbol), keccak256(tokenInitCode));
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await expect(gateway.execute(input))
                 .to.emit(gateway, 'TokenDeployed')
                 .and.to.emit(gateway, 'Executed')
@@ -245,7 +265,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await expect(gateway.execute(input)).to.emit(gateway, 'TokenDeployed');
         });
 
@@ -259,7 +285,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
-            const firstInput = await getSignedMultisigExecuteInput(firstData, operators, operators.slice(0, threshold));
+            const firstInput = await getSignedWeightedExecuteInput(
+                firstData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await expect(gateway.execute(firstInput))
                 .to.emit(gateway, 'TokenDeployed')
                 .and.to.emit(gateway, 'Executed')
@@ -274,7 +306,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
-            const secondInput = await getSignedMultisigExecuteInput(secondData, operators, operators.slice(0, threshold));
+            const secondInput = await getSignedWeightedExecuteInput(
+                secondData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await expect(gateway.execute(secondInput))
                 .to.not.emit(gateway, 'TokenDeployed')
                 .and.to.emit(gateway, 'Executed')
@@ -298,7 +336,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await gateway.execute(input);
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
@@ -315,7 +359,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getMintCommand(symbol, owner.address, amount)],
             );
 
-            const firstMintInput = await getSignedMultisigExecuteInput(firstMintData, operators, operators.slice(0, threshold));
+            const firstMintInput = await getSignedWeightedExecuteInput(
+                firstMintData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await expect(gateway.execute(firstMintInput)).to.emit(gateway, 'Executed');
 
             const secondMintData = buildCommandBatchWithRole(
@@ -326,7 +376,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getMintCommand(symbol, owner.address, amount)],
             );
 
-            const secondMintInput = getSignedMultisigExecuteInput(secondMintData, operators, operators.slice(0, threshold));
+            const secondMintInput = getSignedWeightedExecuteInput(
+                secondMintData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(secondMintInput)).to.emit(gateway, 'Executed');
         });
@@ -343,7 +399,13 @@ describe('AxelarGatewayMultisig', () => {
                         [getMintCommand(symbol, owner.address, limit)],
                     );
 
-                    return getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold)).then((input) =>
+                    return getSignedWeightedExecuteInput(
+                        data,
+                        operators,
+                        getWeights(operators),
+                        threshold,
+                        operators.slice(0, threshold),
+                    ).then((input) =>
                         expect(gateway.execute(input))
                             .to.emit(token, 'Transfer')
                             .withArgs(ADDRESS_ZERO, owner.address, limit)
@@ -362,7 +424,13 @@ describe('AxelarGatewayMultisig', () => {
                         ['mintToken'],
                         [getMintCommand(symbol, owner.address, amount)],
                     );
-                    const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+                    const input = await getSignedWeightedExecuteInput(
+                        data,
+                        operators,
+                        getWeights(operators),
+                        threshold,
+                        operators.slice(0, threshold),
+                    );
 
                     await expect(gateway.execute(input)).to.not.emit(gateway, 'Executed');
                     await tickBlockTime(gateway.provider, 24 * 60 * 60);
@@ -378,7 +446,13 @@ describe('AxelarGatewayMultisig', () => {
 
             const data = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(input))
                 .to.emit(token, 'Transfer')
@@ -393,7 +467,13 @@ describe('AxelarGatewayMultisig', () => {
 
             const data = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(input))
                 .to.emit(token, 'Transfer')
@@ -431,7 +511,13 @@ describe('AxelarGatewayMultisig', () => {
                 ],
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await gateway.execute(input);
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
@@ -448,7 +534,13 @@ describe('AxelarGatewayMultisig', () => {
 
             const dataFirstBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
-            const firstInput = await getSignedMultisigExecuteInput(dataFirstBurn, operators, operators.slice(0, threshold));
+            const firstInput = await getSignedWeightedExecuteInput(
+                dataFirstBurn,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(firstInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
 
@@ -456,7 +548,13 @@ describe('AxelarGatewayMultisig', () => {
 
             const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
-            const secondInput = await getSignedMultisigExecuteInput(dataSecondBurn, operators, operators.slice(0, threshold));
+            const secondInput = await getSignedWeightedExecuteInput(
+                dataSecondBurn,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(await gateway.execute(secondInput))
                 .to.emit(token, 'Transfer')
@@ -481,7 +579,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getBurnCommand(externalSymbol, salt)],
             );
 
-            const firstInput = await getSignedMultisigExecuteInput(dataFirstBurn, operators, operators.slice(0, threshold));
+            const firstInput = await getSignedWeightedExecuteInput(
+                dataFirstBurn,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(firstInput))
                 .to.emit(externalToken, 'Transfer')
@@ -491,7 +595,13 @@ describe('AxelarGatewayMultisig', () => {
 
             const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
 
-            const secondInput = await getSignedMultisigExecuteInput(dataSecondBurn, operators, operators.slice(0, threshold));
+            const secondInput = await getSignedWeightedExecuteInput(
+                dataSecondBurn,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(await gateway.execute(secondInput))
                 .to.emit(externalToken, 'Transfer')
@@ -509,14 +619,20 @@ describe('AxelarGatewayMultisig', () => {
                 CHAIN_ID,
                 [getRandomID()],
                 ['transferOperatorship'],
-                [getTransferMultiOperatorshipCommand(newOperators, 2)],
+                [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2)],
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(input))
                 .to.emit(gateway, 'OperatorshipTransferred')
-                .withArgs(getTransferMultiOperatorshipCommand(newOperators, 2));
+                .withArgs(getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2));
         });
 
         it('should not allow transferring operatorship to address zero', async () => {
@@ -526,10 +642,16 @@ describe('AxelarGatewayMultisig', () => {
                 CHAIN_ID,
                 [getRandomID()],
                 ['transferOperatorship'],
-                [getTransferMultiOperatorshipCommand(newOperators, 2)],
+                [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2)],
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(input)).not.to.emit(gateway, 'OperatorshipTransferred');
         });
@@ -541,18 +663,20 @@ describe('AxelarGatewayMultisig', () => {
                 CHAIN_ID,
                 [getRandomID()],
                 ['transferOperatorship'],
-                [getTransferMultiOperatorshipCommand(newOperators, 2)],
+                [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2)],
             );
 
-            const transferOwnershipInput = await getSignedMultisigExecuteInput(
+            const transferOwnershipInput = await getSignedWeightedExecuteInput(
                 transferOwnershipData,
                 operators,
+                getWeights(operators),
+                threshold,
                 operators.slice(0, threshold),
             );
 
             await expect(gateway.execute(transferOwnershipInput))
                 .to.emit(gateway, 'OperatorshipTransferred')
-                .withArgs(getTransferMultiOperatorshipCommand(newOperators, 2));
+                .withArgs(getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2));
 
             const name = 'An Awesome Token';
             const symbol = 'AAT';
@@ -566,7 +690,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
             );
 
-            const deployAndMintInput = await getSignedMultisigExecuteInput(deployData, operators, operators.slice(0, threshold));
+            const deployAndMintInput = await getSignedWeightedExecuteInput(
+                deployData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await expect(gateway.execute(deployAndMintInput)).to.emit(gateway, 'TokenDeployed');
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
@@ -576,7 +706,13 @@ describe('AxelarGatewayMultisig', () => {
 
             const mintData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
 
-            const mintInput = await getSignedMultisigExecuteInput(mintData, operators, operators.slice(0, threshold));
+            const mintInput = await getSignedWeightedExecuteInput(
+                mintData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(mintInput))
                 .to.emit(token, 'Transfer')
@@ -592,7 +728,13 @@ describe('AxelarGatewayMultisig', () => {
             const burnData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             await token.transfer(depositHandlerAddress, amount);
-            const burnInput = await getSignedMultisigExecuteInput(burnData, operators, operators.slice(0, threshold));
+            const burnInput = await getSignedWeightedExecuteInput(
+                burnData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
         });
@@ -605,15 +747,27 @@ describe('AxelarGatewayMultisig', () => {
                     CHAIN_ID,
                     [getRandomID()],
                     ['transferOperatorship'],
-                    [getTransferMultiOperatorshipCommand(newOperators, newOperators.length)],
+                    [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), newOperators.length)],
                 );
 
-            let input = await getSignedMultisigExecuteInput(buildTransferData(), operators, operators.slice(0, threshold));
+            let input = await getSignedWeightedExecuteInput(
+                buildTransferData(),
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await expect(gateway.execute(input)).to.emit(gateway, 'OperatorshipTransferred');
 
             newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
 
-            input = await getSignedMultisigExecuteInput(buildTransferData(), operators, operators.slice(0, threshold));
+            input = await getSignedWeightedExecuteInput(
+                buildTransferData(),
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(input)).not.to.emit(gateway, 'OperatorshipTransferred');
         });
@@ -626,17 +780,25 @@ describe('AxelarGatewayMultisig', () => {
                     CHAIN_ID,
                     [getRandomID()],
                     ['transferOperatorship'],
-                    [getTransferMultiOperatorshipCommand(newOperators, newThreshold)],
+                    [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), newThreshold)],
                 );
 
-            let input = await getSignedMultisigExecuteInput(buildTransferData(updatedOperators), operators, operators.slice(0, threshold));
+            let input = await getSignedWeightedExecuteInput(
+                buildTransferData(updatedOperators),
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await expect(gateway.execute(input)).to.emit(gateway, 'OperatorshipTransferred');
 
             const oldOperators = getAddresses(operators);
 
-            input = await getSignedMultisigExecuteInput(
+            input = await getSignedWeightedExecuteInput(
                 buildTransferData(oldOperators, threshold),
                 operators,
+                getWeights(operators),
+                threshold,
                 operators.slice(0, threshold),
             );
 
@@ -658,7 +820,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(tokenSymbol, owner.address, 1e6)],
             );
 
-            const input = await getSignedMultisigExecuteInput(deployAndMintData, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                deployAndMintData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await gateway.execute(input);
 
             const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
@@ -690,7 +858,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
             );
 
-            const input = await getSignedMultisigExecuteInput(deployData, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                deployData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await gateway.execute(input);
 
             const issuer = owner.address;
@@ -728,7 +902,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(name, symbol, decimals, capacity, token.address, 0)],
             );
 
-            const deployInput = await getSignedMultisigExecuteInput(deployData, operators, operators.slice(0, threshold));
+            const deployInput = await getSignedWeightedExecuteInput(
+                deployData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(deployInput)).to.emit(gateway, 'TokenDeployed').withArgs(symbol, token.address);
 
@@ -738,7 +918,13 @@ describe('AxelarGatewayMultisig', () => {
 
             const burnData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
-            const burnInput = await getSignedMultisigExecuteInput(burnData, operators, operators.slice(0, threshold));
+            const burnInput = await getSignedWeightedExecuteInput(
+                burnData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, gateway.address, amount);
 
@@ -749,7 +935,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getMintCommand(symbol, wallets[1].address, amount)],
             );
 
-            const mintInput = await getSignedMultisigExecuteInput(mintData, operators, operators.slice(0, threshold));
+            const mintInput = await getSignedWeightedExecuteInput(
+                mintData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(mintInput)).to.emit(token, 'Transfer').withArgs(gateway.address, wallets[1].address, amount);
         });
@@ -773,16 +965,19 @@ describe('AxelarGatewayMultisig', () => {
                     getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0),
                     getMintCommand(symbol, owner.address, amount1),
                     getMintCommand(symbol, wallets[1].address, amount2),
-                    getTransferMultiOperatorshipCommand(newOperators, 2),
+                    getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2),
                 ],
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
-            await expect(gateway.execute(input))
-                .to.emit(gateway, 'TokenDeployed')
-                .and.to.emit(gateway, 'OperatorshipTransferred')
-                .withArgs(getTransferMultiOperatorshipCommand(newOperators, 2));
+            await expect(gateway.execute(input)).to.emit(gateway, 'TokenDeployed').and.to.emit(gateway, 'OperatorshipTransferred');
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
 
@@ -821,7 +1016,13 @@ describe('AxelarGatewayMultisig', () => {
                     [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(symbol, owner.address, amount)],
                 );
 
-                const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+                const input = await getSignedWeightedExecuteInput(
+                    data,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
                 await gateway.execute(input);
 
                 const tokenAddress = await gateway.tokenAddresses(symbol);
@@ -840,7 +1041,13 @@ describe('AxelarGatewayMultisig', () => {
                     [getDeployCommand(name, symbol, decimals, cap, token.address)],
                 );
 
-                const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+                const input = await getSignedWeightedExecuteInput(
+                    data,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
                 await gateway.execute(input);
 
                 await token.mint(owner.address, amount);
@@ -874,7 +1081,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(tokenSymbol, owner.address, 1e6)],
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
             await gateway.execute(input);
 
             const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
@@ -908,7 +1121,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
             );
 
-            const input = await getSignedMultisigExecuteInput(data, operators, operators.slice(0, threshold));
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await gateway.execute(input);
 
@@ -946,7 +1165,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex)],
             );
 
-            const approveInput = await getSignedMultisigExecuteInput(approveData, operators, operators.slice(0, threshold));
+            const approveInput = await getSignedWeightedExecuteInput(
+                approveData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(approveInput))
                 .to.emit(gateway, 'ContractCallApproved')
@@ -986,7 +1211,13 @@ describe('AxelarGatewayMultisig', () => {
                 [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address, 0)],
             );
 
-            const deployTokenInput = await getSignedMultisigExecuteInput(deployTokenData, operators, operators.slice(0, threshold));
+            const deployTokenInput = await getSignedWeightedExecuteInput(
+                deployTokenData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(deployTokenInput)).to.emit(gateway, 'TokenDeployed').withArgs(symbolA, tokenA.address);
 
@@ -1017,7 +1248,13 @@ describe('AxelarGatewayMultisig', () => {
                 ],
             );
 
-            const approveWithMintInput = await getSignedMultisigExecuteInput(approveWithMintData, operators, operators.slice(0, threshold));
+            const approveWithMintInput = await getSignedWeightedExecuteInput(
+                approveWithMintData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
             await expect(gateway.execute(approveWithMintInput))
                 .to.emit(gateway, 'ContractCallApprovedWithMint')
