@@ -19,6 +19,8 @@ interface IUpgradable {
 
     function contractId() external pure returns (bytes32);
 
+    function implementation() external view returns (address);
+
     function upgrade(
         address newImplementation,
         bytes32 newImplementationCodeHash,

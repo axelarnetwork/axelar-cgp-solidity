@@ -9,5 +9,6 @@ contract AxelarDepositServiceProxy is Proxy {
         return keccak256('axelar-deposit-service');
     }
 
+    // solhint-disable-next-line no-empty-blocks
     receive() external payable override {}
 }
