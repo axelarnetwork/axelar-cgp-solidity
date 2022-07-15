@@ -148,7 +148,7 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
         );
     }
 
-    // @dev Refunds ERC20 tokens from the deposit address
+    // @dev Refunds ERC20 tokens from the deposit address after the native deposit was sent
     // Only refundAddress can refund the native currency intended to go cross-chain (if not sent yet)
     function refundNativeDeposit(
         bytes32 salt,
@@ -157,13 +157,11 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
         string calldata destinationAddress,
         address[] calldata refundTokens
     ) external {
-        for (uint256 i; i < refundTokens.length; i++) {
-            // Allowing only the refundAddress to refund the native currency
-            if (
-                addressForNativeDeposit(salt, refundAddress, destinationChain, destinationAddress).balance > 0 &&
-                msg.sender != refundAddress
-            ) continue;
+        // Allowing only the refundAddress to refund the native currency
+        if (addressForNativeDeposit(salt, refundAddress, destinationChain, destinationAddress).balance > 0 && msg.sender != refundAddress)
+            return;
 
+        for (uint256 i; i < refundTokens.length; i++) {
             refundToken = refundTokens[i];
             // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
             new DepositReceiver{ salt: salt }(
@@ -203,7 +201,7 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
             address wrappedTokenAddress = wrappedToken();
 
             // Allowing only the refundAddress to refund the WETH-like token
-            if (refundTokens[i] == wrappedTokenAddress && msg.sender != refundAddress) return;
+            if (refundTokens[i] == wrappedTokenAddress && msg.sender != refundAddress) continue;
 
             refundToken = refundTokens[i];
             // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.

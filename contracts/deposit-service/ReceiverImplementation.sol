@@ -53,7 +53,7 @@ contract ReceiverImplementation is IReceiverImplementation {
         // Checking with ReceiverImplementation if need to refund a token
         address refund = ReceiverImplementation(msg.sender).refundToken();
         if (refund != address(0)) {
-            IERC20(refund).transfer(refundAddress, IERC20(refund).balanceOf(address(this)));
+            _safeTransfer(refund, refundAddress, IERC20(refund).balanceOf(address(this)));
             return;
         }
 
@@ -77,7 +77,7 @@ contract ReceiverImplementation is IReceiverImplementation {
         if (refund != address(0)) {
             if (address(this).balance > 0) refundAddress.transfer(address(this).balance);
 
-            IERC20(refund).transfer(refundAddress, IERC20(refund).balanceOf(address(this)));
+            _safeTransfer(refund, refundAddress, IERC20(refund).balanceOf(address(this)));
             return;
         }
 
@@ -100,7 +100,7 @@ contract ReceiverImplementation is IReceiverImplementation {
         address wrappedTokenAddress = wrappedToken();
         address refund = ReceiverImplementation(msg.sender).refundToken();
         if (refund != address(0)) {
-            IERC20(refund).transfer(refundAddress, IERC20(refund).balanceOf(address(this)));
+            _safeTransfer(refund, refundAddress, IERC20(refund).balanceOf(address(this)));
             return;
         }
 
@@ -135,5 +135,17 @@ contract ReceiverImplementation is IReceiverImplementation {
             // write actual data
             mstore(add(symbol, 0x20), symbolData)
         }
+    }
+
+    function _safeTransfer(
+        address tokenAddress,
+        address receiver,
+        uint256 amount
+    ) internal {
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory returnData) = tokenAddress.call(abi.encodeWithSelector(IERC20.transfer.selector, receiver, amount));
+        bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
+
+        if (!transferred || tokenAddress.code.length == 0) revert TokenTransferFailed();
     }
 }
