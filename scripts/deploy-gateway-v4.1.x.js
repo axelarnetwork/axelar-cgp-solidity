@@ -50,7 +50,7 @@ const wallet = new Wallet(privKey, provider);
 
 printLog('retrieving addresses');
 const { addresses, weights, threshold } = getEVMAddresses(prefix, chain);
-printObj({ evmAddress });
+printObj({ addresses, weights, threshold });
 const admins = adminAddresses ? JSON.parse(adminAddresses) : pubkeysToAddresses(JSON.parse(adminPubkeys));
 printObj({ admins });
 
