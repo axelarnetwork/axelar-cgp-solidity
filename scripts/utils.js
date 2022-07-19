@@ -77,6 +77,24 @@ module.exports = {
         });
     },
 
+    pubkeysToAddresses(pubkeys) {
+        return pubkeys.map(p => {
+            const pubkey = p.startsWith('0x') ? p : '0x' + p;
+            return computeAddress(pubkey);
+        });
+    },
+
+    getEVMAddresses(prefix, chain) {
+        const keyID = JSON.parse(execSync(`${prefix} "axelard q multisig key-id ${chain} --output json"`)).key_id;
+        const evmAddress = JSON.parse(execSync(`${prefix} "axelard q evm address ${chain} --key-id ${keyID} --output json"`));
+
+        const addresses = sortBy(Object.keys(evmAddress.address_weights), (address) => address.toLowerCase());
+        const weights = addresses.map(address => Number(evmAddress.address_weights[address]));
+        const threshold = Number(evmAddress.threshold);
+
+        return { addresses, weights, threshold };
+    },
+
     parseWei(str) {
         if (!str) {
             return;

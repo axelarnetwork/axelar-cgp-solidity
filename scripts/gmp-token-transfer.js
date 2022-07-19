@@ -52,7 +52,6 @@ const transactions = {};
     const options = getTxOptions(feeData, { maxFeePerGas, maxPriorityFeePerGas, gasPrice, gasLimit });
     printObj({ tx_options: options });
 
-    printLog(`approving amount of ${amount}${symbol}`);
     const gateway = await getContractAt('IAxelarGateway', gatewayAddress, wallet);
     const tokenAddress = await gateway.tokenAddresses(symbol);
     printLog(`token address for asset ${symbol} available at address ${tokenAddress}`);
