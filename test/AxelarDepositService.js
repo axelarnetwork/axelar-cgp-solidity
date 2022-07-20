@@ -101,9 +101,12 @@ describe('AxelarDepositService', () => {
             const destinationAddress = userWallet.address.toString();
             const amount = 1e6;
 
-            await expect(depositService.sendNative(destinationChain, destinationAddress, { value: amount }))
+            const tx = await depositService.sendNative(destinationChain, destinationAddress, { value: amount });
+            await expect(tx)
                 .to.emit(gateway, 'TokenSent')
                 .withArgs(depositService.address, destinationChain, destinationAddress, tokenSymbol, amount);
+
+            console.log('sendNative gas:', (await tx.wait()).gasUsed.toNumber());
         });
 
         it('should handle and transfer ERC20 token', async () => {
@@ -147,9 +150,13 @@ describe('AxelarDepositService', () => {
             expect(depositAddress).to.be.equal(expectedDepositAddress);
 
             await token.transfer(depositAddress, amount);
-            await expect(depositService.sendTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol))
+
+            const tx = await depositService.sendTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol);
+            await expect(tx)
                 .to.emit(gateway, 'TokenSent')
                 .withArgs(depositAddress, destinationChain, destinationAddress, tokenSymbol, amount);
+
+            console.log('sendTokenDeposit gas:', (await tx.wait()).gasUsed.toNumber());
         });
 
         it('should refund from transfer token address', async () => {
@@ -234,9 +241,13 @@ describe('AxelarDepositService', () => {
                 value: amount,
             });
 
-            await expect(await depositService.sendNativeDeposit(salt, refundAddress, destinationChain, destinationAddress))
+            const tx = await depositService.sendNativeDeposit(salt, refundAddress, destinationChain, destinationAddress);
+
+            await expect(tx)
                 .to.emit(gateway, 'TokenSent')
                 .withArgs(depositAddress, destinationChain, destinationAddress, tokenSymbol, amount);
+
+            console.log('sendNativeDeposit gas:', (await tx.wait()).gasUsed.toNumber());
         });
 
         it('should refund from transfer native address', async () => {
@@ -289,7 +300,11 @@ describe('AxelarDepositService', () => {
 
             await token.transfer(depositAddress, amount);
 
-            await expect(await depositService.nativeUnwrap(salt, refundAddress, recipient)).to.changeEtherBalance(userWallet, amount);
+            const tx = await depositService.nativeUnwrap(salt, refundAddress, recipient);
+
+            await expect(tx).to.changeEtherBalance(userWallet, amount);
+
+            console.log('sendNative gas:', (await tx.wait()).gasUsed.toNumber());
         });
 
         it('should refund from unwrap native address', async () => {
