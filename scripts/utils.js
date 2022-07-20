@@ -2,11 +2,10 @@
 
 const reader = require('readline-sync');
 const { execSync } = require('child_process');
-const { ethers } = require('hardhat');
 const { sortBy } = require('lodash');
 const {
     utils: { computeAddress, parseUnits },
-} = ethers;
+} = require('ethers');
 
 const getAddresses = (prefix, chain, role) => {
     const keyID = execSync(`${prefix} "axelard q tss key-id ${chain} ${role}"`, {
@@ -75,6 +74,25 @@ module.exports = {
 
             return computeAddress(`0x04${key.x}${key.y}`);
         });
+    },
+
+    pubkeysToAddresses(pubkeys) {
+        return pubkeys.map(p => {
+            const pubkey = p.startsWith('0x') ? p : '0x' + p;
+            return computeAddress(pubkey);
+        });
+    },
+
+    getEVMAddresses(prefix, chain) {
+        const keyID = JSON.parse(execSync(`${prefix} "axelard q multisig key-id ${chain} --output json"`)).key_id;
+        const evmAddresses = JSON.parse(execSync(`${prefix} "axelard q evm address ${chain} --key-id ${keyID} --output json"`));
+        const sortedAddresses = sortBy(evmAddresses.addresses, (weightedAddress) => weightedAddress.address.toLowerCase());
+
+        const addresses = sortedAddresses.map(weightedAddress => weightedAddress.address);
+        const weights = sortedAddresses.map(weightedAddress => Number(weightedAddress.weight));
+        const threshold = Number(evmAddresses.threshold);
+
+        return { addresses, weights, threshold };
     },
 
     parseWei(str) {
