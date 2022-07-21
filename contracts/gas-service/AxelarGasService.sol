@@ -126,10 +126,11 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
             address token = tokens[i];
 
             if (token == address(0)) {
-                receiver.transfer(address(this).balance);
+                uint256 amount = address(this).balance;
+                if (amount > 0) receiver.transfer(amount);
             } else {
                 uint256 amount = IERC20(token).balanceOf(address(this));
-                _safeTransfer(token, receiver, amount);
+                if (amount > 0) _safeTransfer(token, receiver, amount);
             }
         }
     }
