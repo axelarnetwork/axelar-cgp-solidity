@@ -43,9 +43,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        {
-            _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
-        }
+        _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
 
         emit GasPaidForContractCallWithToken(
             sender,
