@@ -120,6 +120,8 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     }
 
     function collectFees(address payable receiver, address[] calldata tokens) external onlyOwner {
+        if (receiver == address(0)) revert InvalidAddress();
+
         for (uint256 i; i < tokens.length; i++) {
             address token = tokens[i];
 
@@ -137,6 +139,8 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         address token,
         uint256 amount
     ) external onlyOwner {
+        if (receiver == address(0)) revert InvalidAddress();
+
         if (token == address(0)) {
             receiver.transfer(amount);
         } else {
