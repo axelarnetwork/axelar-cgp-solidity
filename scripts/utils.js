@@ -77,7 +77,7 @@ module.exports = {
     },
 
     pubkeysToAddresses(pubkeys) {
-        return pubkeys.map(p => {
+        return pubkeys.map((p) => {
             const pubkey = p.startsWith('0x') ? p : '0x' + p;
             return computeAddress(pubkey);
         });
@@ -88,8 +88,8 @@ module.exports = {
         const evmAddresses = JSON.parse(execSync(`${prefix} "axelard q evm address ${chain} --key-id ${keyID} --output json"`));
         const sortedAddresses = sortBy(evmAddresses.addresses, (weightedAddress) => weightedAddress.address.toLowerCase());
 
-        const addresses = sortedAddresses.map(weightedAddress => weightedAddress.address);
-        const weights = sortedAddresses.map(weightedAddress => Number(weightedAddress.weight));
+        const addresses = sortedAddresses.map((weightedAddress) => weightedAddress.address);
+        const weights = sortedAddresses.map((weightedAddress) => Number(weightedAddress.weight));
         const threshold = Number(evmAddresses.threshold);
 
         return { addresses, weights, threshold };
