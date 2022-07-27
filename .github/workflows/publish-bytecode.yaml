@@ -27,6 +27,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Flatten contracts
+        run: npm run flatten
+
       - name: Get the tag
         id: release_tag
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
@@ -34,4 +37,4 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: Bytecode-${{ steps.release_tag.outputs.VERSION }}
-          path: build/
+          path: artifacts/

@@ -1,88 +1,64 @@
 'use strict';
 
 const chai = require('chai');
+const { ethers } = require('hardhat');
 const {
-  utils: { splitSignature },
+    utils: { splitSignature },
 } = require('ethers');
-const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
-chai.use(solidity);
 const { expect } = chai;
 
 const CHAIN_ID = 1;
 
-const MintableCappedERC20 = require('../build/MintableCappedERC20.json');
-
-const { it } = require('mocha');
-
 describe('MintableCappedERC20', () => {
-  const [ownerWallet, userWallet] = new MockProvider().getWallets();
-  let token;
+    let owner;
+    let user;
+    let token;
 
-  beforeEach(async () => {
-    const name = 'test';
-    const symbol = 'test';
-    const decimals = 16;
-    const capacity = 0;
+    beforeEach(async () => {
+        await ethers.provider.send('hardhat_reset');
+        [owner, user] = await ethers.getSigners();
 
-    token = await deployContract(ownerWallet, MintableCappedERC20, [
-      name,
-      symbol,
-      decimals,
-      capacity,
-    ]);
+        const mintableCappedERC20Factory = await ethers.getContractFactory('MintableCappedERC20', owner);
 
-    const amount = 1000000;
-    await token.mint(userWallet.address, amount, { gasLimit: 3000000 });
-  });
+        token = await mintableCappedERC20Factory.deploy('test', 'test', 16, 0).then((d) => d.deployed());
 
-  describe('ERC20 Permit', () => {
-    it('should should set allowance by verifying permit', async () => {
-      const issuer = userWallet.address;
-      const spender = ownerWallet.address;
-      const amount = 10000;
-      const nonce = 0;
-      const deadline = (1000 + Date.now() / 1000) | 0;
-
-      const signature = splitSignature(
-        await userWallet._signTypedData(
-          {
-            name: 'test',
-            version: '1',
-            chainId: CHAIN_ID,
-            verifyingContract: token.address,
-          },
-          {
-            Permit: [
-              { name: 'owner', type: 'address' },
-              { name: 'spender', type: 'address' },
-              { name: 'value', type: 'uint256' },
-              { name: 'nonce', type: 'uint256' },
-              { name: 'deadline', type: 'uint256' },
-            ],
-          },
-          {
-            owner: issuer,
-            spender,
-            value: amount,
-            nonce,
-            deadline,
-          },
-        ),
-      );
-
-      await expect(
-        await token.permit(
-          issuer,
-          spender,
-          amount,
-          deadline,
-          signature.v,
-          signature.r,
-          signature.s,
-        ),
-      )
-        .to.emit(token, 'Approval')
-        .withArgs(issuer, spender, amount);
+        await token.mint(user.address, 1000000);
     });
-  });
+
+    describe('ERC20 Permit', () => {
+        it('should should set allowance by verifying permit', async () => {
+            const deadline = (1000 + Date.now() / 1000) | 0;
+
+            const signature = splitSignature(
+                await user._signTypedData(
+                    {
+                        name: 'test',
+                        version: '1',
+                        chainId: CHAIN_ID,
+                        verifyingContract: token.address,
+                    },
+                    {
+                        Permit: [
+                            { name: 'owner', type: 'address' },
+                            { name: 'spender', type: 'address' },
+                            { name: 'value', type: 'uint256' },
+                            { name: 'nonce', type: 'uint256' },
+                            { name: 'deadline', type: 'uint256' },
+                        ],
+                    },
+                    {
+                        owner: user.address,
+                        spender: owner.address,
+                        value: 10000,
+                        nonce: 0,
+                        deadline,
+                    },
+                ),
+            );
+
+            await expect(token.permit(user.address, owner.address, 10000, deadline, signature.v, signature.r, signature.s))
+                .to.emit(token, 'Approval')
+                .withArgs(user.address, owner.address, 10000);
+        });
+    });
 });
