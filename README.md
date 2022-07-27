@@ -26,14 +26,14 @@ npm run test  # Test with hardhat
 
 ### Token transfer
 
-1. Setup: A wrapped version of Token `A` is deployed (`AxelarGatewayMultisig.deployToken()`)
+1. Setup: A wrapped version of Token `A` is deployed (`AxelarGateway.deployToken()`)
    on each non-native EVM chain as an ERC-20 token (`BurnableMintableCappedERC20.sol`).
 2. Given the destination chain and address, Axelar network generates a deposit address (the address where `DepositHandler.sol` is deployed,
-   `BurnableMintableCappedERC20.depositAddress()`) on source EVM chain.
+   `BurnableMintableCappedERC20.depositAddress()`) on source EVM chain. Alternatively the deposit address can be generated using the `AxelarDepositService`.
 3. User sends their token `A` at that address, and the deposit contract locks the token at the gateway (or burns them for wrapped tokens).
 4. Axelar network validators confirm the deposit `Transfer` event using their RPC nodes for the source chain (using majority voting).
 5. Axelar network prepares a mint command, and validators sign off on it.
-6. Signed command is now submitted (via any external relayer) to the gateway contract on destination chain `AxelarGatewayMultisig.execute()`.
+6. Signed command is now submitted (via any external relayer) to the gateway contract on destination chain `AxelarGateway.execute()`.
 7. Gateway contract authenticates the command, and `mint`'s the specified amount of the wrapped Token `A` to the destination address.
 
 ### Cross-chain smart contract call
@@ -45,7 +45,7 @@ npm run test  # Test with hardhat
 2. Smart contract on source chain calls `AxelarGateway.callContractWithToken()` with the destination chain/address, `payload` and token.
 3. An external service stores `payload` in a regular database, keyed by the `hash(payload)`, that anyone can query by.
 4. Similar to above, Axelar validators confirm the `ContractCallWithToken` event.
-5. Axelar network prepares an `AxelarGatewayMultisig.approveContractCallWithMint()` command, signed by the validators.
+5. Axelar network prepares an `AxelarGateway.approveContractCallWithMint()` command, signed by the validators.
 6. This is submitted to the gateway contract on the destination chain,
    which records the approval of the `payload hash` and emits the event `ContractCallApprovedWithMint`.
 7. Any external relayer service listens to this event on the gateway contract, and calls the `IAxelarExecutable.executeWithToken()`
@@ -61,7 +61,7 @@ See this [example](https://github.com/axelarnetwork/axelar-local-dev-sample/tree
 
 ## Design Notes
 
-- `AxelarGatewayMultisig.execute()` takes a signed batched of commands.
+- `AxelarGateway.execute()` takes a signed batched of commands.
   Each command has a corresponding `commandID`. This is guaranteed to be unique from the Axelar network. `execute` intentionally allows retrying
   a `commandID` if the `command` failed to be processed; this is because commands are state dependent, and someone might submit command 2 before command 1 causing it to fail.
 - Axelar network supports sending any Cosmos/ERC-20 token to any other Cosmos/EVM chain.
@@ -71,17 +71,16 @@ See this [example](https://github.com/axelarnetwork/axelar-local-dev-sample/tree
     - `InternalBurnable`: `v1.0.0` version of Axelar wrapped tokens that used a different deposit address contract, e.g. `UST` (native to Terra) on Avalanche.
       New tokens cannot be of this type, and this is only present for legacy support.
 - Deploying gateway contract:
+    - Deploy the `AxelarAuthWeighted` contract.
     - Deploy the `TokenDeployer` contract.
-    - Deploy the `AxelarGatewayMultisig` contract with the token deployer address.
+    - Deploy the `AxelarGateway` contract with the token deployer address.
     - Deploy the `AxelarGatewayProxy` contract with the implementation contract address (from above) and `setup` params obtained from the current network state.
 
 ## Smart Contracts
 
 ### Interfaces
 
-#### IAxelarGateway.sol 
-
-#### IAxelarGatewayMultisig.sol
+#### IAxelarGateway.sol
 
 #### IERC20.sol
 
@@ -102,14 +101,14 @@ Calls are delegated to the implementation contract while using the proxy's stora
 
 #### AxelarGateway.sol
 
-Implementation contract with shared functionality between the multisig
-and singlesig contract versions.
-
-#### AxelarGatewayMultisig.sol
-
 The implementation contract that accepts commands signed by Axelar network's validators (see `execute`).
-Different commands require different sets of validators to sign (operators vs owners).
-Operators correspond to a smaller subset of Axelar validators, whereas owners are chosen by stake and represent a larger subset.
+The signature proof verification is performed by `AxelarAuthWeighted` contract.
+
+#### AxelarAuthWeighted.sol
+
+Weighted multisig authentication contract that is used by the gateway.
+It accepts a set of operators with corresponding weights. 
+To verify the message weights of provided signatures are summed and need to meet the specified threshold
 
 #### AdminMultisigBase.sol
 
@@ -148,10 +147,6 @@ The contract deployed at the deposit addresses that allows burning/locking of th
 sent by the user. It prevents re-entrancy, and while it's methods are permisionless,
 the gateway deploys the deposit handler and burns/locks in the same call (see `_burnToken`).
 
-#### Context.sol
-
-Safe interface contract.
-
 #### Ownable.sol
 
 Define ownership of a contract and modifiers for permissioned methods.
@@ -163,6 +158,17 @@ Storage contract for the proxy.
 #### ECDSA.sol
 
 Modified version of OpenZeppelin ECDSA signature authentication check.
+
+#### AxelarDepositService.sol
+
+This service is used to generate deposit addresses for an ERC20 token or native currency transfer.
+The third type of deposit address is for unwrapping native currency from a wrapped ECR20 token.
+
+#### AxelarGasService.sol
+
+This contract is used for cross-chain gas payment. 
+It accepts payments for covering gas cost on the destination chain.
+Gas payment should happen with the same params right before calling `callContract` or `callContractWithToken` on the gateway.
 
 ## References
 
