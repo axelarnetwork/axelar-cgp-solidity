@@ -8,6 +8,7 @@ import './IUpgradable.sol';
 interface IAxelarGasService is IUpgradable {
     error NothingReceived();
     error TransferFailed();
+    error InvalidAddress();
 
     event GasPaidForContractCall(
         address indexed sourceAddress,
