@@ -118,10 +118,10 @@ module.exports = {
             };
         }
 
-        if (feeData.gasPrice && feeData.gasLimit) {
+        if (feeData.gasPrice) {
             return {
                 gasPrice: envOptions?.gasPrice || feeData.gasPrice,
-                gasLimit: envOptions?.gasLimit || feeData.gasLimit,
+                gasLimit: envOptions?.gasLimit,
             };
         }
     },
