@@ -2,14 +2,14 @@
 
 pragma solidity 0.8.9;
 
-import { IUpgradable } from '../interfaces/IUpgradable.sol';
+import { IAxelarDepositService } from '../interfaces/IAxelarDepositService.sol';
 
 contract DepositReceiver {
     constructor(bytes memory delegateData) {
         // Reading the implementation of the AxelarDepositService
         // and delegating the call back to it
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = IUpgradable(msg.sender).implementation().delegatecall(delegateData);
+        (bool success, ) = IAxelarDepositService(msg.sender).receiverImplementation().delegatecall(delegateData);
 
         // if not success revert with the original revert data
         if (!success) {

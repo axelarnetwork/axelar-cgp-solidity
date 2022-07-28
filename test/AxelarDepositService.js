@@ -21,6 +21,7 @@ const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json
 const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
 
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
+const ReceiverImplementation = require('../artifacts/contracts/deposit-service/ReceiverImplementation.sol/ReceiverImplementation.json');
 const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 
@@ -37,6 +38,7 @@ describe('AxelarDepositService', () => {
     let token;
     let wrongToken;
     let depositService;
+    let receiverImplementation;
 
     const destinationChain = 'chain A';
     const tokenName = 'Wrapped Eth';
@@ -94,6 +96,8 @@ describe('AxelarDepositService', () => {
             gateway.address,
             tokenSymbol,
         ]);
+
+        receiverImplementation = new Contract(await depositService.receiverImplementation(), ReceiverImplementation.abi, ownerWallet);
     });
 
     describe('deposit service', () => {
@@ -126,7 +130,7 @@ describe('AxelarDepositService', () => {
                             defaultAbiCoder.encode(
                                 ['bytes'],
                                 [
-                                    depositService.interface.encodeFunctionData('receiveAndSendToken', [
+                                    receiverImplementation.interface.encodeFunctionData('receiveAndSendToken', [
                                         refundAddress,
                                         destinationChain,
                                         destinationAddress,
@@ -220,7 +224,7 @@ describe('AxelarDepositService', () => {
                             defaultAbiCoder.encode(
                                 ['bytes'],
                                 [
-                                    depositService.interface.encodeFunctionData('receiveAndSendNative', [
+                                    receiverImplementation.interface.encodeFunctionData('receiveAndSendNative', [
                                         refundAddress,
                                         destinationChain,
                                         destinationAddress,
@@ -287,7 +291,7 @@ describe('AxelarDepositService', () => {
                             DepositReceiver.bytecode,
                             defaultAbiCoder.encode(
                                 ['bytes'],
-                                [depositService.interface.encodeFunctionData('receiveAndUnwrapNative', [refundAddress, recipient])],
+                                [receiverImplementation.interface.encodeFunctionData('receiveAndUnwrapNative', [refundAddress, recipient])],
                             ),
                         ],
                     ),
@@ -304,7 +308,7 @@ describe('AxelarDepositService', () => {
 
             await expect(tx).to.changeEtherBalance(userWallet, amount);
 
-            console.log('sendNative gas:', (await tx.wait()).gasUsed.toNumber());
+            console.log('nativeUnwrap gas:', (await tx.wait()).gasUsed.toNumber());
         });
 
         it('should refund from unwrap native address', async () => {

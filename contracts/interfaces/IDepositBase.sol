@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.9;
 
-interface IReceiverImplementation {
+interface IDepositBase {
     error InvalidAddress();
     error InvalidSymbol();
     error NothingDeposited();
@@ -16,4 +16,6 @@ interface IReceiverImplementation {
     function wrappedSymbol() external returns (string memory);
 
     function wrappedToken() external returns (address);
+
+    function refundToken() external returns (address);
 }

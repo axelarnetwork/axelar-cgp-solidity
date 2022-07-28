@@ -6,14 +6,18 @@ import { IAxelarDepositService } from '../interfaces/IAxelarDepositService.sol';
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IERC20 } from '../interfaces/IERC20.sol';
 import { IWETH9 } from '../interfaces/IWETH9.sol';
-import { IReceiverImplementation } from '../interfaces/IReceiverImplementation.sol';
 import { Upgradable } from '../util/Upgradable.sol';
+import { DepositBase } from './DepositBase.sol';
 import { DepositReceiver } from './DepositReceiver.sol';
 import { ReceiverImplementation } from './ReceiverImplementation.sol';
 
 // This should be owned by the microservice that is paying for gas.
-contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepositService {
-    constructor(address gateway, string memory wrappedSymbol) ReceiverImplementation(gateway, wrappedSymbol) {}
+contract AxelarDepositService is Upgradable, DepositBase, IAxelarDepositService {
+    address public immutable receiverImplementation;
+
+    constructor(address gateway, string memory wrappedSymbol) DepositBase(gateway, wrappedSymbol) {
+        receiverImplementation = address(new ReceiverImplementation(gateway, wrappedSymbol));
+    }
 
     // @dev This method is meant to called directly by user to send native token cross-chain
     function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable {

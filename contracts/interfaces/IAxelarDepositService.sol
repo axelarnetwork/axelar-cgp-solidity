@@ -3,10 +3,10 @@
 pragma solidity ^0.8.9;
 
 import { IUpgradable } from './IUpgradable.sol';
-import { IReceiverImplementation } from './IReceiverImplementation.sol';
+import { IDepositBase } from './IDepositBase.sol';
 
 // This should be owned by the microservice that is paying for gas.
-interface IAxelarDepositService is IUpgradable, IReceiverImplementation {
+interface IAxelarDepositService is IUpgradable, IDepositBase {
     function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable;
 
     function addressForTokenDeposit(
@@ -74,4 +74,6 @@ interface IAxelarDepositService is IUpgradable, IReceiverImplementation {
         address payable recipient,
         address[] calldata refundTokens
     ) external;
+
+    function receiverImplementation() external returns (address receiver);
 }
