@@ -157,6 +157,10 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getUint(_getTokenDailyMintAmountKey(symbol, block.timestamp / 1 days));
     }
 
+    /*
+     * @dev the function is kept around to keep things work for tokens that were
+     * deployed before the token freeze functionality was removed
+     */
     function allTokensFrozen() external pure override returns (bool) {
         return false;
     }
