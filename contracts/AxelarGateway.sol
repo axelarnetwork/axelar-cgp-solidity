@@ -158,8 +158,9 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     /*
-     * @dev the function is kept around to keep things work for tokens that were
-     * deployed before the token freeze functionality was removed
+     * @dev This function is kept around to keep things working for internal
+     * tokens that were deployed before the token freeze functionality was
+     * removed
      */
     function allTokensFrozen() external pure override returns (bool) {
         return false;
@@ -173,6 +174,11 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getAddress(_getTokenAddressKey(symbol));
     }
 
+    /*
+     * @dev This function is kept around to keep things working for internal
+     * tokens that were deployed before the token freeze functionality was
+     * removed
+     */
     function tokenFrozen(string memory) external pure override returns (bool) {
         return false;
     }
