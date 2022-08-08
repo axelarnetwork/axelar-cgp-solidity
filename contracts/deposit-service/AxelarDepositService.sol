@@ -129,7 +129,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         address intendedToken = IAxelarGateway(gateway).tokenAddresses(tokenSymbol);
 
         uint256 tokensLength = refundTokens.length;
-        for (uint256 i; i != tokensLength; ++i) {
+        for (uint256 i; i < tokensLength; ++i) {
             // Allowing only the refundAddress to refund the intended token
             if (refundTokens[i] == intendedToken && msg.sender != refundAddress) continue;
 
@@ -184,7 +184,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
             return;
 
         uint256 tokensLength = refundTokens.length;
-        for (uint256 i; i != tokensLength; ++i) {
+        for (uint256 i; i < tokensLength; ++i) {
             refundToken = refundTokens[i];
             // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
             new DepositReceiver{ salt: salt }(
@@ -225,7 +225,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         address wrappedTokenAddress = wrappedToken();
 
         uint256 tokensLength = refundTokens.length;
-        for (uint256 i; i != tokensLength; ++i) {
+        for (uint256 i; i < tokensLength; ++i) {
             // Allowing only the refundAddress to refund the intended WETH-like token
             if (refundTokens[i] == wrappedTokenAddress && msg.sender != refundAddress) continue;
 
