@@ -32,7 +32,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED = keccak256('contract-call-approved');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT = keccak256('contract-call-approved-with-mint');
-    bytes32 internal constant PREFIX_TOKEN_MINT_LIMIT = keccak256('token-daily-mint-limit');
+    bytes32 internal constant PREFIX_TOKEN_MINT_LIMIT = keccak256('token-mint-limit');
     bytes32 internal constant PREFIX_TOKEN_MINT_AMOUNT = keccak256('token-daily-mint-amount');
 
     bytes32 internal constant SELECTOR_BURN_TOKEN = keccak256('burnToken');
