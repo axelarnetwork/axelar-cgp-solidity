@@ -11,6 +11,7 @@ const { expect } = chai;
 const { get } = require('lodash/fp');
 
 const CHAIN_ID = 1;
+const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 const Auth = require('../artifacts/contracts/auth/AxelarAuthWeighted.sol/AxelarAuthWeighted.json');
 const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
@@ -20,6 +21,7 @@ const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json
 const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
 
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
+const ReceiverImplementation = require('../artifacts/contracts/deposit-service/ReceiverImplementation.sol/ReceiverImplementation.json');
 const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 
@@ -36,6 +38,7 @@ describe('AxelarDepositService', () => {
     let token;
     let wrongToken;
     let depositService;
+    let receiverImplementation;
 
     const destinationChain = 'chain A';
     const tokenName = 'Wrapped Eth';
@@ -44,6 +47,18 @@ describe('AxelarDepositService', () => {
     const wrongTokenSymbol = 'WETH';
     const decimals = 16;
     const capacity = 0;
+
+    const getDepositAddress = (salt, functionData, refundAddress) =>
+        getCreate2Address(
+            depositService.address,
+            salt,
+            keccak256(
+                solidityPack(
+                    ['bytes', 'bytes'],
+                    [DepositReceiver.bytecode, defaultAbiCoder.encode(['bytes', 'address'], [functionData, refundAddress])],
+                ),
+            ),
+        );
 
     beforeEach(async () => {
         const params = arrayify(
@@ -92,6 +107,8 @@ describe('AxelarDepositService', () => {
             gateway.address,
             tokenSymbol,
         ]);
+
+        receiverImplementation = new Contract(await depositService.receiverImplementation(), ReceiverImplementation.abi, ownerWallet);
     });
 
     describe('deposit service', () => {
@@ -113,28 +130,15 @@ describe('AxelarDepositService', () => {
             const salt = formatBytes32String(1);
             const amount = 1e6;
 
-            const expectedDepositAddress = getCreate2Address(
-                depositService.address,
+            const expectedDepositAddress = getDepositAddress(
                 salt,
-                keccak256(
-                    solidityPack(
-                        ['bytes', 'bytes'],
-                        [
-                            DepositReceiver.bytecode,
-                            defaultAbiCoder.encode(
-                                ['bytes'],
-                                [
-                                    depositService.interface.encodeFunctionData('receiveAndSendToken', [
-                                        refundAddress,
-                                        destinationChain,
-                                        destinationAddress,
-                                        tokenSymbol,
-                                    ]),
-                                ],
-                            ),
-                        ],
-                    ),
-                ),
+                receiverImplementation.interface.encodeFunctionData('receiveAndSendToken', [
+                    refundAddress,
+                    destinationChain,
+                    destinationAddress,
+                    tokenSymbol,
+                ]),
+                refundAddress,
             );
 
             const depositAddress = await depositService.addressForTokenDeposit(
@@ -207,27 +211,14 @@ describe('AxelarDepositService', () => {
             const salt = formatBytes32String(1);
             const amount = 1e6;
 
-            const expectedDepositAddress = getCreate2Address(
-                depositService.address,
+            const expectedDepositAddress = getDepositAddress(
                 salt,
-                keccak256(
-                    solidityPack(
-                        ['bytes', 'bytes'],
-                        [
-                            DepositReceiver.bytecode,
-                            defaultAbiCoder.encode(
-                                ['bytes'],
-                                [
-                                    depositService.interface.encodeFunctionData('receiveAndSendNative', [
-                                        refundAddress,
-                                        destinationChain,
-                                        destinationAddress,
-                                    ]),
-                                ],
-                            ),
-                        ],
-                    ),
-                ),
+                receiverImplementation.interface.encodeFunctionData('receiveAndSendNative', [
+                    refundAddress,
+                    destinationChain,
+                    destinationAddress,
+                ]),
+                refundAddress,
             );
 
             const depositAddress = await depositService.addressForNativeDeposit(salt, refundAddress, destinationChain, destinationAddress);
@@ -275,21 +266,10 @@ describe('AxelarDepositService', () => {
             const salt = formatBytes32String(1);
             const amount = 1e6;
 
-            const expectedDepositAddress = getCreate2Address(
-                depositService.address,
+            const expectedDepositAddress = getDepositAddress(
                 salt,
-                keccak256(
-                    solidityPack(
-                        ['bytes', 'bytes'],
-                        [
-                            DepositReceiver.bytecode,
-                            defaultAbiCoder.encode(
-                                ['bytes'],
-                                [depositService.interface.encodeFunctionData('receiveAndUnwrapNative', [refundAddress, recipient])],
-                            ),
-                        ],
-                    ),
-                ),
+                receiverImplementation.interface.encodeFunctionData('receiveAndUnwrapNative', [refundAddress, recipient]),
+                refundAddress,
             );
 
             const depositAddress = await depositService.addressForNativeUnwrap(salt, refundAddress, recipient);
@@ -302,7 +282,7 @@ describe('AxelarDepositService', () => {
 
             await expect(tx).to.changeEtherBalance(userWallet, amount);
 
-            console.log('sendNative gas:', (await tx.wait()).gasUsed.toNumber());
+            console.log('nativeUnwrap gas:', (await tx.wait()).gasUsed.toNumber());
         });
 
         it('should refund from unwrap native address', async () => {
@@ -334,6 +314,32 @@ describe('AxelarDepositService', () => {
                 .to.emit(wrongToken, 'Transfer')
                 .withArgs(depositAddress, refundAddress, amount * 2)
                 .to.changeEtherBalance(ownerWallet, amount);
+        });
+
+        it('should refund to the service when refundAddress is 0x0', async () => {
+            const refundAddress = ADDRESS_ZERO;
+            const recipient = userWallet.address;
+            const salt = formatBytes32String(1);
+            const amount = 1e6;
+
+            const depositAddress = await depositService.addressForNativeUnwrap(salt, refundAddress, recipient);
+
+            await token.transfer(depositAddress, amount);
+            await wrongToken.transfer(depositAddress, amount * 2);
+
+            await expect(
+                depositService.connect(ownerWallet).refundNativeUnwrap(salt, refundAddress, recipient, [token.address]),
+            ).not.to.emit(token, 'Transfer');
+
+            await ownerWallet.sendTransaction({
+                to: depositAddress,
+                value: amount,
+            });
+
+            await expect(await depositService.refundNativeUnwrap(salt, refundAddress, recipient, [wrongToken.address]))
+                .to.emit(wrongToken, 'Transfer')
+                .withArgs(depositAddress, depositService.address, amount * 2)
+                .to.changeEtherBalance(depositService, amount);
         });
     });
 });

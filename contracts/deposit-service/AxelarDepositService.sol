@@ -4,26 +4,38 @@ pragma solidity 0.8.9;
 
 import { IAxelarDepositService } from '../interfaces/IAxelarDepositService.sol';
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
-import { IERC20 } from '../interfaces/IERC20.sol';
 import { IWETH9 } from '../interfaces/IWETH9.sol';
-import { IReceiverImplementation } from '../interfaces/IReceiverImplementation.sol';
 import { Upgradable } from '../util/Upgradable.sol';
+import { DepositServiceBase } from './DepositServiceBase.sol';
 import { DepositReceiver } from './DepositReceiver.sol';
 import { ReceiverImplementation } from './ReceiverImplementation.sol';
 
 // This should be owned by the microservice that is paying for gas.
-contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepositService {
-    constructor(address gateway, string memory wrappedSymbol) ReceiverImplementation(gateway, wrappedSymbol) {}
+contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositService {
+    // This public storage for ERC20 token intended to be refunded.
+    // It triggers the DepositReceiver/ReceiverImplementation to switch into a refund mode.
+    // Address is stored and deleted withing the same refund transaction.
+    address public refundToken;
 
-    // @dev This method is meant to called directly by user to send native token cross-chain
+    address public immutable receiverImplementation;
+
+    constructor(address gateway_, string memory wrappedSymbol_) DepositServiceBase(gateway_, wrappedSymbol_) {
+        receiverImplementation = address(new ReceiverImplementation(gateway_, wrappedSymbol_));
+    }
+
+    // @dev This method is meant to be called directly by user to send native token cross-chain
     function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable {
         address wrappedTokenAddress = wrappedToken();
         uint256 amount = msg.value;
 
         if (amount == 0) revert NothingDeposited();
 
+        // Wrapping the native currency and into WETH-like token
         IWETH9(wrappedTokenAddress).deposit{ value: amount }();
-        IERC20(wrappedTokenAddress).approve(gateway, amount);
+        // Not doing safe approval as gateway will revert anyway if approval fails
+        // We expect allowance to always be 0 at this point
+        IWETH9(wrappedTokenAddress).approve(gateway, amount);
+        // Sending the token trough the gateway
         IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
     }
 
@@ -44,7 +56,8 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
                     destinationChain,
                     destinationAddress,
                     tokenSymbol
-                )
+                ),
+                refundAddress
             );
     }
 
@@ -63,7 +76,8 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
                     refundAddress,
                     destinationChain,
                     destinationAddress
-                )
+                ),
+                refundAddress
             );
     }
 
@@ -74,7 +88,11 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
         address recipient
     ) external view returns (address) {
         return
-            _depositAddress(salt, abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient));
+            _depositAddress(
+                salt,
+                abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient),
+                refundAddress
+            );
     }
 
     // @dev Receives ERC20 token from the deposit address and sends it cross-chain
@@ -93,7 +111,8 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
                 destinationChain,
                 destinationAddress,
                 tokenSymbol
-            )
+            ),
+            refundAddress
         );
     }
 
@@ -107,11 +126,12 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
         string calldata tokenSymbol,
         address[] calldata refundTokens
     ) external {
-        for (uint256 i; i < refundTokens.length; i++) {
-            address gatewayToken = IAxelarGateway(gateway).tokenAddresses(tokenSymbol);
+        address intendedToken = IAxelarGateway(gateway).tokenAddresses(tokenSymbol);
 
+        uint256 tokensLength = refundTokens.length;
+        for (uint256 i; i < tokensLength; ++i) {
             // Allowing only the refundAddress to refund the intended token
-            if (refundTokens[i] == gatewayToken && msg.sender != refundAddress) continue;
+            if (refundTokens[i] == intendedToken && msg.sender != refundAddress) continue;
 
             // Saving to public storage to be accessed by the DepositReceiver
             refundToken = refundTokens[i];
@@ -123,7 +143,8 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
                     destinationChain,
                     destinationAddress,
                     tokenSymbol
-                )
+                ),
+                refundAddress
             );
         }
 
@@ -144,7 +165,8 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
                 refundAddress,
                 destinationChain,
                 destinationAddress
-            )
+            ),
+            refundAddress
         );
     }
 
@@ -161,7 +183,8 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
         if (addressForNativeDeposit(salt, refundAddress, destinationChain, destinationAddress).balance > 0 && msg.sender != refundAddress)
             return;
 
-        for (uint256 i; i < refundTokens.length; i++) {
+        uint256 tokensLength = refundTokens.length;
+        for (uint256 i; i < tokensLength; ++i) {
             refundToken = refundTokens[i];
             // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
             new DepositReceiver{ salt: salt }(
@@ -170,7 +193,8 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
                     refundAddress,
                     destinationChain,
                     destinationAddress
-                )
+                ),
+                refundAddress
             );
         }
 
@@ -185,7 +209,8 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
     ) external {
         // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
         new DepositReceiver{ salt: salt }(
-            abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient)
+            abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient),
+            refundAddress
         );
     }
 
@@ -197,25 +222,31 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
         address payable recipient,
         address[] calldata refundTokens
     ) external {
-        for (uint256 i; i < refundTokens.length; i++) {
-            address wrappedTokenAddress = wrappedToken();
+        address wrappedTokenAddress = wrappedToken();
 
-            // Allowing only the refundAddress to refund the WETH-like token
+        uint256 tokensLength = refundTokens.length;
+        for (uint256 i; i < tokensLength; ++i) {
+            // Allowing only the refundAddress to refund the intended WETH-like token
             if (refundTokens[i] == wrappedTokenAddress && msg.sender != refundAddress) continue;
 
             refundToken = refundTokens[i];
             // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
             new DepositReceiver{ salt: salt }(
-                abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient)
+                abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient),
+                refundAddress
             );
         }
 
         refundToken = address(0);
     }
 
-    function _depositAddress(bytes32 create2Salt, bytes memory delegateData) internal view returns (address) {
+    function _depositAddress(
+        bytes32 salt,
+        bytes memory delegateData,
+        address refundAddress
+    ) internal view returns (address) {
         /* Convert a hash which is bytes32 to an address which is 20-byte long
-        according to https://docs.soliditylang.org/en/v0.8.1/control-structures.html?highlight=create2#salted-contract-creations-create2 */
+        according to https://docs.soliditylang.org/en/v0.8.9/control-structures.html?highlight=create2#salted-contract-creations-create2 */
         return
             address(
                 uint160(
@@ -224,9 +255,9 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
                             abi.encodePacked(
                                 bytes1(0xff),
                                 address(this),
-                                create2Salt,
-                                // Encoding delegateData as a constructor param
-                                keccak256(abi.encodePacked(type(DepositReceiver).creationCode, abi.encode(delegateData)))
+                                salt,
+                                // Encoding delegateData and refundAddress as constructor params
+                                keccak256(abi.encodePacked(type(DepositReceiver).creationCode, abi.encode(delegateData, refundAddress)))
                             )
                         )
                     )
@@ -234,7 +265,7 @@ contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepo
             );
     }
 
-    function contractId() public pure returns (bytes32) {
+    function contractId() external pure returns (bytes32) {
         return keccak256('axelar-deposit-service');
     }
 }
