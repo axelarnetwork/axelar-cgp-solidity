@@ -23,7 +23,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     // bytes32 internal constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
     // bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
 
-    /// @dev Storage slot with the address of the current factory. `keccak256('eip1967.proxy.implementation') - 1`.
+    /// @dev Storage slot with the address of the current implementation. `keccak256('eip1967.proxy.implementation') - 1`.
     bytes32 internal constant KEY_IMPLEMENTATION = bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
 
     // AUDIT: slot names should be prefixed with some standard string
@@ -42,15 +42,17 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant SELECTOR_APPROVE_CONTRACT_CALL_WITH_MINT = keccak256('approveContractCallWithMint');
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
 
+    // solhint-disable-next-line var-name-mixedcase
     address internal immutable AUTH_MODULE;
+    // solhint-disable-next-line var-name-mixedcase
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
-    constructor(address authModule, address tokenDeployerImplementation) {
-        if (authModule.code.length == 0) revert InvalidAuthModule();
-        if (tokenDeployerImplementation.code.length == 0) revert InvalidTokenDeployer();
+    constructor(address authModule_, address tokenDeployerImplementation_) {
+        if (authModule_.code.length == 0) revert InvalidAuthModule();
+        if (tokenDeployerImplementation_.code.length == 0) revert InvalidTokenDeployer();
 
-        AUTH_MODULE = authModule;
-        TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation;
+        AUTH_MODULE = authModule_;
+        TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation_;
     }
 
     modifier onlySelf() {
@@ -139,7 +141,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         bytes32 key = _getIsContractCallApprovedWithMintKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash, symbol, amount);
         valid = getBool(key);
         if (valid) {
-            // Prevent re-entrancy
+            // Prevent re-entrance
             _setBool(key, false);
             _mintToken(symbol, msg.sender, amount);
         }
@@ -149,19 +151,25 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Getters *|
     \***********/
 
+    function authModule() public view returns (address) {
+        return AUTH_MODULE;
+    }
+
+    function tokenDeployer() public view returns (address) {
+        return TOKEN_DEPLOYER_IMPLEMENTATION;
+    }
+
     function tokenDailyMintLimit(string memory symbol) public view override returns (uint256) {
         return getUint(_getTokenDailyMintLimitKey(symbol));
     }
 
     function tokenDailyMintAmount(string memory symbol) public view override returns (uint256) {
+        // solhint-disable-next-line not-rely-on-time
         return getUint(_getTokenDailyMintAmountKey(symbol, block.timestamp / 1 days));
     }
 
-    /*
-     * @dev This function is kept around to keep things working for internal
-     * tokens that were deployed before the token freeze functionality was
-     * removed
-     */
+    /// @dev This function is kept around to keep things working for internal
+    /// tokens that were deployed before the token freeze functionality was removed
     function allTokensFrozen() external pure override returns (bool) {
         return false;
     }
@@ -174,11 +182,8 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getAddress(_getTokenAddressKey(symbol));
     }
 
-    /*
-     * @dev This function is kept around to keep things working for internal
-     * tokens that were deployed before the token freeze functionality was
-     * removed
-     */
+    /// @dev This function is kept around to keep things working for internal
+    /// tokens that were deployed before the token freeze functionality was removed
     function tokenFrozen(string memory) external pure override returns (bool) {
         return false;
     }
@@ -236,6 +241,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
         //        if `upgrade` is entered within the context of _this_ implementation itself.
         if (setupParams.length != 0) {
+            // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams));
 
             if (!success) revert SetupFailed();
@@ -248,6 +254,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* External Functions *|
     \**********************/
 
+    /// @dev Not publicly accessible as overshadowed in the proxy
     function setup(bytes calldata params) external override {
         // Prevent setup from being called on a non-proxy (the implementation).
         if (implementation() == address(0)) revert NotProxy();
@@ -262,7 +269,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setAdminEpoch(newAdminEpoch);
         _setAdmins(newAdminEpoch, adminAddresses, newAdminThreshold);
 
-        if (newOperatorsData.length > 0) {
+        if (newOperatorsData.length != 0) {
             IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
 
             emit OperatorshipTransferred(newOperatorsData);
@@ -274,24 +281,15 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         bytes32 messageHash = ECDSA.toEthSignedMessageHash(keccak256(data));
 
-        // TEST auth and getaway separately
-        bool currentOperators = IAxelarAuth(AUTH_MODULE).validateProof(messageHash, proof);
+        // returns true for current operators
+        bool allowOperatorshipTransfer = IAxelarAuth(AUTH_MODULE).validateProof(messageHash, proof);
 
         uint256 chainId;
         bytes32[] memory commandIds;
         string[] memory commands;
         bytes[] memory params;
 
-        try AxelarGateway(this)._unpackLegacyCommands(data) returns (
-            uint256 chainId_,
-            bytes32[] memory commandIds_,
-            string[] memory commands_,
-            bytes[] memory params_
-        ) {
-            (chainId, commandIds, commands, params) = (chainId_, commandIds_, commands_, params_);
-        } catch {
-            (chainId, commandIds, commands, params) = abi.decode(data, (uint256, bytes32[], string[], bytes[]));
-        }
+        (chainId, commandIds, commands, params) = abi.decode(data, (uint256, bytes32[], string[], bytes[]));
 
         if (chainId != block.chainid) revert InvalidChainId();
 
@@ -318,8 +316,9 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             } else if (commandHash == SELECTOR_BURN_TOKEN) {
                 commandSelector = AxelarGateway.burnToken.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OPERATORSHIP) {
-                if (!currentOperators) continue;
+                if (!allowOperatorshipTransfer) continue;
 
+                allowOperatorshipTransfer = false;
                 commandSelector = AxelarGateway.transferOperatorship.selector;
             } else {
                 continue; /* Ignore if unknown command received */
@@ -327,6 +326,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
             // Prevent a re-entrancy from executing this command before it can be marked as successful.
             _setCommandExecuted(commandId, true);
+            // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i], commandId));
 
             if (success) emit Executed(commandId);
@@ -351,6 +351,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             // If token address is no specified, it indicates a request to deploy one.
             bytes32 salt = keccak256(abi.encodePacked(symbol));
 
+            // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
                 abi.encodeWithSelector(ITokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
             );
@@ -454,22 +455,12 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Internal Methods *|
     \********************/
 
-    function _unpackLegacyCommands(bytes memory executeData)
-        external
-        pure
-        returns (
-            uint256 chainId,
-            bytes32[] memory commandIds,
-            string[] memory commands,
-            bytes[] memory params
-        )
-    {
-        (chainId, , commandIds, commands, params) = abi.decode(executeData, (uint256, uint256, bytes32[], string[], bytes[]));
-    }
-
     function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
+        if (tokenAddress.code.length == 0) return false;
+
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returnData) = tokenAddress.call(callData);
-        return success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
+        return success && (returnData.length == 0 || abi.decode(returnData, (bool)));
     }
 
     function _mintToken(
@@ -551,7 +542,8 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     }
 
     function _getTokenDailyMintAmountKey(string memory symbol, uint256 day) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_TOKEN_DAILY_MINT_AMOUNT, symbol, day));
+        // abi.encode to securely hash dynamic-length symbol data followed by day
+        return keccak256(abi.encode(PREFIX_TOKEN_DAILY_MINT_AMOUNT, symbol, day));
     }
 
     function _getTokenTypeKey(string memory symbol) internal pure returns (bytes32) {
@@ -622,6 +614,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         uint256 limit = tokenDailyMintLimit(symbol);
         if (limit > 0 && amount > limit) revert ExceedDailyMintLimit(symbol);
 
+        // solhint-disable-next-line not-rely-on-time
         _setUint(_getTokenDailyMintAmountKey(symbol, block.timestamp / 1 days), amount);
     }
 
