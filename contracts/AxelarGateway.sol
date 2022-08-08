@@ -43,16 +43,16 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
 
     // solhint-disable-next-line var-name-mixedcase
-    address public immutable AUTH_MODULE;
+    address internal immutable AUTH_MODULE;
     // solhint-disable-next-line var-name-mixedcase
-    address public immutable TOKEN_DEPLOYER_IMPLEMENTATION;
+    address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
-    constructor(address authModule, address tokenDeployerImplementation) {
-        if (authModule.code.length == 0) revert InvalidAuthModule();
-        if (tokenDeployerImplementation.code.length == 0) revert InvalidTokenDeployer();
+    constructor(address authModule_, address tokenDeployerImplementation_) {
+        if (authModule_.code.length == 0) revert InvalidAuthModule();
+        if (tokenDeployerImplementation_.code.length == 0) revert InvalidTokenDeployer();
 
-        AUTH_MODULE = authModule;
-        TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation;
+        AUTH_MODULE = authModule_;
+        TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation_;
     }
 
     modifier onlySelf() {
@@ -150,6 +150,14 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /***********\
     |* Getters *|
     \***********/
+
+    function authModule() public view returns (address) {
+        return AUTH_MODULE;
+    }
+
+    function tokenDeployer() public view returns (address) {
+        return TOKEN_DEPLOYER_IMPLEMENTATION;
+    }
 
     function tokenDailyMintLimit(string memory symbol) public view override returns (uint256) {
         return getUint(_getTokenDailyMintLimitKey(symbol));
@@ -273,8 +281,8 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         bytes32 messageHash = ECDSA.toEthSignedMessageHash(keccak256(data));
 
-        // TEST auth and getaway separately
-        bool currentOperators = IAxelarAuth(AUTH_MODULE).validateProof(messageHash, proof);
+        // returns true for current operators
+        bool allowOperatorshipTransfer = IAxelarAuth(AUTH_MODULE).validateProof(messageHash, proof);
 
         uint256 chainId;
         bytes32[] memory commandIds;
@@ -308,8 +316,9 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             } else if (commandHash == SELECTOR_BURN_TOKEN) {
                 commandSelector = AxelarGateway.burnToken.selector;
             } else if (commandHash == SELECTOR_TRANSFER_OPERATORSHIP) {
-                if (!currentOperators) continue;
+                if (!allowOperatorshipTransfer) continue;
 
+                allowOperatorshipTransfer = false;
                 commandSelector = AxelarGateway.transferOperatorship.selector;
             } else {
                 continue; /* Ignore if unknown command received */
@@ -320,12 +329,8 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i], commandId));
 
-            if (success) {
-                emit Executed(commandId);
-
-                // Not current operators anymore
-                if (commandSelector == AxelarGateway.transferOperatorship.selector) currentOperators = false;
-            } else _setCommandExecuted(commandId, false);
+            if (success) emit Executed(commandId);
+            else _setCommandExecuted(commandId, false);
         }
     }
 
@@ -451,9 +456,11 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \********************/
 
     function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
+        if (tokenAddress.code.length == 0) return false;
+
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returnData) = tokenAddress.call(callData);
-        return success && tokenAddress.code.length != 0 && (returnData.length == 0 || abi.decode(returnData, (bool)));
+        return success && (returnData.length == 0 || abi.decode(returnData, (bool)));
     }
 
     function _mintToken(

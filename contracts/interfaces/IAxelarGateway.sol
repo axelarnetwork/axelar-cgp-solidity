@@ -144,11 +144,9 @@ interface IAxelarGateway {
     |* Getters *|
     \***********/
 
-    // solhint-disable-next-line func-name-mixedcase
-    function AUTH_MODULE() external view returns (address);
+    function authModule() external view returns (address);
 
-    // solhint-disable-next-line func-name-mixedcase
-    function TOKEN_DEPLOYER_IMPLEMENTATION() external view returns (address);
+    function tokenDeployer() external view returns (address);
 
     function tokenDailyMintLimit(string memory symbol) external view returns (uint256);
 
