@@ -7,8 +7,9 @@ import { IAxelarAuth } from './IAxelarAuth.sol';
 interface IAxelarAuthWeighted is IAxelarAuth {
     error InvalidOperators();
     error InvalidThreshold();
-    error SameOperators();
+    error DuplicateOperators();
     error MalformedSigners();
+    error LowSignaturesWeight();
     error InvalidWeights();
 
     event OperatorshipTransferred(address[] newOperators, uint256[] newWeights, uint256 newThreshold);
