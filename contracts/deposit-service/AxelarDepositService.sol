@@ -265,7 +265,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
             );
     }
 
-    function contractId() public pure returns (bytes32) {
+    function contractId() external pure returns (bytes32) {
         return keccak256('axelar-deposit-service');
     }
 }
