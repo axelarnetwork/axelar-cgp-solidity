@@ -11,7 +11,7 @@ abstract contract IAxelarForecallable {
     error TransferFailed();
 
     IAxelarGateway public gateway;
-    mapping(bytes32 => address) forecallers;
+    mapping(bytes32 => address) public forecallers;
 
     constructor(address gatewayAddress) {
         gateway = IAxelarGateway(gatewayAddress);
@@ -88,7 +88,7 @@ abstract contract IAxelarForecallable {
         string memory sourceChain,
         string memory sourceAddress,
         bytes calldata payload
-    ) internal virtual {}
+    ) internal virtual {} // solhint-disable no-empty-blocks
 
     function _executeWithToken(
         string memory sourceChain,
@@ -96,7 +96,7 @@ abstract contract IAxelarForecallable {
         bytes calldata payload,
         string memory tokenSymbol,
         uint256 amount
-    ) internal virtual {}
+    ) internal virtual {} // solhint-disable no-empty-blocks
 
     // Override this to keep a fee.
     function amountPostFee(
@@ -112,7 +112,7 @@ abstract contract IAxelarForecallable {
         string calldata sourceAddress,
         bytes calldata payload,
         address forecaller
-    ) internal virtual {}
+    ) internal virtual {} // solhint-disable no-empty-blocks
 
     // Override this and revert if you want to only allow certain people/calls to be able to forecall.
     function _checkForecallWithToken(
@@ -122,13 +122,14 @@ abstract contract IAxelarForecallable {
         string calldata tokenSymbol,
         uint256 amount,
         address forecaller
-    ) internal virtual {}
+    ) internal virtual {} // solhint-disable no-empty-blocks
 
     function _safeTransfer(
         address tokenAddress,
         address receiver,
         uint256 amount
     ) internal {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returnData) = tokenAddress.call(abi.encodeWithSelector(IERC20.transfer.selector, receiver, amount));
         bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
 
@@ -140,6 +141,7 @@ abstract contract IAxelarForecallable {
         address from,
         uint256 amount
     ) internal {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returnData) = tokenAddress.call(
             abi.encodeWithSelector(IERC20.transferFrom.selector, from, address(this), amount)
         );

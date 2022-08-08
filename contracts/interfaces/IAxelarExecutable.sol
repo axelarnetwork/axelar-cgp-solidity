@@ -7,7 +7,7 @@ import { IAxelarGateway } from './IAxelarGateway.sol';
 abstract contract IAxelarExecutable {
     error NotApprovedByGateway();
 
-    IAxelarGateway public gateway;
+    IAxelarGateway public immutable gateway;
 
     constructor(address gateway_) {
         gateway = IAxelarGateway(gateway_);
@@ -43,7 +43,7 @@ abstract contract IAxelarExecutable {
         string memory sourceChain,
         string memory sourceAddress,
         bytes calldata payload
-    ) internal virtual {}
+    ) internal virtual {} // solhint-disable no-empty-blocks
 
     function _executeWithToken(
         string memory sourceChain,
@@ -51,5 +51,5 @@ abstract contract IAxelarExecutable {
         bytes calldata payload,
         string memory tokenSymbol,
         uint256 amount
-    ) internal virtual {}
+    ) internal virtual {} // solhint-disable no-empty-blocks
 }

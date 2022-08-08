@@ -11,7 +11,6 @@ const { expect } = chai;
 const { get } = require('lodash/fp');
 
 const CHAIN_ID = 1;
-const ROLE_OWNER = 1;
 
 const Auth = require('../artifacts/contracts/auth/AxelarAuthWeighted.sol/AxelarAuthWeighted.json');
 const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
@@ -68,10 +67,9 @@ describe('AxelarDepositService', () => {
             await getSignedWeightedExecuteInput(
                 arrayify(
                     defaultAbiCoder.encode(
-                        ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                        ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                         [
                             CHAIN_ID,
-                            ROLE_OWNER,
                             [getRandomID()],
                             ['deployToken'],
                             [

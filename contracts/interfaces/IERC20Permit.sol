@@ -3,6 +3,7 @@
 pragma solidity ^0.8.9;
 
 interface IERC20Permit {
+    // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 
     function nonces(address account) external view returns (uint256);

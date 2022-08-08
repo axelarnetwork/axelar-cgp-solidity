@@ -13,6 +13,7 @@ import { ReceiverImplementation } from './ReceiverImplementation.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarDepositService is Upgradable, ReceiverImplementation, IAxelarDepositService {
+    // solhint-disable-next-line no-empty-blocks
     constructor(address gateway, string memory wrappedSymbol) ReceiverImplementation(gateway, wrappedSymbol) {}
 
     // @dev This method is meant to called directly by user to send native token cross-chain

@@ -11,15 +11,15 @@ contract TestWeth is MintableCappedERC20, IWETH9 {
         string memory symbol,
         uint8 decimals,
         uint256 capacity
-    ) MintableCappedERC20(name, symbol, decimals, capacity) {}
+    ) MintableCappedERC20(name, symbol, decimals, capacity) {} // solhint-disable no-empty-blocks
 
     function deposit() external payable {
-        balanceOf[msg.sender] += msg.value;
+        balanceOf[msg.sender] = balanceOf[msg.sender] + msg.value;
     }
 
     function withdraw(uint256 amount) external {
-        require(balanceOf[msg.sender] >= amount);
-        balanceOf[msg.sender] -= amount;
+        require(balanceOf[msg.sender] >= amount, 'Not enough balance');
+        balanceOf[msg.sender] = balanceOf[msg.sender] - amount;
         payable(msg.sender).transfer(amount);
     }
 }

@@ -7,7 +7,7 @@ import { IERC20 } from '../../interfaces/IERC20.sol';
 import { DestinationChainTokenSwapper } from './DestinationChainTokenSwapper.sol';
 
 contract DestinationChainSwapExecutable is IAxelarExecutable {
-    DestinationChainTokenSwapper swapper;
+    DestinationChainTokenSwapper public immutable swapper;
 
     constructor(address gatewayAddress, address swapperAddress) IAxelarExecutable(gatewayAddress) {
         swapper = DestinationChainTokenSwapper(swapperAddress);

@@ -98,7 +98,7 @@ describe('AxelarAuthWeighted', () => {
                         operators.slice(0, threshold - 1),
                     ),
                 ),
-            ).to.be.revertedWith('MalformedSigners()');
+            ).to.be.revertedWith('LowSignaturesWeight()');
         });
 
         it('reject the proof if signatures are invalid', async () => {

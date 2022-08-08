@@ -27,7 +27,7 @@ contract Proxy {
         address implementationAddress,
         address newOwner,
         bytes memory params
-    ) external {
+    ) external payable {
         address owner;
         // solhint-disable-next-line no-inline-assembly
         assembly {
@@ -60,17 +60,18 @@ contract Proxy {
         }
     }
 
+    // @dev This function overshadows the setup in the implementation
     // solhint-disable-next-line no-empty-blocks
     function setup(bytes calldata data) public {}
 
     // solhint-disable-next-line no-complex-fallback
     fallback() external payable {
-        address implementaion_ = implementation();
+        address implementation_ = implementation();
         // solhint-disable-next-line no-inline-assembly
         assembly {
             calldatacopy(0, 0, calldatasize())
 
-            let result := delegatecall(gas(), implementaion_, 0, calldatasize(), 0, 0)
+            let result := delegatecall(gas(), implementation_, 0, calldatasize(), 0, 0)
             returndatacopy(0, 0, returndatasize())
 
             switch result

@@ -9,6 +9,7 @@ interface IAxelarAuthWeighted is IAxelarAuth {
     error InvalidThreshold();
     error SameOperators();
     error MalformedSigners();
+    error LowSignaturesWeight();
     error InvalidWeights();
 
     event OperatorshipTransferred(address[] newOperators, uint256[] newWeights, uint256 newThreshold);

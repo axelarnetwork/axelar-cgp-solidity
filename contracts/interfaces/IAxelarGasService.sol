@@ -7,8 +7,9 @@ import './IUpgradable.sol';
 // This should be owned by the microservice that is paying for gas.
 interface IAxelarGasService is IUpgradable {
     error NothingReceived();
-    error TransferFailed();
     error InvalidAddress();
+    error TransferFailed();
+    error NativeTransferFailed();
 
     event GasPaidForContractCall(
         address indexed sourceAddress,
@@ -73,7 +74,7 @@ interface IAxelarGasService is IUpgradable {
         string calldata destinationChain,
         string calldata destinationAddress,
         bytes calldata payload,
-        string calldata symbol,
+        string memory symbol,
         uint256 amount,
         address gasToken,
         uint256 gasFeeAmount,
@@ -114,11 +115,11 @@ interface IAxelarGasService is IUpgradable {
         address refundAddress
     ) external payable;
 
-    function collectFees(address payable receiver, address[] calldata tokens) external;
+    function collectFees(address receiver, address[] calldata tokens) external payable;
 
     function refund(
-        address payable receiver,
+        address receiver,
         address token,
         uint256 amount
-    ) external;
+    ) external payable;
 }

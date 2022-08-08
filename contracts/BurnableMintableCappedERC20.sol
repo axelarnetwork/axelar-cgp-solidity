@@ -14,7 +14,7 @@ contract BurnableMintableCappedERC20 is IBurnableMintableCappedERC20, MintableCa
         string memory symbol,
         uint8 decimals,
         uint256 capacity
-    ) MintableCappedERC20(name, symbol, decimals, capacity) {}
+    ) MintableCappedERC20(name, symbol, decimals, capacity) {} // solhint-disable no-empty-blocks
 
     function depositAddress(bytes32 salt) public view returns (address) {
         /* Convert a hash which is bytes32 to an address which is 20-byte long

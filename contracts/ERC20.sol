@@ -169,8 +169,8 @@ contract ERC20 is IERC20 {
 
         _beforeTokenTransfer(sender, recipient, amount);
 
-        balanceOf[sender] -= amount;
-        balanceOf[recipient] += amount;
+        balanceOf[sender] = balanceOf[sender] - amount;
+        balanceOf[recipient] = balanceOf[recipient] + amount;
         emit Transfer(sender, recipient, amount);
     }
 
@@ -188,8 +188,8 @@ contract ERC20 is IERC20 {
 
         _beforeTokenTransfer(address(0), account, amount);
 
-        totalSupply += amount;
-        balanceOf[account] += amount;
+        totalSupply = totalSupply + amount;
+        balanceOf[account] = balanceOf[account] + amount;
         emit Transfer(address(0), account, amount);
     }
 
@@ -209,8 +209,8 @@ contract ERC20 is IERC20 {
 
         _beforeTokenTransfer(account, address(0), amount);
 
-        balanceOf[account] -= amount;
-        totalSupply -= amount;
+        balanceOf[account] = balanceOf[account] - amount;
+        totalSupply = totalSupply + amount;
         emit Transfer(account, address(0), amount);
     }
 
@@ -256,5 +256,5 @@ contract ERC20 is IERC20 {
         address from,
         address to,
         uint256 amount
-    ) internal virtual {}
+    ) internal virtual {} // solhint-disable no-empty-blocks
 }

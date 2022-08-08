@@ -21,6 +21,7 @@ contract DepositHandler {
 
     function execute(address callee, bytes calldata data) external noReenter returns (bool success, bytes memory returnData) {
         if (callee.code.length == 0) revert NotContract();
+        // solhint-disable-next-line avoid-low-level-calls
         (success, returnData) = callee.call(data);
     }
 

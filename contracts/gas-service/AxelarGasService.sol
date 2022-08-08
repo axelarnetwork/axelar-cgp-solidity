@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 
 import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
 import { IERC20 } from '../interfaces/IERC20.sol';
-import '../util/Upgradable.sol';
+import { Upgradable } from '../util/Upgradable.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarGasService is Upgradable, IAxelarGasService {
@@ -117,7 +117,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
-    function collectFees(address payable receiver, address[] calldata tokens) external onlyOwner {
+    function collectFees(address receiver, address[] calldata tokens) external payable onlyOwner {
         if (receiver == address(0)) revert InvalidAddress();
 
         for (uint256 i; i < tokens.length; i++) {
@@ -125,7 +125,11 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
 
             if (token == address(0)) {
                 uint256 amount = address(this).balance;
-                if (amount > 0) receiver.transfer(amount);
+                if (amount > 0) {
+                    // solhint-disable-next-line avoid-low-level-calls
+                    (bool sent, ) = receiver.call{ value: amount }('');
+                    if (!sent) revert NativeTransferFailed();
+                }
             } else {
                 uint256 amount = IERC20(token).balanceOf(address(this));
                 if (amount > 0) _safeTransfer(token, receiver, amount);
@@ -134,14 +138,20 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     }
 
     function refund(
-        address payable receiver,
+        address receiver,
         address token,
         uint256 amount
-    ) external onlyOwner {
+    ) external payable onlyOwner {
         if (receiver == address(0)) revert InvalidAddress();
 
         if (token == address(0)) {
-            receiver.transfer(amount);
+            if (amount <= address(this).balance) {
+                // solhint-disable-next-line avoid-low-level-calls
+                (bool sent, ) = receiver.call{ value: amount }('');
+                if (!sent) revert NativeTransferFailed();
+            } else {
+                revert NativeTransferFailed();
+            }
         } else {
             _safeTransfer(token, receiver, amount);
         }
