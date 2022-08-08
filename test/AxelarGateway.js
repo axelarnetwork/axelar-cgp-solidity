@@ -30,7 +30,7 @@ const {
 
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
-describe('AxelarGatewayMultisig', () => {
+describe('AxelarGateway', () => {
     const threshold = 3;
 
     let wallets;
@@ -88,7 +88,7 @@ describe('AxelarGatewayMultisig', () => {
         });
     });
 
-    describe('setTokenDailyMintLimits', () => {
+    describe('setTokenMintLimits', () => {
         const symbols = ['tokenA', 'tokenB'];
         const decimals = 8;
 
@@ -109,19 +109,16 @@ describe('AxelarGatewayMultisig', () => {
             const limit = getRandomInt(Number.MAX_SAFE_INTEGER);
             const limits = symbols.map(() => limit);
 
-            return expect(gateway.connect(admins[0]).setTokenDailyMintLimits(symbols, limits))
-                .to.not.emit(gateway, 'TokenDailyMintLimitUpdated')
+            return expect(gateway.connect(admins[0]).setTokenMintLimits(symbols, limits))
+                .to.not.emit(gateway, 'TokenMintLimitUpdated')
                 .then(() =>
-                    expect(gateway.connect(admins[1]).setTokenDailyMintLimits(symbols, limits)).to.not.emit(
-                        gateway,
-                        'TokenDailyMintLimitUpdated',
-                    ),
+                    expect(gateway.connect(admins[1]).setTokenMintLimits(symbols, limits)).to.not.emit(gateway, 'TokenMintLimitUpdated'),
                 )
-                .then(() => gateway.connect(admins[2]).setTokenDailyMintLimits(symbols, limits))
+                .then(() => gateway.connect(admins[2]).setTokenMintLimits(symbols, limits))
                 .then((tx) =>
-                    Promise.all(symbols.map((symbol) => expect(tx).to.emit(gateway, 'TokenDailyMintLimitUpdated').withArgs(symbol, limit))),
+                    Promise.all(symbols.map((symbol) => expect(tx).to.emit(gateway, 'TokenMintLimitUpdated').withArgs(symbol, limit))),
                 )
-                .then(() => Promise.all(symbols.map((symbol) => gateway.tokenDailyMintLimit(symbol))))
+                .then(() => Promise.all(symbols.map((symbol) => gateway.tokenMintLimit(symbol))))
                 .then((limits) => limits.map((limit) => limit.toNumber()))
                 .then((actual) => {
                     expect(actual).to.deep.eq(limits);
@@ -273,7 +270,7 @@ describe('AxelarGatewayMultisig', () => {
                 .to.emit(gateway, 'TokenDeployed')
                 .and.to.emit(gateway, 'Executed')
                 .withArgs(commandID)
-                .and.to.emit(gateway, 'TokenDailyMintLimitUpdated')
+                .and.to.emit(gateway, 'TokenMintLimitUpdated')
                 .withArgs(symbol, limit);
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
@@ -407,7 +404,7 @@ describe('AxelarGatewayMultisig', () => {
         it('should not allow the operators to mint tokens exceeding the daily limit', () => {
             const limit = getRandomInt(cap / 2);
 
-            return Promise.all(admins.slice(0, threshold).map((admin) => gateway.connect(admin).setTokenDailyMintLimits([symbol], [limit])))
+            return Promise.all(admins.slice(0, threshold).map((admin) => gateway.connect(admin).setTokenMintLimits([symbol], [limit])))
                 .then(() => {
                     const data = buildCommandBatch(
                         CHAIN_ID,
@@ -430,7 +427,7 @@ describe('AxelarGatewayMultisig', () => {
                     );
                 })
                 .then(async () => {
-                    const mintAmount = await gateway.tokenDailyMintAmount(symbol);
+                    const mintAmount = await gateway.tokenMintAmount(symbol);
                     expect(mintAmount.toNumber()).to.eq(limit);
                 })
                 .then(async () => {
@@ -450,7 +447,7 @@ describe('AxelarGatewayMultisig', () => {
                     );
 
                     await expect(gateway.execute(input)).to.not.emit(gateway, 'Executed');
-                    await tickBlockTime(gateway.provider, 24 * 60 * 60);
+                    await tickBlockTime(gateway.provider, 6 * 60 * 60); // 6 hours later
                     await expect(gateway.execute(input))
                         .to.emit(token, 'Transfer')
                         .withArgs(ADDRESS_ZERO, owner.address, amount)

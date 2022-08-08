@@ -32,8 +32,8 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED = keccak256('contract-call-approved');
     bytes32 internal constant PREFIX_CONTRACT_CALL_APPROVED_WITH_MINT = keccak256('contract-call-approved-with-mint');
-    bytes32 internal constant PREFIX_TOKEN_DAILY_MINT_LIMIT = keccak256('token-daily-mint-limit');
-    bytes32 internal constant PREFIX_TOKEN_DAILY_MINT_AMOUNT = keccak256('token-daily-mint-amount');
+    bytes32 internal constant PREFIX_TOKEN_MINT_LIMIT = keccak256('token-mint-limit');
+    bytes32 internal constant PREFIX_TOKEN_MINT_AMOUNT = keccak256('token-mint-amount');
 
     bytes32 internal constant SELECTOR_BURN_TOKEN = keccak256('burnToken');
     bytes32 internal constant SELECTOR_DEPLOY_TOKEN = keccak256('deployToken');
@@ -159,13 +159,13 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return TOKEN_DEPLOYER_IMPLEMENTATION;
     }
 
-    function tokenDailyMintLimit(string memory symbol) public view override returns (uint256) {
-        return getUint(_getTokenDailyMintLimitKey(symbol));
+    function tokenMintLimit(string memory symbol) public view override returns (uint256) {
+        return getUint(_getTokenMintLimitKey(symbol));
     }
 
-    function tokenDailyMintAmount(string memory symbol) public view override returns (uint256) {
+    function tokenMintAmount(string memory symbol) public view override returns (uint256) {
         // solhint-disable-next-line not-rely-on-time
-        return getUint(_getTokenDailyMintAmountKey(symbol, block.timestamp / 1 days));
+        return getUint(_getTokenMintAmountKey(symbol, block.timestamp / 6 hours));
     }
 
     /// @dev This function is kept around to keep things working for internal
@@ -216,8 +216,8 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Admin Functions *|
     \*******************/
 
-    function setTokenDailyMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyAdmin {
-        if (symbols.length != limits.length) revert InvalidSetDailyMintLimitsParams();
+    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyAdmin {
+        if (symbols.length != limits.length) revert InvalidSetMintLimitsParams();
 
         for (uint256 i = 0; i < symbols.length; i++) {
             string memory symbol = symbols[i];
@@ -225,7 +225,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
             if (tokenAddresses(symbol) == address(0)) revert TokenDoesNotExist(symbol);
 
-            _setTokenDailyMintLimit(symbol, limit);
+            _setTokenMintLimit(symbol, limit);
         }
     }
 
@@ -339,7 +339,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     \******************/
 
     function deployToken(bytes calldata params, bytes32) external onlySelf {
-        (string memory name, string memory symbol, uint8 decimals, uint256 cap, address tokenAddress, uint256 dailyMintLimit) = abi.decode(
+        (string memory name, string memory symbol, uint8 decimals, uint256 cap, address tokenAddress, uint256 mintLimit) = abi.decode(
             params,
             (string, string, uint8, uint256, address, uint256)
         );
@@ -370,7 +370,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         }
 
         _setTokenAddress(symbol, tokenAddress);
-        _setTokenDailyMintLimit(symbol, dailyMintLimit);
+        _setTokenMintLimit(symbol, mintLimit);
 
         emit TokenDeployed(symbol, tokenAddress);
     }
@@ -472,7 +472,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
-        _setTokenDailyMintAmount(symbol, tokenDailyMintAmount(symbol) + amount);
+        _setTokenMintAmount(symbol, tokenMintAmount(symbol) + amount);
 
         if (_getTokenType(symbol) == TokenType.External) {
             bool success = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20.transfer.selector, account, amount));
@@ -537,13 +537,13 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Pure Key Getters *|
     \********************/
 
-    function _getTokenDailyMintLimitKey(string memory symbol) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(PREFIX_TOKEN_DAILY_MINT_LIMIT, symbol));
+    function _getTokenMintLimitKey(string memory symbol) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PREFIX_TOKEN_MINT_LIMIT, symbol));
     }
 
-    function _getTokenDailyMintAmountKey(string memory symbol, uint256 day) internal pure returns (bytes32) {
+    function _getTokenMintAmountKey(string memory symbol, uint256 day) internal pure returns (bytes32) {
         // abi.encode to securely hash dynamic-length symbol data followed by day
-        return keccak256(abi.encode(PREFIX_TOKEN_DAILY_MINT_AMOUNT, symbol, day));
+        return keccak256(abi.encode(PREFIX_TOKEN_MINT_AMOUNT, symbol, day));
     }
 
     function _getTokenTypeKey(string memory symbol) internal pure returns (bytes32) {
@@ -604,18 +604,18 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Internal Setters *|
     \********************/
 
-    function _setTokenDailyMintLimit(string memory symbol, uint256 limit) internal {
-        _setUint(_getTokenDailyMintLimitKey(symbol), limit);
+    function _setTokenMintLimit(string memory symbol, uint256 limit) internal {
+        _setUint(_getTokenMintLimitKey(symbol), limit);
 
-        emit TokenDailyMintLimitUpdated(symbol, limit);
+        emit TokenMintLimitUpdated(symbol, limit);
     }
 
-    function _setTokenDailyMintAmount(string memory symbol, uint256 amount) internal {
-        uint256 limit = tokenDailyMintLimit(symbol);
-        if (limit > 0 && amount > limit) revert ExceedDailyMintLimit(symbol);
+    function _setTokenMintAmount(string memory symbol, uint256 amount) internal {
+        uint256 limit = tokenMintLimit(symbol);
+        if (limit > 0 && amount > limit) revert ExceedMintLimit(symbol);
 
         // solhint-disable-next-line not-rely-on-time
-        _setUint(_getTokenDailyMintAmountKey(symbol, block.timestamp / 1 days), amount);
+        _setUint(_getTokenMintAmountKey(symbol, block.timestamp / 6 hours), amount);
     }
 
     function _setTokenType(string memory symbol, TokenType tokenType) internal {
