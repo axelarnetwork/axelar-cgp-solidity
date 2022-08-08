@@ -11,10 +11,13 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
     mapping(uint256 => bytes32) public hashForEpoch;
     mapping(bytes32 => uint256) public epochForHash;
 
-    uint8 internal constant OLD_KEY_RETENTION = 16;
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 internal constant OLD_KEY_RETENTION = 16;
 
     constructor(bytes[] memory recentOperators) {
-        for (uint256 i; i < recentOperators.length; ++i) {
+        uint256 length = recentOperators.length;
+
+        for (uint256 i; i < length; ++i) {
             _transferOperatorship(recentOperators[i]);
         }
     }
@@ -23,7 +26,9 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
     |* External Functionality *|
     \**************************/
 
-    function validateProof(bytes32 messageHash, bytes calldata proof) external view returns (bool currentOperators) {
+    /// @dev This function takes messageHash and proof data and reverts if proof is invalid
+    /// @return True if provided operators are the current ones
+    function validateProof(bytes32 messageHash, bytes calldata proof) external view returns (bool) {
         (address[] memory operators, uint256[] memory weights, uint256 threshold, bytes[] memory signatures) = abi.decode(
             proof,
             (address[], uint256[], uint256, bytes[])
@@ -37,7 +42,7 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
 
         _validateSignatures(messageHash, operators, weights, threshold, signatures);
 
-        currentOperators = operatorsEpoch == epoch;
+        return operatorsEpoch == epoch;
     }
 
     /***********************\
@@ -65,15 +70,15 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
 
         if (weightsLength != operatorsLength) revert InvalidWeights();
 
-        uint256 totalWeight = 0;
-        for (uint256 i = 0; i < weightsLength; ++i) {
-            totalWeight += newWeights[i];
+        uint256 totalWeight;
+        for (uint256 i; i < weightsLength; ++i) {
+            totalWeight = totalWeight + newWeights[i];
         }
         if (newThreshold == 0 || totalWeight < newThreshold) revert InvalidThreshold();
 
         bytes32 newOperatorsHash = keccak256(params);
 
-        if (epochForHash[newOperatorsHash] > 0) revert SameOperators();
+        if (epochForHash[newOperatorsHash] != 0) revert DuplicateOperators();
 
         uint256 epoch = currentEpoch + 1;
         currentEpoch = epoch;
@@ -91,34 +96,43 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
         bytes[] memory signatures
     ) internal pure {
         uint256 operatorsLength = operators.length;
-        uint256 operatorIndex = 0;
-        uint256 weight = 0;
+        uint256 signaturesLength = signatures.length;
+        uint256 operatorIndex;
+        uint256 weight;
         // looking for signers within operators
         // assuming that both operators and signatures are sorted
-        for (uint256 i = 0; i < signatures.length; ++i) {
+        for (uint256 i; i < signaturesLength; ++i) {
             address signer = ECDSA.recover(messageHash, signatures[i]);
             // looping through remaining operators to find a match
             for (; operatorIndex < operatorsLength && signer != operators[operatorIndex]; ++operatorIndex) {}
             // checking if we are out of operators
             if (operatorIndex == operatorsLength) revert MalformedSigners();
-            // return if weight sum above threshold
-            weight += weights[operatorIndex];
+            // accumulating signatures weight
+            weight = weight + weights[operatorIndex];
             // weight needs to reach or surpass threshold
             if (weight >= threshold) return;
             // increasing operators index if match was found
             ++operatorIndex;
         }
         // if weight sum below threshold
-        revert MalformedSigners();
+        revert LowSignaturesWeight();
     }
 
     function _isSortedAscAndContainsNoDuplicate(address[] memory accounts) internal pure returns (bool) {
-        for (uint256 i; i < accounts.length - 1; ++i) {
-            if (accounts[i] >= accounts[i + 1]) {
+        address prevAccount;
+        address account = accounts[0];
+
+        if (account == address(0)) return false;
+
+        for (uint256 i = 1; i < accounts.length; ++i) {
+            prevAccount = account;
+            account = accounts[i];
+
+            if (prevAccount >= account) {
                 return false;
             }
         }
 
-        return accounts[0] != address(0);
+        return true;
     }
 }
