@@ -453,7 +453,10 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returnData) = tokenAddress.call(callData);
-        return success && tokenAddress.code.length != 0 && (returnData.length == 0 || abi.decode(returnData, (bool)));
+        if (tokenAddress.code.length == 0) return false
+
+        (bool success, bytes memory returnData) = tokenAddress.call(callData);
+        return success && (returnData.length == 0 || abi.decode(returnData, (bool)));
     }
 
     function _mintToken(
