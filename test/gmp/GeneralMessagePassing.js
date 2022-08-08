@@ -13,7 +13,6 @@ const { deployUpgradable } = require('../../scripts/upgradable');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-const ROLE_OWNER = 1;
 
 const Auth = require('../../artifacts/contracts/auth/AxelarAuthWeighted.sol/AxelarAuthWeighted.json');
 const TokenDeployer = require('../../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
@@ -58,10 +57,9 @@ describe('GeneralMessagePassing', () => {
     const getMintData = (symbol, address, amount) =>
         arrayify(
             defaultAbiCoder.encode(
-                ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                 [
                     CHAIN_ID,
-                    ROLE_OWNER,
                     [getRandomID()],
                     ['mintToken'],
                     [defaultAbiCoder.encode(['string', 'address', 'uint256'], [symbol, address, amount])],
@@ -85,10 +83,9 @@ describe('GeneralMessagePassing', () => {
         const getTokenDeployData = (withAddress) =>
             arrayify(
                 defaultAbiCoder.encode(
-                    ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                    ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                     [
                         CHAIN_ID,
-                        ROLE_OWNER,
                         [getRandomID(), getRandomID()],
                         ['deployToken', 'deployToken'],
                         [
@@ -194,10 +191,9 @@ describe('GeneralMessagePassing', () => {
 
             const approveWithMintData = arrayify(
                 defaultAbiCoder.encode(
-                    ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                    ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                     [
                         CHAIN_ID,
-                        ROLE_OWNER,
                         [approveCommandId],
                         ['approveContractCallWithMint'],
                         [
@@ -317,10 +313,9 @@ describe('GeneralMessagePassing', () => {
 
             const approveWithMintData = arrayify(
                 defaultAbiCoder.encode(
-                    ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                    ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                     [
                         CHAIN_ID,
-                        ROLE_OWNER,
                         [approveCommandId],
                         ['approveContractCallWithMint'],
                         [

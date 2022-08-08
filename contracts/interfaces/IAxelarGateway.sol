@@ -144,6 +144,10 @@ interface IAxelarGateway {
     |* Getters *|
     \***********/
 
+    function authModule() external view returns (address);
+
+    function tokenDeployer() external view returns (address);
+
     function tokenDailyMintLimit(string memory symbol) external view returns (uint256);
 
     function tokenDailyMintAmount(string memory symbol) external view returns (uint256);
