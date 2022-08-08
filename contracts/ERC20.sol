@@ -210,7 +210,7 @@ contract ERC20 is IERC20 {
         _beforeTokenTransfer(account, address(0), amount);
 
         balanceOf[account] = balanceOf[account] - amount;
-        totalSupply = totalSupply + amount;
+        totalSupply = totalSupply - amount;
         emit Transfer(account, address(0), amount);
     }
 
