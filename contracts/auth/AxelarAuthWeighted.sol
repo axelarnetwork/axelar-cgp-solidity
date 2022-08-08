@@ -23,7 +23,9 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
     |* External Functionality *|
     \**************************/
 
-    function validateProof(bytes32 messageHash, bytes calldata proof) external view returns (bool currentOperators) {
+    /// @dev This function takes messageHash and proof data and reverts if proof is invalid
+    /// @return True if provided operators are the current ones
+    function validateProof(bytes32 messageHash, bytes calldata proof) external view returns (bool) {
         (address[] memory operators, uint256[] memory weights, uint256 threshold, bytes[] memory signatures) = abi.decode(
             proof,
             (address[], uint256[], uint256, bytes[])
@@ -37,7 +39,7 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
 
         _validateSignatures(messageHash, operators, weights, threshold, signatures);
 
-        currentOperators = operatorsEpoch == epoch;
+        return operatorsEpoch == epoch;
     }
 
     /***********************\
@@ -73,7 +75,7 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
 
         bytes32 newOperatorsHash = keccak256(params);
 
-        if (epochForHash[newOperatorsHash] > 0) revert SameOperators();
+        if (epochForHash[newOperatorsHash] > 0) revert DuplicateOperators();
 
         uint256 epoch = currentEpoch + 1;
         currentEpoch = epoch;
@@ -109,7 +111,7 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
             ++operatorIndex;
         }
         // if weight sum below threshold
-        revert MalformedSigners();
+        revert LowSignaturesWeight();
     }
 
     function _isSortedAscAndContainsNoDuplicate(address[] memory accounts) internal pure returns (bool) {
