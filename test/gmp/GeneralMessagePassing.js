@@ -23,7 +23,7 @@ const GasService = require('../../artifacts/contracts/gas-service/AxelarGasServi
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/SourceChainSwapCaller.sol/SourceChainSwapCaller.json');
 const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
-const DestinationChainSwapForeCallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForeCallable.sol/DestinationChainSwapForeCallable.json');
+const DestinationChainSwapForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForecallable.sol/DestinationChainSwapForecallable.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
 const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
 
@@ -125,7 +125,7 @@ describe('GeneralMessagePassing', () => {
             destinationChainTokenSwapper.address,
         ]);
 
-        destinationChainSwapForecallable = await deployContract(ownerWallet, DestinationChainSwapForeCallable, [
+        destinationChainSwapForecallable = await deployContract(ownerWallet, DestinationChainSwapForecallable, [
             destinationChainGateway.address,
             destinationChainTokenSwapper.address,
         ]);
