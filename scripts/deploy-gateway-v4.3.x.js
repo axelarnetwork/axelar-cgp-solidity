@@ -6,7 +6,6 @@ const { printLog, printObj, confirm, getEVMAddresses, pubkeysToAddresses, parseW
 const { ethers } = require('hardhat');
 const {
     getContractFactory,
-    Contract,
     Wallet,
     providers: { JsonRpcProvider },
     utils: { defaultAbiCoder, arrayify },
@@ -60,8 +59,7 @@ const paramsAuth = [defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256']
 function proxyParams() {
     const admins = adminAddresses ? JSON.parse(adminAddresses) : pubkeysToAddresses(JSON.parse(adminPubkeys));
     printObj({ admins });
-    const paramsProxy = arrayify(defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [admins, adminThreshold, '0x']));
-    return paramsProxy
+    return arrayify(defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [admins, adminThreshold, '0x']));
 }
 
 (async () => {
@@ -77,7 +75,6 @@ function proxyParams() {
     const authFactory = await getContractFactory('AxelarAuthWeighted', wallet);
     const tokenDeployerFactory = await getContractFactory('TokenDeployer', wallet);
     const gatewayProxyFactory = await getContractFactory('AxelarGatewayProxy', wallet);
-    const AxelarGateway = require('./build/AxelarGateway.json');
     printLog('contract factories loaded');
 
     printLog(`deploying auth contract`);
@@ -97,7 +94,7 @@ function proxyParams() {
 
     if (reuseProxy) {
         printLog(`reusing gateway proxy contract`);
-        contracts.gatewayProxy = getProxy(prefix, chain)
+        contracts.gatewayProxy = getProxy(prefix, chain);
         printLog(`proxy address ${contracts.gatewayProxy}`);
     } else {
         const params = proxyParams();
@@ -107,29 +104,31 @@ function proxyParams() {
         contracts.gatewayProxy = gatewayProxy.address;
     }
 
-    printLog('transferring auth ownership')
-    await auth.transferOwnership(contracts.gatewayProxy, options)
-    printLog('transferred auth ownership. All done!')
+    printLog('transferring auth ownership');
+    await auth.transferOwnership(contracts.gatewayProxy, options);
+    printLog('transferred auth ownership. All done!');
 
-    const gateway = new Contract(contracts.gatewayProxy, AxelarGateway.abi, wallet)
+    const gateway = gatewayFactory.attach(contracts.gatewayProxy);
 
-    const epoch = await gateway.adminEpoch()
-    const admins = await gateway.admins(epoch)
-    printLog(`Existing admins ${admins}`)
+    const epoch = await gateway.adminEpoch();
+    const admins = await gateway.admins(epoch);
+    printLog(`Existing admins ${admins}`);
 
-    const authModule = await gateway.authModule()
+    const authModule = await gateway.authModule();
     if (authModule !== contracts.auth) {
-        console.error(`Auth module retrieved from gateway ${authModule} doesn't match deployed contract ${contracts.auth}`)
+        console.error(`Auth module retrieved from gateway ${authModule} doesn't match deployed contract ${contracts.auth}`);
     }
 
-    const tokenDeployerAddress = await gateway.tokenDeployer()
+    const tokenDeployerAddress = await gateway.tokenDeployer();
     if (tokenDeployer !== contracts.tokenDeployer) {
-        console.error(`Token deployer retrieved from gateway ${tokenDeployerAddress} doesn't match deployed contract ${contracts.tokenDeployer}`)
+        console.error(
+            `Token deployer retrieved from gateway ${tokenDeployerAddress} doesn't match deployed contract ${contracts.tokenDeployer}`,
+        );
     }
 
     const authOwner = await auth.owner();
     if (authOwner !== contracts.gatewayProxy) {
-        console.error(`Auth module owner is set to ${authOwner} instead of proxy address ${contracts.gatewayProxy}`)
+        console.error(`Auth module owner is set to ${authOwner} instead of proxy address ${contracts.gatewayProxy}`);
     }
 })()
     .catch((err) => {
