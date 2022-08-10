@@ -95,6 +95,11 @@ module.exports = {
         return { addresses, weights, threshold };
     },
 
+    getProxy(prefix, chain) {
+        const proxy = JSON.parse(execSync(`${prefix} "axelard q evm gateway-address ${chain} --output json"`)).address;
+        return proxy;
+    },
+
     parseWei(str) {
         if (!str) {
             return;
