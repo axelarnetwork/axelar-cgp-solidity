@@ -88,6 +88,16 @@ describe('AxelarGateway', () => {
         });
     });
 
+    describe('external modules', () => {
+        it('should get the correct auth module', async () => {
+            expect(await gateway.authModule()).to.eq(auth.address);
+        });
+
+        it('should get the correct auth module', async () => {
+            expect(await gateway.tokenDeployer()).to.eq(tokenDeployer.address);
+        });
+    });
+
     describe('setTokenMintLimits', () => {
         const symbols = ['tokenA', 'tokenB'];
         const decimals = 8;
