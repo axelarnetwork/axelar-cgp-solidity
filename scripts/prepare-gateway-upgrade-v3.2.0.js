@@ -11,7 +11,7 @@ const {
 } = require('ethers');
 
 const { join, resolve } = require('node:path');
-const { printLog, printObj, confirm, getOwners, getOperators, getAdminAddresses, parseWei } = require('./utils');
+const { printLog, printObj, confirm, getOwners, getOperators, getAdminAddresses, parseWei, getTxOptions } = require('./utils');
 
 // these environment variables should be defined in an '.env' file
 const contractsPath = resolve(process.env.CONTRACTS_PATH || './build');
@@ -113,7 +113,7 @@ tokenDeployerFactory
         });
     
         const proxy = new Contract(proxyAddress, AxelarGateway.abi, wallet);
-        const tx_req = await proxy.populateTransaction.upgrade(gatewayImplementation.address, newImplementationCodeHash, arrayify(params));
+        const tx_req = await proxy.populateTransaction.upgrade(address, newImplementationCodeHash, arrayify(params));
         printObj({upgrade_tx_data: tx_req.data });
     })
     .catch((err) => {
