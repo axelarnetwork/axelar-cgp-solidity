@@ -8,6 +8,12 @@ import '../util/Upgradable.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarGasService is Upgradable, IAxelarGasService {
+    address public immutable gasOperator;
+
+    constructor(address gasOperator_) {
+        gasOperator = gasOperator_;
+    }
+
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCall(
         address sender,
@@ -117,7 +123,9 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
-    function collectFees(address payable receiver, address[] calldata tokens) external onlyOwner {
+    function collectFees(address payable receiver, address[] calldata tokens) external {
+        if (msg.sender != gasOperator) revert NotOperator();
+
         if (receiver == address(0)) revert InvalidAddress();
 
         for (uint256 i; i < tokens.length; i++) {
@@ -137,7 +145,9 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         address payable receiver,
         address token,
         uint256 amount
-    ) external onlyOwner {
+    ) external {
+        if (msg.sender != gasOperator) revert NotOperator();
+
         if (receiver == address(0)) revert InvalidAddress();
 
         if (token == address(0)) {

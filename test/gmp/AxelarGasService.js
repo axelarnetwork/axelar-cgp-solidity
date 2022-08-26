@@ -26,7 +26,7 @@ describe('AxelarGasService', () => {
     beforeEach(async () => {
         const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
 
-        gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy);
+        gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
 
         const name = 'testToken';
         const symbol = 'testToken';
@@ -211,7 +211,10 @@ describe('AxelarGasService', () => {
 
         it('should upgrade the gas receiver implementation', async () => {
             const prevImpl = await gasService.implementation();
-            await expect(upgradeUpgradable(gasService.address, GasService, '0x', ownerWallet)).to.emit(gasService, 'Upgraded');
+            await expect(upgradeUpgradable(ownerWallet, gasService.address, GasService, [ownerWallet.address])).to.emit(
+                gasService,
+                'Upgraded',
+            );
 
             const newImpl = await gasService.implementation();
             expect(await gasService.owner()).to.be.equal(ownerWallet.address);

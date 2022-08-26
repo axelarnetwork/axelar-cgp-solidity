@@ -9,6 +9,7 @@ interface IAxelarGasService is IUpgradable {
     error NothingReceived();
     error TransferFailed();
     error InvalidAddress();
+    error NotOperator();
 
     event GasPaidForContractCall(
         address indexed sourceAddress,
@@ -121,4 +122,6 @@ interface IAxelarGasService is IUpgradable {
         address token,
         uint256 amount
     ) external;
+
+    function gasOperator() external returns (address);
 }
