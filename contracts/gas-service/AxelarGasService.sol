@@ -14,6 +14,12 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         gasOperator = gasOperator_;
     }
 
+    modifier onlyOperator() {
+        if (msg.sender != gasOperator) revert NotOperator();
+
+        _;
+    }
+
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCall(
         address sender,
@@ -123,9 +129,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
-    function collectFees(address payable receiver, address[] calldata tokens) external {
-        if (msg.sender != gasOperator) revert NotOperator();
-
+    function collectFees(address payable receiver, address[] calldata tokens) external onlyOperator {
         if (receiver == address(0)) revert InvalidAddress();
 
         for (uint256 i; i < tokens.length; i++) {
@@ -145,9 +149,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         address payable receiver,
         address token,
         uint256 amount
-    ) external {
-        if (msg.sender != gasOperator) revert NotOperator();
-
+    ) external onlyOperator {
         if (receiver == address(0)) revert InvalidAddress();
 
         if (token == address(0)) {
