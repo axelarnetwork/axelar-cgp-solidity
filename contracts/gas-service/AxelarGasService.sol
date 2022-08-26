@@ -8,14 +8,14 @@ import '../util/Upgradable.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarGasService is Upgradable, IAxelarGasService {
-    address public immutable gasOperator;
+    address public immutable gasCollector;
 
-    constructor(address gasOperator_) {
-        gasOperator = gasOperator_;
+    constructor(address gasCollector_) {
+        gasCollector = gasCollector_;
     }
 
-    modifier onlyOperator() {
-        if (msg.sender != gasOperator) revert NotOperator();
+    modifier onlyCollector() {
+        if (msg.sender != gasCollector) revert NotCollector();
 
         _;
     }
@@ -129,7 +129,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
-    function collectFees(address payable receiver, address[] calldata tokens) external onlyOperator {
+    function collectFees(address payable receiver, address[] calldata tokens) external onlyCollector {
         if (receiver == address(0)) revert InvalidAddress();
 
         for (uint256 i; i < tokens.length; i++) {
@@ -149,7 +149,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         address payable receiver,
         address token,
         uint256 amount
-    ) external onlyOperator {
+    ) external onlyCollector {
         if (receiver == address(0)) revert InvalidAddress();
 
         if (token == address(0)) {
