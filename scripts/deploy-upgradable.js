@@ -7,7 +7,7 @@ const { outputJsonSync } = require('fs-extra');
 const { defaultAbiCoder } = require('ethers/lib/utils');
 
 function getImplementationArgs(contractName, chain) {
-    if (contractName === 'AxelarGasService') return [chain.gasOperator];
+    if (contractName === 'AxelarGasService') return [chain.gasCollector];
     if (contractName === 'AxelarDepositService') return [];
     throw new Error(`${contractName} is not supported.`);
 }
