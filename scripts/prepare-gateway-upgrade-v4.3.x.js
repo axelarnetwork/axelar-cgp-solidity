@@ -2,7 +2,7 @@
 
 require('dotenv').config();
 
-const { printLog, printObj, confirm, getEVMAddresses, parseWei, getTxOptions } = require('./utils');
+const { printLog, printObj, confirm, getEVMAddresses, parseWei, getTxOptions, pubkeysToAddresses } = require('./utils');
 const { ethers } = require('hardhat');
 const {
     getContractFactory,
