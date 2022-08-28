@@ -129,18 +129,25 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
-    function collectFees(address payable receiver, address[] calldata tokens) external onlyCollector {
+    function collectFees(
+        address payable receiver,
+        address[] calldata tokens,
+        uint256[] calldata amounts
+    ) external onlyCollector {
         if (receiver == address(0)) revert InvalidAddress();
 
-        for (uint256 i; i < tokens.length; i++) {
+        uint256 tokensLength = tokens.length;
+        if (tokensLength != amounts.length) revert InvalidAmounts();
+
+        for (uint256 i; i < tokensLength; i++) {
             address token = tokens[i];
+            uint256 amount = amounts[i];
+            if (amount == 0) revert InvalidAmounts();
 
             if (token == address(0)) {
-                uint256 amount = address(this).balance;
-                if (amount > 0) receiver.transfer(amount);
+                if (amount <= address(this).balance) receiver.transfer(amount);
             } else {
-                uint256 amount = IERC20(token).balanceOf(address(this));
-                if (amount > 0) _safeTransfer(token, receiver, amount);
+                if (amount <= IERC20(token).balanceOf(address(this))) _safeTransfer(token, receiver, amount);
             }
         }
     }

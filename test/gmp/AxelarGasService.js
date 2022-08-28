@@ -201,9 +201,17 @@ describe('AxelarGasService', () => {
                 .and.to.emit(testToken, 'Transfer')
                 .withArgs(gasService.address, userWallet.address, gasFeeAmount);
 
-            await expect(gasService.connect(userWallet).collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address])).to.be.reverted;
+            await expect(
+                gasService
+                    .connect(userWallet)
+                    .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address], [nativeGasFeeAmount, gasFeeAmount]),
+            ).to.be.reverted;
 
-            await expect(await gasService.connect(ownerWallet).collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address]))
+            await expect(
+                await gasService
+                    .connect(ownerWallet)
+                    .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address], [nativeGasFeeAmount, gasFeeAmount]),
+            )
                 .to.changeEtherBalance(ownerWallet, nativeGasFeeAmount)
                 .and.to.emit(testToken, 'Transfer')
                 .withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
