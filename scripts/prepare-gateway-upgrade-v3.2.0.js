@@ -41,7 +41,6 @@ confirm(
         GAS_PRICE: gasPrice?.toString() || null,
         GAS_LIMIT: gasLimit || null,
         SKIP_CONFIRM: skipConfirm || null,
-        
     },
     prefix && chain && url && privKey && adminThreshold && proxyAddress,
 );
@@ -61,16 +60,9 @@ const { addresses: operators, threshold: operatorThreshold } = getOperators(pref
 printObj({ operators, threshold: operatorThreshold });
 
 const params = defaultAbiCoder.encode(
-      ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
-      [
-        admins,
-        adminThreshold,
-        owners,
-        ownerThreshold,
-        operators,
-        operatorThreshold,
-      ],
-    );
+    ['address[]', 'uint8', 'address[]', 'uint8', 'address[]', 'uint8'],
+    [admins, adminThreshold, owners, ownerThreshold, operators, operatorThreshold],
+);
 
 const TokenDeployerPath = join(contractsPath, 'TokenDeployer.json');
 const TokenDeployer = require(TokenDeployerPath);
@@ -89,13 +81,13 @@ tokenDeployerFactory
     .deploy()
     .then((tokenDeployer) => tokenDeployer.deployed())
     .then(({ address }) => {
-        printObj({token_deployer: address});
+        printObj({ token_deployer: address });
         printLog(`deploying gateway implementation contract`);
         return axelarGatewayMultisigFactory.deploy(address);
     })
     .then((axelarGatewayMultisig) => axelarGatewayMultisig.deployed())
     .then(async ({ address }) => {
-        const newImplementationCode = await  provider.getCode(address);
+        const newImplementationCode = await provider.getCode(address);
         const newImplementationCodeHash = keccak256(newImplementationCode);
 
         printLog('fetching fee data');
@@ -111,10 +103,10 @@ tokenDeployerFactory
                 params: params,
             },
         });
-    
+
         const proxy = new Contract(proxyAddress, AxelarGateway.abi, wallet);
         const tx_req = await proxy.populateTransaction.upgrade(address, newImplementationCodeHash, arrayify(params));
-        printObj({upgrade_tx_data: tx_req.data });
+        printObj({ upgrade_tx_data: tx_req.data });
     })
     .catch((err) => {
         console.error(err);

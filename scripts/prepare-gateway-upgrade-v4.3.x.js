@@ -58,14 +58,7 @@ const admins = adminAddresses ? JSON.parse(adminAddresses) : pubkeysToAddresses(
 printObj({ admins });
 
 const paramsAuth = [defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [addresses, weights, threshold])];
-const paramsUpgrade = defaultAbiCoder.encode(
-        ['address[]', 'uint8', 'bytes'],
-        [
-            admins,
-            adminThreshold,
-            '0x',
-        ],
-    );
+const paramsUpgrade = defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [admins, adminThreshold, '0x']);
 
 (async () => {
     printLog('fetching fee data');
@@ -83,11 +76,11 @@ const paramsUpgrade = defaultAbiCoder.encode(
 
     printLog(`deploying auth contract`);
     const auth = await authFactory.deploy(paramsAuth).then((d) => d.deployed());
-    printObj({auth_address: auth.address});
+    printObj({ auth_address: auth.address });
 
     printLog(`deploying token deployer contract`);
     const tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
-    printObj({token_deployer_address: tokenDeployer.address});
+    printObj({ token_deployer_address: tokenDeployer.address });
 
     printLog(`deploying gateway implementation contract`);
     const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
@@ -112,9 +105,12 @@ const paramsUpgrade = defaultAbiCoder.encode(
     });
 
     const proxy = await getContractAt('IAxelarGateway', proxyAddress, wallet);
-    const tx_req = await proxy.populateTransaction.upgrade(gatewayImplementation.address, newImplementationCodeHash, arrayify(paramsUpgrade));
-    printObj({upgrade_tx_data: tx_req.data });
-})()
-    .catch((err) => {
-        console.error(err);
-    });
+    const tx_req = await proxy.populateTransaction.upgrade(
+        gatewayImplementation.address,
+        newImplementationCodeHash,
+        arrayify(paramsUpgrade),
+    );
+    printObj({ upgrade_tx_data: tx_req.data });
+})().catch((err) => {
+    console.error(err);
+});
