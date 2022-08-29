@@ -106,7 +106,9 @@ describe('GeneralMessagePassing', () => {
         destinationChainGateway = await deployGateway();
         const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
 
-        sourceChainGasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy);
+        sourceChainGasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [
+            ownerWallet.address,
+        ]);
         tokenA = await deployContract(ownerWallet, MintableCappedERC20, [nameA, symbolA, decimals, capacity]);
 
         tokenB = await deployContract(ownerWallet, MintableCappedERC20, [nameB, symbolB, decimals, capacity]);
