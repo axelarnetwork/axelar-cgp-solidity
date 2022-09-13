@@ -219,8 +219,7 @@ describe('AxelarGasService', () => {
 
         it('should upgrade the gas receiver implementation', async () => {
             const prevImpl = await gasService.implementation();
-            const [_, tx] = upgradeUpgradable(ownerWallet, gasService.address, GasService, [ownerWallet.address]);
-            await expect(tx).to.emit(
+            await expect(upgradeUpgradable(ownerWallet, gasService.address, GasService, [ownerWallet.address])).to.emit(
                 gasService,
                 'Upgraded',
             );

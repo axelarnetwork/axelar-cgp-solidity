@@ -49,10 +49,15 @@ async function upgradeUpgradable(wallet, proxyAddress, contractJson, implementat
 
     const tx = await proxy.upgrade(implementation.address, implementationCodeHash, setupParams);
     await tx.wait();
-    return [proxy, tx];
+    return tx;
+}
+
+function getProxy(wallet, proxyAddress) {
+    return new Contract(proxyAddress, IUpgradable.abi, wallet);
 }
 
 module.exports = {
     deployUpgradable,
     upgradeUpgradable,
+    getProxy,
 };

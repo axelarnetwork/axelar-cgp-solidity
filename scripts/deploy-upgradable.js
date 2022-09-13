@@ -1,7 +1,7 @@
 'use strict';
 require('dotenv').config();
 const { Wallet, getDefaultProvider } = require('ethers');
-const { deployUpgradable, upgradeUpgradable } = require('./upgradable');
+const { deployUpgradable, upgradeUpgradable, getProxy } = require('./upgradable');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
 const { defaultAbiCoder } = require('ethers/lib/utils');
@@ -54,10 +54,13 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
         const provider = getDefaultProvider(rpc);
 
         if (chain[contractName]) {
-            const anwser = readlineSync.question(`Proxy already exists for ${chain.name}. Perform an upgrade? (y/n) `);
+            const contract = getProxy(wallet.connect(provider), chain[contractName]["address"])
+            console.log(`Proxy already exists for ${chain.name}`);
+            console.log(`Existing implementation ${await contract.implementation()}`);
+            const anwser = readlineSync.question(`Perform an upgrade? (y/n) `);
             if (anwser !== 'y') continue;
 
-            const [contract, _] = await upgradeUpgradable(
+            await upgradeUpgradable(
                 wallet.connect(provider),
                 chain[contractName]["address"],
                 implementationJson,
@@ -65,8 +68,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 getUpgradeArgs(contractName, chain),
             );
 
-            const implementation = await contract.implementation();
-            chain[contractName]["implementation"] = implementation;
+            chain[contractName]["implementation"] = await contract.implementation();
 
             setJSON(chains, `../info/${env}.json`);
             console.log(`${chain.name} | New Implementation for ${contractName} is at ${implementation}`);
@@ -84,11 +86,10 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 key,
             );
 
-            const implementation = await contract.implementation();
             chain[contractName] = {
                 "salt": key,
                 "address": contract.address,
-                "implementation": implementation,
+                "implementation": await contract.implementation(),
                 "deployer": wallet.address,
             };
 
