@@ -8,13 +8,13 @@ const { defaultAbiCoder } = require('ethers/lib/utils');
 
 function getImplementationArgs(contractName, chain) {
     if (contractName === 'AxelarGasService') return [chain.gasCollector];
-    if (contractName === 'AxelarDepositService') return [];
+    if (contractName === 'AxelarDepositService') return [chain.gateway, chain.wrappedSymbol];
     throw new Error(`${contractName} is not supported.`);
 }
 
 function getInitArgs(contractName, chain) {
     if (contractName === 'AxelarGasService') return '0x';
-    if (contractName === 'AxelarDepositService') return defaultAbiCoder.encode(['address', 'string'], [chain.gateway, chain.wrappedSymbol]);
+    if (contractName === 'AxelarDepositService') return [];
     throw new Error(`${contractName} is not supported.`);
 }
 
@@ -54,6 +54,9 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
         const provider = getDefaultProvider(rpc);
 
         if (chain[contractName]) {
+            const anwser = readlineSync.question(`Proxy already exists for ${chain.name}. Perform an upgrade? (y/n) `);
+            if (anwser !== 'y') continue;
+
             const [contract, _] = await upgradeUpgradable(
                 wallet.connect(provider),
                 chain[contractName]["address"],

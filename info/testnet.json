@@ -15,6 +15,12 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
   },
   {
@@ -33,6 +39,12 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
   },
   {
@@ -51,6 +63,12 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
   },
   {
@@ -69,6 +87,12 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
   },
   {
@@ -87,6 +111,12 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
   },
   {
@@ -99,7 +129,13 @@
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Binance Coin",
     "tokenSymbol": "BNB",
-    "wrappedSymbol": "WBNB"
+    "wrappedSymbol": "WBNB",
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
+    }
   },
   {
     "name": "Aurora",
@@ -117,6 +153,12 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
   }
 ]
