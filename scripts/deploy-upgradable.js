@@ -36,29 +36,41 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
     const proxyPath = artifactPath + contractName + 'Proxy.sol/' + contractName + 'Proxy.json';
     const implementationJson = require(implementationPath);
     const proxyJson = require(proxyPath);
+    console.log(`Deployer address ${wallet.address}`)
+
     for (const chain of chains) {
-        if (deployTo.length > 0 && deployTo.find((name) => chain.name === name) === null) continue;
+        if (deployTo.length > 0 && !deployTo.find((name) => chain.name === name)) continue;
         const rpc = chain.rpc;
         const provider = getDefaultProvider(rpc);
-        console.log(`Deployer has ${(await provider.getBalance(wallet.address)) / 1e18} ${chain.tokenSymbol} on ${chain.name}.`);
+        console.log(`Deployer has ${(await provider.getBalance(wallet.address)) / 1e18} ${chain.tokenSymbol} and nonce ${await provider.getTransactionCount(wallet.address)} on ${chain.name}.`);
     }
-    const anwser = readlineSync.question('Proceed with deployment? (y/n). ');
+
+    const anwser = readlineSync.question('Proceed with deployment? (y/n) ');
     if (anwser !== 'y') return;
+
     for (const chain of chains) {
-        if (deployTo.length > 0 && deployTo.find((name) => chain.name === name) === null) continue;
+        if (deployTo.length > 0 && !deployTo.find((name) => chain.name === name)) continue;
         const rpc = chain.rpc;
         const provider = getDefaultProvider(rpc);
+
         if (chain[contractName]) {
-            await upgradeUpgradable(
+            const [contract, _] = await upgradeUpgradable(
                 wallet.connect(provider),
-                chain[contractName],
+                chain[contractName]["address"],
                 implementationJson,
                 getImplementationArgs(contractName, chain),
                 getUpgradeArgs(contractName, chain),
             );
+
+            const implementation = await contract.implementation();
+            chain[contractName]["implementation"] = implementation;
+
+            setJSON(chains, `../info/${env}.json`);
+            console.log(`${chain.name} | New Implementation for ${contractName} is at ${implementation}`);
             console.log(`${chain.name} | Upgraded.`);
         } else {
             const key = contractName;
+
             const contract = await deployUpgradable(
                 chain.constAddressDeployer,
                 wallet.connect(provider),
@@ -68,9 +80,19 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 getInitArgs(contractName, chain),
                 key,
             );
-            chain[contractName] = contract.address;
-            setJSON(chains, `./info/${env}.json`);
-            console.log(`${chain.name} | Proxy for ${contractName} is at ${contract.address}.`);
+
+            const implementation = await contract.implementation();
+            chain[contractName] = {
+                "salt": key,
+                "address": contract.address,
+                "implementation": implementation,
+                "deployer": wallet.address,
+            };
+
+            setJSON(chains, `../info/${env}.json`);
+            console.log(`${chain.name} | ConstAddressDeployer is at ${chain.constAddressDeployer}`);
+            console.log(`${chain.name} | Proxy for ${contractName} is at ${contract.address}`);
+            console.log(`${chain.name} | Implementation for ${contractName} is at ${implementation}`);
         }
     }
 }

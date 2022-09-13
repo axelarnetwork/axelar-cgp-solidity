@@ -6,11 +6,16 @@
     "gateway": "0xBC6fcce7c5487d43830a219CA6E7B83238B41e71",
     "gasCollector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Ether",
     "tokenSymbol": "ETH",
     "wrappedSymbol": "WETH",
-    "AxelarDepositService": "0x48bE082702D2D1a2Bf0346286B524F62AA1DF095"
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
+      "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    }
   },
   {
     "name": "Avalanche",
@@ -19,11 +24,16 @@
     "gateway": "0xC249632c2D40b9001FE907806902f63038B737Ab",
     "gasCollector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Avax",
     "tokenSymbol": "AVAX",
     "wrappedSymbol": "WAVAX",
-    "AxelarDepositService": "0x48bE082702D2D1a2Bf0346286B524F62AA1DF095"
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
+      "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    }
   },
   {
     "name": "Fantom",
@@ -32,11 +42,16 @@
     "rpc": "https://rpc.testnet.fantom.network",
     "gasCollector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Fantom",
     "tokenSymbol": "FTM",
     "wrappedSymbol": "WFTM",
-    "AxelarDepositService": "0x48bE082702D2D1a2Bf0346286B524F62AA1DF095"
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
+      "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    }
   },
   {
     "name": "Polygon",
@@ -45,11 +60,16 @@
     "rpc": "https://polygon-mumbai.g.alchemy.com/v2/Ksd4J1QVWaOJAJJNbr_nzTcJBJU-6uP3",
     "gasCollector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Matic",
     "tokenSymbol": "MATIC",
     "wrappedSymbol": "WMATIC",
-    "AxelarDepositService": "0x48bE082702D2D1a2Bf0346286B524F62AA1DF095"
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
+      "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    }
   },
   {
     "name": "Moonbeam",
@@ -58,11 +78,16 @@
     "rpc": "https://moonbeam-alpha.api.onfinality.io/public",
     "gasCollector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "DEV",
     "tokenSymbol": "DEV",
     "wrappedSymbol": "WETH",
-    "AxelarDepositService": "0x48bE082702D2D1a2Bf0346286B524F62AA1DF095"
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
+      "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    }
   },
   {
     "name": "Binance",
@@ -71,10 +96,27 @@
     "rpc": "https://data-seed-prebsc-1-s1.binance.org:8545/",
     "gasCollector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-    "constAddressDeployer": "0x617179a15fEAa53Fa82ae80b0fc3E85b7359a748",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Binance Coin",
     "tokenSymbol": "BNB",
-    "wrappedSymbol": "WBNB",
-    "AxelarDepositService": "0x48bE082702D2D1a2Bf0346286B524F62AA1DF095"
+    "wrappedSymbol": "WBNB"
+  },
+  {
+    "name": "Aurora",
+    "chainId": 1313161555,
+    "gateway": "0x304acf330bbE08d1e512eefaa92F6a57871fD895",
+    "rpc": "https://testnet.aurora.dev/",
+    "gasCollector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+    "gasReceiver": "0xA2C84547Db9732B27D45c06218DDAEFcc71e452D",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Eth",
+    "tokenSymbol": "ETH",
+    "wrappedSymbol": "WETH",
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
+      "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
+    }
   }
 ]

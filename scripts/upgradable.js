@@ -30,7 +30,7 @@ async function deployUpgradable(
         key,
         [],
         [implementation.address, wallet.address, setupParams],
-        6e5,
+        2e6,
     );
 
     return new Contract(proxy.address, implementationJson.abi, wallet);
@@ -49,7 +49,7 @@ async function upgradeUpgradable(wallet, proxyAddress, contractJson, implementat
 
     const tx = await proxy.upgrade(implementation.address, implementationCodeHash, setupParams);
     await tx.wait();
-    return tx;
+    return [proxy, tx];
 }
 
 module.exports = {
