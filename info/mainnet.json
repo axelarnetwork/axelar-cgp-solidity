@@ -37,7 +37,7 @@
     "name": "Fantom",
     "chainId": 250,
     "gateway": "0x304acf330bbE08d1e512eefaa92F6a57871fD895",
-    "rpc": "https://wispy-nameless-fog.fantom.quiknode.pro/279341af3bd32987c5f0573108940da829fa53f2/",
+    "rpc": "https://rpc.ftm.tools",
     "gasCollector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Fantom",
