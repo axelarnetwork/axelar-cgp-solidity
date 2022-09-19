@@ -160,5 +160,16 @@
       "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
+  },
+  {
+    "name": "Kava",
+    "chainId": 2221,
+    "gateway": "",
+    "rpc": "https://evm.testnet.kava.io",
+    "gasCollector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Kava",
+    "tokenSymbol": "KAVA",
+    "wrappedSymbol": "WKAVA"
   }
 ]
