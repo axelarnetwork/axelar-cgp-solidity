@@ -29,40 +29,40 @@ confirm(
     url && privKey,
 );
 
-const AxelarGasReceiverPath = join(contractsPath, 'AxelarGasReceiver.json');
-const AxelarGasReceiverProxyPath = join(contractsPath, 'AxelarGasReceiverProxy.json');
+const AxelarGasServicePath = join(contractsPath, 'AxelarGasService.json');
+const AxelarGasServiceProxyPath = join(contractsPath, 'AxelarGasServiceProxy.json');
 
-if (!(existsSync(AxelarGasReceiverPath) && existsSync(AxelarGasReceiverProxyPath))) {
+if (!(existsSync(AxelarGasServicePath) && existsSync(AxelarGasServiceProxyPath))) {
     console.error(
-        `Missing one or more ABIs/bytecodes. Make sure AxelarGasReceiver.json and AxelarGasReceiverProxy.json are present in ${contractsPath}`,
+        `Missing one or more ABIs/bytecodes. Make sure AxelarGasService.json and AxelarGasServiceProxy.json are present in ${contractsPath}`,
     );
     process.exit(1);
 }
 
-const AxelarGasReceiver = require(AxelarGasReceiverPath);
-const AxelarGasReceiverProxy = require(AxelarGasReceiverProxyPath);
+const AxelarGasService = require(AxelarGasServicePath);
+const AxelarGasServiceProxy = require(AxelarGasServiceProxyPath);
 
 const provider = new JsonRpcProvider(url);
 const wallet = new Wallet(privKey, provider);
 
-const axelarGasReceiverFactory = new ContractFactory(AxelarGasReceiver.abi, AxelarGasReceiver.bytecode, wallet);
-const axelarGasReceiverProxyFactory = new ContractFactory(AxelarGasReceiverProxy.abi, AxelarGasReceiverProxy.bytecode, wallet);
+const axelarGasServiceFactory = new ContractFactory(AxelarGasService.abi, AxelarGasService.bytecode, wallet);
+const axelarGasServiceProxyFactory = new ContractFactory(AxelarGasServiceProxy.abi, AxelarGasServiceProxy.bytecode, wallet);
 
 const contracts = {};
 const params = arrayify(defaultAbiCoder.encode(['address'], [wallet.address]));
 
-axelarGasReceiverFactory
+axelarGasServiceFactory
     .deploy()
-    .then((axelarGasReceiver) => axelarGasReceiver.deployed())
+    .then((axelarGasService) => axelarGasService.deployed())
     .then(({ address }) => {
         printLog(`deployed axelar gas receiver at address ${address}`);
-        contracts.axelarGasReceiver = address;
-        return axelarGasReceiverProxyFactory.deploy(address, params);
+        contracts.axelarGasService = address;
+        return axelarGasServiceProxyFactory.deploy(address, params);
     })
-    .then((axelarGasReceiverProxy) => axelarGasReceiverProxy.deployed())
+    .then((axelarGasServiceProxy) => axelarGasServiceProxy.deployed())
     .then(({ address }) => {
         printLog(`deployed axelar gas receiver proxy at address ${address}`);
-        contracts.axelarGasReceiverProxy = address;
+        contracts.axelarGasServiceProxy = address;
     })
     .catch((err) => {
         console.error(err);

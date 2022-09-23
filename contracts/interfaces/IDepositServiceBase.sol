@@ -11,6 +11,7 @@ interface IDepositServiceBase {
     error TokenApproveFailed();
     error TokenTransferFailed();
     error NativeTransferFailed();
+    error NotRefundIssuer();
 
     function gateway() external returns (address);
 

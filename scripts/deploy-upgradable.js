@@ -4,17 +4,16 @@ const { Wallet, getDefaultProvider } = require('ethers');
 const { deployUpgradable, upgradeUpgradable } = require('./upgradable');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
-const { defaultAbiCoder } = require('ethers/lib/utils');
 
 function getImplementationArgs(contractName, chain) {
     if (contractName === 'AxelarGasService') return [chain.gasCollector];
-    if (contractName === 'AxelarDepositService') return [];
+    if (contractName === 'AxelarDepositService') return [chain.gateway, chain.wrappedSymbol, chain.depositRefundIssuer];
     throw new Error(`${contractName} is not supported.`);
 }
 
 function getInitArgs(contractName, chain) {
     if (contractName === 'AxelarGasService') return '0x';
-    if (contractName === 'AxelarDepositService') return defaultAbiCoder.encode(['address', 'string'], [chain.gateway, chain.wrappedSymbol]);
+    if (contractName === 'AxelarDepositService') return '0x';
     throw new Error(`${contractName} is not supported.`);
 }
 

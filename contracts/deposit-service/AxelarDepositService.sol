@@ -18,9 +18,15 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
     address public refundToken;
 
     address public immutable receiverImplementation;
+    address public immutable refundIssuer;
 
-    constructor(address gateway_, string memory wrappedSymbol_) DepositServiceBase(gateway_, wrappedSymbol_) {
+    constructor(
+        address gateway_,
+        string memory wrappedSymbol_,
+        address refundIssuer_
+    ) DepositServiceBase(gateway_, wrappedSymbol_) {
         receiverImplementation = address(new ReceiverImplementation(gateway_, wrappedSymbol_));
+        refundIssuer = refundIssuer_;
     }
 
     // @dev This method is meant to be called directly by user to send native token cross-chain
@@ -238,6 +244,21 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         }
 
         refundToken = address(0);
+    }
+
+    function refundLockedAsset(
+        address payable receiver,
+        address token,
+        uint256 amount
+    ) external {
+        if (msg.sender != refundIssuer) revert NotRefundIssuer();
+        if (receiver == address(0)) revert InvalidAddress();
+
+        if (token == address(0)) {
+            receiver.transfer(amount);
+        } else {
+            _safeTransfer(token, receiver, amount);
+        }
     }
 
     function _depositAddress(
