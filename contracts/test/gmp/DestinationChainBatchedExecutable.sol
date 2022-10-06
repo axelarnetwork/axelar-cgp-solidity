@@ -15,8 +15,8 @@ contract DestinationChainBatchedExecutable is IAxelarExecutableBatched {
 
     function bytesToAddress(bytes memory bys) private pure returns (address addr) {
         assembly {
-        addr := mload(add(bys,20))
-        } 
+            addr := mload(add(bys, 20))
+        }
     }
 
     function _execute(
@@ -24,7 +24,7 @@ contract DestinationChainBatchedExecutable is IAxelarExecutableBatched {
         bytes memory sourceAddress,
         bytes calldata payload
     ) internal override {
-        (uint256 receivedVal) = abi.decode(payload, (uint256));
+        uint256 receivedVal = abi.decode(payload, (uint256));
 
         val = receivedVal;
         lastSenderAddress = bytesToAddress(sourceAddress);

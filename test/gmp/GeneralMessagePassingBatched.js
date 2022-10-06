@@ -5,7 +5,7 @@ const {
     ethers: {
         Contract,
         utils: { defaultAbiCoder, arrayify, keccak256 },
-    }
+    },
 } = require('hardhat');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
@@ -50,20 +50,18 @@ describe('GeneralMessagePassingBatched', () => {
         sourceChainGateway = await deployGateway(sourceChain);
         destinationChainGateway = await deployGateway(destinationChain);
 
-        destinationChainExecutable = await deployContract(ownerWallet, DestinationChainBatchedExecutable, [destinationChainGateway.address]);
+        destinationChainExecutable = await deployContract(ownerWallet, DestinationChainBatchedExecutable, [
+            destinationChainGateway.address,
+        ]);
     });
 
     describe('general message passing batched', () => {
         async function sendCall(destinationChain, val) {
             const nonce = await sourceChainGateway.getNonce();
-            
+
             const payload = defaultAbiCoder.encode(['uint256'], [val]);
             const payloadHash = keccak256(payload);
-            await expect(
-                sourceChainGateway
-                    .connect(userWallet)
-                    .callContract(destinationChain, destinationChainExecutable.address, payload),
-            )
+            await expect(sourceChainGateway.connect(userWallet).callContract(destinationChain, destinationChainExecutable.address, payload))
                 .to.emit(sourceChainGateway, 'ContractCall')
                 .withArgs(
                     userWallet.address,
@@ -87,15 +85,7 @@ describe('GeneralMessagePassingBatched', () => {
                         CHAIN_ID,
                         [approveCommandId],
                         ['validateCallsHash'],
-                        [
-                            defaultAbiCoder.encode(
-                                ['string', 'bytes32'],
-                                [
-                                    sourceChain,
-                                    callsHash,
-                                ],
-                            ),
-                        ],
+                        [defaultAbiCoder.encode(['string', 'bytes32'], [sourceChain, callsHash])],
                     ],
                 ),
             );
@@ -107,19 +97,9 @@ describe('GeneralMessagePassingBatched', () => {
         }
 
         async function executeCall(from, to, size, nonce, val) {
-            const proof = await sourceChainGateway.getProof(
-                from,
-                to,
-                size,
-                nonce
-            );
+            const proof = await sourceChainGateway.getProof(from, to, size, nonce);
             const payload = defaultAbiCoder.encode(['uint256'], [val]);
-            return destinationChainExecutable.execute(
-                sourceChain,
-                userWallet.address.toString(),
-                payload,
-                proof,
-            );
+            return destinationChainExecutable.execute(sourceChain, userWallet.address.toString(), payload, proof);
         }
 
         async function postExecute(val, execution) {
@@ -131,7 +111,7 @@ describe('GeneralMessagePassingBatched', () => {
 
         it('should execute a single call in a single call batch', async () => {
             const val = 1e6;
-            
+
             const nonce = await sendCall(destinationChain, val);
 
             await approveBatch(nonce, nonce, 1, nonce);
@@ -142,33 +122,36 @@ describe('GeneralMessagePassingBatched', () => {
         });
         it('should execute a single call in a multiple call batch', async () => {
             const val = 1e6;
-            
+
             const nonce = await sendCall(destinationChain, val);
-            for(let i=0;i<9;i++) {
+
+            for (let i = 0; i < 9; i++) {
                 await sendCall(otherChain, i);
             }
 
-            await approveBatch(nonce, nonce+9, 10);
+            await approveBatch(nonce, nonce + 9, 10);
 
-            const execution = await executeCall(nonce, nonce+9, 10, nonce, val);
+            const execution = await executeCall(nonce, nonce + 9, 10, nonce, val);
 
             await postExecute(val, execution);
         });
         it('should execute a single call in a multiple nested call batch', async () => {
             const val = 1e6;
-            
-            for(let i=0;i<10;i++) {
+
+            for (let i = 0; i < 10; i++) {
                 await sendCall(otherChain, i);
             }
+
             const nonce = await sendCall(destinationChain, val);
-            for(let i=0;i<9;i++) {
-                await sendCall(otherChain, i+10);
+            
+            for (let i = 0; i < 9; i++) {
+                await sendCall(otherChain, i + 10);
             }
 
-            await approveBatch(nonce-10, nonce+9, 4);
+            await approveBatch(nonce - 10, nonce + 9, 4);
 
-            const execution = await executeCall(nonce-10, nonce+9, 4, nonce, val);
-            
+            const execution = await executeCall(nonce - 10, nonce + 9, 4, nonce, val);
+
             await postExecute(val, execution);
         });
     });
