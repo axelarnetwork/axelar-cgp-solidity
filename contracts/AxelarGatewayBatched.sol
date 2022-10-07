@@ -31,6 +31,7 @@ contract AxelarGatewayBatched is IAxelarGatewayBatched, AdminMultisigBase {
     bytes32 internal constant PREFIX_OUTGOINGCALL = keccak256('outgoing-call');
     bytes32 internal constant PREFIX_INCOMING_CALL = keccak256('incoming-call');
     bytes32 internal constant PREFIX_INCOMING_CALLS_HASH = keccak256('incoming-calls_hash');
+    bytes32 internal constant PREFIX_CALL_HASH = keccak256('call_hash');
 
     bytes32 internal constant SELECTOR_VALIDATE_CALLS_HASH = keccak256('validateCallsHash');
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
@@ -133,7 +134,7 @@ contract AxelarGatewayBatched is IAxelarGatewayBatched, AdminMultisigBase {
         bytes32 payloadHash,
         Proof calldata proof
     ) public view override returns (bool) {
-        bytes32 callsHash = keccak256(abi.encode(proof.levels[0].array, proof.batchStart));
+        bytes32 callsHash = keccak256(abi.encode(keccak256(abi.encode(proof.levels[0].array)), proof.batchStart, proof.batchEnd));
         if (!isIncomingCallsHashValid(sourceChain, callsHash)) revert('INVALID_CALL');
         uint256 length = proof.levels.length;
         for (uint256 i; i < length - 1; ++i) {
@@ -170,7 +171,7 @@ contract AxelarGatewayBatched is IAxelarGatewayBatched, AdminMultisigBase {
     ) external view override returns (bytes32 callsHash) {
         uint256[] memory calls = getCalls(from, to);
         calls = _reduceCalls(calls, leafSize);
-        callsHash = keccak256(abi.encode(calls, from));
+        callsHash = keccak256(abi.encode(keccak256(abi.encode(calls)), from, to));
     }
 
     function isContractCallExecuted(string calldata sourceChain, uint256 nonce) external view override returns (bool) {
@@ -257,7 +258,7 @@ contract AxelarGatewayBatched is IAxelarGatewayBatched, AdminMultisigBase {
         bytes memory to,
         bytes32 payloadHash
     ) internal pure returns (uint256 val) {
-        val = uint256(keccak256(abi.encode(destinationChainHash, from, to, payloadHash)));
+        val = uint256(keccak256(abi.encode(PREFIX_CALL_HASH, destinationChainHash, from, to, payloadHash)));
     }
 
     function _toBytes(address a) internal pure returns (bytes memory) {
