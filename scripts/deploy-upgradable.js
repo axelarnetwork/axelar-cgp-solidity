@@ -71,7 +71,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
             chain[contractName]["implementation"] = await contract.implementation();
 
             setJSON(chains, `../info/${env}.json`);
-            console.log(`${chain.name} | New Implementation for ${contractName} is at ${implementation}`);
+            console.log(`${chain.name} | New Implementation for ${contractName} is at ${chain[contractName]["implementation"]}`);
             console.log(`${chain.name} | Upgraded.`);
         } else {
             const key = contractName;
@@ -96,7 +96,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
             setJSON(chains, `../info/${env}.json`);
             console.log(`${chain.name} | ConstAddressDeployer is at ${chain.constAddressDeployer}`);
             console.log(`${chain.name} | Proxy for ${contractName} is at ${contract.address}`);
-            console.log(`${chain.name} | Implementation for ${contractName} is at ${implementation}`);
+            console.log(`${chain.name} | Implementation for ${contractName} is at ${chain[contractName]["implementation"]}`);
         }
     }
 }

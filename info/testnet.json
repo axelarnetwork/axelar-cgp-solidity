@@ -1,9 +1,9 @@
 [
   {
     "name": "Ethereum",
-    "chainId": 3,
-    "rpc": "https://ropsten.infura.io/v3/a4812158fbab4a2aaa849e6f4a6dc605",
-    "gateway": "0xBC6fcce7c5487d43830a219CA6E7B83238B41e71",
+    "chainId": 5,
+    "rpc": "https://goerli.infura.io/v3/a4812158fbab4a2aaa849e6f4a6dc605",
+    "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
     "gasCollector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
@@ -164,12 +164,35 @@
   {
     "name": "Kava",
     "chainId": 2221,
-    "gateway": "",
+    "gateway": "0xe6A68398DfBf2ed26aFF2b4792570e2f036728b3",
     "rpc": "https://evm.testnet.kava.io",
     "gasCollector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Kava",
     "tokenSymbol": "KAVA",
-    "wrappedSymbol": "WKAVA"
+    "wrappedSymbol": "WKAVA",
+    "AxelarGasService": {
+      "salt": "AxelarGasService-devnet",
+      "address": "0x6CDF45E897B4BC6f616061cc2E8231AAa967ea1a",
+      "implementation": "0xEF8d91aec5dfE5fFC9AE81b739F9a310C06a7a25",
+      "deployer": "0xF52bd269116448745a7e13C3d2f299973Cf671aB"
+    }
+  },
+  {
+    "name": "Hero",
+    "chainId": 17771,
+    "gateway": "0x720A52EC9Fb428Cb122e7B1DAeC8a171b831dea1",
+    "rpc": "https://herotestnet.heroesofnft.com:443/ext/bc/2kdzD7eps9QRC449zypVGBbrzkwFrefLzmt24tS8MxmvEBuWvP/rpc",
+    "gasCollector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Hero",
+    "tokenSymbol": "HRM",
+    "wrappedSymbol": "WHRM",
+    "AxelarGasService": {
+      "salt": "AxelarGasService-devnet",
+      "address": "0x635AFD18822aED9CC0E7EA8fc32d00bEe221c3cc",
+      "implementation": "0x66A40D323134d3479A963C9CF8A0C924f3F33dA4",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
+    }
   }
 ]
