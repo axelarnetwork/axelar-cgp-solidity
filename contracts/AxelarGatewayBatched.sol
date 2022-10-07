@@ -106,7 +106,7 @@ contract AxelarGatewayBatched is IAxelarGatewayBatched, AdminMultisigBase {
         uint256[] memory calls = getCalls(from, to);
         uint256 length = calls.length;
         while (length > leafSize) {
-            length /= leafSize;
+            length = (length + leafSize - 1) / leafSize;
             treeDepth++;
         }
         proof.levels = new ProofLevel[](treeDepth);

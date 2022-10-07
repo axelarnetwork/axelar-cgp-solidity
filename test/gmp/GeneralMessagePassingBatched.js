@@ -98,6 +98,7 @@ describe('GeneralMessagePassingBatched', () => {
 
         async function executeCall(from, to, size, nonce, val) {
             const proof = await sourceChainGateway.getProof(from, to, size, nonce);
+
             const payload = defaultAbiCoder.encode(['uint256'], [val]);
             return destinationChainExecutable.execute(sourceChain, userWallet.address.toString(), payload, proof);
         }
@@ -138,21 +139,97 @@ describe('GeneralMessagePassingBatched', () => {
         it('should execute a single call in a multiple nested call batch', async () => {
             const val = 1e6;
 
-            for (let i = 0; i < 10; i++) {
-                await sendCall(otherChain, i);
-            }
-
             const nonce = await sendCall(destinationChain, val);
-            
+
             for (let i = 0; i < 9; i++) {
                 await sendCall(otherChain, i + 10);
             }
 
-            await approveBatch(nonce - 10, nonce + 9, 4);
+            await approveBatch(nonce, nonce + 9, 2);
 
-            const execution = await executeCall(nonce - 10, nonce + 9, 4, nonce, val);
+            const execution = await executeCall(nonce, nonce + 9, 2, nonce, val);
 
             await postExecute(val, execution);
+        });
+        it('should execute a different calls with different leaf sizes', async () => {
+            const val = 1e6;
+
+            const nonce = await sendCall(destinationChain, val);
+
+            for (let i = 1; i < 5; i++) {
+                await sendCall(destinationChain, val + i);
+            }
+
+            for (let i = 0; i < 5; i++) {
+                const leafSize = i === 0 ? 2 : 1 << i;
+
+                await approveBatch(nonce, nonce + 255, leafSize);
+
+                const execution = await executeCall(nonce, nonce + 255, leafSize, nonce + i, val + i);
+
+                if (i > 0) {
+                    console.log(`leafSize: ${leafSize}`);
+                    await postExecute(val + i, execution);
+                }
+            }
+        });
+        it('should fail to execute the same call twice', async () => {
+            const val = 1e6;
+
+            const nonce = await sendCall(destinationChain, val);
+
+            await approveBatch(nonce, nonce + 9, 2);
+
+            const execution = await executeCall(nonce, nonce + 9, 2, nonce, val);
+
+            await postExecute(val, execution);
+
+            const proof = await sourceChainGateway.getProof(nonce, nonce + 9, 2, nonce);
+
+            const payload = defaultAbiCoder.encode(['uint256'], [val]);
+            await expect(destinationChainExecutable.execute(sourceChain, userWallet.address.toString(), payload, proof)).to.be.reverted;
+        });
+
+        it('should fail to execute a call with a false proof', async () => {
+            const val = 1e6;
+
+            const nonce = await sendCall(destinationChain, val);
+
+            await approveBatch(nonce, nonce + 9, 2);
+
+            const proof = await sourceChainGateway.getProof(nonce, nonce + 9, 2, nonce);
+
+            const payload = defaultAbiCoder.encode(['uint256'], [val]);
+
+            const proofCopy = [];
+
+            for (let i = 0; i < proof.lenght; i++) {
+                proofCopy.push(proof[i]);
+            }
+            
+            proofCopy[3] = nonce + 1;
+
+            await expect(destinationChainExecutable.execute(sourceChain, userWallet.address.toString(), payload, proofCopy)).to.be.reverted;
+
+            proofCopy[3] = nonce;
+            proofCopy[4] = [];
+
+            await expect(destinationChainExecutable.execute(sourceChain, userWallet.address.toString(), payload, proofCopy)).to.be.reverted;
+
+            proofCopy[4] = proof.levels;
+            proofCopy[0] = proof.from + 1;
+
+            await expect(destinationChainExecutable.execute(sourceChain, userWallet.address.toString(), payload, proofCopy)).to.be.reverted;
+
+            proofCopy[0] = proof.from;
+            proofCopy[1] = proof.to + 1;
+
+            await expect(destinationChainExecutable.execute(sourceChain, userWallet.address.toString(), payload, proofCopy)).to.be.reverted;
+
+            proofCopy[1] = proof.to;
+            proofCopy[2] = proof.size + 1;
+
+            await expect(destinationChainExecutable.execute(sourceChain, userWallet.address.toString(), payload, proofCopy)).to.be.reverted;
         });
     });
 });

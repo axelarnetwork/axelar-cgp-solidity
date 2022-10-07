@@ -12,18 +12,9 @@ interface IAxelarGatewayBatched {
     error InvalidCodeHash();
     error SetupFailed();
     error InvalidAuthModule();
-    error InvalidTokenDeployer();
-    error InvalidAmount();
     error InvalidChainId();
     error InvalidCommands();
-    error TokenDoesNotExist(string symbol);
-    error TokenAlreadyExists(string symbol);
-    error TokenDeployFailed(string symbol);
-    error TokenContractDoesNotExist(address token);
-    error BurnFailed(string symbol);
-    error MintFailed(string symbol);
-    error InvalidSetMintLimitsParams();
-    error ExceedMintLimit(string symbol);
+    error InvalidProof();
 
     /**********\
     |* Events *|

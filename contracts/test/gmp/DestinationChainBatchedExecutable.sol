@@ -11,7 +11,11 @@ contract DestinationChainBatchedExecutable is IAxelarExecutableBatched {
     string public lastSenderChain;
     address public lastSenderAddress;
 
-    constructor(address gatewayAddress) IAxelarExecutableBatched(gatewayAddress) {}
+    constructor(address gatewayAddress) IAxelarExecutableBatched(gatewayAddress) {
+        val = 1;
+        lastSenderChain = 'ChainZ';
+        lastSenderAddress = address(this);
+    }
 
     function bytesToAddress(bytes memory bys) private pure returns (address addr) {
         assembly {
