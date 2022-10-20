@@ -247,7 +247,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
     }
 
     function refundLockedAsset(
-        address payable receiver,
+        address receiver,
         address token,
         uint256 amount
     ) external {
@@ -255,7 +255,11 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         if (receiver == address(0)) revert InvalidAddress();
 
         if (token == address(0)) {
-            receiver.transfer(amount);
+            if (amount == 0) revert InvalidAmount();
+
+            (bool sent, ) = receiver.call{ value: amount }('');
+
+            if (!sent) revert NativeTransferFailed();
         } else {
             _safeTransfer(token, receiver, amount);
         }

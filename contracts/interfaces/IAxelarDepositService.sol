@@ -76,7 +76,7 @@ interface IAxelarDepositService is IUpgradable, IDepositServiceBase {
     ) external;
 
     function refundLockedAsset(
-        address payable receiver,
+        address receiver,
         address token,
         uint256 amount
     ) external;
