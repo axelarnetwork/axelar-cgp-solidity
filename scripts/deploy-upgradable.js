@@ -8,13 +8,14 @@ const { outputJsonSync } = require('fs-extra');
 
 function getImplementationArgs(contractName, chain) {
     if (contractName === 'AxelarGasService') return [_.get('AxelarGasService.collector', chain)];
-    if (contractName === 'AxelarDepositService') return [chain.gateway, _.get('AxelarDepositService.wrappedSymbol', chain)];
+    if (contractName === 'AxelarDepositService')
+        return [chain.gateway, _.get('AxelarDepositService.wrappedSymbol', chain), _.get('AxelarDepositService.refundIssuer', chain)];
     throw new Error(`${contractName} is not supported.`);
 }
 
 function getInitArgs(contractName, chain) {
     if (contractName === 'AxelarGasService') return '0x';
-    if (contractName === 'AxelarDepositService') return [];
+    if (contractName === 'AxelarDepositService') return '0x';
     throw new Error(`${contractName} is not supported.`);
 }
 

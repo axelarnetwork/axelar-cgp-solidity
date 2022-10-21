@@ -17,7 +17,8 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "wrappedSymbol": "WETH"
+      "wrappedSymbol": "WETH",
+      "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -38,7 +39,8 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "wrappedSymbol": ""
+      "wrappedSymbol": "",
+      "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -59,7 +61,8 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "wrappedSymbol": ""
+      "wrappedSymbol": "",
+      "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -80,7 +83,8 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "wrappedSymbol": ""
+      "wrappedSymbol": "",
+      "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -101,7 +105,8 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "wrappedSymbol": ""
+      "wrappedSymbol": "",
+      "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -122,7 +127,8 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "wrappedSymbol": ""
+      "wrappedSymbol": "",
+      "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -143,7 +149,8 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "wrappedSymbol": ""
+      "wrappedSymbol": "",
+      "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   }
 ]
