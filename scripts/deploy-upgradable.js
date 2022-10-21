@@ -1,13 +1,14 @@
 'use strict';
 require('dotenv').config();
+const _ = require('lodash/fp');
 const { Wallet, getDefaultProvider } = require('ethers');
 const { deployUpgradable, upgradeUpgradable, getProxy } = require('./upgradable');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
 
 function getImplementationArgs(contractName, chain) {
-    if (contractName === 'AxelarGasService') return [chain.gasCollector];
-    if (contractName === 'AxelarDepositService') return [chain.gateway, chain.wrappedSymbol];
+    if (contractName === 'AxelarGasService') return [_.get('AxelarGasService.collector', chain)];
+    if (contractName === 'AxelarDepositService') return [chain.gateway, _.get('AxelarDepositService.wrappedSymbol', chain)];
     throw new Error(`${contractName} is not supported.`);
 }
 
