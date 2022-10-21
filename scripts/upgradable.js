@@ -30,7 +30,7 @@ async function deployUpgradable(
         key,
         [],
         [implementation.address, wallet.address, setupParams],
-        2e6,
+        5e6,
     );
 
     return new Contract(proxy.address, implementationJson.abi, wallet);

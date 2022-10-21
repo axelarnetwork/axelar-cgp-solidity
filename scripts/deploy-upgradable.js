@@ -74,7 +74,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
             console.log(`${chain.name} | New Implementation for ${contractName} is at ${chain[contractName]["implementation"]}`);
             console.log(`${chain.name} | Upgraded.`);
         } else {
-            const key = contractName;
+            const key = env.includes('devnet') ? `${contractName}-${env}` : contractName;
 
             const contract = await deployUpgradable(
                 chain.constAddressDeployer,
@@ -103,8 +103,8 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
 
 if (require.main === module) {
     const env = process.argv[2];
-    if (env === null || (env !== 'testnet' && env !== 'mainnet'))
-        throw new Error('Need to specify tesntet or local as an argument to this script.');
+    if (env === null || (env !== 'testnet' && env !== 'mainnet' && !env.includes('devnet')))
+        throw new Error('Need to specify testnet or local as an argument to this script.');
 
     const chains = require(`../info/${env}.json`);
 
