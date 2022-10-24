@@ -118,7 +118,7 @@
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
       "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "implementation": "0xb6241272C569767072e0587098415DF6BA0aaEe9",
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b",
       "wrappedSymbol": "WDEV",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
