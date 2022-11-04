@@ -25,8 +25,10 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         string memory wrappedSymbol_,
         address refundIssuer_
     ) DepositServiceBase(gateway_, wrappedSymbol_) {
-        receiverImplementation = address(new ReceiverImplementation(gateway_, wrappedSymbol_));
+        if (refundIssuer_ == address(0)) revert InvalidAddress();
+
         refundIssuer = refundIssuer_;
+        receiverImplementation = address(new ReceiverImplementation(gateway_, wrappedSymbol_));
     }
 
     // @dev This method is meant to be called directly by user to send native token cross-chain
