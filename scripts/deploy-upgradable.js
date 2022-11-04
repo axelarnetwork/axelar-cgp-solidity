@@ -104,7 +104,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
 if (require.main === module) {
     const env = process.argv[2];
     if (env === null || (env !== 'testnet' && env !== 'mainnet' && !env.includes('devnet')))
-        throw new Error('Need to specify testnet or devnet* | testnet | mainnet as an argument to this script.');
+        throw new Error('Need to specify devnet* | testnet | mainnet as an argument to this script.');
 
     const chains = require(`../info/${env}.json`);
 
