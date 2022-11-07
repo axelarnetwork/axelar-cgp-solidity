@@ -34,7 +34,15 @@ jobs:
         id: release_tag
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
 
-      - uses: actions/upload-artifact@v2
+      - name: Create zip file
+        run: |
+            zip -r Bytecode-${{ steps.release_tag.outputs.VERSION }}.zip ./artifacts/*
+
+      - name: Upload Bytecode to release
+        uses: svenstaro/upload-release-action@v2
         with:
-          name: Bytecode-${{ steps.release_tag.outputs.VERSION }}
-          path: artifacts/
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: Bytecode-${{ steps.release_tag.outputs.VERSION }}
+          overwrite: true
+          file_glob: true
+
