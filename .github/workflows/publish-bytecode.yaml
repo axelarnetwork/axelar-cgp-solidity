@@ -32,7 +32,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Build
-        run: npm i -g waffle && waffle
+        run: npm i -g waffle && npx waffle
 
       - name: Get the tag
         id: release_tag
