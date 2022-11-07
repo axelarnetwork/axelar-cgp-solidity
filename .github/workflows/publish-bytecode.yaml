@@ -1,7 +1,6 @@
 name: Publish Compiled Bytecode
 
 on:
-  workflow_dispatch:
   release:
     types: [published]
 
@@ -14,8 +13,10 @@ jobs:
         os:
           - ubuntu-22.04
     runs-on: ${{ matrix.os }}
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Install Node.js
         uses: actions/setup-node@v1
@@ -36,14 +37,14 @@ jobs:
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
 
       - name: Create zip file
+        working-directory: ./artifacts
         run: |
-            zip -r Bytecode-${{ steps.release_tag.outputs.VERSION }}.zip ./artifacts/*
+            zip -r Bytecode-${{ steps.release_tag.outputs.VERSION }}.zip *
 
       - name: Upload Bytecode to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: Bytecode-${{ steps.release_tag.outputs.VERSION }}
+          file: ./artifacts/Bytecode-${{ steps.release_tag.outputs.VERSION }}.zip
+          tag: ${{ steps.release_tag.outputs.VERSION }}
           overwrite: true
-          file_glob: true
-
