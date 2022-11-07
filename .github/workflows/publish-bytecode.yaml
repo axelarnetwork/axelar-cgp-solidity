@@ -37,15 +37,12 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Flatten contracts
-        run: npm run flatten
-
       - name: Get the tag
         id: release_tag
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
 
       - name: Create zip file
-        working-directory: ./artifacts
+        working-directory: ./build
         run: |
             zip -r Bytecode-${{ github.event.inputs.version }}.zip *
 
@@ -53,7 +50,7 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./artifacts/Bytecode-${{ github.event.inputs.version }}.zip
+          file: ./build/Bytecode-${{ github.event.inputs.version }}.zip
           tag: ${{ github.event.inputs.version }}
           overwrite: true
           file_glob: true
