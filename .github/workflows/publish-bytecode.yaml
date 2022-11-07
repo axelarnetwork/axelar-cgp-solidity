@@ -38,3 +38,17 @@ jobs:
         with:
           name: Bytecode-${{ steps.release_tag.outputs.VERSION }}
           path: artifacts/
+
+      - name: Create zip file
+        working-directory: ./artifacts
+        run: |
+            zip -r Bytecode-${{ steps.release_tag.outputs.VERSION }}.zip *
+
+      - name: Upload Bytecode to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: Bytecode-${{ steps.release_tag.outputs.VERSION }}
+          overwrite: true
+          file_glob: true
+
