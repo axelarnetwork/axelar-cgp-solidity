@@ -19,7 +19,7 @@ jobs:
         os:
           - ubuntu-22.04
     runs-on: ${{ matrix.os }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -45,14 +45,15 @@ jobs:
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
 
       - name: Create zip file
+        working-directory: ./artifacts
         run: |
-            zip -r Bytecode-${{ github.event.inputs.version }}.zip ./artifacts/*
+            zip -r Bytecode-${{ github.event.inputs.version }}.zip *
 
       - name: Upload Bytecode to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: Bytecode-${{ github.event.inputs.version }}.zip
+          file: ./artifacts/Bytecode-${{ github.event.inputs.version }}.zip
           tag: ${{ github.event.inputs.version }}
           overwrite: true
           file_glob: true
