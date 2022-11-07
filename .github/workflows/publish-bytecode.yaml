@@ -1,12 +1,6 @@
 name: Publish Compiled Bytecode
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: Release version
-        required: true
-        default: 'v4.4.0'
   release:
     types: [published]
 
@@ -23,32 +17,34 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.inputs.version }}
 
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
 
+      - name: Install Dependencies
+        run: npm ci
+
       - name: Build
-        run: npm i -g waffle && npx waffle
+        run: npm run build
+
+      - name: Flatten contracts
+        run: npm run flatten
 
       - name: Get the tag
         id: release_tag
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
 
       - name: Create zip file
-        working-directory: ./build
+        working-directory: ./artifacts
         run: |
-            zip -r Bytecode-${{ github.event.inputs.version }}.zip *
+            zip -r Bytecode-${{ steps.release_tag.outputs.VERSION }}.zip *
 
       - name: Upload Bytecode to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./build/Bytecode-${{ github.event.inputs.version }}.zip
-          tag: ${{ github.event.inputs.version }}
+          file: ./artifacts/Bytecode-${{ steps.release_tag.outputs.VERSION }}.zip
+          tag: ${{ steps.release_tag.outputs.VERSION }}
           overwrite: true
-          file_glob: true
-
