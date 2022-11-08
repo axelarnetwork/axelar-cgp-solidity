@@ -1,15 +1,32 @@
 'use strict';
 require('dotenv').config();
 const _ = require('lodash/fp');
-const { Wallet, getDefaultProvider } = require('ethers');
+const {
+    Wallet,
+    getDefaultProvider,
+    utils: { isAddress },
+} = require('ethers');
 const { deployUpgradable, upgradeUpgradable, getProxy } = require('./upgradable');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
 
 function getImplementationArgs(contractName, chain) {
-    if (contractName === 'AxelarGasService') return [_.get('AxelarGasService.collector', chain)];
-    if (contractName === 'AxelarDepositService')
-        return [chain.gateway, _.get('AxelarDepositService.wrappedSymbol', chain), _.get('AxelarDepositService.refundIssuer', chain)];
+    if (contractName === 'AxelarGasService') {
+        const collector = _.get('AxelarGasService.collector');
+        if (!isAddress(collector)) throw new Error(`${chain.name} | Missing AxelarGasService.collector in the chain info.`);
+        return [collector];
+    }
+
+    if (contractName === 'AxelarDepositService') {
+        const symbol = _.get('AxelarDepositService.wrappedSymbol', chain);
+        if (_.isEmpty(symbol)) console.log(`${chain.name} | AxelarDepositService.wrappedSymbol: wrapped token sending is disabled`);
+
+        const refundIssuer = _.get('AxelarDepositService.refundIssuer', chain);
+        if (!isAddress(collector)) throw new Error(`${chain.name} | Missing AxelarDepositService.refundIssuer in the chain info.`);
+
+        return [chain.gateway, symbol, refundIssuer];
+    }
+
     throw new Error(`${contractName} is not supported.`);
 }
 
