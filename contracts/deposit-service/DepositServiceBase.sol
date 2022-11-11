@@ -23,7 +23,7 @@ contract DepositServiceBase is IDepositServiceBase {
         gateway = gateway_;
         // Wrapped token symbol param is optional
         // When specified we are checking if token exists in the gateway
-        if (wrappedSymbol_.length == 0) return;
+        if (bytes(wrappedSymbol_).length == 0) return;
 
         wrappedTokenAddress = IAxelarGateway(gateway_).tokenAddresses(wrappedSymbol_);
 
