@@ -20,16 +20,15 @@ contract DepositServiceBase is IDepositServiceBase {
     constructor(address gateway_, string memory wrappedSymbol_) {
         if (gateway_ == address(0)) revert InvalidAddress();
 
+        bool wrappedTokenEnabled = bytes(wrappedSymbol_).length > 0;
+
         gateway = gateway_;
+        wrappedTokenAddress = wrappedTokenEnabled ? IAxelarGateway(gateway_).tokenAddresses(wrappedSymbol_) : address(0);
+        wrappedSymbolBytes = wrappedTokenEnabled ? wrappedSymbol_.toBytes32() : bytes32(0);
+
         // Wrapped token symbol param is optional
         // When specified we are checking if token exists in the gateway
-        if (bytes(wrappedSymbol_).length == 0) return;
-
-        wrappedTokenAddress = IAxelarGateway(gateway_).tokenAddresses(wrappedSymbol_);
-
-        if (wrappedTokenAddress == address(0)) revert InvalidSymbol();
-
-        wrappedSymbolBytes = wrappedSymbol_.toBytes32();
+        if (wrappedTokenEnabled && wrappedTokenAddress == address(0)) revert InvalidSymbol();
     }
 
     function wrappedToken() public view returns (address) {
