@@ -75,6 +75,12 @@ interface IAxelarDepositService is IUpgradable, IDepositServiceBase {
         address[] calldata refundTokens
     ) external;
 
+    function refundLockedAsset(
+        address receiver,
+        address token,
+        uint256 amount
+    ) external;
+
     function receiverImplementation() external returns (address receiver);
 
     function refundToken() external returns (address);
