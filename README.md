@@ -110,7 +110,9 @@ to receive cross-chain messages. See the
 #### AxelarGatewayProxy.sol
 
 Our gateway contracts implement the proxy pattern to allow upgrades.
-Calls are delegated to the implementation contract while using the proxy's storage. `setup` is overidden to be an empty method on the proxy contract to prevent anyone besides the proxy contract from calling the implementation's `setup` on the proxy storage.
+Calls are delegated to the implementation contract while using the proxy's storage. 
+`setup` function is overridden to be an empty method on the proxy contract to prevent anyone besides the proxy contract 
+from calling the implementation's `setup` on the proxy storage.
 
 #### AxelarGateway.sol
 
