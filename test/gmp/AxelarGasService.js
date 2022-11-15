@@ -14,7 +14,7 @@ const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
-const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
+const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
 const { deployUpgradable, upgradeUpgradable } = require('../../scripts/upgradable');
 
 describe('AxelarGasService', () => {

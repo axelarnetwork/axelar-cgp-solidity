@@ -25,31 +25,28 @@ contract SourceChainSwapCaller {
     }
 
     function swapToken(
-        string memory symbolX,
-        string memory symbolY,
+        string memory symbolA,
+        string memory symbolB,
         uint256 amount,
-        string memory recipient,
-        uint256 gasFee
-    ) external {
-        address tokenX = gateway.tokenAddresses(symbolX);
-        bytes memory payload = abi.encode(symbolY, recipient);
+        string memory recipient
+    ) external payable {
+        address tokenX = gateway.tokenAddresses(symbolA);
+        bytes memory payload = abi.encode(symbolB, recipient);
 
-        IERC20(tokenX).transferFrom(msg.sender, address(this), amount + gasFee);
+        IERC20(tokenX).transferFrom(msg.sender, address(this), amount);
 
-        IERC20(tokenX).approve(address(gasService), gasFee);
-        gasService.payGasForContractCallWithToken(
-            address(this),
-            destinationChain,
-            executableAddress,
-            payload,
-            symbolX,
-            amount,
-            tokenX,
-            gasFee,
-            msg.sender
-        );
+        if (msg.value > 0)
+            gasService.payNativeGasForContractCallWithToken{ value: msg.value }(
+                address(this),
+                destinationChain,
+                executableAddress,
+                payload,
+                symbolA,
+                amount,
+                msg.sender
+            );
 
         IERC20(tokenX).approve(address(gateway), amount);
-        gateway.callContractWithToken(destinationChain, executableAddress, payload, symbolX, amount);
+        gateway.callContractWithToken(destinationChain, executableAddress, payload, symbolA, amount);
     }
 }
