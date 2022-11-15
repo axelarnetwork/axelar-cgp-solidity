@@ -12,17 +12,17 @@ const { outputJsonSync } = require('fs-extra');
 
 function getImplementationArgs(contractName, chain) {
     if (contractName === 'AxelarGasService') {
-        const collector = _.get('AxelarGasService.collector');
+        const collector = _.get('AxelarGasService.collector', chain);
         if (!isAddress(collector)) throw new Error(`${chain.name} | Missing AxelarGasService.collector in the chain info.`);
         return [collector];
     }
 
     if (contractName === 'AxelarDepositService') {
-        const symbol = _.get('AxelarDepositService.wrappedSymbol', chain);
-        if (_.isEmpty(symbol)) console.log(`${chain.name} | AxelarDepositService.wrappedSymbol: wrapped token sending is disabled`);
+        const symbol = _.getOr('', 'AxelarDepositService.wrappedSymbol', chain);
+        if (_.isEmpty(symbol)) console.log(`${chain.name} | AxelarDepositService.wrappedSymbol: wrapped token is disabled`);
 
         const refundIssuer = _.get('AxelarDepositService.refundIssuer', chain);
-        if (!isAddress(collector)) throw new Error(`${chain.name} | Missing AxelarDepositService.refundIssuer in the chain info.`);
+        if (!isAddress(refundIssuer)) throw new Error(`${chain.name} | Missing AxelarDepositService.refundIssuer in the chain info.`);
 
         return [chain.gateway, symbol, refundIssuer];
     }
