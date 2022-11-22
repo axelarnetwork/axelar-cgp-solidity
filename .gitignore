@@ -106,3 +106,5 @@ dist
 build/
 cache/
 artifacts/
+
+info/local.json

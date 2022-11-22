@@ -23,6 +23,7 @@ contract ReceiverImplementation is DepositServiceBase {
         address tokenAddress = IAxelarGateway(gateway).tokenAddresses(symbol);
         // Checking with AxelarDepositService if need to refund a token
         address refund = IAxelarDepositService(msg.sender).refundToken();
+
         if (refund != address(0)) {
             if (refundAddress == address(0)) refundAddress = msg.sender;
             _safeTransfer(refund, refundAddress, IERC20(refund).balanceOf(address(this)));
@@ -31,6 +32,7 @@ contract ReceiverImplementation is DepositServiceBase {
 
         uint256 amount = IERC20(tokenAddress).balanceOf(address(this));
 
+        if (tokenAddress == address(0)) revert InvalidSymbol();
         if (amount == 0) revert NothingDeposited();
 
         // Not doing safe approval as gateway will revert anyway if approval fails
@@ -48,6 +50,7 @@ contract ReceiverImplementation is DepositServiceBase {
         string calldata destinationAddress
     ) external {
         address refund = IAxelarDepositService(msg.sender).refundToken();
+
         if (refund != address(0)) {
             if (refundAddress == address(0)) refundAddress = msg.sender;
             _safeTransfer(refund, refundAddress, IERC20(refund).balanceOf(address(this)));
@@ -57,6 +60,7 @@ contract ReceiverImplementation is DepositServiceBase {
         address wrappedTokenAddress = wrappedToken();
         uint256 amount = address(this).balance;
 
+        if (wrappedTokenAddress == address(0)) revert WrappedTokenNotSupported();
         if (amount == 0) revert NothingDeposited();
 
         // Wrapping the native currency and into WETH-like
@@ -73,6 +77,7 @@ contract ReceiverImplementation is DepositServiceBase {
     function receiveAndUnwrapNative(address refundAddress, address recipient) external {
         address wrappedTokenAddress = wrappedToken();
         address refund = IAxelarDepositService(msg.sender).refundToken();
+
         if (refund != address(0)) {
             if (refundAddress == address(0)) refundAddress = msg.sender;
             _safeTransfer(refund, refundAddress, IERC20(refund).balanceOf(address(this)));
@@ -81,6 +86,7 @@ contract ReceiverImplementation is DepositServiceBase {
 
         uint256 amount = IERC20(wrappedTokenAddress).balanceOf(address(this));
 
+        if (wrappedTokenAddress == address(0)) revert WrappedTokenNotSupported();
         if (amount == 0) revert NothingDeposited();
 
         // Unwrapping the token into native currency and sending it to the recipient

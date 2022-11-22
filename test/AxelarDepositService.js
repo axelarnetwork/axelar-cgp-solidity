@@ -106,6 +106,7 @@ describe('AxelarDepositService', () => {
         depositService = await deployUpgradable(constAddressDeployer.address, ownerWallet, DepositService, DepositServiceProxy, [
             gateway.address,
             tokenSymbol,
+            ownerWallet.address,
         ]);
 
         receiverImplementation = new Contract(await depositService.receiverImplementation(), ReceiverImplementation.abi, ownerWallet);
@@ -340,6 +341,18 @@ describe('AxelarDepositService', () => {
                 .to.emit(wrongToken, 'Transfer')
                 .withArgs(depositAddress, depositService.address, amount * 2)
                 .to.changeEtherBalance(depositService, amount);
+
+            await expect(depositService.connect(userWallet).refundLockedAsset(recipient, wrongToken.address, amount * 2)).to.be.reverted;
+
+            await expect(depositService.connect(ownerWallet).refundLockedAsset(recipient, wrongToken.address, amount * 2))
+                .to.emit(wrongToken, 'Transfer')
+                .withArgs(depositService.address, recipient, amount * 2);
+
+            await expect(depositService.connect(userWallet).refundLockedAsset(recipient, ADDRESS_ZERO, amount)).to.be.reverted;
+
+            await expect(
+                await depositService.connect(ownerWallet).refundLockedAsset(recipient, ADDRESS_ZERO, amount),
+            ).to.changeEtherBalance(userWallet, amount);
         });
     });
 });

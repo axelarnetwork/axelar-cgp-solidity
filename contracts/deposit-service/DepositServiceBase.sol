@@ -14,21 +14,25 @@ contract DepositServiceBase is IDepositServiceBase {
 
     // Using immutable storage to keep the constants in the bytecode
     address public immutable gateway;
+    address public immutable wrappedTokenAddress;
     bytes32 internal immutable wrappedSymbolBytes;
 
     constructor(address gateway_, string memory wrappedSymbol_) {
         if (gateway_ == address(0)) revert InvalidAddress();
 
+        bool wrappedTokenEnabled = bytes(wrappedSymbol_).length > 0;
+
         gateway = gateway_;
+        wrappedTokenAddress = wrappedTokenEnabled ? IAxelarGateway(gateway_).tokenAddresses(wrappedSymbol_) : address(0);
+        wrappedSymbolBytes = wrappedTokenEnabled ? wrappedSymbol_.toBytes32() : bytes32(0);
 
-        // Checking if token symbol exists in the gateway
-        if (IAxelarGateway(gateway_).tokenAddresses(wrappedSymbol_) == address(0)) revert InvalidSymbol();
-
-        wrappedSymbolBytes = wrappedSymbol_.toBytes32();
+        // Wrapped token symbol param is optional
+        // When specified we are checking if token exists in the gateway
+        if (wrappedTokenEnabled && wrappedTokenAddress == address(0)) revert InvalidSymbol();
     }
 
     function wrappedToken() public view returns (address) {
-        return IAxelarGateway(gateway).tokenAddresses(wrappedSymbol());
+        return wrappedTokenAddress;
     }
 
     // @dev Converts bytes32 from immutable storage into a string
