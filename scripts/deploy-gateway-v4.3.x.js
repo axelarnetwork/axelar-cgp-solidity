@@ -113,6 +113,9 @@ function proxyParams() {
         contracts.gatewayProxy = gatewayProxy.address;
     }
 
+    // timeout to avoid rpc syncing issues
+    await new Promise(r => setTimeout(r, 5000));
+
     printLog('transferring auth ownership');
     await auth.transferOwnership(contracts.gatewayProxy, options);
     printLog('transferred auth ownership. All done!');
@@ -126,10 +129,16 @@ function proxyParams() {
     const admins = await gateway.admins(epoch);
     printLog(`Existing admins ${admins}`);
 
+    // timeout to avoid rpc syncing issues
+    await new Promise(r => setTimeout(r, 2000));
+
     const authModule = await gateway.authModule();
     if (authModule !== contracts.auth) {
         console.error(`Auth module retrieved from gateway ${authModule} doesn't match deployed contract ${contracts.auth}`);
     }
+
+    // timeout to avoid rpc syncing issues
+    await new Promise(r => setTimeout(r, 2000));
 
     const tokenDeployerAddress = await gateway.tokenDeployer();
     if (tokenDeployer !== contracts.tokenDeployer) {
@@ -137,6 +146,9 @@ function proxyParams() {
             `Token deployer retrieved from gateway ${tokenDeployerAddress} doesn't match deployed contract ${contracts.tokenDeployer}`,
         );
     }
+
+    // timeout to avoid rpc syncing issues
+    await new Promise(r => setTimeout(r, 2000));
 
     const authOwner = await auth.owner();
     if (authOwner !== contracts.gatewayProxy) {
