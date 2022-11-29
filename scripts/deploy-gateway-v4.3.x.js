@@ -108,6 +108,9 @@ function proxyParams() {
     await auth.transferOwnership(contracts.gatewayProxy, options);
     printLog('transferred auth ownership. All done!');
 
+    // timeout to avoid rpc syncing issues
+    await new Promise(r => setTimeout(r, 5000));
+
     const gateway = gatewayFactory.attach(contracts.gatewayProxy);
 
     const epoch = await gateway.adminEpoch();
