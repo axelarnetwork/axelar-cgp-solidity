@@ -82,15 +82,24 @@ function proxyParams() {
     printLog(`deployed auth at address ${auth.address}`);
     contracts.auth = auth.address;
 
+    // timeout to avoid rpc syncing issues
+    await new Promise(r => setTimeout(r, 5000));
+
     printLog(`deploying token deployer contract`);
     const tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
     printLog(`deployed token deployer at address ${tokenDeployer.address}`);
     contracts.tokenDeployer = tokenDeployer.address;
 
+    // timeout to avoid rpc syncing issues
+    await new Promise(r => setTimeout(r, 5000));
+
     printLog(`deploying gateway implementation contract`);
     const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
     printLog(`deployed gateway implementation at address ${gatewayImplementation.address}`);
     contracts.gatewayImplementation = gatewayImplementation.address;
+
+    // timeout to avoid rpc syncing issues
+    await new Promise(r => setTimeout(r, 5000));
 
     if (reuseProxy) {
         printLog(`reusing gateway proxy contract`);
