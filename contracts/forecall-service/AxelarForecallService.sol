@@ -36,13 +36,7 @@ contract AxelarForecallService is Upgradable, IAxelarForecallService {
             IAxelarForecallable(contractAddress).forecall(sourceChain, sourceAddress, payload);
         } else {
             if (gateway.isCommandExecuted(commandId)) {
-                bytes32 payloadHash = keccak256(payload);
-
-                if (gateway.isContractCallApproved(commandId, sourceChain, sourceAddress, contractAddress, payloadHash)) {
-                    IAxelarForecallable(contractAddress).execute(commandId, sourceChain, sourceAddress, payload);
-                } else {
-                    revert AlreadyExecuted();
-                }
+                IAxelarForecallable(contractAddress).execute(commandId, sourceChain, sourceAddress, payload);
             } else {
                 IAxelarForecallable(contractAddress).forecall(sourceChain, sourceAddress, payload);
             }
@@ -55,41 +49,20 @@ contract AxelarForecallService is Upgradable, IAxelarForecallService {
         string calldata sourceAddress,
         address contractAddress,
         bytes calldata payload,
-        string calldata tokenSymbolA,
+        string calldata tokenSymbol,
         uint256 amount
     ) external onlyOperator {
         if (contractAddress == address(0)) revert InvalidContractAddress();
 
         if (commandId == bytes32(0)) {
-            IAxelarForecallable(contractAddress).forecallWithToken(sourceChain, sourceAddress, payload, tokenSymbolA, amount);
+            _safeTransfer(gateway.tokenAddresses(tokenSymbol), contractAddress, amount);
+            IAxelarForecallable(contractAddress).forecallWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
         } else {
             if (gateway.isCommandExecuted(commandId)) {
-                bytes32 payloadHash = keccak256(payload);
-
-                if (
-                    gateway.isContractCallAndMintApproved(
-                        commandId,
-                        sourceChain,
-                        sourceAddress,
-                        contractAddress,
-                        payloadHash,
-                        tokenSymbolA,
-                        amount
-                    )
-                ) {
-                    IAxelarForecallable(contractAddress).executeWithToken(
-                        commandId,
-                        sourceChain,
-                        sourceAddress,
-                        payload,
-                        tokenSymbolA,
-                        amount
-                    );
-                } else {
-                    revert AlreadyExecuted();
-                }
+                IAxelarForecallable(contractAddress).executeWithToken(commandId, sourceChain, sourceAddress, payload, tokenSymbol, amount);
             } else {
-                IAxelarForecallable(contractAddress).forecallWithToken(sourceChain, sourceAddress, payload, tokenSymbolA, amount);
+                _safeTransfer(gateway.tokenAddresses(tokenSymbol), contractAddress, amount);
+                IAxelarForecallable(contractAddress).forecallWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
             }
         }
     }

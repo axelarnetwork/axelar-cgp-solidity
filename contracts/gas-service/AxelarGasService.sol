@@ -210,6 +210,30 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
+    // This can be called on the source chain after calling the gateway to execute a remote contract.
+    function addForecallGas(
+        bytes32 txHash,
+        uint256 logIndex,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external override {
+        _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
+
+        emit ForecallGasAdded(txHash, logIndex, gasToken, gasFeeAmount, refundAddress);
+    }
+
+    // This can be called on the source chain after calling the gateway to execute a remote contract.
+    function addNativeForecallGas(
+        bytes32 txHash,
+        uint256 logIndex,
+        address refundAddress
+    ) external payable override {
+        if (msg.value == 0) revert NothingReceived();
+
+        emit NativeForecallGasAdded(txHash, logIndex, msg.value, refundAddress);
+    }
+
     function collectFees(
         address payable receiver,
         address[] calldata tokens,
