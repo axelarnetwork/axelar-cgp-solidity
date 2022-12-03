@@ -324,13 +324,25 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
                 continue; /* Ignore if unknown command received */
             }
 
+            uint256 availableGas = gasleft();
+            if (availableGas < 100000) return;
+
             // Prevent a re-entrancy from executing this command before it can be marked as successful.
             _setCommandExecuted(commandId, true);
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i], commandId));
+            (bool success, ) = address(this).call{ gas: availableGas - 10000 }(
+                abi.encodeWithSelector(commandSelector, params[i], commandId)
+            );
 
             if (success) emit Executed(commandId);
             else _setCommandExecuted(commandId, false);
+
+            uint256 remainingGas = gasleft();
+
+            // Exit if spent too much gas
+            if ((commandHash != SELECTOR_TRANSFER_OPERATORSHIP && availableGas - remainingGas > 1000000)) return;
+            // Exit if not enough left
+            if (remainingGas < 10000) return;
         }
     }
 
