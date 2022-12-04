@@ -390,7 +390,8 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         if (_getTokenType(symbol) == TokenType.External) {
             address depositHandlerAddress = _getCreate2Address(salt, keccak256(abi.encodePacked(type(DepositHandler).creationCode)));
-
+            // codehash is 0x0 when the deposit handler is not deployed or at the end of tx processing after being destroyed.
+            // However, it is NOT 0x0 during the tx processing where it is deployed even though it is destroyed.
             if (depositHandlerAddress.codehash != bytes32(0)) return;
 
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
