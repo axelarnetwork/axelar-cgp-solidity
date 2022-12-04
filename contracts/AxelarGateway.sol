@@ -324,25 +324,33 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
                 continue; /* Ignore if unknown command received */
             }
 
-            uint256 availableGas = gasleft();
-            if (availableGas < 100000) return;
+            // Preserving some gas to be able to exit the loop gracefully
+            uint256 gasToPreserve = 10000;
+            // If not the last command
+            if (i != commandsLength - 1) gasToPreserve = 20000;
 
             // Prevent a re-entrancy from executing this command before it can be marked as successful.
             _setCommandExecuted(commandId, true);
+            uint256 availableGas = gasleft();
+
+            // Need at least 30000 to write to storage and operate.
+            if (availableGas < 30000) return;
+
+            uint256 maxGas = availableGas - gasToPreserve;
+            // Limit gas usage for burn commands.
+            if (commandHash == SELECTOR_BURN_TOKEN && maxGas > 2000000) maxGas = 2000000;
+
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = address(this).call{ gas: availableGas - 10000 }(
-                abi.encodeWithSelector(commandSelector, params[i], commandId)
-            );
+            (bool success, ) = address(this).call{ gas: maxGas }(abi.encodeWithSelector(commandSelector, params[i], commandId));
 
             if (success) emit Executed(commandId);
             else _setCommandExecuted(commandId, false);
 
             uint256 remainingGas = gasleft();
 
-            // Exit if spent too much gas
-            if ((commandHash != SELECTOR_TRANSFER_OPERATORSHIP && availableGas - remainingGas > 1000000)) return;
-            // Exit if not enough left
-            if (remainingGas < 10000) return;
+            // Exit to commit the execution the previous commands on chain
+            // if spent too much gas on a burn command
+            if ((!success && commandHash == SELECTOR_BURN_TOKEN && availableGas - remainingGas > 1900000)) return;
         }
     }
 
