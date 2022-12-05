@@ -389,6 +389,11 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
 
         if (_getTokenType(symbol) == TokenType.External) {
+            address depositHandlerAddress = _getCreate2Address(salt, keccak256(abi.encodePacked(type(DepositHandler).creationCode)));
+            // codehash is 0x0 when the deposit handler is not deployed or at the end of tx processing after being destroyed.
+            // However, it is NOT 0x0 during the tx processing where it is deployed even though it is destroyed.
+            if (depositHandlerAddress.codehash != bytes32(0)) return;
+
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
 
             (bool success, bytes memory returnData) = depositHandler.execute(
@@ -595,6 +600,10 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /********************\
     |* Internal Getters *|
     \********************/
+
+    function _getCreate2Address(bytes32 salt, bytes32 codeHash) internal view returns (address) {
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, codeHash)))));
+    }
 
     function _getTokenType(string memory symbol) internal view returns (TokenType) {
         return TokenType(getUint(_getTokenTypeKey(symbol)));
