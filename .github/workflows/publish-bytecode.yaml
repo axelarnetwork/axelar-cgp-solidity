@@ -11,10 +11,12 @@ jobs:
         node-version:
           - 14.x
         os:
-          - ubuntu-18.04
+          - ubuntu-22.04
     runs-on: ${{ matrix.os }}
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Install Node.js
         uses: actions/setup-node@v1
@@ -34,7 +36,15 @@ jobs:
         id: release_tag
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
 
-      - uses: actions/upload-artifact@v2
+      - name: Create zip file
+        working-directory: ./artifacts
+        run: |
+            zip -r Bytecode-${{ steps.release_tag.outputs.VERSION }}.zip *
+
+      - name: Upload Bytecode to release
+        uses: svenstaro/upload-release-action@v2
         with:
-          name: Bytecode-${{ steps.release_tag.outputs.VERSION }}
-          path: artifacts/
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./artifacts/Bytecode-${{ steps.release_tag.outputs.VERSION }}.zip
+          tag: ${{ steps.release_tag.outputs.VERSION }}
+          overwrite: true
