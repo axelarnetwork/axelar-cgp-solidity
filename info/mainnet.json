@@ -184,7 +184,10 @@
     "tokenSymbol": "ETH",
     "AxelarGasService": {
       "salt": "AxelarGasService",
-      "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+      "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "implementation": "0xfEF5c90d84a1C93804496f5e7fbf98ec0C85243C",
+      "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
@@ -205,7 +208,10 @@
     "tokenSymbol": "CELO",
     "AxelarGasService": {
       "salt": "AxelarGasService",
-      "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+      "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "implementation": "0xfEF5c90d84a1C93804496f5e7fbf98ec0C85243C",
+      "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
