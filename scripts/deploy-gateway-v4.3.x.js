@@ -11,12 +11,25 @@ const {
     utils: { defaultAbiCoder, arrayify },
 } = ethers;
 
+const env = process.argv[2] || "testnet";
+if (env === null || (env !== 'local' && !env.includes('devnet') && env !== 'testnet' && env !== 'mainnet'))
+    throw new Error('Need to specify teslocaltnet | devnet* | testnet | mainnet as an argument to this script.');
+
+const chains = require(`../info/${env}.json`);
+
 // these environment variables should be defined in an '.env' file
 const skipConfirm = process.env.SKIP_CONFIRM;
 const reuseProxy = process.env.REUSE_PROXY;
 const prefix = process.env.PREFIX;
-const chain = process.env.CHAIN;
-const url = process.env.URL;
+const chain = process.argv[3] || process.env.CHAIN;
+var config
+for (const chain1 of chains) {
+    if (chain1.name === chain) {
+        config = chain1
+        break
+    }
+}
+const url = process.env.URL || config.rpc;
 const privKey = process.env.PRIVATE_KEY;
 const adminPubkeys = process.env.ADMIN_PUBKEYS;
 const adminAddresses = process.env.ADMIN_ADDRESSES;
@@ -43,7 +56,7 @@ confirm(
         GAS_LIMIT: gasLimit || null,
         SKIP_CONFIRM: skipConfirm || null,
     },
-    prefix && chain && url && privKey && adminThreshold && (adminPubkeys || adminAddresses),
+    prefix && privKey && adminThreshold && (adminPubkeys || adminAddresses),
 );
 
 const provider = new JsonRpcProvider(url);
@@ -51,10 +64,13 @@ const wallet = new Wallet(privKey, provider);
 
 const contracts = {};
 
-printLog('retrieving addresses');
-const { addresses, weights, threshold } = getEVMAddresses(prefix, chain);
-printObj({ addresses, weights, threshold });
-const paramsAuth = [defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [addresses, weights, threshold])];
+async function authParams() {
+    printLog('retrieving addresses');
+    const { addresses, weights, threshold } = getEVMAddresses(prefix, chain);
+    printObj({ addresses, weights, threshold });
+    const paramsAuth = [defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [addresses, weights, threshold])];
+    return paramsAuth
+}
 
 function proxyParams() {
     const admins = adminAddresses ? JSON.parse(adminAddresses) : pubkeysToAddresses(JSON.parse(adminPubkeys));
@@ -77,78 +93,98 @@ function proxyParams() {
     const gatewayProxyFactory = await getContractFactory('AxelarGatewayProxy', wallet);
     printLog('contract factories loaded');
 
-    printLog(`deploying auth contract`);
-    const auth = await authFactory.deploy(paramsAuth).then((d) => d.deployed());
-    printLog(`deployed auth at address ${auth.address}`);
-    contracts.auth = auth.address;
-
-    // timeout to avoid rpc syncing issues
-    await new Promise(r => setTimeout(r, 5000));
-
-    printLog(`deploying token deployer contract`);
-    const tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
-    printLog(`deployed token deployer at address ${tokenDeployer.address}`);
-    contracts.tokenDeployer = tokenDeployer.address;
-
-    // timeout to avoid rpc syncing issues
-    await new Promise(r => setTimeout(r, 5000));
-
-    printLog(`deploying gateway implementation contract`);
-    const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-    printLog(`deployed gateway implementation at address ${gatewayImplementation.address}`);
-    contracts.gatewayImplementation = gatewayImplementation.address;
-
-    // timeout to avoid rpc syncing issues
-    await new Promise(r => setTimeout(r, 5000));
+    var gateway
+    var auth
+    var tokenDeployer
 
     if (reuseProxy) {
         printLog(`reusing gateway proxy contract`);
-        contracts.gatewayProxy = getProxy(prefix, chain);
+        contracts.gatewayProxy = config.gateway || getProxy(prefix, chain);
         printLog(`proxy address ${contracts.gatewayProxy}`);
+        gateway = gatewayFactory.attach(contracts.gatewayProxy);
+    }
+
+    if (reuseProxy) {
+        contracts.auth = await gateway.authModule();
+        auth = authFactory.attach(contracts.auth);
     } else {
+        printLog(`deploying auth contract`);
+        const auth = await authFactory.deploy(await authParams()).then((d) => d.deployed());
+        printLog(`deployed auth at address ${auth.address}`);
+        contracts.auth = auth.address;
+
+        // timeout to avoid rpc syncing issues
+        await new Promise(r => setTimeout(r, 5000));
+    }
+
+    if (reuseProxy) {
+        contracts.tokenDeployer = await gateway.tokenDeployer();
+        tokenDeployer = tokenDeployerFactory.attach(contracts.tokenDeployer);
+    } else {
+        printLog(`deploying token deployer contract`);
+        const tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
+        printLog(`deployed token deployer at address ${tokenDeployer.address}`);
+        contracts.tokenDeployer = tokenDeployer.address;
+
+        // timeout to avoid rpc syncing issues
+        await new Promise(r => setTimeout(r, 5000));
+    }
+
+    printLog(`deploying gateway implementation contract`);
+    printLog(`authModule: ${contracts.auth}`)
+    printLog(`tokenDeployer: ${contracts.tokenDeployer}`)
+    const gatewayImplementation = await gatewayFactory.deploy(contracts.auth, contracts.tokenDeployer).then((d) => d.deployed());
+    printLog(`deployed gateway implementation at address ${gatewayImplementation.address}`);
+    contracts.gatewayImplementation = gatewayImplementation.address;
+
+    // // timeout to avoid rpc syncing issues
+    // await new Promise(r => setTimeout(r, 5000));
+
+    if (!reuseProxy) {
         const params = proxyParams();
         printLog(`deploying gateway proxy contract`);
         const gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
         printLog(`deployed gateway proxy at address ${gatewayProxy.address}`);
         contracts.gatewayProxy = gatewayProxy.address;
+        gateway = gatewayFactory.attach(contracts.gatewayProxy);
+
+        // timeout to avoid rpc syncing issues
+        await new Promise(r => setTimeout(r, 5000));
     }
 
-    // timeout to avoid rpc syncing issues
-    await new Promise(r => setTimeout(r, 5000));
+    if (!reuseProxy) {
+        printLog('transferring auth ownership');
+        await auth.transferOwnership(contracts.gatewayProxy, options);
+        printLog('transferred auth ownership. All done!');
 
-    printLog('transferring auth ownership');
-    await auth.transferOwnership(contracts.gatewayProxy, options);
-    printLog('transferred auth ownership. All done!');
-
-    // timeout to avoid rpc syncing issues
-    await new Promise(r => setTimeout(r, 5000));
-
-    const gateway = gatewayFactory.attach(contracts.gatewayProxy);
+        // timeout to avoid rpc syncing issues
+        await new Promise(r => setTimeout(r, 5000));
+    }
 
     const epoch = await gateway.adminEpoch();
     const admins = await gateway.admins(epoch);
     printLog(`Existing admins ${admins}`);
 
-    // timeout to avoid rpc syncing issues
-    await new Promise(r => setTimeout(r, 2000));
+    // // timeout to avoid rpc syncing issues
+    // await new Promise(r => setTimeout(r, 2000));
 
     const authModule = await gateway.authModule();
     if (authModule !== contracts.auth) {
         console.error(`Auth module retrieved from gateway ${authModule} doesn't match deployed contract ${contracts.auth}`);
     }
 
-    // timeout to avoid rpc syncing issues
-    await new Promise(r => setTimeout(r, 2000));
+    // // timeout to avoid rpc syncing issues
+    // await new Promise(r => setTimeout(r, 2000));
 
     const tokenDeployerAddress = await gateway.tokenDeployer();
-    if (tokenDeployer !== contracts.tokenDeployer) {
+    if (tokenDeployerAddress !== contracts.tokenDeployer) {
         console.error(
             `Token deployer retrieved from gateway ${tokenDeployerAddress} doesn't match deployed contract ${contracts.tokenDeployer}`,
         );
     }
 
-    // timeout to avoid rpc syncing issues
-    await new Promise(r => setTimeout(r, 2000));
+    // // timeout to avoid rpc syncing issues
+    // await new Promise(r => setTimeout(r, 2000));
 
     const authOwner = await auth.owner();
     if (authOwner !== contracts.gatewayProxy) {
