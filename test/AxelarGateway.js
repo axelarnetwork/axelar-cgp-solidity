@@ -635,6 +635,64 @@ describe('AxelarGateway', () => {
 
             console.log('burnToken external gas:', (await tx.wait()).gasUsed.toNumber());
         });
+
+        it('should allow the operators to burn the external token multiple times from the same address', async () => {
+            const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
+            const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
+            const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+            const commandIDs = [getRandomID(), getRandomID()];
+            const burnAmount = amount / 2;
+
+            await externalToken.transfer(depositHandlerAddress, burnAmount);
+            const command = getBurnCommand(externalSymbol, salt);
+            const input = await getSignedWeightedExecuteInput(
+                buildCommandBatch(CHAIN_ID, commandIDs, ['burnToken', 'burnToken'], [command, command]),
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
+
+            const tx = await gateway.execute(input);
+            await expect(tx)
+                .to.emit(gateway, 'Executed')
+                .withArgs(commandIDs[0])
+                .and.to.emit(gateway, 'Executed')
+                .withArgs(commandIDs[1])
+                .and.to.emit(externalToken, 'Transfer')
+                .withArgs(depositHandlerAddress, gateway.address, burnAmount);
+
+            return externalToken
+                .balanceOf(depositHandlerAddress)
+                .then(bigNumberToNumber)
+                .then((balance) => {
+                    expect(balance).to.eq(0);
+                })
+                .then(() => externalToken.transfer(depositHandlerAddress, burnAmount))
+                .then(async () => {
+                    const commandID = getRandomID();
+                    const input = await getSignedWeightedExecuteInput(
+                        buildCommandBatch(CHAIN_ID, [commandID], ['burnToken'], [getBurnCommand(externalSymbol, salt)]),
+                        operators,
+                        getWeights(operators),
+                        threshold,
+                        operators.slice(0, threshold),
+                    );
+
+                    const tx = await gateway.execute(input);
+                    await expect(tx)
+                        .to.emit(gateway, 'Executed')
+                        .withArgs(commandID)
+                        .and.to.emit(externalToken, 'Transfer')
+                        .withArgs(depositHandlerAddress, gateway.address, burnAmount);
+
+                    return externalToken.balanceOf(depositHandlerAddress);
+                })
+                .then(bigNumberToNumber)
+                .then((balance) => {
+                    expect(balance).to.eq(0);
+                });
+        });
     });
 
     describe('command transferOperatorship', () => {
