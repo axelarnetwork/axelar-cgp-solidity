@@ -5,9 +5,25 @@ const {
     ContractFactory,
     utils: { keccak256 },
 } = require('ethers');
-const { deployAndInitContractConstant } = require('axelar-utils-solidity');
+const { deployAndInitContractConstant, predictContractConstant } = require('axelar-utils-solidity');
 
 const IUpgradable = require('../artifacts/contracts/interfaces/IUpgradable.sol/IUpgradable.json');
+
+async function predictProxyAddress(
+    constAddressDeployerAddress,
+    wallet,
+    proxyJson,
+    key,
+) {
+    const proxyAddress = await predictContractConstant(
+        constAddressDeployerAddress,
+        wallet,
+        proxyJson,
+        key,
+    );
+
+    return proxyAddress;
+}
 
 async function deployUpgradable(
     constAddressDeployerAddress,
@@ -57,6 +73,7 @@ function getProxy(wallet, proxyAddress) {
 }
 
 module.exports = {
+    predictProxyAddress,
     deployUpgradable,
     upgradeUpgradable,
     getProxy,
