@@ -177,7 +177,7 @@
   {
     "name": "Arbitrum",
     "chainId": 42161,
-    "gateway": "0xe6A68398DfBf2ed26aFF2b4792570e2f036728b3",
+    "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
     "rpc": "https://arb1.arbitrum.io/rpc",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Eth",
@@ -194,14 +194,14 @@
       "wrappedSymbol": "",
       "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
       "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "implementation": "0xBeE52844E35985c1B6729A6B88980209358F9979",
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
   },
   {
     "name": "Celo",
     "chainId": 42220,
-    "gateway": "0xe6A68398DfBf2ed26aFF2b4792570e2f036728b3",
+    "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
     "rpc": "https://forno.celo.org",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Celo",
@@ -218,7 +218,7 @@
       "wrappedSymbol": "",
       "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
       "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "implementation": "0xb6241272C569767072e0587098415DF6BA0aaEe9",
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
   },
