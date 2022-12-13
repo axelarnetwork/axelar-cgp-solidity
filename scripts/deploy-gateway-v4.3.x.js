@@ -10,8 +10,9 @@ const {
     providers: { JsonRpcProvider },
     utils: { defaultAbiCoder, arrayify },
 } = ethers;
+const { keccak256 } = require("@ethersproject/keccak256");
 
-const env = process.argv[2] || "testnet";
+const env = process.argv[2] || "mainnet";
 if (env === null || (env !== 'local' && !env.includes('devnet') && env !== 'testnet' && env !== 'mainnet'))
     throw new Error('Need to specify teslocaltnet | devnet* | testnet | mainnet as an argument to this script.');
 
@@ -37,7 +38,7 @@ const adminThreshold = parseInt(process.env.ADMIN_THRESHOLD);
 const gasPrice = parseWei(process.env.GAS_PRICE);
 const maxFeePerGas = parseWei(process.env.MAX_FEE_PER_GAS);
 const maxPriorityFeePerGas = parseWei(process.env.MAX_PRIORITY_FEE_PER_GAS);
-const gasLimit = process.env.GAS_LIMIT ? Number(process.env.GAS_LIMIT) : Number(21000);
+const gasLimit = process.env.GAS_LIMIT ? Number(process.env.GAS_LIMIT) : Number(8e6);
 
 // main execution
 confirm(
@@ -75,7 +76,7 @@ async function authParams() {
 function proxyParams() {
     const admins = adminAddresses ? JSON.parse(adminAddresses) : pubkeysToAddresses(JSON.parse(adminPubkeys));
     printObj({ admins });
-    return arrayify(defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [admins, adminThreshold, '0x']));
+    return defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [admins, adminThreshold, '0x']);
 }
 
 (async () => {
@@ -93,6 +94,8 @@ function proxyParams() {
     const gatewayProxyFactory = await getContractFactory('AxelarGatewayProxy', wallet);
     printLog('contract factories loaded');
 
+    printLog(`Deployer key: ${wallet.address}`);
+
     var gateway
     var auth
     var tokenDeployer
@@ -109,7 +112,9 @@ function proxyParams() {
         auth = authFactory.attach(contracts.auth);
     } else {
         printLog(`deploying auth contract`);
-        const auth = await authFactory.deploy(await authParams()).then((d) => d.deployed());
+        const params = await authParams();
+        printLog(`auth params: ${params}`)
+        auth = await authFactory.deploy(params).then((d) => d.deployed());
         printLog(`deployed auth at address ${auth.address}`);
         contracts.auth = auth.address;
 
@@ -133,16 +138,20 @@ function proxyParams() {
     printLog(`deploying gateway implementation contract`);
     printLog(`authModule: ${contracts.auth}`)
     printLog(`tokenDeployer: ${contracts.tokenDeployer}`)
-    const gatewayImplementation = await gatewayFactory.deploy(contracts.auth, contracts.tokenDeployer).then((d) => d.deployed());
-    printLog(`deployed gateway implementation at address ${gatewayImplementation.address}`);
+    const gatewayImplementation = await gatewayFactory.deploy(contracts.auth, contracts.tokenDeployer, {gasLimit: 6e6}).then((d) => d.deployed());
+    printLog(`chain: ${chain}   implementation: ${gatewayImplementation.address}`);
     contracts.gatewayImplementation = gatewayImplementation.address;
+    const bytecode = await provider.getCode(gatewayImplementation.address);
+    const codehash = keccak256(bytecode);
+    contracts.implementationCodehash = codehash;
 
-    // // timeout to avoid rpc syncing issues
-    // await new Promise(r => setTimeout(r, 5000));
+    printLog(`chain: ${chain}  authModule,tokenDeployer: ${contracts.auth},${contracts.tokenDeployer}`)
+    printLog(`codehash: ${contracts.implementationCodehash}`)
 
     if (!reuseProxy) {
         const params = proxyParams();
         printLog(`deploying gateway proxy contract`);
+        printLog(`proxy params: ${params}`)
         const gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
         printLog(`deployed gateway proxy at address ${gatewayProxy.address}`);
         contracts.gatewayProxy = gatewayProxy.address;
@@ -164,17 +173,15 @@ function proxyParams() {
     const epoch = await gateway.adminEpoch();
     const admins = await gateway.admins(epoch);
     printLog(`Existing admins ${admins}`);
-
-    // // timeout to avoid rpc syncing issues
-    // await new Promise(r => setTimeout(r, 2000));
+    const encodedAdmins = defaultAbiCoder.encode(['address[]'], [JSON.parse(adminAddresses)]);
+    if (!reuseProxy && admins !== encodedAdmins) {
+        console.error(`Retrieved admins are different:\n  actual: ${admins}\n expected: ${encodedAdmins}`);
+    }
 
     const authModule = await gateway.authModule();
     if (authModule !== contracts.auth) {
         console.error(`Auth module retrieved from gateway ${authModule} doesn't match deployed contract ${contracts.auth}`);
     }
-
-    // // timeout to avoid rpc syncing issues
-    // await new Promise(r => setTimeout(r, 2000));
 
     const tokenDeployerAddress = await gateway.tokenDeployer();
     if (tokenDeployerAddress !== contracts.tokenDeployer) {
@@ -183,13 +190,12 @@ function proxyParams() {
         );
     }
 
-    // // timeout to avoid rpc syncing issues
-    // await new Promise(r => setTimeout(r, 2000));
-
     const authOwner = await auth.owner();
     if (authOwner !== contracts.gatewayProxy) {
         console.error(`Auth module owner is set to ${authOwner} instead of proxy address ${contracts.gatewayProxy}`);
     }
+
+    printLog(`Deployment completed\n`);
 })()
     .catch((err) => {
         console.error(err);
