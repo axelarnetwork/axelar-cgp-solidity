@@ -19,7 +19,7 @@ async function deployUpgradable(
 ) {
     const implementationFactory = new ContractFactory(implementationJson.abi, implementationJson.bytecode, wallet);
 
-    const implementation = await implementationFactory.deploy(...implementationParams);
+    const implementation = await implementationFactory.deploy(...implementationParams, {gasLimit: 5e6});
     await implementation.deployed();
 
     const proxy = await deployAndInitContractConstant(
@@ -29,7 +29,7 @@ async function deployUpgradable(
         key,
         [],
         [implementation.address, wallet.address, setupParams],
-        6e5,
+        5e6,
     );
 
     return new Contract(proxy.address, implementationJson.abi, wallet);
@@ -40,18 +40,23 @@ async function upgradeUpgradable(wallet, proxyAddress, contractJson, implementat
 
     const implementationFactory = new ContractFactory(contractJson.abi, contractJson.bytecode, wallet);
 
-    const implementation = await implementationFactory.deploy(...implementationParams);
+    const implementation = await implementationFactory.deploy(...implementationParams, {gasLimit: 5e6});
     await implementation.deployed();
 
     const implementationCode = await wallet.provider.getCode(implementation.address);
     const implementationCodeHash = keccak256(implementationCode);
 
-    const tx = await proxy.upgrade(implementation.address, implementationCodeHash, setupParams);
+    const tx = await proxy.upgrade(implementation.address, implementationCodeHash, setupParams, {gasLimit: 2e6});
     await tx.wait();
     return tx;
+}
+
+function getProxy(wallet, proxyAddress) {
+    return new Contract(proxyAddress, IUpgradable.abi, wallet);
 }
 
 module.exports = {
     deployUpgradable,
     upgradeUpgradable,
+    getProxy,
 };
