@@ -119,12 +119,13 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
     }
 
     function _isSortedAscAndContainsNoDuplicate(address[] memory accounts) internal pure returns (bool) {
+        uint256 accountsLength = accounts.length;
         address prevAccount;
         address account = accounts[0];
 
         if (account == address(0)) return false;
 
-        for (uint256 i = 1; i < accounts.length; ++i) {
+        for (uint256 i = 1; i < accountsLength; ++i) {
             prevAccount = account;
             account = accounts[i];
 
