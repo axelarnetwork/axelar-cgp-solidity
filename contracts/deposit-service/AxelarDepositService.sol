@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradables/Upgradable.sol';
+import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 import { IAxelarDepositService } from '../interfaces/IAxelarDepositService.sol';
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IWETH9 } from '../interfaces/IWETH9.sol';

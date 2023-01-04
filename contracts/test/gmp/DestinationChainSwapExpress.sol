@@ -2,20 +2,16 @@
 
 pragma solidity 0.8.9;
 
-import { AxelarForecallable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/executables/AxelarForecallable.sol';
+import { ExpressExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/ExpressExecutable.sol';
 import { IERC20 } from '../../interfaces/IERC20.sol';
 import { DestinationChainTokenSwapper } from './DestinationChainTokenSwapper.sol';
 
-contract DestinationChainSwapForecallable is AxelarForecallable {
-    DestinationChainTokenSwapper public swapper;
+contract DestinationChainSwapExpress is ExpressExecutable {
+    DestinationChainTokenSwapper public immutable swapper;
 
     event Executed(string sourceChain, string sourceAddress, bytes payload);
 
-    constructor(
-        address gatewayAddress,
-        address forecallService,
-        address swapperAddress
-    ) AxelarForecallable(gatewayAddress, forecallService) {
+    constructor(address gatewayAddress, address swapperAddress) ExpressExecutable(gatewayAddress) {
         swapper = DestinationChainTokenSwapper(swapperAddress);
     }
 
@@ -44,5 +40,9 @@ contract DestinationChainSwapForecallable is AxelarForecallable {
 
         IERC20(tokenB).approve(address(gateway), convertedAmount);
         gateway.sendToken(sourceChain, recipient, tokenSymbolB, convertedAmount);
+    }
+
+    function contractId() external pure returns (bytes32) {
+        return keccak256('destination-chain-swap-express');
     }
 }

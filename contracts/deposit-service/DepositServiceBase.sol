@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import { StringToBytes32, Bytes32ToString } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/StringBytesUtils.sol';
+import { StringToBytes32, Bytes32ToString } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/Bytes32String.sol';
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IDepositServiceBase } from '../interfaces/IDepositServiceBase.sol';
 import { IERC20 } from '../interfaces/IERC20.sol';

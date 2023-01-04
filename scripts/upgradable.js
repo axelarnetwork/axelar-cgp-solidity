@@ -14,12 +14,13 @@ async function deployUpgradable(
     implementationJson,
     proxyJson,
     implementationParams = [],
+    proxyConstructorArgs = [],
     setupParams = '0x',
     key = Date.now(),
 ) {
     const implementationFactory = new ContractFactory(implementationJson.abi, implementationJson.bytecode, wallet);
 
-    const implementation = await implementationFactory.deploy(...implementationParams, {gasLimit: 5e6});
+    const implementation = await implementationFactory.deploy(...implementationParams);
     await implementation.deployed();
 
     const proxy = await deployAndInitContractConstant(
@@ -27,7 +28,7 @@ async function deployUpgradable(
         wallet,
         proxyJson,
         key,
-        [],
+        proxyConstructorArgs,
         [implementation.address, wallet.address, setupParams],
         5e6,
     );
@@ -40,13 +41,13 @@ async function upgradeUpgradable(wallet, proxyAddress, contractJson, implementat
 
     const implementationFactory = new ContractFactory(contractJson.abi, contractJson.bytecode, wallet);
 
-    const implementation = await implementationFactory.deploy(...implementationParams, {gasLimit: 5e6});
+    const implementation = await implementationFactory.deploy(...implementationParams, { gasLimit: 5e6 });
     await implementation.deployed();
 
     const implementationCode = await wallet.provider.getCode(implementation.address);
     const implementationCodeHash = keccak256(implementationCode);
 
-    const tx = await proxy.upgrade(implementation.address, implementationCodeHash, setupParams, {gasLimit: 2e6});
+    const tx = await proxy.upgrade(implementation.address, implementationCodeHash, setupParams, { gasLimit: 2e6 });
     await tx.wait();
     return tx;
 }

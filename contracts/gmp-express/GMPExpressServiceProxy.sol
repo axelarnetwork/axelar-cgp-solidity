@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 
 import { Proxy } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Proxy.sol';
 
-contract AxelarGasServiceProxy is Proxy {
+contract GMPExpressServiceProxy is Proxy {
     function contractId() internal pure override returns (bytes32) {
-        return keccak256('axelar-gas-service');
+        return keccak256('axelar-gmp-express-service');
     }
 }

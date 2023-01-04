@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 
 import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
 import { IERC20 } from '../interfaces/IERC20.sol';
-import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradables/Upgradable.sol';
+import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarGasService is Upgradable, IAxelarGasService {
@@ -108,7 +108,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
-    function payGasForForecall(
+    function payGasForExpressCall(
         address sender,
         string calldata destinationChain,
         string calldata destinationAddress,
@@ -119,11 +119,11 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     ) external override {
         _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
 
-        emit GasPaidForForecall(sender, destinationChain, destinationAddress, keccak256(payload), gasToken, gasFeeAmount, refundAddress);
+        emit GasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), gasToken, gasFeeAmount, refundAddress);
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
-    function payGasForForecallWithToken(
+    function payGasForExpressCallWithToken(
         address sender,
         string calldata destinationChain,
         string calldata destinationAddress,
@@ -136,7 +136,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     ) external override {
         _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
 
-        emit GasPaidForForecallWithToken(
+        emit GasPaidForExpressCallWithToken(
             sender,
             destinationChain,
             destinationAddress,
@@ -150,7 +150,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
-    function payNativeGasForForecall(
+    function payNativeGasForExpressCall(
         address sender,
         string calldata destinationChain,
         string calldata destinationAddress,
@@ -159,11 +159,11 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     ) external payable override {
         if (msg.value == 0) revert NothingReceived();
 
-        emit NativeGasPaidForForecall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
+        emit NativeGasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
-    function payNativeGasForForecallWithToken(
+    function payNativeGasForExpressCallWithToken(
         address sender,
         string calldata destinationChain,
         string calldata destinationAddress,
@@ -174,7 +174,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     ) external payable override {
         if (msg.value == 0) revert NothingReceived();
 
-        emit NativeGasPaidForForecallWithToken(
+        emit NativeGasPaidForExpressCallWithToken(
             sender,
             destinationChain,
             destinationAddress,
@@ -211,7 +211,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     }
 
     // This can be called on the source chain after calling the gateway to execute a remote contract.
-    function addForecallGas(
+    function addExpressCallGas(
         bytes32 txHash,
         uint256 logIndex,
         address gasToken,
@@ -220,18 +220,18 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     ) external override {
         _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
 
-        emit ForecallGasAdded(txHash, logIndex, gasToken, gasFeeAmount, refundAddress);
+        emit ExpressCallGasAdded(txHash, logIndex, gasToken, gasFeeAmount, refundAddress);
     }
 
     // This can be called on the source chain after calling the gateway to execute a remote contract.
-    function addNativeForecallGas(
+    function addNativeExpressCallGas(
         bytes32 txHash,
         uint256 logIndex,
         address refundAddress
     ) external payable override {
         if (msg.value == 0) revert NothingReceived();
 
-        emit NativeForecallGasAdded(txHash, logIndex, msg.value, refundAddress);
+        emit NativeExpressCallGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
     function collectFees(

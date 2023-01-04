@@ -104,6 +104,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 implementationJson,
                 proxyJson,
                 getImplementationArgs(contractName, chain),
+                [],
                 getInitArgs(contractName, chain),
                 key,
             );
