@@ -6,7 +6,7 @@ const {
     utils: { keccak256 },
 } = require('ethers');
 const { deployAndInitContractConstant } = require('@axelar-network/axelar-gmp-sdk-solidity');
-const IUpgradable = require('@axelar-network/axelar-gmp-sdk-solidity/interfaces/IUpgradable.sol/IUpgradable.json');
+const IUpgradable = require('@axelar-network/axelar-gmp-sdk-solidity/dist/IUpgradable.json');
 
 async function deployUpgradable(
     constAddressDeployerAddress,
