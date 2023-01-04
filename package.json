@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "github:axelarnetwork/axelar-gmp-sdk-solidity#feature/gmp-express"
+    "@axelar-network/axelar-gmp-sdk-solidity": "git+https://github.com/axelarnetwork/axelar-gmp-sdk-solidity#feature/gmp-express"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
