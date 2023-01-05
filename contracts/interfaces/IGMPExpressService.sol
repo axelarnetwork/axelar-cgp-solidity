@@ -16,6 +16,28 @@ interface IGMPExpressService is IAxelarExecutable {
     error WrongGasAmounts();
     error TransferFailed();
 
+    event ExpressCall(string sourceChain, string sourceAddress, address contractAddress, bytes32 payloadHash);
+
+    event ExpressCallCompleted(string sourceChain, string sourceAddress, address contractAddress, bytes32 payloadHash);
+
+    event ExpressCallWithToken(
+        string sourceChain,
+        string sourceAddress,
+        address contractAddress,
+        bytes32 payloadHash,
+        string tokenSymbol,
+        uint256 amount
+    );
+
+    event ExpressCallWithTokenCompleted(
+        string sourceChain,
+        string sourceAddress,
+        address contractAddress,
+        bytes32 payloadHash,
+        string tokenSymbol,
+        uint256 amount
+    );
+
     function expressOperator() external returns (address);
 
     function call(
@@ -32,7 +54,7 @@ interface IGMPExpressService is IAxelarExecutable {
         string calldata sourceAddress,
         address contractAddress,
         bytes calldata payload,
-        string calldata tokenSymbolA,
+        string calldata tokenSymbol,
         uint256 amount
     ) external;
 

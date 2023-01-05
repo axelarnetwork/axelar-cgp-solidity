@@ -67,10 +67,14 @@ contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
         } else {
             if (contractAddress.codehash != expressProxyCodeHash) revert('NotExpressProxy()');
 
-            (bytes32 slot, uint256 count) = _getExpressCall(sourceChain, sourceAddress, contractAddress, keccak256(payload));
+            bytes32 payloadHash = keccak256(payload);
+            (bytes32 slot, uint256 count) = _getExpressCall(sourceChain, sourceAddress, contractAddress, payloadHash);
+
             _setExpressCall(slot, count + 1);
 
             IExpressExecutable(contractAddress).expressExecute(sourceChain, sourceAddress, payload);
+
+            emit ExpressCall(sourceChain, sourceAddress, contractAddress, payloadHash);
         }
     }
 
@@ -90,17 +94,22 @@ contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
         } else {
             if (contractAddress.codehash != expressProxyCodeHash) revert('NotExpressProxy()');
 
+            bytes32 payloadHash = keccak256(payload);
             (bytes32 slot, uint256 count) = _getExpressCallWithToken(
                 sourceChain,
                 sourceAddress,
                 contractAddress,
-                keccak256(payload),
+                payloadHash,
                 tokenSymbol,
                 amount
             );
+
             _setExpressCallWithToken(slot, count + 1);
             _safeTransfer(gateway.tokenAddresses(tokenSymbol), contractAddress, amount);
+
             IExpressExecutable(contractAddress).expressExecuteWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
+
+            emit ExpressCallWithToken(sourceChain, sourceAddress, contractAddress, payloadHash, tokenSymbol, amount);
         }
     }
 
@@ -132,7 +141,11 @@ contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
         (bytes32 slot, uint256 count) = _getExpressCall(sourceChain, sourceAddress, msg.sender, payloadHash);
         expressCalled = count != 0;
 
-        if (expressCalled) _setExpressCall(slot, count - 1);
+        if (expressCalled) {
+            _setExpressCall(slot, count - 1);
+
+            emit ExpressCallCompleted(sourceChain, sourceAddress, msg.sender, payloadHash);
+        }
     }
 
     function completeCallWithToken(
@@ -145,7 +158,11 @@ contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
         (bytes32 slot, uint256 count) = _getExpressCallWithToken(sourceChain, sourceAddress, msg.sender, payloadHash, tokenSymbol, amount);
         expressCalled = count != 0;
 
-        if (expressCalled) _setExpressCallWithToken(slot, count - 1);
+        if (expressCalled) {
+            _setExpressCallWithToken(slot, count - 1);
+
+            emit ExpressCallWithTokenCompleted(sourceChain, sourceAddress, msg.sender, payloadHash, tokenSymbol, amount);
+        }
     }
 
     function deployedProxyAddress(bytes32 salt, address sender) external view returns (address deployedAddress_) {
