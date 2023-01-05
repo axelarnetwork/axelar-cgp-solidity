@@ -9,6 +9,7 @@ interface IGMPExpressService is IAxelarExecutable {
     error InvalidGateway();
     error InvalidOperator();
     error InvalidContractAddress();
+    error InvalidTokenSymbol();
     error NotExpressProxy();
     error NotOperator();
     error FailedDeploy();

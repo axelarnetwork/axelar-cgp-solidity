@@ -65,10 +65,10 @@ contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
         if (commandId != bytes32(0) && gateway.isCommandExecuted(commandId)) {
             IExpressExecutable(contractAddress).execute(commandId, sourceChain, sourceAddress, payload);
         } else {
-            if (contractAddress.codehash != expressProxyCodeHash) revert('NotExpressProxy()');
-
             bytes32 payloadHash = keccak256(payload);
             (bytes32 slot, uint256 count) = _getExpressCall(sourceChain, sourceAddress, contractAddress, payloadHash);
+
+            if (contractAddress.codehash != expressProxyCodeHash) revert NotExpressProxy();
 
             _setExpressCall(slot, count + 1);
 
@@ -92,9 +92,8 @@ contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
         if (commandId != bytes32(0) && gateway.isCommandExecuted(commandId)) {
             IExpressExecutable(contractAddress).executeWithToken(commandId, sourceChain, sourceAddress, payload, tokenSymbol, amount);
         } else {
-            if (contractAddress.codehash != expressProxyCodeHash) revert('NotExpressProxy()');
-
             bytes32 payloadHash = keccak256(payload);
+            address token = gateway.tokenAddresses(tokenSymbol);
             (bytes32 slot, uint256 count) = _getExpressCallWithToken(
                 sourceChain,
                 sourceAddress,
@@ -104,8 +103,11 @@ contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
                 amount
             );
 
+            if (contractAddress.codehash != expressProxyCodeHash) revert NotExpressProxy();
+            if (token == address(0)) revert InvalidTokenSymbol();
+
             _setExpressCallWithToken(slot, count + 1);
-            _safeTransfer(gateway.tokenAddresses(tokenSymbol), contractAddress, amount);
+            _safeTransfer(token, contractAddress, amount);
 
             IExpressExecutable(contractAddress).expressExecuteWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
 
