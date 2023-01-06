@@ -14,6 +14,7 @@ const {
 // these environment variables should be defined in an '.env' file
 const skipConfirm = process.env.SKIP_CONFIRM;
 const prefix = process.env.PREFIX;
+const node_addr = process.env.AXELAR_NODE_ADDR;
 const chain = process.env.CHAIN;
 const url = process.env.URL;
 const privKey = process.env.PRIVATE_KEY;
@@ -31,6 +32,7 @@ confirm(
         PREFIX: prefix || null,
         CHAIN: chain || null,
         URL: url || null,
+        AXELAR_NODE_ADDR: node_addr || 'http://localhost:26657',
         PRIVATE_KEY: privKey ? '*****REDACTED*****' : null,
         ADMIN_PUBKEYS: adminPubkeys || null,
         ADMIN_ADDRESSES: adminAddresses || null,
@@ -41,14 +43,14 @@ confirm(
         GAS_LIMIT: gasLimit || null,
         SKIP_CONFIRM: skipConfirm || null,
     },
-    prefix && chain && url && privKey && adminThreshold && (adminPubkeys || adminAddresses),
+    prefix || node_addr && chain && url && privKey && adminThreshold && (adminPubkeys || adminAddresses),
 );
 
 const provider = new JsonRpcProvider(url);
 const wallet = new Wallet(privKey, provider);
 
 printLog('retrieving addresses');
-const { addresses, weights, threshold } = getEVMAddresses(prefix, chain);
+const { addresses, weights, threshold } = getEVMAddresses(prefix, chain, node_addr);
 printObj({ addresses, weights, threshold });
 const admins = adminAddresses ? JSON.parse(adminAddresses) : pubkeysToAddresses(JSON.parse(adminPubkeys));
 printObj({ admins });
