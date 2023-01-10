@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.9;
 
-import { ExpressExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/ExpressExecutable.sol';
+import { ExpressExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/express/ExpressExecutable.sol';
 import { IERC20 } from '../../interfaces/IERC20.sol';
 import { DestinationChainTokenSwapper } from './DestinationChainTokenSwapper.sol';
 

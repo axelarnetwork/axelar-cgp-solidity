@@ -17,37 +17,7 @@ interface IGMPExpressService is IAxelarExecutable {
     error WrongGasAmounts();
     error TransferFailed();
 
-    event ExpressCall(string sourceChain, string sourceAddress, address contractAddress, bytes32 payloadHash);
-
-    event ExpressCallCompleted(string sourceChain, string sourceAddress, address contractAddress, bytes32 payloadHash);
-
-    event ExpressCallWithToken(
-        string sourceChain,
-        string sourceAddress,
-        address contractAddress,
-        bytes32 payloadHash,
-        string tokenSymbol,
-        uint256 amount
-    );
-
-    event ExpressCallWithTokenCompleted(
-        string sourceChain,
-        string sourceAddress,
-        address contractAddress,
-        bytes32 payloadHash,
-        string tokenSymbol,
-        uint256 amount
-    );
-
     function expressOperator() external returns (address);
-
-    function call(
-        bytes32 commandId,
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        address contractAddress,
-        bytes calldata payload
-    ) external;
 
     function callWithToken(
         bytes32 commandId,
@@ -58,36 +28,6 @@ interface IGMPExpressService is IAxelarExecutable {
         string calldata tokenSymbol,
         uint256 amount
     ) external;
-
-    function getPendingExpressCallCount(
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        address contractAddress,
-        bytes32 payloadHash
-    ) external view returns (uint256 count);
-
-    function getPendingExpressCallWithTokenCount(
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        address contractAddress,
-        bytes32 payloadHash,
-        string calldata tokenSymbol,
-        uint256 amount
-    ) external returns (uint256 count);
-
-    function completeCall(
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        bytes32 payloadHash
-    ) external returns (bool expressCalled);
-
-    function completeCallWithToken(
-        string calldata sourceChain,
-        string calldata sourceAddress,
-        bytes32 payloadHash,
-        string calldata tokenSymbol,
-        uint256 amount
-    ) external returns (bool expressCalled);
 
     function deployExpressProxy(
         bytes32 salt,
