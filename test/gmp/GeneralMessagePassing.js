@@ -22,18 +22,18 @@ const AxelarGateway = require('../../artifacts/contracts/AxelarGateway.sol/Axela
 const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC20.sol/MintableCappedERC20.json');
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
+const ExpressProxyDeployer = require('../../artifacts/contracts/gmp-express/ExpressProxyDeployer.sol/ExpressProxyDeployer.json');
 const GMPExpressService = require('../../artifacts/contracts/gmp-express/GMPExpressService.sol/GMPExpressService.json');
 const GMPExpressServiceProxy = require('../../artifacts/contracts/gmp-express/GMPExpressServiceProxy.sol/GMPExpressServiceProxy.json');
 const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/SourceChainSwapCaller.sol/SourceChainSwapCaller.json');
 const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
-const ExpressExecutableProxy = require('../../artifacts/@axelar-network/axelar-gmp-sdk-solidity/contracts/express/ExpressExecutableProxy.sol/ExpressExecutableProxy.json');
+const ExpressProxy = require('../../artifacts/@axelar-network/axelar-gmp-sdk-solidity/contracts/express/ExpressProxy.sol/ExpressProxy.json');
 const ExpressRegistry = require('../../artifacts/@axelar-network/axelar-gmp-sdk-solidity/contracts/express/ExpressRegistry.sol/ExpressRegistry.json');
 const DestinationChainSwapExpress = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExpress.sol/DestinationChainSwapExpress.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
 const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
 
 const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('../utils');
-const { predictContractConstant } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 describe('GeneralMessagePassing', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
@@ -116,20 +116,14 @@ describe('GeneralMessagePassing', () => {
 
         gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
 
-        const gmpExpressServiceAddress = await predictContractConstant(
-            constAddressDeployer.address,
-            ownerWallet,
-            GMPExpressServiceProxy,
-            'gmpExpressService',
-            [],
-        );
+        const expressProxyDeployer = await deployContract(ownerWallet, ExpressProxyDeployer, [destinationChainGateway.address]);
 
         gmpExpressService = await deployUpgradable(
             constAddressDeployer.address,
             ownerWallet,
             GMPExpressService,
             GMPExpressServiceProxy,
-            [destinationChainGateway.address, gasService.address, ownerWallet.address, gmpExpressServiceAddress, 'Ethereum'],
+            [destinationChainGateway.address, gasService.address, expressProxyDeployer.address, ownerWallet.address, 'Ethereum'],
             [],
             '0x',
             'gmpExpressService',
@@ -163,7 +157,7 @@ describe('GeneralMessagePassing', () => {
         const expressAddress = await gmpExpressService.deployedProxyAddress(expressSalt, ownerWallet.address);
 
         destinationChainSwapExpress = new Contract(expressAddress, DestinationChainSwapExpress.abi, ownerWallet);
-        const destinationChainSwapExpressProxy = new Contract(expressAddress, ExpressExecutableProxy.abi, ownerWallet);
+        const destinationChainSwapExpressProxy = new Contract(expressAddress, ExpressProxy.abi, ownerWallet);
         destinationChainExpressRegistry = new Contract(await destinationChainSwapExpressProxy.registry(), ExpressRegistry.abi, ownerWallet);
 
         sourceChainSwapCaller = await deployContract(ownerWallet, SourceChainSwapCaller, [

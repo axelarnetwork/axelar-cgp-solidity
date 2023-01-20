@@ -3,48 +3,28 @@
 pragma solidity 0.8.9;
 
 import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
+import { SafeTokenTransfer, SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IExpressExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IExpressExecutable.sol';
-import { AxelarExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol';
-import { ExpressExecutableProxy } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/express/ExpressExecutableProxy.sol';
-import { AddressToString, StringToAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/AddressString.sol';
+import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IGMPExpressService } from '../interfaces/IGMPExpressService.sol';
-import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
-import { IERC20 } from '../interfaces/IERC20.sol';
+import { ExpressProxyFactory } from './ExpressProxyFactory.sol';
 
-contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
-    using AddressToString for address;
-    using StringToAddress for string;
+contract GMPExpressService is Upgradable, ExpressProxyFactory, IGMPExpressService {
+    using SafeTokenTransfer for IERC20;
+    using SafeNativeTransfer for address payable;
 
-    enum Command {
-        DeployExpressExecutable
-    }
-
-    IAxelarGasService public immutable gasService;
     address public immutable expressOperator;
-    address public immutable serviceProxy;
-    bytes32 public immutable expressProxyCodeHash;
-    bytes32 public immutable currentChainHash;
-
-    // keccak256('expressCall');
-    uint256 public constant PREFIX_EXPRESS_CALL = 0xb69cf1f8825a92733483adddaad491ac8f187461114a82800cd710f02221879c;
-    // keccak256('expressCallWithToken');
-    uint256 public constant PREFIX_EXPRESS_CALL_WITH_TOKEN = 0xb6e1623c5ea036036acb68a60ec2e4e88041d19595383b291882990df411b4dd;
 
     constructor(
         address gateway_,
         address gasService_,
+        address proxyDeployer_,
         address expressOperator_,
-        address serviceProxy_,
-        string memory currentChain
-    ) AxelarExecutable(gateway_) {
-        if (gasService_ == address(0)) revert InvalidAddress();
+        string memory currentChain_
+    ) ExpressProxyFactory(gateway_, gasService_, proxyDeployer_, currentChain_) {
         if (expressOperator_ == address(0)) revert InvalidOperator();
 
-        gasService = IAxelarGasService(gasService_);
         expressOperator = expressOperator_;
-        serviceProxy = serviceProxy_;
-        expressProxyCodeHash = address(new ExpressExecutableProxy(serviceProxy, gateway_)).codehash;
-        currentChainHash = keccak256(bytes(currentChain));
     }
 
     modifier onlyOperator() {
@@ -67,76 +47,10 @@ contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
         if (commandId != bytes32(0) && gateway.isCommandExecuted(commandId)) {
             IExpressExecutable(contractAddress).executeWithToken(commandId, sourceChain, sourceAddress, payload, tokenSymbol, amount);
         } else {
-            if (contractAddress.codehash != expressProxyCodeHash) revert NotExpressProxy();
+            if (!isExpressProxy(contractAddress)) revert NotExpressProxy();
 
             IERC20(gateway.tokenAddresses(tokenSymbol)).approve(contractAddress, amount);
             IExpressExecutable(contractAddress).expressExecuteWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
-        }
-    }
-
-    function deployedProxyAddress(bytes32 salt, address sender) external view returns (address deployedAddress_) {
-        bytes32 deploySalt = keccak256(abi.encode(sender, salt));
-        deployedAddress_ = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            hex'ff',
-                            address(this),
-                            deploySalt,
-                            keccak256(abi.encodePacked(type(ExpressExecutableProxy).creationCode, abi.encode(serviceProxy, address(0))))
-                        )
-                    )
-                )
-            )
-        );
-    }
-
-    function deployExpressProxy(
-        bytes32 salt,
-        address implementationAddress,
-        address owner,
-        bytes calldata setupParams
-    ) external returns (address) {
-        bytes32 deploySalt = keccak256(abi.encode(msg.sender, salt));
-        return _deployExpressProxy(deploySalt, implementationAddress, owner, setupParams);
-    }
-
-    function deployExpressExecutable(
-        bytes32 salt,
-        bytes memory implementationBytecode,
-        address owner,
-        bytes calldata setupParams
-    ) external returns (address) {
-        bytes32 deploySalt = keccak256(abi.encode(msg.sender, salt));
-        return _deployExpressExecutable(deploySalt, implementationBytecode, owner, setupParams);
-    }
-
-    function deployExpressExecutableOnChains(
-        bytes32 salt,
-        bytes memory implementationBytecode,
-        address owner,
-        bytes calldata setupParams,
-        string[] calldata destinationChains,
-        uint256[] calldata gasPayments,
-        address gasRefundAddress
-    ) external {
-        bytes32 deploySalt = keccak256(abi.encode(msg.sender, salt));
-        uint256 length = destinationChains.length;
-
-        if (implementationBytecode.length == 0) revert EmptyBytecode();
-        if (length != gasPayments.length) revert WrongGasAmounts();
-
-        for (uint256 i; i < length; ++i) {
-            _deployExpressExecutableOnChain(
-                deploySalt,
-                implementationBytecode,
-                owner,
-                setupParams,
-                destinationChains[i],
-                gasPayments[i],
-                gasRefundAddress
-            );
         }
     }
 
@@ -148,84 +62,10 @@ contract GMPExpressService is Upgradable, AxelarExecutable, IGMPExpressService {
         if (receiver == address(0)) revert InvalidAddress();
 
         if (token == address(0)) {
-            receiver.transfer(amount);
+            receiver.safeNativeTransfer(amount);
         } else {
-            _safeTransfer(token, receiver, amount);
+            IERC20(token).safeTransfer(receiver, amount);
         }
-    }
-
-    function _deployExpressProxy(
-        bytes32 deploySalt,
-        address implementationAddress,
-        address owner,
-        bytes memory setupParams
-    ) public returns (address) {
-        // Passing address(0) for automatic gateway lookup. Allows to have the same proxy address across chains
-        ExpressExecutableProxy proxy = new ExpressExecutableProxy{ salt: deploySalt }(serviceProxy, address(0));
-
-        proxy.init(implementationAddress, owner, setupParams);
-
-        return address(proxy);
-    }
-
-    function _deployExpressExecutable(
-        bytes32 deploySalt,
-        bytes memory implementationBytecode,
-        address owner,
-        bytes memory setupParams
-    ) internal returns (address) {
-        if (implementationBytecode.length == 0) revert EmptyBytecode();
-
-        address implementation;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            implementation := create2(0, add(implementationBytecode, 32), mload(implementationBytecode), deploySalt)
-        }
-
-        if (implementation == address(0)) revert FailedDeploy();
-
-        return _deployExpressProxy(deploySalt, implementation, owner, setupParams);
-    }
-
-    function _deployExpressExecutableOnChain(
-        bytes32 deploySalt,
-        bytes memory implementationBytecode,
-        address owner,
-        bytes calldata setupParams,
-        string calldata destinationChain,
-        uint256 gasPayment,
-        address gasRefundAddress
-    ) internal {
-        if (keccak256(bytes(destinationChain)) == currentChainHash)
-            _deployExpressExecutable(deploySalt, implementationBytecode, owner, setupParams);
-        else {
-            string memory thisAddress = address(this).toString();
-            bytes memory payload = abi.encode(Command.DeployExpressExecutable, deploySalt, implementationBytecode, owner, setupParams);
-
-            if (gasPayment > 0) {
-                gasService.payNativeGasForContractCall{ value: gasPayment }(
-                    address(this),
-                    destinationChain,
-                    thisAddress,
-                    payload,
-                    gasRefundAddress
-                );
-            }
-
-            gateway.callContract(destinationChain, address(this).toString(), payload);
-        }
-    }
-
-    function _safeTransfer(
-        address tokenAddress,
-        address receiver,
-        uint256 amount
-    ) internal {
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returnData) = tokenAddress.call(abi.encodeWithSelector(IERC20.transfer.selector, receiver, amount));
-        bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
-
-        if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
     }
 
     function contractId() external pure returns (bytes32) {
