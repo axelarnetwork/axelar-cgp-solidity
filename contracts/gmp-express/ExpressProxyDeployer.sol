@@ -6,11 +6,15 @@ import { IExpressExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/cont
 import { ExpressProxy } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/express/ExpressProxy.sol';
 
 contract ExpressProxyDeployer {
+    error InvalidAddress();
+
     bytes32 public immutable expressProxyCodeHash;
     bytes32 public immutable expressRegistryCodeHash;
 
     constructor(address gateway_) {
-        ExpressProxy proxy = new ExpressProxy(address(0), gateway_);
+        if (gateway_ == address(0)) revert InvalidAddress();
+
+        ExpressProxy proxy = new ExpressProxy(gateway_, address(0));
         proxy.deployRegistry();
 
         expressProxyCodeHash = address(proxy).codehash;
@@ -37,7 +41,7 @@ contract ExpressProxyDeployer {
                             hex'ff',
                             deployer,
                             deploySalt,
-                            keccak256(abi.encodePacked(type(ExpressProxy).creationCode, abi.encode(deployer, address(0))))
+                            keccak256(abi.encodePacked(type(ExpressProxy).creationCode, abi.encode(address(0), deployer)))
                         )
                     )
                 )
@@ -52,7 +56,7 @@ contract ExpressProxyDeployer {
         bytes memory setupParams
     ) public returns (address) {
         // Passing address(0) for automatic gateway lookup. Allows to have the same proxy address across chains
-        ExpressProxy proxy = new ExpressProxy{ salt: deploySalt }(address(this), address(0));
+        ExpressProxy proxy = new ExpressProxy{ salt: deploySalt }(address(0), address(this));
 
         proxy.deployRegistry();
         proxy.init(implementationAddress, owner, setupParams);
