@@ -49,7 +49,11 @@ contract GMPExpressService is Upgradable, ExpressProxyFactory, IGMPExpressServic
         } else {
             if (!isExpressProxy(contractAddress)) revert NotExpressProxy();
 
-            IERC20(gateway.tokenAddresses(tokenSymbol)).approve(contractAddress, amount);
+            address tokenAddress = gateway.tokenAddresses(tokenSymbol);
+
+            if (tokenAddress == address(0)) revert InvalidTokenSymbol();
+
+            IERC20(tokenAddress).approve(contractAddress, amount);
             IExpressExecutable(contractAddress).expressExecuteWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
         }
     }
