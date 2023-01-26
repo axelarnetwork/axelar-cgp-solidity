@@ -9,8 +9,7 @@
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'",
-    "flatten": "sh scripts/flatten-contracts.sh",
-    "postinstall": "cd node_modules/@axelar-network/axelar-gmp-sdk-solidity && npm i && npm run build"
+    "flatten": "sh scripts/flatten-contracts.sh"
   },
   "repository": {
     "type": "git",
@@ -27,7 +26,7 @@
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "git+https://github.com/axelarnetwork/axelar-gmp-sdk-solidity#feature/gmp-express"
+    "@axelar-network/axelar-gmp-sdk-solidity": "^3.0.0"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
