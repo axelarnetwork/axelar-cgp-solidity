@@ -19,9 +19,8 @@ contract GMPExpressService is Upgradable, ExpressProxyFactory, IGMPExpressServic
         address gateway_,
         address gasService_,
         address proxyDeployer_,
-        address expressOperator_,
-        string memory currentChain_
-    ) ExpressProxyFactory(gateway_, gasService_, proxyDeployer_, currentChain_) {
+        address expressOperator_
+    ) ExpressProxyFactory(gateway_, gasService_, proxyDeployer_) {
         if (expressOperator_ == address(0)) revert InvalidOperator();
 
         expressOperator = expressOperator_;

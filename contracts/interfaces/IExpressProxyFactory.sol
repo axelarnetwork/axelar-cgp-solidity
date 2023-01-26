@@ -6,7 +6,6 @@ import { IAxelarExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contr
 
 // This should be owned by the microservice that is paying for gas.
 interface IExpressProxyFactory is IAxelarExecutable {
-    error InvalidChain();
     error NotExpressProxy();
     error InvalidSourceAddress();
     error InvalidCommand();

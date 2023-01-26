@@ -123,7 +123,7 @@ describe('GeneralMessagePassing', () => {
             ownerWallet,
             GMPExpressService,
             GMPExpressServiceProxy,
-            [destinationChainGateway.address, gasService.address, expressProxyDeployer.address, ownerWallet.address, 'Ethereum'],
+            [destinationChainGateway.address, gasService.address, expressProxyDeployer.address, ownerWallet.address],
             [],
             '0x',
             'gmpExpressService',

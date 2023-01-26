@@ -18,21 +18,17 @@ contract ExpressProxyFactory is AxelarExecutable, IExpressProxyFactory {
 
     IAxelarGasService public immutable gasService;
     ExpressProxyDeployer public immutable proxyDeployer;
-    bytes32 public immutable currentChainHash;
 
     constructor(
         address gateway_,
         address gasService_,
-        address proxyDeployer_,
-        string memory currentChain_
+        address proxyDeployer_
     ) AxelarExecutable(gateway_) {
         if (gasService_ == address(0)) revert InvalidAddress();
         if (proxyDeployer_ == address(0)) revert InvalidAddress();
-        if (bytes(currentChain_).length == 0) revert InvalidChain();
 
         gasService = IAxelarGasService(gasService_);
         proxyDeployer = ExpressProxyDeployer(proxyDeployer_);
-        currentChainHash = keccak256(bytes(currentChain_));
     }
 
     function isExpressProxy(address proxyAddress) public view returns (bool) {
@@ -150,23 +146,19 @@ contract ExpressProxyFactory is AxelarExecutable, IExpressProxyFactory {
         uint256 gasPayment,
         address gasRefundAddress
     ) internal {
-        if (keccak256(bytes(destinationChain)) == currentChainHash)
-            _deployExpressExecutable(deploySalt, implementationBytecode, owner, setupParams);
-        else {
-            string memory thisAddress = address(this).toString();
-            bytes memory payload = abi.encode(Command.DeployExpressExecutable, deploySalt, implementationBytecode, owner, setupParams);
+        string memory thisAddress = address(this).toString();
+        bytes memory payload = abi.encode(Command.DeployExpressExecutable, deploySalt, implementationBytecode, owner, setupParams);
 
-            if (gasPayment > 0) {
-                gasService.payNativeGasForContractCall{ value: gasPayment }(
-                    address(this),
-                    destinationChain,
-                    thisAddress,
-                    payload,
-                    gasRefundAddress
-                );
-            }
-
-            gateway.callContract(destinationChain, address(this).toString(), payload);
+        if (gasPayment > 0) {
+            gasService.payNativeGasForContractCall{ value: gasPayment }(
+                address(this),
+                destinationChain,
+                thisAddress,
+                payload,
+                gasRefundAddress
+            );
         }
+
+        gateway.callContract(destinationChain, address(this).toString(), payload);
     }
 }
