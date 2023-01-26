@@ -22,6 +22,14 @@
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b",
       "wrappedSymbol": "WETH",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "proxyDeployer": "0x22FD70d1c168Df5B33DAEdf611c7EDf258bb9483",
+      "salt": "GMPExpressService",
+      "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
+      "implementation": "0xDA9062874E4905a14Eb946D6dbE73D4fFf093e83",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
   {
@@ -47,13 +55,21 @@
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b",
       "wrappedSymbol": "WAVAX",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "salt": "GMPExpressService",
+      "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
+      "implementation": "0xDbfd9b12f65F13D626f229198E195B14896615c7",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2",
+      "proxyDeployer": "0x7d317581fe19e63A6Dbea833B1902c487f40Aa2c"
     }
   },
   {
     "name": "Fantom",
     "chainId": 4002,
     "gateway": "0x97837985Ec0494E7b9C71f5D3f9250188477ae14",
-    "rpc": "https://rpc.testnet.fantom.network",
+    "rpc": "https://rpc.ankr.com/fantom_testnet",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Fantom",
     "tokenSymbol": "FTM",
@@ -72,6 +88,14 @@
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b",
       "wrappedSymbol": "WFTM",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "proxyDeployer": "0xBD3e8d41874bC123fB6913a2a6c6C8984c71876c",
+      "salt": "GMPExpressService",
+      "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
+      "implementation": "0xEA85BA9643F504155CD0eFbDB890c5e37e0F6E5C",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
   {
@@ -97,6 +121,14 @@
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b",
       "wrappedSymbol": "WMATIC",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "proxyDeployer": "0xCB1e52bce6c72Ff7Bb97c46745847411cdC39777",
+      "salt": "GMPExpressService",
+      "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
+      "implementation": "0xa2b215328017039db7847559302D1CF7b068Aa5a",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
   {
@@ -122,19 +154,28 @@
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b",
       "wrappedSymbol": "WDEV",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "proxyDeployer": "0xc65d8a88B30CCc1cc6680B93570CCd762e1E2147",
+      "salt": "GMPExpressService",
+      "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
+      "implementation": "0xBB702CAca5676B0dE9BA1B1583d4A8a0ffb1B522",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
   {
     "name": "Binance",
     "chainId": 97,
     "gateway": "0x4D147dCb984e6affEEC47e44293DA442580A3Ec0",
-    "rpc": "https://data-seed-prebsc-1-s1.binance.org:8545/",
+    "rpc": "https://data-seed-prebsc-2-s3.binance.org:8545",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Binance Coin",
     "tokenSymbol": "BNB",
     "wrappedSymbol": "WBNB",
     "AxelarGasService": {
       "salt": "AxelarGasService",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "collector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
     },
     "AxelarDepositService": {
@@ -144,13 +185,21 @@
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b",
       "wrappedSymbol": "WBNB",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "proxyDeployer": "0xcb655B33DD5bEa9cA43238F97A8C1Fe3A5845751",
+      "salt": "GMPExpressService",
+      "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
+      "implementation": "0xE5B8a432692D788C5c1934Bc079eb75791856490",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
   {
     "name": "Aurora",
     "chainId": 1313161555,
     "gateway": "0x304acf330bbE08d1e512eefaa92F6a57871fD895",
-    "rpc": "https://testnet.aurora.dev/",
+    "rpc": "https://testnet.aurora.dev",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Eth",
     "tokenSymbol": "ETH",
@@ -169,6 +218,14 @@
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b",
       "wrappedSymbol": "",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "proxyDeployer": "0xB1893B633939CBB1848F786FcA023786642898F6",
+      "salt": "GMPExpressService",
+      "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
+      "implementation": "0xA04bFB74786089f0451f09437947B83F02e4e823",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
   {
@@ -191,13 +248,21 @@
       "salt": "AxelarDepositService",
       "wrappedSymbol": "",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "proxyDeployer": "0x6f015F16De9fC8791b234eF68D486d2bF203FBA8",
+      "salt": "GMPExpressService",
+      "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
+      "implementation": "0x317cf41863657BC51c05a1B7dc1E840B46842CBe",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
   {
     "name": "Hero",
     "chainId": 17771,
     "gateway": "0x720A52EC9Fb428Cb122e7B1DAeC8a171b831dea1",
-    "rpc": "https://herotestnet.heroesofnft.com:443/ext/bc/2kdzD7eps9QRC449zypVGBbrzkwFrefLzmt24tS8MxmvEBuWvP/rpc",
+    "rpc": "https://testnet.heroesofnft.com:443/ext/bc/2KV1ighhTjNpuQq8BVgHeJF3QHdF3KxhY9AqB9M1GfUuBCKjNo/rpc",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Hero",
     "tokenSymbol": "HRM",
@@ -213,6 +278,9 @@
       "salt": "AxelarDepositService",
       "wrappedSymbol": "",
       "refundIssuer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
     }
   }
 ]

@@ -19,6 +19,9 @@
       "salt": "AxelarDepositService",
       "wrappedSymbol": "WETH",
       "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -41,6 +44,9 @@
       "salt": "AxelarDepositService",
       "wrappedSymbol": "",
       "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -63,6 +69,9 @@
       "salt": "AxelarDepositService",
       "wrappedSymbol": "",
       "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -85,6 +94,9 @@
       "salt": "AxelarDepositService",
       "wrappedSymbol": "",
       "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -107,6 +119,9 @@
       "salt": "AxelarDepositService",
       "wrappedSymbol": "",
       "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -129,6 +144,9 @@
       "salt": "AxelarDepositService",
       "wrappedSymbol": "",
       "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   },
   {
@@ -151,6 +169,9 @@
       "salt": "AxelarDepositService",
       "wrappedSymbol": "",
       "refundIssuer": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     }
   }
 ]
