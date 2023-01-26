@@ -78,6 +78,10 @@ interface IAxelarGasService {
 
     event NativeGasAdded(bytes32 indexed txHash, uint256 indexed logIndex, uint256 gasFeeAmount, address refundAddress);
 
+    event ExpressGasAdded(bytes32 indexed txHash, uint256 indexed logIndex, address gasToken, uint256 gasFeeAmount, address refundAddress);
+
+    event NativeExpressGasAdded(bytes32 indexed txHash, uint256 indexed logIndex, uint256 gasFeeAmount, address refundAddress);
+
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForContractCall(
         address sender,
@@ -155,6 +159,20 @@ interface IAxelarGasService {
     ) external;
 
     function addNativeGas(
+        bytes32 txHash,
+        uint256 logIndex,
+        address refundAddress
+    ) external payable;
+
+    function addExpressGas(
+        bytes32 txHash,
+        uint256 txIndex,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external;
+
+    function addNativeExpressGas(
         bytes32 txHash,
         uint256 logIndex,
         address refundAddress
