@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.9;
 
+import { IExpressProxyDeployer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IExpressProxyDeployer.sol';
 import { AxelarExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol';
 import { AddressToString, StringToAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/AddressString.sol';
 import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
 import { IExpressProxyFactory } from '../interfaces/IExpressProxyFactory.sol';
-import { ExpressProxyDeployer } from './ExpressProxyDeployer.sol';
 
 contract ExpressProxyFactory is AxelarExecutable, IExpressProxyFactory {
     using AddressToString for address;
@@ -17,7 +17,7 @@ contract ExpressProxyFactory is AxelarExecutable, IExpressProxyFactory {
     }
 
     IAxelarGasService public immutable gasService;
-    ExpressProxyDeployer public immutable proxyDeployer;
+    IExpressProxyDeployer public immutable proxyDeployer;
 
     constructor(
         address gateway_,
@@ -28,7 +28,7 @@ contract ExpressProxyFactory is AxelarExecutable, IExpressProxyFactory {
         if (proxyDeployer_ == address(0)) revert InvalidAddress();
 
         gasService = IAxelarGasService(gasService_);
-        proxyDeployer = ExpressProxyDeployer(proxyDeployer_);
+        proxyDeployer = IExpressProxyDeployer(proxyDeployer_);
     }
 
     function isExpressProxy(address proxyAddress) public view returns (bool) {
@@ -113,7 +113,7 @@ contract ExpressProxyFactory is AxelarExecutable, IExpressProxyFactory {
         bytes memory setupParams
     ) internal returns (address deployedAddress) {
         (, bytes memory data) = address(proxyDeployer).delegatecall(
-            abi.encodeWithSelector(ExpressProxyDeployer.deployExpressProxy.selector, deploySalt, implementationAddress, owner, setupParams)
+            abi.encodeWithSelector(IExpressProxyDeployer.deployExpressProxy.selector, deploySalt, implementationAddress, owner, setupParams)
         );
         (deployedAddress) = abi.decode(data, (address));
     }
