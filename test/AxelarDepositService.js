@@ -113,6 +113,12 @@ describe('AxelarDepositService', () => {
     });
 
     describe('deposit service', () => {
+        it('should have the same receiver bytecode', async () => {
+            await expect(keccak256(DepositReceiver.bytecode)).to.be.equal(
+                '0xc0fd88839756e97f51ab0395ce8e6164a5f924bd73a3342204340a14ad306fe1',
+            );
+        });
+
         it('should send native token', async () => {
             const destinationAddress = userWallet.address.toString();
             const amount = 1e6;
