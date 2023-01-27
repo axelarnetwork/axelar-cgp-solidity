@@ -3,7 +3,7 @@
 pragma solidity 0.8.9;
 
 import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
-import { SafeTokenTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
+import { SafeTokenTransfer, SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarDepositService } from '../interfaces/IAxelarDepositService.sol';
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
@@ -15,6 +15,7 @@ import { ReceiverImplementation } from './ReceiverImplementation.sol';
 // This should be owned by the microservice that is paying for gas.
 contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositService {
     using SafeTokenTransfer for IERC20;
+    using SafeNativeTransfer for address;
 
     // This public storage for ERC20 token intended to be refunded.
     // It triggers the DepositReceiver/ReceiverImplementation to switch into a refund mode.
@@ -259,13 +260,10 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
     ) external {
         if (msg.sender != refundIssuer) revert NotRefundIssuer();
         if (receiver == address(0)) revert InvalidAddress();
+        if (amount == 0) revert InvalidAmount();
 
         if (token == address(0)) {
-            if (amount == 0) revert InvalidAmount();
-
-            (bool sent, ) = receiver.call{ value: amount }('');
-
-            if (!sent) revert NativeTransferFailed();
+            receiver.safeNativeTransfer(amount);
         } else {
             IERC20(token).safeTransfer(receiver, amount);
         }

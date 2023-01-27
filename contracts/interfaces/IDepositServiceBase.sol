@@ -10,7 +10,6 @@ interface IDepositServiceBase {
     error WrapFailed();
     error UnwrapFailed();
     error TokenApproveFailed();
-    error NativeTransferFailed();
     error NotRefundIssuer();
     error WrappedTokenNotSupported();
 

@@ -2,10 +2,9 @@
 
 pragma solidity 0.8.9;
 
-import { SafeTokenTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
+import { SafeTokenTransfer, SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
-//import { IERC20 } from '../interfaces/IERC20.sol';
 import { IWETH9 } from '../interfaces/IWETH9.sol';
 import { IAxelarDepositService } from '../interfaces/IAxelarDepositService.sol';
 import { DepositServiceBase } from './DepositServiceBase.sol';
@@ -13,6 +12,7 @@ import { DepositServiceBase } from './DepositServiceBase.sol';
 // This should be owned by the microservice that is paying for gas.
 contract ReceiverImplementation is DepositServiceBase {
     using SafeTokenTransfer for IERC20;
+    using SafeNativeTransfer for address;
 
     constructor(address gateway_, string memory wrappedSymbol_) DepositServiceBase(gateway_, wrappedSymbol_) {}
 
@@ -95,8 +95,6 @@ contract ReceiverImplementation is DepositServiceBase {
 
         // Unwrapping the token into native currency and sending it to the recipient
         IWETH9(wrappedTokenAddress).withdraw(amount);
-        (bool sent, ) = recipient.call{ value: amount }('');
-
-        if (!sent) revert NativeTransferFailed();
+        recipient.safeNativeTransfer(amount);
     }
 }
