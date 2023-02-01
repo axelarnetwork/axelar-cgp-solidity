@@ -44,7 +44,7 @@ contract Proxy {
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = implementationAddress.delegatecall(
-            // keccak256('setup(bytes)')
+            //0x9ded06df is the setup selector.
             abi.encodeWithSelector(0x9ded06df, params)
         );
         if (!success) revert SetupFailed();
