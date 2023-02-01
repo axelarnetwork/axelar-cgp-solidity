@@ -76,10 +76,17 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
 
         if (chain[contractName] && chain[contractName].address) {
             const contract = getProxy(wallet.connect(provider), chain[contractName]['address']);
+            const owner = await contract.owner();
             console.log(`Proxy already exists for ${chain.name}: ${contract.address}`);
             console.log(`Existing implementation ${await contract.implementation()}`);
-            if (wallet.address !== chain[contractName].deployer) {
-                throw new Error(`${chain.name} | Signer ${wallet.address} does not match deployer ${chain[contractName].deployer} for chain ${chain.name} in info.`);
+            console.log(`Existing owner ${owner}`);
+
+            if (wallet.address !== chain[contractName].owner) {
+                throw new Error(`${chain.name} | Signer ${wallet.address} does not match owner ${chain[contractName].owner} for chain ${chain.name} in info.`);
+            }
+
+            if (owner !== chain[contractName].owner) {
+                throw new Error(`${chain.name} | Signer ${wallet.address} does not match contract owner ${owner} for chain ${chain.name} in info.`);
             }
 
             const anwser = readlineSync.question(`Perform an upgrade for ${chain.name}? (y/n) `);
@@ -125,7 +132,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
             chain[contractName]["salt"] = key
             chain[contractName]["address"] = contract.address
             chain[contractName]["implementation"] = await contract.implementation()
-            chain[contractName]["deployer"] = wallet.address
+            chain[contractName]["owner"] = wallet.address
 
             setJSON(chains, `../info/${env}.json`);
             console.log(`${chain.name} | ConstAddressDeployer is at ${chain.constAddressDeployer}`);
