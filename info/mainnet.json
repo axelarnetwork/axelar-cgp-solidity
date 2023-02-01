@@ -225,19 +225,25 @@
   {
     "name": "Kava",
     "chainId": 2222,
-    "gateway": "0xC8D18F85cB0Cee5C95eC29c69DeaF6cea972349c",
+    "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
     "rpc": "https://evm.kava.io",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenName": "Kava",
     "tokenSymbol": "KAVA",
     "AxelarGasService": {
       "salt": "AxelarGasService",
-      "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
+      "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+      "implementation": "0xfEF5c90d84a1C93804496f5e7fbf98ec0C85243C",
+      "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
       "wrappedSymbol": "",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF"
+      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
   }
 ]
