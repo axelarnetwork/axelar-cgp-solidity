@@ -1,14 +1,14 @@
 {
   "name": "@axelar-network/axelar-cgp-solidity",
-  "version": "4.4.0",
-  "description": "Ethereum Smart Contracts for Axelar Network",
+  "version": "4.5.0",
+  "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
     "build": "rm -rf artifacts && hardhat compile",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
-    "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js' && prettier --write 'scripts/**/*.js'",
+    "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'",
     "flatten": "sh scripts/flatten-contracts.sh"
   },
   "repository": {
