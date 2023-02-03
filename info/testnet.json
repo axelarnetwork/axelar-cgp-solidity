@@ -254,27 +254,5 @@
       "implementation": "0xb6241272C569767072e0587098415DF6BA0aaEe9",
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
-  },
-  {
-    "name": "Hero",
-    "chainId": 17771,
-    "gateway": "0x720A52EC9Fb428Cb122e7B1DAeC8a171b831dea1",
-    "rpc": "https://herotestnet.heroesofnft.com:443/ext/bc/2kdzD7eps9QRC449zypVGBbrzkwFrefLzmt24tS8MxmvEBuWvP/rpc",
-    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
-    "tokenName": "Hero",
-    "tokenSymbol": "HRM",
-    "gasReceiver": "0x635AFD18822aED9CC0E7EA8fc32d00bEe221c3cc",
-    "AxelarGasService": {
-      "salt": "AxelarGasService-devnet",
-      "address": "0x635AFD18822aED9CC0E7EA8fc32d00bEe221c3cc",
-      "implementation": "0x66A40D323134d3479A963C9CF8A0C924f3F33dA4",
-      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2",
-      "collector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
-    },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF"
-    }
   }
 ]
