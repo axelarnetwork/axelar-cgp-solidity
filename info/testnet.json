@@ -254,5 +254,30 @@
       "implementation": "0xb6241272C569767072e0587098415DF6BA0aaEe9",
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     }
+  },
+  {
+    "name": "Optimism",
+    "chainId": 420,
+    "gateway": "",
+    "rpc": "https://goerli.optimism.io",
+    "constAddressDeployer": "",
+    "tokenName": "Eth",
+    "tokenSymbol": "ETH",
+    "gasReceiver": "",
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "collector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "address": "",
+      "implementation": "",
+      "deployer": ""
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "wrappedSymbol": "",
+      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
+      "address": "",
+      "implementation": "",
+      "deployer": ""
+    }
   }
 ]
