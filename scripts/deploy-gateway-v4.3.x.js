@@ -39,7 +39,7 @@ const adminThreshold = parseInt(process.env.ADMIN_THRESHOLD);
 const gasPrice = parseWei(process.env.GAS_PRICE);
 const maxFeePerGas = parseWei(process.env.MAX_FEE_PER_GAS);
 const maxPriorityFeePerGas = parseWei(process.env.MAX_PRIORITY_FEE_PER_GAS);
-const gasLimit = process.env.GAS_LIMIT ? Number(process.env.GAS_LIMIT) : Number(8e6);
+const gasLimit = process.env.GAS_LIMIT ? Number(process.env.GAS_LIMIT) : Number(6e6);
 
 // main execution
 confirm(
@@ -119,9 +119,6 @@ function proxyParams() {
         auth = await authFactory.deploy(params).then((d) => d.deployed());
         printLog(`deployed auth at address ${auth.address}`);
         contracts.auth = auth.address;
-
-        // timeout to avoid rpc syncing issues
-        await new Promise(r => setTimeout(r, 5000));
     }
 
     if (reuseProxy) {
@@ -132,16 +129,13 @@ function proxyParams() {
         const tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
         printLog(`deployed token deployer at address ${tokenDeployer.address}`);
         contracts.tokenDeployer = tokenDeployer.address;
-
-        // timeout to avoid rpc syncing issues
-        await new Promise(r => setTimeout(r, 5000));
     }
 
     printLog(`deploying gateway implementation contract`);
     printLog(`authModule: ${contracts.auth}`)
     printLog(`tokenDeployer: ${contracts.tokenDeployer}`)
     const gatewayImplementation = await gatewayFactory.deploy(contracts.auth, contracts.tokenDeployer).then((d) => d.deployed());
-    printLog(`chain: ${chain}   implementation: ${gatewayImplementation.address}`);
+    printLog(`chain: ${chain}  implementation: ${gatewayImplementation.address}`);
     contracts.gatewayImplementation = gatewayImplementation.address;
     const bytecode = await provider.getCode(gatewayImplementation.address);
     const codehash = keccak256(bytecode);
@@ -159,48 +153,45 @@ function proxyParams() {
         contracts.gatewayProxy = gatewayProxy.address;
         gateway = gatewayFactory.attach(contracts.gatewayProxy);
 
-        // timeout to avoid rpc syncing issues
-        await new Promise(r => setTimeout(r, 5000));
     }
 
     if (!reuseProxy) {
         printLog('transferring auth ownership');
-        await auth.transferOwnership(contracts.gatewayProxy);
+        await auth.transferOwnership(contracts.gatewayProxy, options);
         printLog('transferred auth ownership. All done!');
-
-        // timeout to avoid rpc syncing issues
-        await new Promise(r => setTimeout(r, 5000));
     }
 
     const epoch = await gateway.adminEpoch();
     const admins = `${await gateway.admins(epoch)}`.split(",");
     printLog(`Existing admins ${admins}`);
     const encodedAdmins = JSON.parse(adminAddresses);
-    if (!reuseProxy && admins !== encodedAdmins) {
-        console.error(`Retrieved admins are different:\n   actual: ${admins}\n expected: ${encodedAdmins}`);
+    if (!reuseProxy && `${admins}` !== `${encodedAdmins}`) {
+        printLog(`ERROR: Retrieved admins are different:`)
+        printLog(`   Actual:   ${admins}`)
+        printLog(`   Expected: ${encodedAdmins}`);
     }
 
     const authModule = await gateway.authModule();
     if (authModule !== contracts.auth) {
-        console.error(`Auth module retrieved from gateway ${authModule} doesn't match deployed contract ${contracts.auth}`);
+        printLog(`ERROR: Auth module retrieved from gateway ${authModule} doesn't match deployed contract ${contracts.auth}`);
     }
 
     const tokenDeployerAddress = await gateway.tokenDeployer();
     if (tokenDeployerAddress !== contracts.tokenDeployer) {
-        console.error(
-            `Token deployer retrieved from gateway ${tokenDeployerAddress} doesn't match deployed contract ${contracts.tokenDeployer}`,
+        printLog(
+            `ERROR: Token deployer retrieved from gateway ${tokenDeployerAddress} doesn't match deployed contract ${contracts.tokenDeployer}`,
         );
     }
 
     const authOwner = await auth.owner();
     if (authOwner !== contracts.gatewayProxy) {
-        console.error(`Auth module owner is set to ${authOwner} instead of proxy address ${contracts.gatewayProxy}`);
+        printLog(`ERROR: Auth module owner is set to ${authOwner} instead of proxy address ${contracts.gatewayProxy}`);
     }
 
-    printLog(`Deployment completed\n`);
+    printLog(`Deployment completed`);
 })()
     .catch((err) => {
-        console.error(err);
+        printLog(err);
     })
     .finally(() => {
         printObj({ contract_addresses: contracts });
