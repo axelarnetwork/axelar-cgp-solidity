@@ -134,25 +134,25 @@ function proxyParams() {
     printLog(`deploying gateway implementation contract`);
     printLog(`authModule: ${contracts.auth}`)
     printLog(`tokenDeployer: ${contracts.tokenDeployer}`)
+    printLog(`implementation deployment args: ${contracts.auth},${contracts.tokenDeployer}`)
+
     const gatewayImplementation = await gatewayFactory.deploy(contracts.auth, contracts.tokenDeployer).then((d) => d.deployed());
-    printLog(`chain: ${chain}  implementation: ${gatewayImplementation.address}`);
+    printLog(`implementation: ${gatewayImplementation.address}`);
     contracts.gatewayImplementation = gatewayImplementation.address;
     const bytecode = await provider.getCode(gatewayImplementation.address);
     const codehash = keccak256(bytecode);
     contracts.implementationCodehash = codehash;
 
-    printLog(`chain: ${chain}  authModule,tokenDeployer: ${contracts.auth},${contracts.tokenDeployer}`)
-    printLog(`codehash: ${contracts.implementationCodehash}`)
+    printLog(`implementation codehash: ${contracts.implementationCodehash}`)
 
     if (!reuseProxy) {
         const params = proxyParams();
         printLog(`deploying gateway proxy contract`);
-        printLog(`proxy params: ${params}`)
+        printLog(`proxy deployment args: ${gatewayImplementation.address},${params}`)
         const gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
         printLog(`deployed gateway proxy at address ${gatewayProxy.address}`);
         contracts.gatewayProxy = gatewayProxy.address;
         gateway = gatewayFactory.attach(contracts.gatewayProxy);
-
     }
 
     if (!reuseProxy) {
