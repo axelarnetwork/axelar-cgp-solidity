@@ -26,13 +26,23 @@ const getAddresses = (prefix, chain, role) => {
     };
 };
 
+const getAxelarCmd = (cmd, prefix, axelarRpc) => {
+    if (axelarRpc) {
+        cmd = `~/${cmd} --node ${axelarRpc}`;
+    } else {
+        cmd = `${prefix} "${cmd}"`;
+    }
+
+    return cmd;
+}
+
 module.exports = {
     printLog(log) {
-        console.log(JSON.stringify({ log }));
+        console.log(JSON.stringify({ log }, null, 2));
     },
 
     printObj(obj) {
-        console.log(JSON.stringify(obj));
+        console.log(JSON.stringify(obj, null, 2));
     },
 
     confirm(values, complete) {
@@ -83,9 +93,9 @@ module.exports = {
         });
     },
 
-    getEVMAddresses(prefix, chain) {
-        const keyID = JSON.parse(execSync(`${prefix} "axelard q multisig key-id ${chain} --output json"`)).key_id;
-        const evmAddresses = JSON.parse(execSync(`${prefix} "axelard q evm address ${chain} --key-id ${keyID} --output json"`));
+    getEVMAddresses(prefix, chain, axelarRpc) {
+        const keyID = JSON.parse(execSync(getAxelarCmd(`axelard q multisig key-id ${chain} --output json`, prefix, axelarRpc))).key_id;
+        const evmAddresses = JSON.parse(execSync(getAxelarCmd(`axelard q evm address ${chain} --key-id ${keyID} --output json`, prefix, axelarRpc)));
         const sortedAddresses = sortBy(evmAddresses.addresses, (weightedAddress) => weightedAddress.address.toLowerCase());
 
         const addresses = sortedAddresses.map((weightedAddress) => weightedAddress.address);
@@ -95,8 +105,8 @@ module.exports = {
         return { addresses, weights, threshold };
     },
 
-    getProxy(prefix, chain) {
-        const proxy = JSON.parse(execSync(`${prefix} "axelard q evm gateway-address ${chain} --output json"`)).address;
+    getProxy(prefix, chain, axelarRpc) {
+        const proxy = JSON.parse(execSync(getAxelarCmd(`axelard q evm gateway-address ${chain} --output json`, prefix, axelarRpc))).address;
         return proxy;
     },
 

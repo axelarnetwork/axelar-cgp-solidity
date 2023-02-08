@@ -22,6 +22,7 @@ const chains = require(`../info/${env}.json`);
 const skipConfirm = process.env.SKIP_CONFIRM;
 const reuseProxy = process.env.REUSE_PROXY;
 const prefix = process.env.PREFIX;
+const axelarRpc = process.env.AXELAR_RPC;
 const chain = process.argv[3] || process.env.CHAIN;
 var config
 for (const chain1 of chains) {
@@ -46,6 +47,7 @@ confirm(
         PREFIX: prefix || null,
         CHAIN: chain || null,
         URL: url || null,
+        AXELAR_RPC: axelarRpc || null,
         PRIVATE_KEY: privKey ? '*****REDACTED*****' : null,
         REUSE_PROXY: reuseProxy || null,
         ADMIN_PUBKEYS: adminPubkeys || null,
@@ -57,7 +59,7 @@ confirm(
         GAS_LIMIT: gasLimit || null,
         SKIP_CONFIRM: skipConfirm || null,
     },
-    prefix && privKey && adminThreshold && (adminPubkeys || adminAddresses),
+    (prefix || axelarRpc) && privKey && adminThreshold && (adminPubkeys || adminAddresses),
 );
 
 const provider = new JsonRpcProvider(url);
@@ -67,7 +69,7 @@ const contracts = {};
 
 async function authParams() {
     printLog('retrieving addresses');
-    const { addresses, weights, threshold } = getEVMAddresses(prefix, chain);
+    const { addresses, weights, threshold } = getEVMAddresses(prefix, chain, axelarRpc);
     printObj({ addresses, weights, threshold });
     const paramsAuth = [defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [addresses, weights, threshold])];
     return paramsAuth
@@ -102,7 +104,7 @@ function proxyParams() {
 
     if (reuseProxy) {
         printLog(`reusing gateway proxy contract`);
-        contracts.gatewayProxy = config.gateway || getProxy(prefix, chain);
+        contracts.gatewayProxy = config.gateway || getProxy(prefix, chain, axelarRpc);
         printLog(`proxy address ${contracts.gatewayProxy}`);
         gateway = gatewayFactory.attach(contracts.gatewayProxy);
     }
