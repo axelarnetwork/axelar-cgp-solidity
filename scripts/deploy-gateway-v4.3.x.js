@@ -138,7 +138,7 @@ function proxyParams() {
     printLog(`deploying gateway implementation contract`);
     printLog(`authModule: ${contracts.auth}`)
     printLog(`tokenDeployer: ${contracts.tokenDeployer}`)
-    const gatewayImplementation = await gatewayFactory.deploy(contracts.auth, contracts.tokenDeployer, {gasLimit: 6e6}).then((d) => d.deployed());
+    const gatewayImplementation = await gatewayFactory.deploy(contracts.auth, contracts.tokenDeployer).then((d) => d.deployed());
     printLog(`chain: ${chain}   implementation: ${gatewayImplementation.address}`);
     contracts.gatewayImplementation = gatewayImplementation.address;
     const bytecode = await provider.getCode(gatewayImplementation.address);
@@ -163,7 +163,7 @@ function proxyParams() {
 
     if (!reuseProxy) {
         printLog('transferring auth ownership');
-        await auth.transferOwnership(contracts.gatewayProxy, options);
+        await auth.transferOwnership(contracts.gatewayProxy);
         printLog('transferred auth ownership. All done!');
 
         // timeout to avoid rpc syncing issues
@@ -171,11 +171,11 @@ function proxyParams() {
     }
 
     const epoch = await gateway.adminEpoch();
-    const admins = await gateway.admins(epoch);
+    const admins = `${await gateway.admins(epoch)}`.split(",");
     printLog(`Existing admins ${admins}`);
-    const encodedAdmins = defaultAbiCoder.encode(['address[]'], [JSON.parse(adminAddresses)]);
+    const encodedAdmins = JSON.parse(adminAddresses);
     if (!reuseProxy && admins !== encodedAdmins) {
-        console.error(`Retrieved admins are different:\n  actual: ${admins}\n expected: ${encodedAdmins}`);
+        console.error(`Retrieved admins are different:\n   actual: ${admins}\n expected: ${encodedAdmins}`);
     }
 
     const authModule = await gateway.authModule();
