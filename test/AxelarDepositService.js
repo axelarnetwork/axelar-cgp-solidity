@@ -18,7 +18,7 @@ const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDep
 const AxelarGatewayProxy = require('../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
 const AxelarGateway = require('../artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
 const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json');
-const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
+const Create3Deployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/Create3Deployer.json');
 
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
 const ReceiverImplementation = require('../artifacts/contracts/deposit-service/ReceiverImplementation.sol/ReceiverImplementation.json');
@@ -64,7 +64,7 @@ describe('AxelarDepositService', () => {
         const params = arrayify(
             defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
         );
-        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
+        const create3Deployer = await deployContract(ownerWallet, Create3Deployer);
         const auth = await deployContract(ownerWallet, Auth, [getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])]);
         const tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
         const gatewayImplementation = await deployContract(ownerWallet, AxelarGateway, [auth.address, tokenDeployer.address]);
@@ -103,7 +103,7 @@ describe('AxelarDepositService', () => {
             ),
         );
 
-        depositService = await deployUpgradable(constAddressDeployer.address, ownerWallet, DepositService, DepositServiceProxy, [
+        depositService = await deployUpgradable(create3Deployer.address, ownerWallet, DepositService, DepositServiceProxy, [
             gateway.address,
             tokenSymbol,
             ownerWallet.address,
@@ -342,6 +342,9 @@ describe('AxelarDepositService', () => {
                 to: depositAddress,
                 value: amount,
             });
+
+            // TODO remove this line when the issue is fixed
+            depositService.getAddress = () => depositService.address;
 
             await expect(await depositService.refundNativeUnwrap(salt, refundAddress, recipient, [wrongToken.address]))
                 .to.emit(wrongToken, 'Transfer')

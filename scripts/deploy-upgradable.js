@@ -11,7 +11,7 @@ const { deployUpgradable, upgradeUpgradable, getProxy } = require('./upgradable'
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
 
-async function getImplementationArgs(contractName, chain, wallet, artifactPath) {
+async function getImplementationArgs(contractName, chain, wallet) {
     if (contractName === 'AxelarGasService') {
         const collector = _.get('AxelarGasService.collector', chain);
         if (!isAddress(collector)) throw new Error(`Missing AxelarGasService.collector in the chain info.`);
@@ -38,7 +38,7 @@ async function getImplementationArgs(contractName, chain, wallet, artifactPath) 
         let proxyDeployer = _.get('GMPExpressService.proxyDeployer', chain);
 
         if (!isAddress(proxyDeployer)) {
-            const deployerJson = require(`${artifactPath}ExpressProxyDeployer.sol/ExpressProxyDeployer.json`);
+            const deployerJson = require('@axelar-network/axelar-gmp-sdk-solidity/artifacts/contracts/express/ExpressProxyDeployer.sol/ExpressProxyDeployer.json');
             const deployerFactory = new ContractFactory(deployerJson.abi, deployerJson.bytecode, wallet);
             const deployer = await deployerFactory.deploy(chain.gateway);
             await deployer.deployed();
@@ -114,7 +114,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                     wallet.connect(provider),
                     chain[contractName]['address'],
                     implementationJson,
-                    await getImplementationArgs(contractName, chain, wallet.connect(provider), artifactPath),
+                    await getImplementationArgs(contractName, chain, wallet.connect(provider)),
                     getUpgradeArgs(contractName, chain),
                 );
 
@@ -130,7 +130,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                     wallet.connect(provider),
                     implementationJson,
                     proxyJson,
-                    await getImplementationArgs(contractName, chain, wallet.connect(provider), artifactPath),
+                    await getImplementationArgs(contractName, chain, wallet.connect(provider)),
                     [],
                     getInitArgs(contractName, chain),
                     key,

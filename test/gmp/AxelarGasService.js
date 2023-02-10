@@ -14,7 +14,7 @@ const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
-const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
+const Create3Deployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/Create3Deployer.json');
 const { deployUpgradable, upgradeUpgradable } = require('../../scripts/upgradable');
 
 describe('AxelarGasService', () => {
@@ -24,9 +24,9 @@ describe('AxelarGasService', () => {
     let testToken;
 
     beforeEach(async () => {
-        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
+        const create3Deployer = await deployContract(ownerWallet, Create3Deployer);
 
-        gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
+        gasService = await deployUpgradable(create3Deployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
 
         const name = 'testToken';
         const symbol = 'testToken';
@@ -100,6 +100,9 @@ describe('AxelarGasService', () => {
                 .and.to.emit(testToken, 'Transfer')
                 .withArgs(userWallet.address, gasService.address, gasFeeAmount);
 
+            // TODO remove this hack after
+            gasService.getAddress = () => gasService.address;
+
             await expect(
                 await gasService
                     .connect(userWallet)
@@ -150,6 +153,9 @@ describe('AxelarGasService', () => {
             const nativeGasFeeAmount = parseEther('1.0');
 
             await testToken.connect(userWallet).approve(gasService.address, 1e6);
+
+            // TODO remove this hack after
+            gasService.getAddress = () => gasService.address;
 
             await gasService
                 .connect(userWallet)
@@ -219,7 +225,7 @@ describe('AxelarGasService', () => {
 
         it('should upgrade the gas receiver implementation', async () => {
             const prevImpl = await gasService.implementation();
-            await expect(upgradeUpgradable(ownerWallet, gasService.address, GasService, [ownerWallet.address])).to.emit(
+            await expect(upgradeUpgradable(gasService.address, ownerWallet, GasService, [ownerWallet.address])).to.emit(
                 gasService,
                 'Upgraded',
             );
@@ -251,6 +257,9 @@ describe('AxelarGasService', () => {
                 .withArgs(txHash, logIndex, gasToken, gasFeeAmount, userWallet.address)
                 .and.to.emit(testToken, 'Transfer')
                 .withArgs(userWallet.address, gasService.address, gasFeeAmount);
+
+            // TODO remove this hack after
+            gasService.getAddress = () => gasService.address;
 
             await expect(
                 await gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address, { value: nativeGasFeeAmount }),

@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 
 import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 import { SafeTokenTransfer, SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
-import { IExpressExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IExpressExecutable.sol';
+import { IExpressProxy } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IExpressProxy.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IGMPExpressService } from '../interfaces/IGMPExpressService.sol';
 import { ExpressProxyFactory } from './ExpressProxyFactory.sol';
@@ -44,7 +44,7 @@ contract GMPExpressService is Upgradable, ExpressProxyFactory, IGMPExpressServic
         if (contractAddress == address(0)) revert InvalidContractAddress();
 
         if (commandId != bytes32(0) && gateway.isCommandExecuted(commandId)) {
-            IExpressExecutable(contractAddress).executeWithToken(commandId, sourceChain, sourceAddress, payload, tokenSymbol, amount);
+            IExpressProxy(contractAddress).executeWithToken(commandId, sourceChain, sourceAddress, payload, tokenSymbol, amount);
         } else {
             if (!isExpressProxy(contractAddress)) revert NotExpressProxy();
 
@@ -53,7 +53,7 @@ contract GMPExpressService is Upgradable, ExpressProxyFactory, IGMPExpressServic
             if (tokenAddress == address(0)) revert InvalidTokenSymbol();
 
             IERC20(tokenAddress).approve(contractAddress, amount);
-            IExpressExecutable(contractAddress).expressExecuteWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
+            IExpressProxy(contractAddress).expressExecuteWithToken(sourceChain, sourceAddress, payload, tokenSymbol, amount);
         }
     }
 

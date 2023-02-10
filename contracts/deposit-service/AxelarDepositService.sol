@@ -282,7 +282,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
                     uint256(
                         keccak256(
                             abi.encodePacked(
-                                bytes1(0xff),
+                                hex'ff',
                                 address(this),
                                 salt,
                                 // Encoding delegateData and refundAddress as constructor params
