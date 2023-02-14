@@ -15,7 +15,7 @@ const GasService = require('../../artifacts/contracts/gas-service/AxelarGasServi
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
 const Create3Deployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/Create3Deployer.json');
-const { deployUpgradable, upgradeUpgradable } = require('../../scripts/upgradable');
+const { deployCreate3Upgradable, upgradeUpgradable } = require("@axelar-network/axelar-gmp-sdk-solidity");
 
 describe('AxelarGasService', () => {
     const [ownerWallet, userWallet] = new MockProvider().getWallets();
@@ -26,7 +26,7 @@ describe('AxelarGasService', () => {
     beforeEach(async () => {
         const create3Deployer = await deployContract(ownerWallet, Create3Deployer);
 
-        gasService = await deployUpgradable(create3Deployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
+        gasService = await deployCreate3Upgradable(create3Deployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
 
         const name = 'testToken';
         const symbol = 'testToken';

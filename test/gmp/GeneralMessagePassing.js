@@ -9,7 +9,7 @@ const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
 const { get } = require('lodash/fp');
-const { deployUpgradable } = require('../../scripts/upgradable');
+const { deployCreate3Upgradable } = require("@axelar-network/axelar-gmp-sdk-solidity");
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
@@ -47,7 +47,6 @@ describe('GeneralMessagePassing', () => {
     let sourceChainSwapCaller;
     let destinationChainSwapExecutable;
     let destinationChainSwapExpress;
-    let destinationChainExpressRegistry;
     let destinationChainTokenSwapper;
     let tokenA;
     let tokenB;
@@ -113,11 +112,11 @@ describe('GeneralMessagePassing', () => {
         destinationChainGateway = await deployGateway();
         const create3Deployer = await deployContract(ownerWallet, Create3Deployer);
 
-        gasService = await deployUpgradable(create3Deployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
+        gasService = await deployCreate3Upgradable(create3Deployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
 
         const expressProxyDeployer = await deployContract(ownerWallet, ExpressProxyDeployer, [destinationChainGateway.address]);
 
-        gmpExpressService = await deployUpgradable(create3Deployer.address, ownerWallet, GMPExpressService, GMPExpressServiceProxy, [
+        gmpExpressService = await deployCreate3Upgradable(create3Deployer.address, ownerWallet, GMPExpressService, GMPExpressServiceProxy, [
             destinationChainGateway.address,
             gasService.address,
             expressProxyDeployer.address,
@@ -142,7 +141,7 @@ describe('GeneralMessagePassing', () => {
             destinationChainTokenSwapper.address,
         ]);
 
-        destinationChainSwapExpress = await deployUpgradable(
+        destinationChainSwapExpress = await deployCreate3Upgradable(
             create3Deployer.address,
             ownerWallet,
             DestinationChainSwapExpress,
@@ -153,7 +152,6 @@ describe('GeneralMessagePassing', () => {
 
         const destinationChainSwapExpressProxy = new Contract(destinationChainSwapExpress.address, ExpressProxy.abi, ownerWallet);
         await destinationChainSwapExpressProxy.deployRegistry(ExpressRegistry.bytecode);
-        destinationChainExpressRegistry = new Contract(await destinationChainSwapExpressProxy.registry(), ExpressRegistry.abi, ownerWallet);
 
         sourceChainSwapCaller = await deployContract(ownerWallet, SourceChainSwapCaller, [
             sourceChainGateway.address,
