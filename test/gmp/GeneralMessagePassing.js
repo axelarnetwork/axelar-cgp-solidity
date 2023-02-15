@@ -11,7 +11,7 @@ const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
 const { get } = require('lodash/fp');
-const { deployUpgradable, deployCreate3Upgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
+const { deployUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
@@ -31,7 +31,6 @@ const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/g
 const DestinationChainSwapExpress = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExpress.sol/DestinationChainSwapExpress.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
 const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
-const Create3Deployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/Create3Deployer.json');
 
 const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('../utils');
 
@@ -112,13 +111,12 @@ describe('GeneralMessagePassing', () => {
         sourceChainGateway = await deployGateway();
         destinationChainGateway = await deployGateway();
         const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
-        const create3Deployer = await deployContract(ownerWallet, Create3Deployer);
 
         gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
 
         const expressProxyDeployer = await deployContract(ownerWallet, ExpressProxyDeployer, [destinationChainGateway.address]);
 
-        gmpExpressService = await deployCreate3Upgradable(create3Deployer.address, ownerWallet, GMPExpressService, GMPExpressServiceProxy, [
+        gmpExpressService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GMPExpressService, GMPExpressServiceProxy, [
             destinationChainGateway.address,
             gasService.address,
             expressProxyDeployer.address,

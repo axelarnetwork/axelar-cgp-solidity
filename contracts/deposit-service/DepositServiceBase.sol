@@ -8,7 +8,7 @@ import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IDepositServiceBase } from '../interfaces/IDepositServiceBase.sol';
 
 // This should be owned by the microservice that is paying for gas.
-contract DepositServiceBase is IDepositServiceBase {
+abstract contract DepositServiceBase is IDepositServiceBase {
     using SafeTokenTransfer for address;
 
     using StringToBytes32 for string;
