@@ -317,7 +317,12 @@
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     },
     "GMPExpressService": {
-      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "proxyDeployer": "0xE5B8a432692D788C5c1934Bc079eb75791856490",
+      "salt": "GMPExpressService",
+      "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
+      "implementation": "0x7535A4d834bF9Ce2BA7d133848a89d169D0Ba7B5",
+      "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   }
 ]
