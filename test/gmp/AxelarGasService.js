@@ -14,8 +14,8 @@ const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
-const Create3Deployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/Create3Deployer.json');
-const { deployCreate3Upgradable, upgradeUpgradable } = require("@axelar-network/axelar-gmp-sdk-solidity");
+const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
+const { deployUpgradable, upgradeUpgradable } = require("@axelar-network/axelar-gmp-sdk-solidity");
 
 describe('AxelarGasService', () => {
     const [ownerWallet, userWallet] = new MockProvider().getWallets();
@@ -24,9 +24,9 @@ describe('AxelarGasService', () => {
     let testToken;
 
     beforeEach(async () => {
-        const create3Deployer = await deployContract(ownerWallet, Create3Deployer);
+        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
 
-        gasService = await deployCreate3Upgradable(create3Deployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
+        gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
 
         const name = 'testToken';
         const symbol = 'testToken';

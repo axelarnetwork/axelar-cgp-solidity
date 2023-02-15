@@ -18,7 +18,7 @@ const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDep
 const AxelarGatewayProxy = require('../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
 const AxelarGateway = require('../artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
 const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json');
-const Create3Deployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/Create3Deployer.json');
+const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
 
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
 const ReceiverImplementation = require('../artifacts/contracts/deposit-service/ReceiverImplementation.sol/ReceiverImplementation.json');
@@ -26,7 +26,7 @@ const DepositService = require('../artifacts/contracts/deposit-service/AxelarDep
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 
 const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('./utils');
-const { deployCreate3Upgradable } = require("@axelar-network/axelar-gmp-sdk-solidity");
+const { deployUpgradable } = require("@axelar-network/axelar-gmp-sdk-solidity");
 
 describe('AxelarDepositService', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
@@ -64,7 +64,7 @@ describe('AxelarDepositService', () => {
         const params = arrayify(
             defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
         );
-        const create3Deployer = await deployContract(ownerWallet, Create3Deployer);
+        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
         const auth = await deployContract(ownerWallet, Auth, [getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])]);
         const tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
         const gatewayImplementation = await deployContract(ownerWallet, AxelarGateway, [auth.address, tokenDeployer.address]);
@@ -103,7 +103,7 @@ describe('AxelarDepositService', () => {
             ),
         );
 
-        depositService = await deployCreate3Upgradable(create3Deployer.address, ownerWallet, DepositService, DepositServiceProxy, [
+        depositService = await deployUpgradable(constAddressDeployer.address, ownerWallet, DepositService, DepositServiceProxy, [
             gateway.address,
             tokenSymbol,
             ownerWallet.address,
