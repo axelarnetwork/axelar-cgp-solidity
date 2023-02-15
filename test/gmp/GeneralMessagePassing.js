@@ -11,7 +11,7 @@ const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
 const { get } = require('lodash/fp');
-const { deployUpgradable, deployCreate3Upgradable } = require("@axelar-network/axelar-gmp-sdk-solidity");
+const { deployUpgradable, deployCreate3Upgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
@@ -144,16 +144,22 @@ describe('GeneralMessagePassing', () => {
         ]);
 
         const salt = keccak256(Buffer.from('DestinationChainSwapExpress'));
-        const destinationChainSwapExpressFactory = new ContractFactory(DestinationChainSwapExpress.abi, DestinationChainSwapExpress.bytecode, ownerWallet);
-        const bytecode = destinationChainSwapExpressFactory.getDeployTransaction(destinationChainGateway.address, destinationChainTokenSwapper.address).data;
+        const destinationChainSwapExpressFactory = new ContractFactory(
+            DestinationChainSwapExpress.abi,
+            DestinationChainSwapExpress.bytecode,
+            ownerWallet,
+        );
+        const bytecode = destinationChainSwapExpressFactory.getDeployTransaction(
+            destinationChainGateway.address,
+            destinationChainTokenSwapper.address,
+        ).data;
 
-        await gmpExpressService.deployExpressExecutable(
-            salt,
-            bytecode,
-            ownerWallet.address,
-            '0x',
-        )
-        destinationChainSwapExpress = new Contract(await gmpExpressService.deployedProxyAddress(salt, ownerWallet.address), DestinationChainSwapExpress.abi, ownerWallet);
+        await gmpExpressService.deployExpressExecutable(salt, bytecode, ownerWallet.address, '0x');
+        destinationChainSwapExpress = new Contract(
+            await gmpExpressService.deployedProxyAddress(salt, ownerWallet.address),
+            DestinationChainSwapExpress.abi,
+            ownerWallet,
+        );
 
         sourceChainSwapCaller = await deployContract(ownerWallet, SourceChainSwapCaller, [
             sourceChainGateway.address,

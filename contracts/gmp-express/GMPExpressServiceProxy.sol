@@ -2,15 +2,9 @@
 
 pragma solidity 0.8.9;
 
-import { FinalProxy } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/FinalProxy.sol';
+import { InitProxy } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/InitProxy.sol';
 
-contract GMPExpressServiceProxy is FinalProxy {
-    constructor(
-        address implementationAddress,
-        address owner,
-        bytes memory setupParams
-    ) FinalProxy(implementationAddress, owner, setupParams) {}
-
+contract GMPExpressServiceProxy is InitProxy {
     function contractId() internal pure override returns (bytes32) {
         return keccak256('axelar-gmp-express-service');
     }

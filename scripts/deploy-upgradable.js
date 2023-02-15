@@ -2,14 +2,20 @@
 require('dotenv').config();
 const _ = require('lodash/fp');
 const {
+    Contract,
     Wallet,
     getDefaultProvider,
     utils: { isAddress },
     ContractFactory,
 } = require('ethers');
-const { deployUpgradable, upgradeUpgradable, getProxy, predictProxyAddress } = require('./upgradable');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
+const { deployUpgradable, upgradeUpgradable, predictContractConstant } = require('@axelar-network/axelar-gmp-sdk-solidity');
+const IUpgradable = require('@axelar-network/axelar-gmp-sdk-solidity/dist/IUpgradable.json');
+
+function getProxy(wallet, proxyAddress) {
+    return new Contract(proxyAddress, IUpgradable.abi, wallet);
+}
 
 async function getImplementationArgs(contractName, chain, wallet) {
     if (contractName === 'AxelarGasService') {
@@ -99,63 +105,61 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
             if (deployTo.length > 0 && !deployTo.find((name) => chain.name === name)) continue;
             const rpc = chain.rpc;
             const provider = getDefaultProvider(rpc);
-        const args = await getImplementationArgs(contractName, chain);
-        console.log(`Implementation args for chain ${chain.name}: ${args}`)
-        console.log(`Gas override for chain ${chain.name}:`, chain.gasOptions)
+            console.log(`Gas override for chain ${chain.name}:`, chain.gasOptions);
 
-        if (chain[contractName] && chain[contractName].address) {
-            const contract = getProxy(wallet.connect(provider), chain[contractName]['address']);
-            const owner = await contract.owner();
-            console.log(`Proxy already exists for ${chain.name}: ${contract.address}`);
-            console.log(`Existing implementation ${await contract.implementation()}`);
-            console.log(`Existing owner ${owner}`);
+            if (chain[contractName] && chain[contractName].address) {
+                const contract = getProxy(wallet.connect(provider), chain[contractName].address);
+                const owner = await contract.owner();
+                console.log(`Proxy already exists for ${chain.name}: ${contract.address}`);
+                console.log(`Existing implementation ${await contract.implementation()}`);
+                console.log(`Existing owner ${owner}`);
 
-            if (wallet.address !== owner) {
-                throw new Error(`Signer ${wallet.address} does not match contract owner ${owner} for chain ${chain.name} in info.`);
-            }
+                if (wallet.address !== owner) {
+                    throw new Error(`Signer ${wallet.address} does not match contract owner ${owner} for chain ${chain.name} in info.`);
+                }
 
-            const anwser = readlineSync.question(`Perform an upgrade for ${chain.name}? (y/n) `);
-            if (anwser !== 'y') continue;
+                const anwser = readlineSync.question(`Perform an upgrade for ${chain.name}? (y/n) `);
+                if (anwser !== 'y') continue;
 
-            await upgradeUpgradable(
-                wallet.connect(provider),
-                chain[contractName]['address'],
-                implementationJson,
-                args,
-                getUpgradeArgs(contractName, chain),
-                chain.gasOptions,
-            );
+                const args = await getImplementationArgs(contractName, chain, wallet.connect(provider));
+                console.log(`Implementation args for chain ${chain.name}: ${args}`);
 
-                chain[contractName]['implementation'] = await contract.implementation();
+                await upgradeUpgradable(
+                    chain[contractName].address,
+                    wallet.connect(provider),
+                    implementationJson,
+                    args,
+                    getUpgradeArgs(contractName, chain),
+                );
 
-                console.log(`${chain.name} | New Implementation for ${contractName} is at ${chain[contractName]['implementation']}`);
+                chain[contractName].implementation = await contract.implementation();
+
+                console.log(`${chain.name} | New Implementation for ${contractName} is at ${chain[contractName].implementation}`);
                 console.log(`${chain.name} | Upgraded.`);
             } else {
                 const key = env.includes('devnet') ? `${contractName}-${env}` : contractName;
-            const setupArgs = getInitArgs(contractName, chain);
-            console.log(`Proxy setup args: ${setupArgs}`)
-            console.log(`Proxy deployment salt: '${key}'`)
+                const setupArgs = getInitArgs(contractName, chain);
+                console.log(`Proxy setup args: ${setupArgs}`);
+                console.log(`Proxy deployment salt: '${key}'`);
 
-            const proxyAddress = await predictProxyAddress(
-                chain.constAddressDeployer,
-                wallet.connect(provider),
-                proxyJson,
-                key,
-            );
-            console.log(`Proxy will be deployed to ${proxyAddress}. Does this match any existing deployments?`);
-            const anwser = readlineSync.question(`Proceed with deployment on ${chain.name}? (y/n) `);
-            if (anwser !== 'y') return;
+                const proxyAddress = await predictContractConstant(chain.constAddressDeployer, wallet.connect(provider), proxyJson, key);
+                console.log(`Proxy will be deployed to ${proxyAddress}. Does this match any existing deployments?`);
+                const anwser = readlineSync.question(`Proceed with deployment on ${chain.name}? (y/n) `);
+                if (anwser !== 'y') return;
 
-            const contract = await deployUpgradable(
-                chain.constAddressDeployer,
-                wallet.connect(provider),
-                implementationJson,
-                proxyJson,
-                args,
-                setupArgs,
-                key,
-                chain.gasOptions,
-            );
+                const args = await getImplementationArgs(contractName, chain, wallet.connect(provider));
+                console.log(`Implementation args for chain ${chain.name}: ${args}`);
+
+                const contract = await deployUpgradable(
+                    chain.constAddressDeployer,
+                    wallet.connect(provider),
+                    implementationJson,
+                    proxyJson,
+                    args,
+                    setupArgs,
+                    key,
+                    _.get('gasOptions.gasLimit', chain),
+                );
 
                 chain[contractName] = {
                     ...chain[contractName],
@@ -166,7 +170,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 };
 
                 console.log(`${chain.name} | ConstAddressDeployer is at ${chain.constAddressDeployer}`);
-                console.log(`${chain.name} | Implementation for ${contractName} is at ${chain[contractName]['implementation']}`);
+                console.log(`${chain.name} | Implementation for ${contractName} is at ${chain[contractName].implementation}`);
                 console.log(`${chain.name} | Proxy for ${contractName} is at ${contract.address}`);
             }
 

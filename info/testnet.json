@@ -25,10 +25,10 @@
     },
     "GMPExpressService": {
       "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
-      "proxyDeployer": "0x22FD70d1c168Df5B33DAEdf611c7EDf258bb9483",
+      "proxyDeployer": "0xbAbf892E4a1B0E3394FAb037a1296125fb4B1e0a",
       "salt": "GMPExpressService",
       "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
-      "implementation": "0xDA9062874E4905a14Eb946D6dbE73D4fFf093e83",
+      "implementation": "0x24f88AbEcf47Ff6e30dFe29f903C5e0679f4F133",
       "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
@@ -60,9 +60,9 @@
       "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
       "salt": "GMPExpressService",
       "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
-      "implementation": "0xDbfd9b12f65F13D626f229198E195B14896615c7",
+      "implementation": "0x3A0e329f75d71DAFc1E33DBC0E7e0184F47A7981",
       "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2",
-      "proxyDeployer": "0x7d317581fe19e63A6Dbea833B1902c487f40Aa2c"
+      "proxyDeployer": "0xCbcD7ACc8a65C163a23c75be08fc8D6fb5FE3DC3"
     }
   },
   {
@@ -91,10 +91,10 @@
     },
     "GMPExpressService": {
       "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
-      "proxyDeployer": "0xBD3e8d41874bC123fB6913a2a6c6C8984c71876c",
+      "proxyDeployer": "0x4154CF6eea0633DD9c4933E76a077fD7E9260738",
       "salt": "GMPExpressService",
       "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
-      "implementation": "0xEA85BA9643F504155CD0eFbDB890c5e37e0F6E5C",
+      "implementation": "0x8D71056cbEc738EC6DD165BF74ad4f8b1A06F65C",
       "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
@@ -124,10 +124,10 @@
     },
     "GMPExpressService": {
       "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
-      "proxyDeployer": "0xCB1e52bce6c72Ff7Bb97c46745847411cdC39777",
+      "proxyDeployer": "0xe5b441394Bd809A0A70E2Ea384DdA25E6Ae6Efa2",
       "salt": "GMPExpressService",
       "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
-      "implementation": "0xa2b215328017039db7847559302D1CF7b068Aa5a",
+      "implementation": "0x60252bf6992e492DEa5f3e02e6611a5C757De690",
       "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     },
     "gasOptions": {
@@ -160,10 +160,10 @@
     },
     "GMPExpressService": {
       "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
-      "proxyDeployer": "0xc65d8a88B30CCc1cc6680B93570CCd762e1E2147",
+      "proxyDeployer": "0xc8E0b617c388c7E800a7643adDD01218E14a727a",
       "salt": "GMPExpressService",
       "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
-      "implementation": "0xBB702CAca5676B0dE9BA1B1583d4A8a0ffb1B522",
+      "implementation": "0xc9Bd530361D25D95c347a1F747A44B3Abd752eBa",
       "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
@@ -178,7 +178,6 @@
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
     "AxelarGasService": {
       "salt": "AxelarGasService",
-      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "address": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
       "implementation": "0x4c671CA2828c9A8D87d917196bc9FB8bFd905445",
       "deployer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
@@ -194,10 +193,10 @@
     },
     "GMPExpressService": {
       "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
-      "proxyDeployer": "0xcb655B33DD5bEa9cA43238F97A8C1Fe3A5845751",
+      "proxyDeployer": "0xD537b39aDBD369Ba534c2A19D99A56c373E82407",
       "salt": "GMPExpressService",
       "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
-      "implementation": "0xE5B8a432692D788C5c1934Bc079eb75791856490",
+      "implementation": "0x2aea4a079c98B46f7C2A4E1081BFFD52cb6AA931",
       "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
@@ -227,10 +226,10 @@
     },
     "GMPExpressService": {
       "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
-      "proxyDeployer": "0xB1893B633939CBB1848F786FcA023786642898F6",
+      "proxyDeployer": "0x64F528B78472B20aCA5C2c94D189a17fBC43Dc75",
       "salt": "GMPExpressService",
       "address": "0xfb72239394647e97894585D0D93Ca91f6C3852a4",
-      "implementation": "0xA04bFB74786089f0451f09437947B83F02e4e823",
+      "implementation": "0x24431951FAC365528F41e46B06a91F34687df02f",
       "deployer": "0xA57ADCE1d2fE72949E4308867D894CD7E7DE0ef2"
     }
   },
@@ -257,6 +256,9 @@
       "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
       "implementation": "0xb6241272C569767072e0587098415DF6BA0aaEe9",
       "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
+    },
+    "GMPExpressService": {
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
     },
     "gasOptions": {
       "gasLimit": 20000000
