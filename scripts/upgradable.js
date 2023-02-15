@@ -32,7 +32,7 @@ async function deployUpgradable(
     proxyJson,
     implementationParams = [],
     setupParams = '0x',
-    key = Date.now(),
+    key = Date.now().toString(),
     options = {},
 ) {
     const implementationFactory = new ContractFactory(implementationJson.abi, implementationJson.bytecode, wallet);
