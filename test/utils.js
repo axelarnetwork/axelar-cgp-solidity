@@ -114,14 +114,14 @@ module.exports = {
             [sourceChain, source, destination, payloadHash, symbol, amount, sourceTxHash, sourceEventIndex],
         ),
 
-    buildCommandBatch: (chianId, commandIDs, commandNames, commands) =>
-        arrayify(defaultAbiCoder.encode(['uint256', 'bytes32[]', 'string[]', 'bytes[]'], [chianId, commandIDs, commandNames, commands])),
+    buildCommandBatch: (chainId, commandIDs, commandNames, commands) =>
+        arrayify(defaultAbiCoder.encode(['uint256', 'bytes32[]', 'string[]', 'bytes[]'], [chainId, commandIDs, commandNames, commands])),
 
-    buildCommandBatchWithRole: (chianId, role, commandIDs, commandNames, commands) =>
+    buildCommandBatchWithRole: (chainId, role, commandIDs, commandNames, commands) =>
         arrayify(
             defaultAbiCoder.encode(
                 ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [chianId, role, commandIDs, commandNames, commands],
+                [chainId, role, commandIDs, commandNames, commands],
             ),
         ),
 
