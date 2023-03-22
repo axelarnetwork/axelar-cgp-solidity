@@ -14,8 +14,8 @@ const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
-const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
-const { deployUpgradable, upgradeUpgradable } = require('../../scripts/upgradable');
+const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
+const { deployUpgradable, upgradeUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 describe('AxelarGasService', () => {
     const [ownerWallet, userWallet] = new MockProvider().getWallets();
@@ -219,7 +219,7 @@ describe('AxelarGasService', () => {
 
         it('should upgrade the gas receiver implementation', async () => {
             const prevImpl = await gasService.implementation();
-            await expect(upgradeUpgradable(ownerWallet, gasService.address, GasService, [ownerWallet.address])).to.emit(
+            await expect(upgradeUpgradable(gasService.address, ownerWallet, GasService, [ownerWallet.address])).to.emit(
                 gasService,
                 'Upgraded',
             );

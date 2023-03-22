@@ -2,12 +2,17 @@
 
 pragma solidity 0.8.9;
 
+import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
+import { SafeTokenTransfer, SafeTokenTransferFrom, SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
-import { IERC20 } from '../interfaces/IERC20.sol';
-import '../util/Upgradable.sol';
+import  { Upgradable } from  '../util/Upgradable.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarGasService is Upgradable, IAxelarGasService {
+    using SafeTokenTransfer for IERC20;
+    using SafeTokenTransferFrom for IERC20;
+    using SafeNativeTransfer for address payable;
+
     address public immutable gasCollector;
 
     constructor(address gasCollector_) {
@@ -30,7 +35,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
 
         emit GasPaidForContractCall(
             sender,
@@ -55,7 +60,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
 
         emit GasPaidForContractCallWithToken(
             sender,
@@ -114,7 +119,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        _safeTransferFrom(gasToken, msg.sender, gasFeeAmount);
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
 
         emit GasAdded(txHash, logIndex, gasToken, gasFeeAmount, refundAddress);
     }
@@ -145,9 +150,9 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
             if (amount == 0) revert InvalidAmounts();
 
             if (token == address(0)) {
-                if (amount <= address(this).balance) receiver.transfer(amount);
+                if (amount <= address(this).balance) receiver.safeNativeTransfer(amount);
             } else {
-                if (amount <= IERC20(token).balanceOf(address(this))) _safeTransfer(token, receiver, amount);
+                if (amount <= IERC20(token).balanceOf(address(this))) IERC20(token).safeTransfer(receiver, amount);
             }
         }
     }
@@ -160,40 +165,10 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         if (receiver == address(0)) revert InvalidAddress();
 
         if (token == address(0)) {
-            receiver.transfer(amount);
+            receiver.safeNativeTransfer(amount);
         } else {
-            _safeTransfer(token, receiver, amount);
+            IERC20(token).safeTransfer(receiver, amount);
         }
-    }
-
-    function _safeTransfer(
-        address tokenAddress,
-        address receiver,
-        uint256 amount
-    ) internal {
-        if (amount == 0) revert NothingReceived();
-
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returnData) = tokenAddress.call(abi.encodeWithSelector(IERC20.transfer.selector, receiver, amount));
-        bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
-
-        if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
-    }
-
-    function _safeTransferFrom(
-        address tokenAddress,
-        address from,
-        uint256 amount
-    ) internal {
-        if (amount == 0) revert NothingReceived();
-
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returnData) = tokenAddress.call(
-            abi.encodeWithSelector(IERC20.transferFrom.selector, from, address(this), amount)
-        );
-        bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
-
-        if (!transferred || tokenAddress.code.length == 0) revert TransferFailed();
     }
 
     function contractId() external pure returns (bytes32) {

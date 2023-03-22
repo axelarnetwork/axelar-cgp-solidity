@@ -2,9 +2,10 @@
 
 pragma solidity 0.8.9;
 
+import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
+import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
-import { IERC20 } from './interfaces/IERC20.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
@@ -13,6 +14,10 @@ import { DepositHandler } from './DepositHandler.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
 
 contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
+    using SafeTokenCall for IERC20;
+    using SafeTokenTransfer for IERC20;
+    using SafeTokenTransferFrom for IERC20;
+
     enum TokenType {
         InternalBurnable,
         InternalBurnableFrom,
@@ -460,14 +465,6 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Internal Methods *|
     \********************/
 
-    function _callERC20Token(address tokenAddress, bytes memory callData) internal returns (bool) {
-        if (tokenAddress.code.length == 0) return false;
-
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returnData) = tokenAddress.call(callData);
-        return success && (returnData.length == 0 || abi.decode(returnData, (bool)));
-    }
-
     function _mintToken(
         string memory symbol,
         address account,
@@ -480,9 +477,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         _setTokenMintAmount(symbol, tokenMintAmount(symbol) + amount);
 
         if (_getTokenType(symbol) == TokenType.External) {
-            bool success = _callERC20Token(tokenAddress, abi.encodeWithSelector(IERC20.transfer.selector, account, amount));
-
-            if (!success) revert MintFailed(symbol);
+            IERC20(tokenAddress).safeTransfer(account, amount);
         } else {
             IBurnableMintableCappedERC20(tokenAddress).mint(account, amount);
         }
@@ -499,43 +494,15 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         if (amount == 0) revert InvalidAmount();
 
         TokenType tokenType = _getTokenType(symbol);
-        bool burnSuccess;
 
         if (tokenType == TokenType.External) {
-            burnSuccess = _callERC20Token(
-                tokenAddress,
-                abi.encodeWithSelector(IERC20.transferFrom.selector, sender, address(this), amount)
-            );
-
-            if (!burnSuccess) revert BurnFailed(symbol);
-
-            return;
+            IERC20(tokenAddress).safeTransferFrom(sender, address(this), amount);
+        } else if (tokenType == TokenType.InternalBurnableFrom) {
+            IERC20(tokenAddress).safeCall(abi.encodeWithSelector(IBurnableMintableCappedERC20.burnFrom.selector, sender, amount));
+        } else {
+            IERC20(tokenAddress).safeTransferFrom(sender, IBurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0)), amount);
+            IBurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
         }
-
-        if (tokenType == TokenType.InternalBurnableFrom) {
-            burnSuccess = _callERC20Token(
-                tokenAddress,
-                abi.encodeWithSelector(IBurnableMintableCappedERC20.burnFrom.selector, sender, amount)
-            );
-
-            if (!burnSuccess) revert BurnFailed(symbol);
-
-            return;
-        }
-
-        burnSuccess = _callERC20Token(
-            tokenAddress,
-            abi.encodeWithSelector(
-                IERC20.transferFrom.selector,
-                sender,
-                IBurnableMintableCappedERC20(tokenAddress).depositAddress(bytes32(0)),
-                amount
-            )
-        );
-
-        if (!burnSuccess) revert BurnFailed(symbol);
-
-        IBurnableMintableCappedERC20(tokenAddress).burn(bytes32(0));
     }
 
     /********************\

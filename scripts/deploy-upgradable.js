@@ -2,18 +2,24 @@
 require('dotenv').config();
 const _ = require('lodash/fp');
 const {
+    Contract,
     Wallet,
     getDefaultProvider,
     utils: { isAddress },
 } = require('ethers');
-const { deployUpgradable, upgradeUpgradable, getProxy, predictProxyAddress } = require('./upgradable');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
+const { deployUpgradable, upgradeUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
+const IUpgradable = require('@axelar-network/axelar-gmp-sdk-solidity/dist/IUpgradable.json');
 
-function getImplementationArgs(contractName, chain) {
+function getProxy(wallet, proxyAddress) {
+    return new Contract(proxyAddress, IUpgradable.abi, wallet);
+}
+
+async function getImplementationArgs(contractName, chain, wallet) {
     if (contractName === 'AxelarGasService') {
         const collector = _.get('AxelarGasService.collector', chain);
-        if (!isAddress(collector)) throw new Error(`${chain.name} | Missing AxelarGasService.collector in the chain info.`);
+        if (!isAddress(collector)) throw new Error(`Missing AxelarGasService.collector in the chain info.`);
         return [collector];
     }
 
