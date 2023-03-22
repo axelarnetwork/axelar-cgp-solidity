@@ -152,7 +152,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
 if (require.main === module) {
     const env = process.argv[2];
     if (env === null || (env !== 'local' && !env.includes('devnet') && env !== 'testnet' && env !== 'mainnet'))
-        throw new Error('Need to specify teslocaltnet | devnet* | testnet | mainnet as an argument to this script.');
+        throw new Error('Need to specify local | devnet* | testnet | mainnet as an argument to this script.');
 
     const chains = require(`../info/${env}.json`);
 
