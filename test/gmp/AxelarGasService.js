@@ -137,6 +137,63 @@ describe('AxelarGasService', () => {
                     userWallet.address,
                 )
                 .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
+
+            await expect(
+                gasService
+                    .connect(userWallet)
+                    .payGasForExpressCallWithToken(
+                        userWallet.address,
+                        destinationChain,
+                        destinationAddress,
+                        payload,
+                        symbol,
+                        amount,
+                        gasToken,
+                        gasFeeAmount,
+                        userWallet.address,
+                    ),
+            )
+                .to.emit(gasService, 'GasPaidForExpressCallWithToken')
+                .withArgs(
+                    userWallet.address,
+                    destinationChain,
+                    destinationAddress,
+                    payloadHash,
+                    symbol,
+                    amount,
+                    gasToken,
+                    gasFeeAmount,
+                    userWallet.address,
+                )
+                .and.to.emit(testToken, 'Transfer')
+                .withArgs(userWallet.address, gasService.address, gasFeeAmount);
+
+            await expect(
+                await gasService
+                    .connect(userWallet)
+                    .payNativeGasForExpressCallWithToken(
+                        userWallet.address,
+                        destinationChain,
+                        destinationAddress,
+                        payload,
+                        symbol,
+                        amount,
+                        userWallet.address,
+                        { value: nativeGasFeeAmount },
+                    ),
+            )
+                .to.emit(gasService, 'NativeGasPaidForExpressCallWithToken')
+                .withArgs(
+                    userWallet.address,
+                    destinationChain,
+                    destinationAddress,
+                    payloadHash,
+                    symbol,
+                    amount,
+                    nativeGasFeeAmount,
+                    userWallet.address,
+                )
+                .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
         });
 
         it('should allow to collect accumulated payments and refund', async () => {
