@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { SafeTokenTransfer, SafeTokenTransferFrom, SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
+import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
-import  { Upgradable } from  '../util/Upgradable.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarGasService is Upgradable, IAxelarGasService {

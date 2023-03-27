@@ -228,7 +228,9 @@ describe('AxelarGasService', () => {
             expect(await gasService.owner()).to.be.equal(ownerWallet.address);
             expect(prevImpl).to.not.equal(newImpl);
 
-            await expect(gasService.connect(ownerWallet).transferOwnership(userWallet.address))
+            await gasService.connect(ownerWallet).transferOwnership(userWallet.address);
+
+            await expect(gasService.connect(userWallet).acceptOwnership())
                 .and.to.emit(gasService, 'OwnershipTransferred')
                 .withArgs(userWallet.address);
 

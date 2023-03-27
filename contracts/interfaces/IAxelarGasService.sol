@@ -2,10 +2,8 @@
 
 pragma solidity ^0.8.9;
 
-import './IUpgradable.sol';
-
 // This should be owned by the microservice that is paying for gas.
-interface IAxelarGasService is IUpgradable {
+interface IAxelarGasService {
     error NothingReceived();
     error InvalidAddress();
     error NotCollector();

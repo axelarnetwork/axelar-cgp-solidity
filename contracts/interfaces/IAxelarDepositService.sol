@@ -2,11 +2,10 @@
 
 pragma solidity ^0.8.9;
 
-import { IUpgradable } from './IUpgradable.sol';
 import { IDepositServiceBase } from './IDepositServiceBase.sol';
 
 // This should be owned by the microservice that is paying for gas.
-interface IAxelarDepositService is IUpgradable, IDepositServiceBase {
+interface IAxelarDepositService is IDepositServiceBase {
     function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable;
 
     function addressForTokenDeposit(
