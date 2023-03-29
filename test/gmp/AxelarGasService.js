@@ -314,5 +314,30 @@ describe('AxelarGasService', () => {
                 .withArgs(txHash, logIndex, nativeGasFeeAmount, userWallet.address)
                 .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
         });
+
+        it('should emit events when gas is added for express calls', async () => {
+            const txHash = keccak256(defaultAbiCoder.encode(['string'], ['random tx hash']));
+            const logIndex = 13;
+            const gasToken = testToken.address;
+            const gasFeeAmount = 1000;
+            const nativeGasFeeAmount = parseEther('1.0');
+
+            await testToken.connect(userWallet).approve(gasService.address, 1e6);
+
+            await expect(gasService.connect(userWallet).addExpressGas(txHash, logIndex, gasToken, gasFeeAmount, userWallet.address))
+                .to.emit(gasService, 'ExpressGasAdded')
+                .withArgs(txHash, logIndex, gasToken, gasFeeAmount, userWallet.address)
+                .and.to.emit(testToken, 'Transfer')
+                .withArgs(userWallet.address, gasService.address, gasFeeAmount);
+
+            await expect(
+                await gasService
+                    .connect(userWallet)
+                    .addNativeExpressGas(txHash, logIndex, userWallet.address, { value: nativeGasFeeAmount }),
+            )
+                .to.emit(gasService, 'NativeExpressGasAdded')
+                .withArgs(txHash, logIndex, nativeGasFeeAmount, userWallet.address)
+                .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
+        });
     });
 });
