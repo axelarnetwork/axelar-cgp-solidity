@@ -2,18 +2,24 @@
 require('dotenv').config();
 const _ = require('lodash/fp');
 const {
+    Contract,
     Wallet,
     getDefaultProvider,
     utils: { isAddress },
 } = require('ethers');
-const { deployUpgradable, upgradeUpgradable, getProxy, predictProxyAddress } = require('./upgradable');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
+const { deployUpgradable, upgradeUpgradable, predictContractConstant } = require('@axelar-network/axelar-gmp-sdk-solidity');
+const IUpgradable = require('@axelar-network/axelar-gmp-sdk-solidity/dist/IUpgradable.json');
 
-function getImplementationArgs(contractName, chain) {
+function getProxy(wallet, proxyAddress) {
+    return new Contract(proxyAddress, IUpgradable.abi, wallet);
+}
+
+async function getImplementationArgs(contractName, chain, wallet) {
     if (contractName === 'AxelarGasService') {
         const collector = _.get('AxelarGasService.collector', chain);
-        if (!isAddress(collector)) throw new Error(`${chain.name} | Missing AxelarGasService.collector in the chain info.`);
+        if (!isAddress(collector)) throw new Error(`Missing AxelarGasService.collector in the chain info.`);
         return [collector];
     }
 
@@ -72,8 +78,8 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
         const rpc = chain.rpc;
         const provider = getDefaultProvider(rpc);
         const args = getImplementationArgs(contractName, chain);
-        console.log(`Implementation args for chain ${chain.name}: ${args}`)
-        console.log(`Gas override for chain ${chain.name}:`, chain.gasOptions)
+        console.log(`Implementation args for chain ${chain.name}: ${args}`);
+        console.log(`Gas override for chain ${chain.name}:`, chain.gasOptions);
 
         if (chain[contractName] && chain[contractName].address) {
             const contract = getProxy(wallet.connect(provider), chain[contractName]['address']);
@@ -83,7 +89,9 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
             console.log(`Existing owner ${owner}`);
 
             if (wallet.address !== owner) {
-                throw new Error(`${chain.name} | Signer ${wallet.address} does not match contract owner ${owner} for chain ${chain.name} in info.`);
+                throw new Error(
+                    `${chain.name} | Signer ${wallet.address} does not match contract owner ${owner} for chain ${chain.name} in info.`,
+                );
             }
 
             const anwser = readlineSync.question(`Perform an upgrade for ${chain.name}? (y/n) `);
@@ -106,15 +114,10 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
         } else {
             const key = env.includes('devnet') ? `${contractName}-${env}` : contractName;
             const setupArgs = getInitArgs(contractName, chain);
-            console.log(`Proxy setup args: ${setupArgs}`)
-            console.log(`Proxy deployment salt: '${key}'`)
+            console.log(`Proxy setup args: ${setupArgs}`);
+            console.log(`Proxy deployment salt: '${key}'`);
 
-            const proxyAddress = await predictProxyAddress(
-                chain.constAddressDeployer,
-                wallet.connect(provider),
-                proxyJson,
-                key,
-            );
+            const proxyAddress = await predictContractConstant(chain.constAddressDeployer, wallet.connect(provider), proxyJson, key);
             console.log(`Proxy will be deployed to ${proxyAddress}. Does this match any existing deployments?`);
             const anwser = readlineSync.question(`Proceed with deployment on ${chain.name}? (y/n) `);
             if (anwser !== 'y') return;
@@ -130,10 +133,10 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 chain.gasOptions,
             );
 
-            chain[contractName]["salt"] = key
-            chain[contractName]["address"] = contract.address
-            chain[contractName]["implementation"] = await contract.implementation()
-            chain[contractName]["deployer"] = wallet.address
+            chain[contractName]['salt'] = key;
+            chain[contractName]['address'] = contract.address;
+            chain[contractName]['implementation'] = await contract.implementation();
+            chain[contractName]['deployer'] = wallet.address;
 
             setJSON(chains, `../info/${env}.json`);
             console.log(`${chain.name} | ConstAddressDeployer is at ${chain.constAddressDeployer}`);
@@ -146,7 +149,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
 if (require.main === module) {
     const env = process.argv[2];
     if (env === null || (env !== 'local' && !env.includes('devnet') && env !== 'testnet' && env !== 'mainnet'))
-        throw new Error('Need to specify teslocaltnet | devnet* | testnet | mainnet as an argument to this script.');
+        throw new Error('Need to specify local | devnet* | testnet | mainnet as an argument to this script.');
 
     const chains = require(`../info/${env}.json`);
 
