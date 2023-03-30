@@ -1,14 +1,14 @@
 {
   "name": "@axelar-network/axelar-cgp-solidity",
-  "version": "4.4.0",
-  "description": "Ethereum Smart Contracts for Axelar Network",
+  "version": "4.5.0",
+  "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
     "build": "rm -rf artifacts && hardhat compile",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
-    "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js' && prettier --write 'scripts/**/*.js'",
+    "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'",
     "flatten": "sh scripts/flatten-contracts.sh"
   },
   "repository": {
@@ -25,10 +25,12 @@
     "url": "https://github.com/axelarnetwork/axelar-cgp-solidity/issues"
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
+  "dependencies": {
+    "@axelar-network/axelar-gmp-sdk-solidity": "^3.0.0"
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
-    "axelar-utils-solidity": "https://github.com/axelarnetwork/axelar-utils-solidity.git",
     "chai": "^4.3.6",
     "dotenv": "^16.0.1",
     "eslint": "^8.17.0",
@@ -47,6 +49,6 @@
     "solidity-coverage": "^0.7.21"
   },
   "engines": {
-    "node": ">=16 <17"
+    "node": "^16.0.0 || ^18.0.0"
   }
 }

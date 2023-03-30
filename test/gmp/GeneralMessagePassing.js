@@ -9,7 +9,7 @@ const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
 const { get } = require('lodash/fp');
-const { deployUpgradable } = require('../../scripts/upgradable');
+const { deployUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
@@ -25,7 +25,7 @@ const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/Source
 const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
 const DestinationChainSwapForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForecallable.sol/DestinationChainSwapForecallable.json');
 const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
-const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
+const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
 
 const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('../utils');
 
@@ -162,9 +162,9 @@ describe('GeneralMessagePassing', () => {
             await expect(
                 sourceChainSwapCaller
                     .connect(userWallet)
-                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), gasFeeAmount),
+                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), { value: gasFeeAmount }),
             )
-                .to.emit(sourceChainGasService, 'GasPaidForContractCallWithToken')
+                .to.emit(sourceChainGasService, 'NativeGasPaidForContractCallWithToken')
                 .withArgs(
                     sourceChainSwapCaller.address,
                     destinationChain,
@@ -172,7 +172,6 @@ describe('GeneralMessagePassing', () => {
                     payloadHash,
                     symbolA,
                     swapAmount,
-                    sourceChainTokenA.address,
                     gasFeeAmount,
                     userWallet.address,
                 )
@@ -268,9 +267,9 @@ describe('GeneralMessagePassing', () => {
             await expect(
                 sourceChainSwapCaller
                     .connect(userWallet)
-                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), gasFeeAmount),
+                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), { value: gasFeeAmount }),
             )
-                .to.emit(sourceChainGasService, 'GasPaidForContractCallWithToken')
+                .to.emit(sourceChainGasService, 'NativeGasPaidForContractCallWithToken')
                 .withArgs(
                     sourceChainSwapCaller.address,
                     destinationChain,
@@ -278,7 +277,6 @@ describe('GeneralMessagePassing', () => {
                     payloadHash,
                     symbolA,
                     swapAmount,
-                    sourceChainTokenA.address,
                     gasFeeAmount,
                     userWallet.address,
                 )
