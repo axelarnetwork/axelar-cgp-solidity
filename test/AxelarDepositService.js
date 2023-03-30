@@ -18,7 +18,7 @@ const TokenDeployer = require('../artifacts/contracts/TokenDeployer.sol/TokenDep
 const AxelarGatewayProxy = require('../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
 const AxelarGateway = require('../artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
 const TestWeth = require('../artifacts/contracts/test/TestWeth.sol/TestWeth.json');
-const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
+const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
 
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
 const ReceiverImplementation = require('../artifacts/contracts/deposit-service/ReceiverImplementation.sol/ReceiverImplementation.json');
@@ -26,7 +26,7 @@ const DepositService = require('../artifacts/contracts/deposit-service/AxelarDep
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 
 const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('./utils');
-const { deployUpgradable } = require('../scripts/upgradable');
+const { deployUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 describe('AxelarDepositService', () => {
     const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =

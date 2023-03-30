@@ -7,7 +7,6 @@ import './IUpgradable.sol';
 // This should be owned by the microservice that is paying for gas.
 interface IAxelarGasService is IUpgradable {
     error NothingReceived();
-    error TransferFailed();
     error InvalidAddress();
     error NotCollector();
     error InvalidAmounts();

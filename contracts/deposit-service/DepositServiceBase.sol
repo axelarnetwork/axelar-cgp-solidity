@@ -4,11 +4,10 @@ pragma solidity 0.8.9;
 
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IDepositServiceBase } from '../interfaces/IDepositServiceBase.sol';
-import { IERC20 } from '../interfaces/IERC20.sol';
 import { Bytes32ToString, StringToBytes32 } from '../util/BytesStringUtil.sol';
 
 // This should be owned by the microservice that is paying for gas.
-contract DepositServiceBase is IDepositServiceBase {
+abstract contract DepositServiceBase is IDepositServiceBase {
     using StringToBytes32 for string;
     using Bytes32ToString for bytes32;
 
@@ -38,17 +37,5 @@ contract DepositServiceBase is IDepositServiceBase {
     // @dev Converts bytes32 from immutable storage into a string
     function wrappedSymbol() public view returns (string memory) {
         return wrappedSymbolBytes.toTrimmedString();
-    }
-
-    function _safeTransfer(
-        address tokenAddress,
-        address receiver,
-        uint256 amount
-    ) internal {
-        // solhint-disable-next-line avoid-low-level-calls
-        (bool success, bytes memory returnData) = tokenAddress.call(abi.encodeWithSelector(IERC20.transfer.selector, receiver, amount));
-        bool transferred = success && (returnData.length == uint256(0) || abi.decode(returnData, (bool)));
-
-        if (!transferred || tokenAddress.code.length == 0) revert TokenTransferFailed();
     }
 }
