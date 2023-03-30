@@ -162,9 +162,9 @@ describe('GeneralMessagePassing', () => {
             await expect(
                 sourceChainSwapCaller
                     .connect(userWallet)
-                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), gasFeeAmount),
+                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), { value: gasFeeAmount }),
             )
-                .to.emit(sourceChainGasService, 'GasPaidForContractCallWithToken')
+                .to.emit(sourceChainGasService, 'NativeGasPaidForContractCallWithToken')
                 .withArgs(
                     sourceChainSwapCaller.address,
                     destinationChain,
@@ -172,7 +172,6 @@ describe('GeneralMessagePassing', () => {
                     payloadHash,
                     symbolA,
                     swapAmount,
-                    sourceChainTokenA.address,
                     gasFeeAmount,
                     userWallet.address,
                 )
@@ -268,9 +267,9 @@ describe('GeneralMessagePassing', () => {
             await expect(
                 sourceChainSwapCaller
                     .connect(userWallet)
-                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), gasFeeAmount),
+                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), { value: gasFeeAmount }),
             )
-                .to.emit(sourceChainGasService, 'GasPaidForContractCallWithToken')
+                .to.emit(sourceChainGasService, 'NativeGasPaidForContractCallWithToken')
                 .withArgs(
                     sourceChainSwapCaller.address,
                     destinationChain,
@@ -278,7 +277,6 @@ describe('GeneralMessagePassing', () => {
                     payloadHash,
                     symbolA,
                     swapAmount,
-                    sourceChainTokenA.address,
                     gasFeeAmount,
                     userWallet.address,
                 )
