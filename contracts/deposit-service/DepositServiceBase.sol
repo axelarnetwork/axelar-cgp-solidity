@@ -2,12 +2,14 @@
 
 pragma solidity 0.8.9;
 
+import { SafeTokenTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IDepositServiceBase } from '../interfaces/IDepositServiceBase.sol';
 import { Bytes32ToString, StringToBytes32 } from '../util/BytesStringUtil.sol';
 
 // This should be owned by the microservice that is paying for gas.
 abstract contract DepositServiceBase is IDepositServiceBase {
+    using SafeTokenTransfer for address;
     using StringToBytes32 for string;
     using Bytes32ToString for bytes32;
 

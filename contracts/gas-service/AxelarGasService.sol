@@ -5,7 +5,7 @@ pragma solidity 0.8.9;
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { SafeTokenTransfer, SafeTokenTransferFrom, SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
-import { Upgradable } from '../util/Upgradable.sol';
+import  { Upgradable } from  '../util/Upgradable.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarGasService is Upgradable, IAxelarGasService {
@@ -112,6 +112,58 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         );
     }
 
+    // This is called on the source chain before calling the gateway to execute a remote contract.
+    function payGasForExpressCallWithToken(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        string memory symbol,
+        uint256 amount,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external override {
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
+
+        emit GasPaidForExpressCallWithToken(
+            sender,
+            destinationChain,
+            destinationAddress,
+            keccak256(payload),
+            symbol,
+            amount,
+            gasToken,
+            gasFeeAmount,
+            refundAddress
+        );
+    }
+
+    // This is called on the source chain before calling the gateway to execute a remote contract.
+    function payNativeGasForExpressCallWithToken(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        string calldata symbol,
+        uint256 amount,
+        address refundAddress
+    ) external payable override {
+        if (msg.value == 0) revert NothingReceived();
+
+        emit NativeGasPaidForExpressCallWithToken(
+            sender,
+            destinationChain,
+            destinationAddress,
+            keccak256(payload),
+            symbol,
+            amount,
+            msg.value,
+            refundAddress
+        );
+    }
+
+    // This can be called on the source chain after calling the gateway to execute a remote contract.
     function addGas(
         bytes32 txHash,
         uint256 logIndex,
@@ -132,6 +184,30 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         if (msg.value == 0) revert NothingReceived();
 
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
+    }
+
+    // This can be called on the source chain after calling the gateway to express execute a remote contract.
+    function addExpressGas(
+        bytes32 txHash,
+        uint256 logIndex,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external override {
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
+
+        emit ExpressGasAdded(txHash, logIndex, gasToken, gasFeeAmount, refundAddress);
+    }
+
+    // This can be called on the source chain after calling the gateway to express execute a remote contract.
+    function addNativeExpressGas(
+        bytes32 txHash,
+        uint256 logIndex,
+        address refundAddress
+    ) external payable override {
+        if (msg.value == 0) revert NothingReceived();
+
+        emit NativeExpressGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
     function collectFees(
