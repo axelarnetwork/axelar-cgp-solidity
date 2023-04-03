@@ -395,9 +395,8 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
         if (_getTokenType(symbol) == TokenType.External) {
             address depositHandlerAddress = _getCreate2Address(salt, keccak256(abi.encodePacked(type(DepositHandler).creationCode)));
-            // codehash is 0x0 when the deposit handler is not deployed or at the end of tx processing after being destroyed.
-            // However, it is NOT 0x0 during the tx processing where it is deployed even though it is destroyed.
-            if (depositHandlerAddress.codehash != bytes32(0)) return;
+
+            if (_hasCode(depositHandlerAddress)) return;
 
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
 
@@ -464,6 +463,13 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     /********************\
     |* Internal Methods *|
     \********************/
+
+    function _hasCode(address addr) internal view returns (bool) {
+        bytes32 codehash = addr.codehash;
+
+        // https://eips.ethereum.org/EIPS/eip-1052
+        return codehash != bytes32(0) && codehash != 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+    }
 
     function _mintToken(
         string memory symbol,
