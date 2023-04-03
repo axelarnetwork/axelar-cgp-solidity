@@ -354,5 +354,12 @@ describe('AxelarDepositService', () => {
                 await depositService.connect(ownerWallet).refundLockedAsset(recipient, ADDRESS_ZERO, amount),
             ).to.changeEtherBalance(userWallet, amount);
         });
+
+        it('should refund have the same proxy bytecode', async () => {
+            const proxyBytecode = DepositServiceProxy.bytecode;
+            const proxyBytecodeHash = keccak256(proxyBytecode);
+
+            expect(proxyBytecodeHash).to.be.equal('0xdec34d6bd2779b58de66dc79f2d80353e8cebb178d9afac4225bc3f652360aaa');
+        });
     });
 });

@@ -339,5 +339,13 @@ describe('AxelarGasService', () => {
                 .withArgs(txHash, logIndex, nativeGasFeeAmount, userWallet.address)
                 .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
         });
+
+
+        it('should refund have the same proxy bytecode', async () => {
+            const proxyBytecode = GasServiceProxy.bytecode;
+            const proxyBytecodeHash = keccak256(proxyBytecode);
+
+            expect(proxyBytecodeHash).to.be.equal('0x844ca3b3e4439c8473ba73c11d5c9b9bb69b6b528f8485a794797094724a4dbf');
+        });
     });
 });
