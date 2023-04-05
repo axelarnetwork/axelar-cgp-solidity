@@ -2,22 +2,32 @@
 
 pragma solidity 0.8.9;
 
-import { IAxelarForecallable } from '../../interfaces/IAxelarForecallable.sol';
+import { ExpressExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/express/ExpressExecutable.sol';
 import { IERC20 } from '../../interfaces/IERC20.sol';
 import { DestinationChainTokenSwapper } from './DestinationChainTokenSwapper.sol';
 
-contract DestinationChainSwapForecallable is IAxelarForecallable {
-    DestinationChainTokenSwapper public swapper;
+contract DestinationChainSwapExpress is ExpressExecutable {
+    DestinationChainTokenSwapper public immutable swapper;
 
-    constructor(address gatewayAddress, address swapperAddress) IAxelarForecallable(gatewayAddress) {
+    event Executed(string sourceChain, string sourceAddress, bytes payload);
+
+    constructor(address gatewayAddress, address swapperAddress) ExpressExecutable(gatewayAddress) {
         swapper = DestinationChainTokenSwapper(swapperAddress);
     }
 
+    function _execute(
+        string calldata sourceChain,
+        string calldata sourceAddress,
+        bytes calldata payload
+    ) internal override {
+        emit Executed(sourceChain, sourceAddress, payload);
+    }
+
     function _executeWithToken(
-        string memory sourceChain,
-        string memory,
+        string calldata sourceChain,
+        string calldata,
         bytes calldata payload,
-        string memory tokenSymbolA,
+        string calldata tokenSymbolA,
         uint256 amount
     ) internal override {
         (string memory tokenSymbolB, string memory recipient) = abi.decode(payload, (string, string));
@@ -30,5 +40,9 @@ contract DestinationChainSwapForecallable is IAxelarForecallable {
 
         IERC20(tokenB).approve(address(gateway), convertedAmount);
         gateway.sendToken(sourceChain, recipient, tokenSymbolB, convertedAmount);
+    }
+
+    function contractId() external pure returns (bytes32) {
+        return keccak256('destination-chain-swap-express');
     }
 }
