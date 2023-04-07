@@ -728,6 +728,24 @@ describe('AxelarGateway', () => {
                     expect(balance).to.eq(0);
                 });
         });
+
+        it('should have the same deposit handler bytecode', async () => {
+            await expect(keccak256(depositHandlerFactory.bytecode)).to.be.equal(
+              '0x9f217a79e864028081339cfcead3c3d1fe92e237fcbe9468d6bb4d1da7aa6352',
+            );
+        });
+
+        it('should have the same token bytecode', async () => {
+            const tokenFactory = await ethers.getContractFactory('BurnableMintableCappedERC20', owner);
+
+            await expect(keccak256(tokenFactory.bytecode)).to.be.equal(
+              '0x37be59a866fd46ec4179e243e5d5e2639ca1e842b152e45a34628dad6494b94b',
+            );
+
+            await expect(keccak256(tokenDeployerFactory.bytecode)).to.be.equal(
+              '0x0698929742de660596af20d09d04eb91bfe532ef5e2927858e4c4952034967a5',
+            );
+        });
     });
 
     describe('command transferOperatorship', () => {
