@@ -1,10 +1,12 @@
 const { sortBy } = require('lodash');
 const chai = require('chai');
-const { ethers } = require('hardhat');
+const { ethers, config } = require('hardhat');
 const {
     utils: { id, keccak256, getCreate2Address, defaultAbiCoder },
 } = ethers;
 const { expect } = chai;
+
+const EVM_VERSION = config.solidity.compilers[0].settings.evmVersion;
 
 const CHAIN_ID = 1;
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
@@ -730,20 +732,38 @@ describe('AxelarGateway', () => {
         });
 
         it('should have the same deposit handler bytecode', async () => {
+            const expected = {
+                istanbul: '0x352c0ce048c2b25b0b6a58f4695613b587f3086b63b4c3a24d22c043aed230d2',
+                berlin: '0xa26b1094ee475518c006cba8bd976fd4d3cd9a6089bcbe4453b1b4cf7f095609',
+                london: '0x9f217a79e864028081339cfcead3c3d1fe92e237fcbe9468d6bb4d1da7aa6352',
+            }[EVM_VERSION]
+
             await expect(keccak256(depositHandlerFactory.bytecode)).to.be.equal(
-              '0x9f217a79e864028081339cfcead3c3d1fe92e237fcbe9468d6bb4d1da7aa6352',
+              expected,
             );
         });
 
         it('should have the same token bytecode', async () => {
             const tokenFactory = await ethers.getContractFactory('BurnableMintableCappedERC20', owner);
 
+            const expectedToken = {
+                istanbul: '0xfc2522491a56af4f3519968ed49c9ba82abc79798afe8f763f601e7d5e14bdbf',
+                berlin: '0x81f6049561587bf700c0af132c504b22d696a6acfa606eee0257f92fd4ebd865',
+                london: '0x37be59a866fd46ec4179e243e5d5e2639ca1e842b152e45a34628dad6494b94b',
+            }[EVM_VERSION]
+
             await expect(keccak256(tokenFactory.bytecode)).to.be.equal(
-              '0x37be59a866fd46ec4179e243e5d5e2639ca1e842b152e45a34628dad6494b94b',
+              expectedToken,
             );
 
+            const expectedDeployer = {
+                istanbul: '0xc68014e297eb42dbde383254ef3129d59528159e6c51b4f9a38f995be1dd451f',
+                berlin: '0xd3a39792ca8d1ce8e5318135ca29d8a7f0b800837726997b132ebc04f88cf9aa',
+                london: '0x0698929742de660596af20d09d04eb91bfe532ef5e2927858e4c4952034967a5',
+            }[EVM_VERSION]
+
             await expect(keccak256(tokenDeployerFactory.bytecode)).to.be.equal(
-              '0x0698929742de660596af20d09d04eb91bfe532ef5e2927858e4c4952034967a5',
+              expectedDeployer,
             );
         });
     });

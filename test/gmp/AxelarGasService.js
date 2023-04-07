@@ -1,12 +1,15 @@
 'use strict';
 
 const chai = require('chai');
+const { config, ethers} = require('hardhat');
 const {
     utils: { defaultAbiCoder, keccak256, parseEther },
-} = require('ethers');
+} = ethers;
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
+
+const EVM_VERSION = config.solidity.compilers[0].settings.evmVersion;
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
@@ -344,8 +347,13 @@ describe('AxelarGasService', () => {
         it('should refund have the same proxy bytecode', async () => {
             const proxyBytecode = GasServiceProxy.bytecode;
             const proxyBytecodeHash = keccak256(proxyBytecode);
+            const expected = {
+                istanbul: '0x885390e8cdbd59403e862821e2cde97b65b8e0ff145ef131b7d1bb7b49ae575c',
+                berlin: '0x102a9449688476eff53daa30db95211709f2b78555415593d9bf4a2deb2ee92c',
+                london: '0x844ca3b3e4439c8473ba73c11d5c9b9bb69b6b528f8485a794797094724a4dbf',
+            }[EVM_VERSION]
 
-            expect(proxyBytecodeHash).to.be.equal('0x844ca3b3e4439c8473ba73c11d5c9b9bb69b6b528f8485a794797094724a4dbf');
+            expect(proxyBytecodeHash).to.be.equal(expected);
         });
     });
 });
