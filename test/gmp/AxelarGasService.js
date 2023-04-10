@@ -1,10 +1,10 @@
 'use strict';
 
 const chai = require('chai');
+const { ethers } = require('hardhat');
 const {
     utils: { defaultAbiCoder, keccak256, parseEther },
-} = require('ethers');
-const { ethers } = require('hardhat');
+} = ethers;
 const { expect } = chai;
 
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');

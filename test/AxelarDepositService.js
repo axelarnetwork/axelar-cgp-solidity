@@ -1,11 +1,11 @@
 'use strict';
 
 const chai = require('chai');
-const {
-    utils: { defaultAbiCoder, arrayify, solidityPack, formatBytes32String, keccak256, getCreate2Address },
-} = require('ethers');
 const { expect } = chai;
 const { ethers } = require('hardhat');
+const {
+    utils: { defaultAbiCoder, arrayify, solidityPack, formatBytes32String, keccak256, getCreate2Address },
+} = ethers;
 const { get } = require('lodash/fp');
 
 const CHAIN_ID = 1;
