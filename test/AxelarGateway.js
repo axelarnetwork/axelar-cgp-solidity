@@ -7,7 +7,6 @@ const {
 const { expect } = chai;
 
 const CHAIN_ID = 1;
-const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 const {
     bigNumberToNumber,
@@ -97,7 +96,7 @@ describe('AxelarGateway', () => {
                 CHAIN_ID,
                 symbols.map(getRandomID),
                 symbols.map(() => 'deployToken'),
-                symbols.map((symbol) => getDeployCommand(symbol, symbol, decimals, 0, ADDRESS_ZERO, 0)),
+                symbols.map((symbol) => getDeployCommand(symbol, symbol, decimals, 0, ethers.constants.AddressZero, 0)),
             );
 
             return getSignedWeightedExecuteInput(data, operators, getWeights(operators), threshold, operators.slice(0, threshold)).then(
@@ -250,7 +249,7 @@ describe('AxelarGateway', () => {
                 CHAIN_ID,
                 [commandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, limit)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, limit)],
             );
 
             const { data: tokenInitCode } = burnableMintableCappedERC20Factory.getDeployTransaction(name, symbol, decimals, cap);
@@ -294,7 +293,7 @@ describe('AxelarGateway', () => {
                 CHAIN_ID,
                 [firstCommandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
             );
 
             const firstInput = await getSignedWeightedExecuteInput(
@@ -315,7 +314,7 @@ describe('AxelarGateway', () => {
                 CHAIN_ID,
                 [secondCommandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
             );
 
             const secondInput = await getSignedWeightedExecuteInput(
@@ -345,7 +344,7 @@ describe('AxelarGateway', () => {
                 CHAIN_ID,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
             );
 
             const input = await getSignedWeightedExecuteInput(
@@ -422,7 +421,7 @@ describe('AxelarGateway', () => {
                     ).then((input) =>
                         expect(gateway.execute(input))
                             .to.emit(token, 'Transfer')
-                            .withArgs(ADDRESS_ZERO, owner.address, limit)
+                            .withArgs(ethers.constants.AddressZero, owner.address, limit)
                             .and.to.emit(gateway, 'Executed'),
                     );
                 })
@@ -450,7 +449,7 @@ describe('AxelarGateway', () => {
                     await tickBlockTime(gateway.provider, 6 * 60 * 60); // 6 hours later
                     await expect(gateway.execute(input))
                         .to.emit(token, 'Transfer')
-                        .withArgs(ADDRESS_ZERO, owner.address, amount)
+                        .withArgs(ethers.constants.AddressZero, owner.address, amount)
                         .and.to.emit(gateway, 'Executed');
                 });
         });
@@ -470,7 +469,7 @@ describe('AxelarGateway', () => {
 
             await expect(gateway.execute(input))
                 .to.emit(token, 'Transfer')
-                .withArgs(ADDRESS_ZERO, owner.address, amount)
+                .withArgs(ethers.constants.AddressZero, owner.address, amount)
                 .and.to.emit(gateway, 'Executed');
 
             expect(await token.balanceOf(owner.address).then(bigNumberToNumber)).to.eq(amount);
@@ -522,7 +521,7 @@ describe('AxelarGateway', () => {
                 ['deployToken', 'deployToken', 'mintToken'],
                 [
                     getDeployCommand(externalName, externalSymbol, decimals, cap, externalToken.address, 0),
-                    getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0),
+                    getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0),
                     getMintCommand(symbol, owner.address, amount),
                 ],
             );
@@ -560,7 +559,7 @@ describe('AxelarGateway', () => {
 
             const tx = await gateway.execute(firstInput);
 
-            await expect(tx).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+            await expect(tx).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ethers.constants.AddressZero, burnAmount);
 
             await token.transfer(depositHandlerAddress, burnAmount);
 
@@ -576,7 +575,7 @@ describe('AxelarGateway', () => {
 
             await expect(await gateway.execute(secondInput))
                 .to.emit(token, 'Transfer')
-                .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+                .withArgs(depositHandlerAddress, ethers.constants.AddressZero, burnAmount);
 
             expect(await token.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
 
@@ -759,7 +758,7 @@ describe('AxelarGateway', () => {
         });
 
         it('should not allow transferring operatorship to address zero', async () => {
-            const newOperators = [ADDRESS_ZERO, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+            const newOperators = [ethers.constants.AddressZero, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
             const data = buildCommandBatch(
                 CHAIN_ID,
@@ -810,7 +809,7 @@ describe('AxelarGateway', () => {
                 CHAIN_ID,
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
             );
 
             const deployAndMintInput = await getSignedWeightedExecuteInput(
@@ -839,7 +838,7 @@ describe('AxelarGateway', () => {
 
             await expect(gateway.execute(mintInput))
                 .to.emit(token, 'Transfer')
-                .withArgs(ADDRESS_ZERO, owner.address, amount)
+                .withArgs(ethers.constants.AddressZero, owner.address, amount)
                 .and.to.emit(gateway, 'Executed');
 
             expect(await token.balanceOf(owner.address).then(bigNumberToNumber)).to.eq(amount);
@@ -859,7 +858,9 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
+            await expect(gateway.execute(burnInput))
+                .to.emit(token, 'Transfer')
+                .withArgs(depositHandlerAddress, ethers.constants.AddressZero, amount);
         });
 
         it('should not allow the previous operators to transfer operatorship', async () => {
@@ -967,7 +968,10 @@ describe('AxelarGateway', () => {
                 CHAIN_ID,
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(tokenSymbol, owner.address, 1e6)],
+                [
+                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ethers.constants.AddressZero, 0),
+                    getMintCommand(tokenSymbol, owner.address, 1e6),
+                ],
             );
 
             const input = await getSignedWeightedExecuteInput(
@@ -993,7 +997,7 @@ describe('AxelarGateway', () => {
 
             await expect(tx)
                 .to.emit(token, 'Transfer')
-                .withArgs(issuer, ADDRESS_ZERO, amount)
+                .withArgs(issuer, ethers.constants.AddressZero, amount)
                 .to.emit(gateway, 'TokenSent')
                 .withArgs(issuer, 'Polygon', destination, tokenSymbol, amount);
 
@@ -1120,7 +1124,7 @@ describe('AxelarGateway', () => {
                 [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken', 'mintToken', 'transferOperatorship'],
                 [
-                    getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0),
+                    getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0),
                     getMintCommand(symbol, owner.address, amount1),
                     getMintCommand(symbol, wallets[1].address, amount2),
                     getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2),
@@ -1181,7 +1185,10 @@ describe('AxelarGateway', () => {
                 CHAIN_ID,
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(tokenSymbol, owner.address, 1e6)],
+                [
+                    getDeployCommand(tokenName, tokenSymbol, decimals, cap, ethers.constants.AddressZero, 0),
+                    getMintCommand(tokenSymbol, owner.address, 1e6),
+                ],
             );
 
             const input = await getSignedWeightedExecuteInput(
@@ -1209,7 +1216,7 @@ describe('AxelarGateway', () => {
 
             await expect(tx)
                 .to.emit(token, 'Transfer')
-                .withArgs(issuer, ADDRESS_ZERO, amount)
+                .withArgs(issuer, ethers.constants.AddressZero, amount)
                 .to.emit(gateway, 'ContractCallWithToken')
                 .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
 

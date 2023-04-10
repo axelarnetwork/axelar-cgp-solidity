@@ -6,7 +6,6 @@ const {
 } = ethers;
 const { expect } = chai;
 
-const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const OLD_KEY_RETENTION = 16;
 
 const {
@@ -233,7 +232,7 @@ describe('AxelarAuthWeighted', () => {
         });
 
         it('should not allow transferring operatorship to address zero', async () => {
-            const newOperators = [ADDRESS_ZERO, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+            const newOperators = [ethers.constants.AddressZero, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
             await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2))).to.be.revertedWith(
                 'InvalidOperators()',

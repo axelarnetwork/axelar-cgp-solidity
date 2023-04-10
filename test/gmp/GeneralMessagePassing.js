@@ -12,7 +12,6 @@ const { get } = require('lodash/fp');
 const { deployUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 const CHAIN_ID = 1;
-const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
 const Auth = require('../../artifacts/contracts/auth/AxelarAuthWeighted.sol/AxelarAuthWeighted.json');
 const TokenDeployer = require('../../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
@@ -91,11 +90,11 @@ describe('GeneralMessagePassing', () => {
                         [
                             defaultAbiCoder.encode(
                                 ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
-                                [nameA, symbolA, decimals, capacity, withAddress ? tokenA.address : ADDRESS_ZERO, 0],
+                                [nameA, symbolA, decimals, capacity, withAddress ? tokenA.address : ethers.constants.AddressZero, 0],
                             ),
                             defaultAbiCoder.encode(
                                 ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
-                                [nameB, symbolB, decimals, capacity, withAddress ? tokenB.address : ADDRESS_ZERO, 0],
+                                [nameB, symbolB, decimals, capacity, withAddress ? tokenB.address : ethers.constants.AddressZero, 0],
                             ),
                         ],
                     ],
