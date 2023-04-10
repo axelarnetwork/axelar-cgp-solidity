@@ -8,6 +8,8 @@ const {
 } = ethers;
 const { get } = require('lodash/fp');
 
+const EVM_VERSION = config.solidity.compilers[0].settings.evmVersion;
+
 const CHAIN_ID = 1;
 
 const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
@@ -372,6 +374,31 @@ describe('AxelarDepositService', () => {
             await expect(
                 await depositService.connect(ownerWallet).refundLockedAsset(recipient, ethers.constants.AddressZero, amount),
             ).to.changeEtherBalance(userWallet, amount);
+        });
+
+        it('should have the same receiver bytecode preserved for each EVM', async () => {
+            const expected = {
+                istanbul: '0xc0fd88839756e97f51ab0395ce8e6164a5f924bd73a3342204340a14ad306fe1',
+                berlin: '0xc0fd88839756e97f51ab0395ce8e6164a5f924bd73a3342204340a14ad306fe1',
+                london: '0xc0fd88839756e97f51ab0395ce8e6164a5f924bd73a3342204340a14ad306fe1',
+            }[EVM_VERSION]
+
+            await expect(keccak256(DepositReceiver.bytecode)).to.be.equal(
+              expected,
+            );
+        });
+
+        it('should have the same proxy bytecode preserved for each EVM', async () => {
+            const proxyBytecode = DepositServiceProxy.bytecode;
+            const proxyBytecodeHash = keccak256(proxyBytecode);
+
+            const expected = {
+                istanbul: '0x1eaf54a0dcc8ed839ba94f1ab33a4c9f63f6bf73959eb0cdd61627e699972aef',
+                berlin: '0x1d1dc288313dec7af9b83310f782bd9f24ab02030e6c7f67f6f510ee07a6d75b',
+                london: '0xdec34d6bd2779b58de66dc79f2d80353e8cebb178d9afac4225bc3f652360aaa',
+            }[EVM_VERSION]
+
+            expect(proxyBytecodeHash).to.be.equal(expected);
         });
     });
 });
