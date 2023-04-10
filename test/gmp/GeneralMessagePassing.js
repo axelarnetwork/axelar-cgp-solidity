@@ -30,9 +30,12 @@ const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/di
 const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('../utils');
 
 describe('GeneralMessagePassing', () => {
-    const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
-        new MockProvider().getWallets();
-    const adminWallets = [adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6];
+    // const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
+    //     new MockProvider().getWallets();
+    // const adminWallets = [adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6];
+    // const threshold = 3;
+    let ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6;
+    let adminWallets;
     const threshold = 3;
 
     let sourceChainGateway;
@@ -66,6 +69,12 @@ describe('GeneralMessagePassing', () => {
                 ],
             ),
         );
+
+    before(async () => {
+        [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
+            await ethers.getSigners();
+        adminWallets = [adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6];
+    });
 
     beforeEach(async () => {
         const deployGateway = async () => {
@@ -159,6 +168,7 @@ describe('GeneralMessagePassing', () => {
             const sourceChainTokenA = new Contract(await sourceChainGateway.tokenAddresses(symbolA), MintableCappedERC20.abi, userWallet);
             await sourceChainTokenA.approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount);
 
+            // UNDERFLOW OCCURS HERE - userWallet does not have any balance of tokenA despite mint in beforeEach
             await expect(
                 sourceChainSwapCaller
                     .connect(userWallet)
