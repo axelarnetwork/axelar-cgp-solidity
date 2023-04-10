@@ -1,12 +1,15 @@
 'use strict';
 
 const chai = require('chai');
+const { config, ethers} = require('hardhat');
 const {
     utils: { defaultAbiCoder, keccak256, parseEther },
-} = require('ethers');
+} = ethers;
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;
+
+const EVM_VERSION = config.solidity.compilers[0].settings.evmVersion;
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 
@@ -338,6 +341,19 @@ describe('AxelarGasService', () => {
                 .to.emit(gasService, 'NativeExpressGasAdded')
                 .withArgs(txHash, logIndex, nativeGasFeeAmount, userWallet.address)
                 .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
+        });
+
+
+        it('should have the same proxy bytecode preserved for each EVM', async () => {
+            const proxyBytecode = GasServiceProxy.bytecode;
+            const proxyBytecodeHash = keccak256(proxyBytecode);
+            const expected = {
+                istanbul: '0x885390e8cdbd59403e862821e2cde97b65b8e0ff145ef131b7d1bb7b49ae575c',
+                berlin: '0x102a9449688476eff53daa30db95211709f2b78555415593d9bf4a2deb2ee92c',
+                london: '0x844ca3b3e4439c8473ba73c11d5c9b9bb69b6b528f8485a794797094724a4dbf',
+            }[EVM_VERSION]
+
+            expect(proxyBytecodeHash).to.be.equal(expected);
         });
     });
 });
