@@ -2,7 +2,7 @@
 
 const chai = require('chai');
 const { expect } = chai;
-const { ethers } = require('hardhat');
+const { ethers, config } = require('hardhat');
 const {
     utils: { defaultAbiCoder, arrayify, solidityPack, formatBytes32String, keccak256, getCreate2Address },
 } = ethers;
