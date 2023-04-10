@@ -5,6 +5,7 @@ const {
     Contract,
     utils: { defaultAbiCoder, arrayify, keccak256 },
 } = require('ethers');
+const { ethers } = require('hardhat');
 const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
 chai.use(solidity);
 const { expect } = chai;

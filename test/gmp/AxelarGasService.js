@@ -210,7 +210,6 @@ describe('AxelarGasService', () => {
             const payload = defaultAbiCoder.encode(['address', 'address'], [ownerWallet.address, userWallet.address]);
             const symbol = 'USDC';
             const amount = 100000;
-            const nativeGasFeeAmount = parseEther('1.0');
 
             await testToken.connect(userWallet).approve(gasService.address, 1e6);
 
