@@ -209,6 +209,32 @@ describe('AxelarGateway', () => {
                 implementation.connect(admins[0]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
             ).to.be.revertedWith('NotAdmin()');
         });
+
+        it('should preserve the same proxy bytecode for each EVM', async () => {
+            const proxyBytecode = gatewayProxyFactory.bytecode;
+            const proxyBytecodeHash = keccak256(proxyBytecode);
+
+            const expected = {
+                istanbul: '0x6905e9ed2ee714532275d658b7cc3e3186acc52da48ffd499a2705a1185b8dde',
+                berlin: '0x374b511f48e03dfc872c49b1f3234785b50e4db2fb5eb135ef0c3f58b20c8b7a',
+                london: '0xcac4f10cb12909b2256570ae01df6fee5830b78afb230097fc401a69efa896cd',
+            }[EVM_VERSION]
+
+            expect(proxyBytecodeHash).to.be.equal(expected);
+        });
+
+        it('should preserve the implementation bytecode for each EVM', async () => {
+            const proxyBytecode = gatewayFactory.bytecode;
+            const proxyBytecodeHash = keccak256(proxyBytecode);
+
+            const expected = {
+                istanbul: '0x402fae9dea4f794e4974367713309309b21eedfb0255cf23343f368a53b1f47e',
+                berlin: '0x7b2d78a6c1c9c60a3fd1b784aa944dd1a5af372fb020fb5e499037e5cd6e52c4',
+                london: '0x9f807d086826e5944545772a21bb96784c6d9fe62b9a2b6dfd361974466c7f33',
+            }[EVM_VERSION]
+
+            expect(proxyBytecodeHash).to.be.equal(expected);
+        });
     });
 
     describe('execute', () => {
@@ -731,7 +757,7 @@ describe('AxelarGateway', () => {
                 });
         });
 
-        it('should have the same deposit handler bytecode', async () => {
+        it('should have the same deposit handler bytecode preserved for each EVM', async () => {
             const expected = {
                 istanbul: '0x352c0ce048c2b25b0b6a58f4695613b587f3086b63b4c3a24d22c043aed230d2',
                 berlin: '0xa26b1094ee475518c006cba8bd976fd4d3cd9a6089bcbe4453b1b4cf7f095609',
@@ -743,7 +769,7 @@ describe('AxelarGateway', () => {
             );
         });
 
-        it('should have the same token bytecode', async () => {
+        it('should have the same token bytecode preserved for each EVM', async () => {
             const tokenFactory = await ethers.getContractFactory('BurnableMintableCappedERC20', owner);
 
             const expectedToken = {

@@ -344,7 +344,7 @@ describe('AxelarGasService', () => {
         });
 
 
-        it('should refund have the same proxy bytecode', async () => {
+        it('should have the same proxy bytecode preserved for each EVM', async () => {
             const proxyBytecode = GasServiceProxy.bytecode;
             const proxyBytecodeHash = keccak256(proxyBytecode);
             const expected = {

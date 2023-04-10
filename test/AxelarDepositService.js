@@ -358,7 +358,7 @@ describe('AxelarDepositService', () => {
             ).to.changeEtherBalance(userWallet, amount);
         });
 
-        it('should have the same receiver bytecode', async () => {
+        it('should have the same receiver bytecode preserved for each EVM', async () => {
             const expected = {
                 istanbul: '0xc0fd88839756e97f51ab0395ce8e6164a5f924bd73a3342204340a14ad306fe1',
                 berlin: '0xc0fd88839756e97f51ab0395ce8e6164a5f924bd73a3342204340a14ad306fe1',
@@ -370,7 +370,7 @@ describe('AxelarDepositService', () => {
             );
         });
 
-        it('should have the same proxy bytecode', async () => {
+        it('should have the same proxy bytecode preserved for each EVM', async () => {
             const proxyBytecode = DepositServiceProxy.bytecode;
             const proxyBytecodeHash = keccak256(proxyBytecode);
 
