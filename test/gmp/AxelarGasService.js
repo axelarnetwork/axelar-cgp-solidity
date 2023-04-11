@@ -217,7 +217,7 @@ describe('AxelarGasService', () => {
                 gasService
                     .connect(userWallet)
                     .payNativeGasForContractCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
 
             await expect(
                 gasService
@@ -231,7 +231,7 @@ describe('AxelarGasService', () => {
                         amount,
                         userWallet.address,
                     ),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
 
             await expect(
                 gasService
@@ -245,7 +245,7 @@ describe('AxelarGasService', () => {
                         amount,
                         userWallet.address,
                     ),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
         });
 
         it('should allow to collect accumulated payments and refund', async () => {
@@ -407,11 +407,11 @@ describe('AxelarGasService', () => {
 
             await expect(
                 gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address, { gasLimit: 250000 }),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
 
             await expect(
                 gasService.connect(userWallet).addNativeExpressGas(txHash, logIndex, userWallet.address, { gasLimit: 250000 }),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
         });
     });
 });
