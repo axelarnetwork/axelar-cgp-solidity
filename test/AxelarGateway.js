@@ -217,7 +217,7 @@ describe('AxelarGateway', () => {
                 istanbul: '0x6905e9ed2ee714532275d658b7cc3e3186acc52da48ffd499a2705a1185b8dde',
                 berlin: '0x374b511f48e03dfc872c49b1f3234785b50e4db2fb5eb135ef0c3f58b20c8b7a',
                 london: '0xcac4f10cb12909b2256570ae01df6fee5830b78afb230097fc401a69efa896cd',
-            }[EVM_VERSION]
+            }[EVM_VERSION];
 
             expect(proxyBytecodeHash).to.be.equal(expected);
         });
@@ -230,7 +230,7 @@ describe('AxelarGateway', () => {
                 istanbul: '0x402fae9dea4f794e4974367713309309b21eedfb0255cf23343f368a53b1f47e',
                 berlin: '0x7b2d78a6c1c9c60a3fd1b784aa944dd1a5af372fb020fb5e499037e5cd6e52c4',
                 london: '0x9f807d086826e5944545772a21bb96784c6d9fe62b9a2b6dfd361974466c7f33',
-            }[EVM_VERSION]
+            }[EVM_VERSION];
 
             expect(proxyBytecodeHash).to.be.equal(expected);
         });
@@ -758,11 +758,9 @@ describe('AxelarGateway', () => {
                 istanbul: '0x352c0ce048c2b25b0b6a58f4695613b587f3086b63b4c3a24d22c043aed230d2',
                 berlin: '0xa26b1094ee475518c006cba8bd976fd4d3cd9a6089bcbe4453b1b4cf7f095609',
                 london: '0x9f217a79e864028081339cfcead3c3d1fe92e237fcbe9468d6bb4d1da7aa6352',
-            }[EVM_VERSION]
+            }[EVM_VERSION];
 
-            await expect(keccak256(depositHandlerFactory.bytecode)).to.be.equal(
-              expected,
-            );
+            await expect(keccak256(depositHandlerFactory.bytecode)).to.be.equal(expected);
         });
 
         it('should have the same token bytecode preserved for each EVM', async () => {
@@ -772,21 +770,17 @@ describe('AxelarGateway', () => {
                 istanbul: '0xfc2522491a56af4f3519968ed49c9ba82abc79798afe8f763f601e7d5e14bdbf',
                 berlin: '0x81f6049561587bf700c0af132c504b22d696a6acfa606eee0257f92fd4ebd865',
                 london: '0x37be59a866fd46ec4179e243e5d5e2639ca1e842b152e45a34628dad6494b94b',
-            }[EVM_VERSION]
+            }[EVM_VERSION];
 
-            await expect(keccak256(tokenFactory.bytecode)).to.be.equal(
-              expectedToken,
-            );
+            await expect(keccak256(tokenFactory.bytecode)).to.be.equal(expectedToken);
 
             const expectedDeployer = {
                 istanbul: '0xc68014e297eb42dbde383254ef3129d59528159e6c51b4f9a38f995be1dd451f',
                 berlin: '0xd3a39792ca8d1ce8e5318135ca29d8a7f0b800837726997b132ebc04f88cf9aa',
                 london: '0x0698929742de660596af20d09d04eb91bfe532ef5e2927858e4c4952034967a5',
-            }[EVM_VERSION]
+            }[EVM_VERSION];
 
-            await expect(keccak256(tokenDeployerFactory.bytecode)).to.be.equal(
-              expectedDeployer,
-            );
+            await expect(keccak256(tokenDeployerFactory.bytecode)).to.be.equal(expectedDeployer);
         });
     });
 
