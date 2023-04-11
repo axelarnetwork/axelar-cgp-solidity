@@ -1,14 +1,13 @@
 'use strict';
 
 const chai = require('chai');
-const { config, ethers } = require('hardhat');
+const { ethers, config } = require('hardhat');
 const {
     utils: { defaultAbiCoder, keccak256, parseEther },
 } = ethers;
 const { expect } = chai;
 
 const EVM_VERSION = config.solidity.compilers[0].settings.evmVersion;
-
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
