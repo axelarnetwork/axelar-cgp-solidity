@@ -4,7 +4,7 @@ const chai = require('chai');
 const { ethers } = require('hardhat');
 const {
     utils: { splitSignature },
-} = require('ethers');
+} = ethers;
 const { expect } = chai;
 
 const CHAIN_ID = 1;
