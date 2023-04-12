@@ -352,7 +352,10 @@ describe('AxelarGateway', () => {
                 threshold,
                 operators.slice(0, threshold),
             );
-            await expect(gateway.execute(secondInput)).to.not.emit(gateway, 'Executed').to.emit(gateway, 'TokenDeployed'); // TODO: fix
+            const executeTx = await gateway.execute(secondInput);
+
+            await expect(executeTx).to.not.emit(gateway, 'Executed');
+            await expect(executeTx).to.not.emit(gateway, 'TokenDeployed');
         });
     });
 
