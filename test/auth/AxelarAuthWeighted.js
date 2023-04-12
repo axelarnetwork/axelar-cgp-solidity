@@ -97,7 +97,7 @@ describe('AxelarAuthWeighted', () => {
                         operators.slice(0, threshold - 1),
                     ),
                 ),
-            ).to.be.revertedWith('LowSignaturesWeight()');
+            ).to.be.revertedWithCustomError(auth, 'LowSignaturesWeight');
         });
 
         it('reject the proof if signatures are invalid', async () => {
@@ -116,7 +116,7 @@ describe('AxelarAuthWeighted', () => {
                         wallets.slice(0, threshold),
                     ),
                 ),
-            ).to.be.revertedWith('MalformedSigners()');
+            ).to.be.revertedWithCustomError(auth, 'MalformedSigners');
         });
 
         it('validate the proof from the recent operators', async () => {
@@ -165,7 +165,7 @@ describe('AxelarAuthWeighted', () => {
                                 operators.slice(0, threshold),
                             ),
                         ),
-                    ).to.be.revertedWith('InvalidOperators()');
+                    ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
                 }),
             );
         });
@@ -234,17 +234,17 @@ describe('AxelarAuthWeighted', () => {
         it('should not allow transferring operatorship to address zero', async () => {
             const newOperators = [ethers.constants.AddressZero, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2))).to.be.revertedWith(
-                'InvalidOperators()',
-            );
+            await expect(
+                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)),
+            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
         });
 
         it('should not allow transferring operatorship to duplicated operators', async () => {
             const newOperators = ['0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2))).to.be.revertedWith(
-                'InvalidOperators()',
-            );
+            await expect(
+                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)),
+            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
         });
 
         it('should not allow transferring operatorship to unsorted operators', async () => {
@@ -252,7 +252,7 @@ describe('AxelarAuthWeighted', () => {
 
             await expect(
                 auth.transferOperatorship(defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [newOperators, [1, 1], 2])),
-            ).to.be.revertedWith('InvalidOperators()');
+            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
         });
 
         it('should not allow operatorship transfer to the previous operators ', async () => {
@@ -284,29 +284,29 @@ describe('AxelarAuthWeighted', () => {
                         threshold,
                     ),
                 ),
-            ).to.be.revertedWith('DuplicateOperators()');
+            ).to.be.revertedWithCustomError(auth, 'DuplicateOperators');
         });
 
         it('should not allow transferring operatorship with invalid threshold', async () => {
             const newOperators = ['0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b', '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
 
-            await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 0))).to.be.revertedWith(
-                'InvalidThreshold()',
-            );
-            await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 3))).to.be.revertedWith(
-                'InvalidThreshold()',
-            );
+            await expect(
+                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 0)),
+            ).to.be.revertedWithCustomError(auth, 'InvalidThreshold');
+            await expect(
+                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 3)),
+            ).to.be.revertedWithCustomError(auth, 'InvalidThreshold');
         });
 
         it('should not allow transferring operatorship with invalid number of weights', async () => {
             const newOperators = ['0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b', '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
 
-            await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1], 0))).to.be.revertedWith(
-                'InvalidWeights()',
-            );
-            await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1, 1], 3))).to.be.revertedWith(
-                'InvalidWeights()',
-            );
+            await expect(
+                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1], 0)),
+            ).to.be.revertedWithCustomError(auth, 'InvalidWeights');
+            await expect(
+                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1, 1], 3)),
+            ).to.be.revertedWithCustomError(auth, 'InvalidWeights');
         });
     });
 

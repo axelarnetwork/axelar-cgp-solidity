@@ -218,7 +218,7 @@ describe('AxelarGasService', () => {
                 gasService
                     .connect(userWallet)
                     .payNativeGasForContractCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
 
             await expect(
                 gasService
@@ -232,7 +232,7 @@ describe('AxelarGasService', () => {
                         amount,
                         userWallet.address,
                     ),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
 
             await expect(
                 gasService
@@ -246,7 +246,7 @@ describe('AxelarGasService', () => {
                         amount,
                         userWallet.address,
                     ),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
         });
 
         it('should allow to collect accumulated payments and refund', async () => {
@@ -408,13 +408,12 @@ describe('AxelarGasService', () => {
 
             await expect(
                 gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address, { gasLimit: 250000 }),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
 
             await expect(
                 gasService.connect(userWallet).addNativeExpressGas(txHash, logIndex, userWallet.address, { gasLimit: 250000 }),
-            ).to.be.revertedWith('NothingReceived');
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
         });
-
 
         it('should have the same proxy bytecode preserved for each EVM', async () => {
             const proxyBytecode = GasServiceProxy.bytecode;
@@ -423,7 +422,7 @@ describe('AxelarGasService', () => {
                 istanbul: '0x885390e8cdbd59403e862821e2cde97b65b8e0ff145ef131b7d1bb7b49ae575c',
                 berlin: '0x102a9449688476eff53daa30db95211709f2b78555415593d9bf4a2deb2ee92c',
                 london: '0x844ca3b3e4439c8473ba73c11d5c9b9bb69b6b528f8485a794797094724a4dbf',
-            }[EVM_VERSION]
+            }[EVM_VERSION];
 
             expect(proxyBytecodeHash).to.be.equal(expected);
         });
