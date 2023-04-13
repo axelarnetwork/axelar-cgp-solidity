@@ -10,7 +10,12 @@ const {
 } = require('ethers');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
-const { deployUpgradable, upgradeUpgradable, predictContractConstant } = require('@axelar-network/axelar-gmp-sdk-solidity');
+const {
+    deployUpgradable,
+    upgradeUpgradable,
+    predictContractConstant,
+    deployCreate3Upgradable,
+} = require('@axelar-network/axelar-gmp-sdk-solidity');
 const IUpgradable = require('@axelar-network/axelar-gmp-sdk-solidity/dist/IUpgradable.json');
 
 function getProxy(wallet, proxyAddress) {
@@ -150,8 +155,18 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 const args = await getImplementationArgs(contractName, chain, wallet.connect(provider));
                 console.log(`Implementation args for chain ${chain.name}: ${args}`);
 
-                const contract = await deployUpgradable(
-                    chain.constAddressDeployer,
+                let deployMethod;
+                let deployerAddress;
+                if (contractName === 'GMPExpressService') {
+                    deployMethod = deployCreate3Upgradable;
+                    deployerAddress = chain.create3Deployer;
+                } else {
+                    deployMethod = deployUpgradable;
+                    deployerAddress = chain.constAddressDeployer;
+                }
+
+                const contract = await deployMethod(
+                    deployerAddress,
                     wallet.connect(provider),
                     implementationJson,
                     proxyJson,
