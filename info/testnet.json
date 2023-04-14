@@ -52,7 +52,17 @@
       "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF"
     },
     "GMPExpressService": {
-      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+      "expressOperator": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "proxyDeployer": "0xF6E3862efeE68c54b31D2700bEaFeA6b36e902EC",
+      "salt": "GMPExpressService",
+      "address": "0x1b67538b685ead350aDB9807FfE4880024eA685a",
+      "implementation": "0x735bB2605d532C1eB6031C71A890B9c6E3Bc9c28",
+      "deployer": "0xFf66EE56Ee14570A08B9c0F483A03A91f11EeDe6"
+    },
+    "Create3Deployer": {
+      "salt": "Create3Deployer",
+      "address": "0x8041bf508Ce0514C21d594411dDd9C66d53492ec",
+      "deployer": "0xFf66EE56Ee14570A08B9c0F483A03A91f11EeDe6"
     }
   },
   {

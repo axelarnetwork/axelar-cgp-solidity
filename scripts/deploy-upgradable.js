@@ -15,11 +15,20 @@ const {
     upgradeUpgradable,
     predictContractConstant,
     deployCreate3Upgradable,
+    getCreate3Address,
 } = require('@axelar-network/axelar-gmp-sdk-solidity');
 const IUpgradable = require('@axelar-network/axelar-gmp-sdk-solidity/dist/IUpgradable.json');
+const LEGACY_CONTRACTS = ['AxelarGasService', 'AxelarDepositService'];
 
 function getProxy(wallet, proxyAddress) {
     return new Contract(proxyAddress, IUpgradable.abi, wallet);
+}
+
+async function getAdditionalProxyArgs(contractName, chain, wallet) {
+    if (contractName === 'GMPExpressService') {
+        return [];
+    }
+    throw new Error(`${contractName} is not supported.`);
 }
 
 async function getImplementationArgs(contractName, chain, wallet) {
@@ -147,7 +156,13 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 console.log(`Proxy setup args: ${setupArgs}`);
                 console.log(`Proxy deployment salt: '${key}'`);
 
-                const proxyAddress = await predictContractConstant(chain.constAddressDeployer, wallet.connect(provider), proxyJson, key);
+                let proxyAddress;
+                if (LEGACY_CONTRACTS.includes(contractName)) {
+                    proxyAddress = await predictContractConstant(chain.constAddressDeployer, wallet.connect(provider), proxyJson, key);
+                } else {
+                    proxyAddress = await getCreate3Address(chain.Create3Deployer.address, wallet.connect(provider), key);
+                }
+
                 console.log(`Proxy will be deployed to ${proxyAddress}. Does this match any existing deployments?`);
                 const anwser = readlineSync.question(`Proceed with deployment on ${chain.name}? (y/n) `);
                 if (anwser !== 'y') return;
@@ -155,26 +170,31 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 const args = await getImplementationArgs(contractName, chain, wallet.connect(provider));
                 console.log(`Implementation args for chain ${chain.name}: ${args}`);
 
-                let deployMethod;
-                let deployerAddress;
-                if (contractName === 'GMPExpressService') {
-                    deployMethod = deployCreate3Upgradable;
-                    deployerAddress = chain.create3Deployer;
+                let contract;
+                if (LEGACY_CONTRACTS.includes(contractName)) {
+                    contract = await deployUpgradable(
+                        constAddressDeployer,
+                        wallet.connect(provider),
+                        implementationJson,
+                        proxyJson,
+                        args,
+                        setupArgs,
+                        key,
+                        _.get('gasOptions.gasLimit', chain),
+                    );
                 } else {
-                    deployMethod = deployUpgradable;
-                    deployerAddress = chain.constAddressDeployer;
+                    contract = await deployCreate3Upgradable(
+                        chain.Create3Deployer.address,
+                        wallet.connect(provider),
+                        implementationJson,
+                        proxyJson,
+                        args,
+                        await getAdditionalProxyArgs(contractName, chain, wallet.connect(provider)),
+                        setupArgs,
+                        key,
+                        _.get('gasOptions.gasLimit', chain),
+                    );
                 }
-
-                const contract = await deployMethod(
-                    deployerAddress,
-                    wallet.connect(provider),
-                    implementationJson,
-                    proxyJson,
-                    args,
-                    setupArgs,
-                    key,
-                    _.get('gasOptions.gasLimit', chain),
-                );
 
                 chain[contractName] = {
                     ...chain[contractName],

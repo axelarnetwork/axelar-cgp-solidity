@@ -5,8 +5,9 @@ const { Wallet, getDefaultProvider } = require('ethers');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
 const { predictContractConstant, deployContractConstant } = require('@axelar-network/axelar-gmp-sdk-solidity');
+const Create3Deployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/Create3Deployer.json');
 
-async function deploy(env, chains, wallet, artifactPath, contractName, deployTo) {
+async function deploy(env, chains, wallet, contractName, deployTo) {
     const setJSON = (data, name) => {
         outputJsonSync(name, data, {
             spaces: 2,
@@ -14,8 +15,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
         });
     };
 
-    const implementationPath = artifactPath + contractName + '.sol/' + contractName + '.json';
-    const implementationJson = require(implementationPath);
+    const implementationJson = Create3Deployer;
     console.log(`Deployer address ${wallet.address}`);
 
     for (const chain of chains) {
@@ -91,11 +91,9 @@ if (require.main === module) {
     const private_key = process.env.PRIVATE_KEY;
     const wallet = new Wallet(private_key);
 
-    const artifactPath = process.argv[3];
+    const contractName = process.argv[3];
 
-    const contractName = process.argv[4];
+    const deployTo = process.argv.slice(4);
 
-    const deployTo = process.argv.slice(5);
-
-    deploy(env, chains, wallet, artifactPath, contractName, deployTo);
+    deploy(env, chains, wallet, contractName, deployTo);
 }
