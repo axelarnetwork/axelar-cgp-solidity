@@ -1,6 +1,4 @@
-require('@nomiclabs/hardhat-waffle');
-require('hardhat-gas-reporter');
-require('solidity-coverage');
+require('@nomicfoundation/hardhat-toolbox');
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -33,5 +31,8 @@ module.exports = {
         hardhat: {
             chainId: 1,
         },
+    },
+    gasReporter: {
+        enabled: true,
     },
 };

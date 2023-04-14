@@ -1,19 +1,13 @@
 'use strict';
 
 const chai = require('chai');
-const { config, ethers} = require('hardhat');
+const { ethers, config } = require('hardhat');
 const {
     utils: { defaultAbiCoder, keccak256, parseEther },
 } = ethers;
-const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
-chai.use(solidity);
 const { expect } = chai;
 
 const EVM_VERSION = config.solidity.compilers[0].settings.evmVersion;
-
-const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-
-const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC20.sol/MintableCappedERC20.json');
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
@@ -21,13 +15,25 @@ const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/di
 const { deployUpgradable, upgradeUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 describe('AxelarGasService', () => {
-    const [ownerWallet, userWallet] = new MockProvider().getWallets();
+    let constAddressDeployerFactory;
+    let testTokenFactory;
 
+    let constAddressDeployer;
     let gasService;
     let testToken;
 
+    let ownerWallet;
+    let userWallet;
+
+    before(async () => {
+        [ownerWallet, userWallet] = await ethers.getSigners();
+
+        constAddressDeployerFactory = await ethers.getContractFactory(ConstAddressDeployer.abi, ConstAddressDeployer.bytecode, ownerWallet);
+        testTokenFactory = await ethers.getContractFactory('MintableCappedERC20', ownerWallet);
+    });
+
     beforeEach(async () => {
-        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
+        constAddressDeployer = await constAddressDeployerFactory.deploy().then((d) => d.deployed());
 
         gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
 
@@ -36,7 +42,7 @@ describe('AxelarGasService', () => {
         const decimals = 16;
         const capacity = 0;
 
-        testToken = await deployContract(ownerWallet, MintableCappedERC20, [name, symbol, decimals, capacity]);
+        testToken = await testTokenFactory.deploy(name, symbol, decimals, capacity).then((d) => d.deployed());
 
         await testToken.mint(userWallet.address, 1e9);
     });
@@ -199,6 +205,50 @@ describe('AxelarGasService', () => {
                 .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
         });
 
+        it('should revert when no ether is sent with native gas payment calls', async () => {
+            const destinationChain = 'ethereum';
+            const destinationAddress = ownerWallet.address;
+            const payload = defaultAbiCoder.encode(['address', 'address'], [ownerWallet.address, userWallet.address]);
+            const symbol = 'USDC';
+            const amount = 100000;
+
+            await testToken.connect(userWallet).approve(gasService.address, 1e6);
+
+            await expect(
+                gasService
+                    .connect(userWallet)
+                    .payNativeGasForContractCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address),
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
+
+            await expect(
+                gasService
+                    .connect(userWallet)
+                    .payNativeGasForContractCallWithToken(
+                        userWallet.address,
+                        destinationChain,
+                        destinationAddress,
+                        payload,
+                        symbol,
+                        amount,
+                        userWallet.address,
+                    ),
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
+
+            await expect(
+                gasService
+                    .connect(userWallet)
+                    .payNativeGasForExpressCallWithToken(
+                        userWallet.address,
+                        destinationChain,
+                        destinationAddress,
+                        payload,
+                        symbol,
+                        amount,
+                        userWallet.address,
+                    ),
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
+        });
+
         it('should allow to collect accumulated payments and refund', async () => {
             const destinationChain = 'ethereum';
             const destinationAddress = ownerWallet.address;
@@ -249,10 +299,11 @@ describe('AxelarGasService', () => {
                     value: nativeGasFeeAmount,
                 });
 
-            await expect(gasService.connect(userWallet).refund(userWallet.address, ADDRESS_ZERO, nativeGasFeeAmount)).to.be.reverted;
+            await expect(gasService.connect(userWallet).refund(userWallet.address, ethers.constants.AddressZero, nativeGasFeeAmount)).to.be
+                .reverted;
 
             await expect(
-                await gasService.connect(ownerWallet).refund(userWallet.address, ADDRESS_ZERO, nativeGasFeeAmount),
+                await gasService.connect(ownerWallet).refund(userWallet.address, ethers.constants.AddressZero, nativeGasFeeAmount),
             ).to.changeEtherBalance(userWallet, nativeGasFeeAmount);
 
             await expect(gasService.connect(userWallet).refund(userWallet.address, testToken.address, gasFeeAmount)).to.be.reverted;
@@ -264,13 +315,21 @@ describe('AxelarGasService', () => {
             await expect(
                 gasService
                     .connect(userWallet)
-                    .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address], [nativeGasFeeAmount, gasFeeAmount]),
+                    .collectFees(
+                        ownerWallet.address,
+                        [ethers.constants.AddressZero, testToken.address],
+                        [nativeGasFeeAmount, gasFeeAmount],
+                    ),
             ).to.be.reverted;
 
             await expect(
                 await gasService
                     .connect(ownerWallet)
-                    .collectFees(ownerWallet.address, [ADDRESS_ZERO, testToken.address], [nativeGasFeeAmount, gasFeeAmount]),
+                    .collectFees(
+                        ownerWallet.address,
+                        [ethers.constants.AddressZero, testToken.address],
+                        [nativeGasFeeAmount, gasFeeAmount],
+                    ),
             )
                 .to.changeEtherBalance(ownerWallet, nativeGasFeeAmount)
                 .and.to.emit(testToken, 'Transfer')
@@ -343,6 +402,18 @@ describe('AxelarGasService', () => {
                 .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
         });
 
+        it('should revert if no ether is sent with add native gas calls both normal and express', async () => {
+            const txHash = keccak256(defaultAbiCoder.encode(['string'], ['random tx hash']));
+            const logIndex = 13;
+
+            await expect(
+                gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address, { gasLimit: 250000 }),
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
+
+            await expect(
+                gasService.connect(userWallet).addNativeExpressGas(txHash, logIndex, userWallet.address, { gasLimit: 250000 }),
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
+        });
 
         it('should have the same proxy bytecode preserved for each EVM', async () => {
             const proxyBytecode = GasServiceProxy.bytecode;
@@ -351,7 +422,7 @@ describe('AxelarGasService', () => {
                 istanbul: '0x885390e8cdbd59403e862821e2cde97b65b8e0ff145ef131b7d1bb7b49ae575c',
                 berlin: '0x102a9449688476eff53daa30db95211709f2b78555415593d9bf4a2deb2ee92c',
                 london: '0x844ca3b3e4439c8473ba73c11d5c9b9bb69b6b528f8485a794797094724a4dbf',
-            }[EVM_VERSION]
+            }[EVM_VERSION];
 
             expect(proxyBytecodeHash).to.be.equal(expected);
         });
