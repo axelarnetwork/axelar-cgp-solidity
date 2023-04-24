@@ -1,9 +1,10 @@
 'use strict';
 
-const { ethers } = require('hardhat');
+const { config, ethers } = require('hardhat');
 const {
     utils: { defaultAbiCoder, id, arrayify, keccak256 },
 } = ethers;
+const { network } = require('hardhat');
 const { sortBy } = require('lodash');
 
 const getRandomInt = (max) => {
@@ -31,7 +32,21 @@ const getWeightedSignaturesProof = async (data, operators, weights, threshold, s
     );
 };
 
+const getGasOptions = () => {
+    return network.config.blockGasLimit ? { gasLimit: network.config.blockGasLimit } : {};
+};
+
+const getEVMVersion = () => {
+    return config.solidity.compilers[0].settings.evmVersion;
+};
+
 module.exports = {
+    getChainId: async () => await network.provider.send('eth_chainId'),
+
+    getEVMVersion,
+
+    getGasOptions,
+
     bigNumberToNumber: (bigNumber) => bigNumber.toNumber(),
 
     getSignaturesProof,

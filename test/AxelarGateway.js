@@ -1,14 +1,11 @@
 const { sortBy } = require('lodash');
 const chai = require('chai');
-const { ethers, config } = require('hardhat');
+const { ethers } = require('hardhat');
 const {
     utils: { id, keccak256, getCreate2Address, defaultAbiCoder },
 } = ethers;
 const { expect } = chai;
-
-const EVM_VERSION = config.solidity.compilers[0].settings.evmVersion;
-
-const CHAIN_ID = 1;
+const { getChainId, getEVMVersion, getGasOptions } = require('./utils');
 
 const {
     bigNumberToNumber,
@@ -32,7 +29,7 @@ const {
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
 describe('AxelarGateway', () => {
-    const threshold = 3;
+    const threshold = 2;
 
     let wallets;
     let owner;
@@ -53,9 +50,9 @@ describe('AxelarGateway', () => {
 
     before(async () => {
         wallets = await ethers.getSigners();
-        admins = wallets.slice(0, 3);
+        admins = wallets.slice(0, threshold);
         owner = wallets[0];
-        operators = sortBy(wallets.slice(3, 9), (wallet) => wallet.address.toLowerCase());
+        operators = sortBy(wallets.slice(0, threshold), (wallet) => wallet.address.toLowerCase());
 
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', owner);
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
@@ -78,7 +75,7 @@ describe('AxelarGateway', () => {
         tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
         const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
         const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
-        await auth.transferOwnership(proxy.address);
+        await auth.transferOwnership(proxy.address).then((tx) => tx.wait());
 
         gateway = gatewayFactory.attach(proxy.address);
     });
@@ -89,13 +86,23 @@ describe('AxelarGateway', () => {
         });
     });
 
+    describe('external modules', () => {
+        it('should get the correct auth module', async () => {
+            expect(await gateway.authModule()).to.eq(auth.address);
+        });
+
+        it('should get the correct auth module', async () => {
+            expect(await gateway.tokenDeployer()).to.eq(tokenDeployer.address);
+        });
+    });
+
     describe('setTokenMintLimits', () => {
         const symbols = ['tokenA', 'tokenB'];
         const decimals = 8;
 
-        beforeEach(() => {
+        beforeEach(async () => {
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 symbols.map(getRandomID),
                 symbols.map(() => 'deployToken'),
                 symbols.map((symbol) => getDeployCommand(symbol, symbol, decimals, 0, ethers.constants.AddressZero, 0)),
@@ -106,16 +113,21 @@ describe('AxelarGateway', () => {
             );
         });
 
-        it("should allow admins to set a token's daily limit", () => {
+        it("should allow admins to set a token's daily limit", async () => {
             const limit = getRandomInt(Number.MAX_SAFE_INTEGER);
             const limits = symbols.map(() => limit);
 
-            return expect(gateway.connect(admins[0]).setTokenMintLimits(symbols, limits))
-                .to.not.emit(gateway, 'TokenMintLimitUpdated')
-                .then(() =>
-                    expect(gateway.connect(admins[1]).setTokenMintLimits(symbols, limits)).to.not.emit(gateway, 'TokenMintLimitUpdated'),
-                )
-                .then(() => gateway.connect(admins[2]).setTokenMintLimits(symbols, limits))
+            await Promise.all(
+                admins
+                    .slice(0, threshold - 1)
+                    .map((admin) =>
+                        expect(gateway.connect(admin).setTokenMintLimits(symbols, limits)).to.not.emit(gateway, 'TokenMintLimitUpdated'),
+                    ),
+            );
+
+            return gateway
+                .connect(admins[threshold - 1])
+                .setTokenMintLimits(symbols, limits)
                 .then((tx) =>
                     Promise.all(symbols.map((symbol) => expect(tx).to.emit(gateway, 'TokenMintLimitUpdated').withArgs(symbol, limit))),
                 )
@@ -133,10 +145,16 @@ describe('AxelarGateway', () => {
             const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
             const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
 
-            const newAdminAddresses = getAddresses(admins.slice(0, 2));
-            const newOperatorAddresses = getAddresses(operators.slice(0, 2));
+            const newAdminAddresses = getAddresses(admins.slice(0, threshold - 1));
+            const newOperatorAddresses = getAddresses(operators.slice(0, threshold - 1));
 
-            const params = getWeightedProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, getWeights(newOperatorAddresses), 2);
+            const params = getWeightedProxyDeployParams(
+                newAdminAddresses,
+                threshold - 1,
+                newOperatorAddresses,
+                getWeights(newOperatorAddresses),
+                threshold - 1,
+            );
 
             await Promise.all(
                 admins
@@ -217,7 +235,7 @@ describe('AxelarGateway', () => {
                 istanbul: '0x6905e9ed2ee714532275d658b7cc3e3186acc52da48ffd499a2705a1185b8dde',
                 berlin: '0x374b511f48e03dfc872c49b1f3234785b50e4db2fb5eb135ef0c3f58b20c8b7a',
                 london: '0xcac4f10cb12909b2256570ae01df6fee5830b78afb230097fc401a69efa896cd',
-            }[EVM_VERSION];
+            }[getEVMVersion()];
 
             expect(proxyBytecodeHash).to.be.equal(expected);
         });
@@ -230,7 +248,7 @@ describe('AxelarGateway', () => {
                 istanbul: '0x402fae9dea4f794e4974367713309309b21eedfb0255cf23343f368a53b1f47e',
                 berlin: '0x7b2d78a6c1c9c60a3fd1b784aa944dd1a5af372fb020fb5e499037e5cd6e52c4',
                 london: '0x9f807d086826e5944545772a21bb96784c6d9fe62b9a2b6dfd361974466c7f33',
-            }[EVM_VERSION];
+            }[getEVMVersion()];
 
             expect(proxyBytecodeHash).to.be.equal(expected);
         });
@@ -239,7 +257,7 @@ describe('AxelarGateway', () => {
     describe('execute', () => {
         it('should fail if chain id mismatches', async () => {
             const data = buildCommandBatch(
-                CHAIN_ID + 1,
+                (await getChainId()) + 1,
                 [getRandomID()],
                 ['transferOperatorship'],
                 [
@@ -274,7 +292,7 @@ describe('AxelarGateway', () => {
             const commandID = getRandomID();
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [commandID],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, limit)],
@@ -318,7 +336,7 @@ describe('AxelarGateway', () => {
             const firstCommandID = getRandomID();
 
             const firstData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [firstCommandID],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
@@ -339,7 +357,7 @@ describe('AxelarGateway', () => {
             const secondCommandID = getRandomID();
 
             const secondData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [secondCommandID],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
@@ -369,7 +387,7 @@ describe('AxelarGateway', () => {
 
         beforeEach(async () => {
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
@@ -392,7 +410,7 @@ describe('AxelarGateway', () => {
             const amount = 9999;
 
             const firstMintData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['mintToken'],
                 [getMintCommand(symbol, owner.address, amount)],
@@ -409,7 +427,7 @@ describe('AxelarGateway', () => {
             await expect(tx).to.emit(gateway, 'Executed');
 
             const secondMintData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['mintToken'],
                 [getMintCommand(symbol, owner.address, amount)],
@@ -432,9 +450,9 @@ describe('AxelarGateway', () => {
             const limit = getRandomInt(cap / 2);
 
             return Promise.all(admins.slice(0, threshold).map((admin) => gateway.connect(admin).setTokenMintLimits([symbol], [limit])))
-                .then(() => {
+                .then(async () => {
                     const data = buildCommandBatch(
-                        CHAIN_ID,
+                        await getChainId(),
                         [getRandomID()],
                         ['mintToken'],
                         [getMintCommand(symbol, owner.address, limit)],
@@ -460,7 +478,7 @@ describe('AxelarGateway', () => {
                 .then(async () => {
                     const amount = 1;
                     const data = buildCommandBatch(
-                        CHAIN_ID,
+                        await getChainId(),
                         [getRandomID()],
                         ['mintToken'],
                         [getMintCommand(symbol, owner.address, amount)],
@@ -485,7 +503,12 @@ describe('AxelarGateway', () => {
         it('should allow the operators to mint tokens', async () => {
             const amount = getRandomInt(cap);
 
-            const data = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
+            const data = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['mintToken'],
+                [getMintCommand(symbol, owner.address, amount)],
+            );
 
             const input = await getSignedWeightedExecuteInput(
                 data,
@@ -507,7 +530,7 @@ describe('AxelarGateway', () => {
             const amount = getRandomInt(cap);
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID(), getRandomID()],
                 ['mintToken', 'mintToken'],
                 [getMintCommand('wrongSymbol', owner.address, amount), getMintCommand('', owner.address, amount)],
@@ -541,10 +564,10 @@ describe('AxelarGateway', () => {
 
         beforeEach(async () => {
             externalToken = await mintableCappedERC20Factory.deploy(externalName, externalSymbol, decimals, cap).then((d) => d.deployed());
-            await externalToken.mint(owner.address, amount);
+            await externalToken.mint(owner.address, amount).then((tx) => tx.wait());
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID(), getRandomID(), getRandomID()],
                 ['deployToken', 'deployToken', 'mintToken'],
                 [
@@ -561,7 +584,7 @@ describe('AxelarGateway', () => {
                 threshold,
                 operators.slice(0, threshold),
             );
-            await gateway.execute(input);
+            await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
             token = burnableMintableCappedERC20Factory.attach(tokenAddress);
@@ -573,9 +596,9 @@ describe('AxelarGateway', () => {
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
             const burnAmount = amount / 2;
-            await token.transfer(depositHandlerAddress, burnAmount);
+            await token.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
 
-            const dataFirstBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const dataFirstBurn = buildCommandBatch(await getChainId(), [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             const firstInput = await getSignedWeightedExecuteInput(
                 dataFirstBurn,
@@ -585,13 +608,13 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            const tx = await gateway.execute(firstInput);
+            const tx = await gateway.execute(firstInput, getGasOptions());
 
             await expect(tx).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ethers.constants.AddressZero, burnAmount);
 
-            await token.transfer(depositHandlerAddress, burnAmount);
+            await token.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
 
-            const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const dataSecondBurn = buildCommandBatch(await getChainId(), [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             const secondInput = await getSignedWeightedExecuteInput(
                 dataSecondBurn,
@@ -601,7 +624,7 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(await gateway.execute(secondInput))
+            await expect(await gateway.execute(secondInput, getGasOptions()))
                 .to.emit(token, 'Transfer')
                 .withArgs(depositHandlerAddress, ethers.constants.AddressZero, burnAmount);
 
@@ -616,9 +639,14 @@ describe('AxelarGateway', () => {
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
             const burnAmount = amount / 2;
-            await externalToken.transfer(depositHandlerAddress, burnAmount);
+            await externalToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
 
-            const dataFirstBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
+            const dataFirstBurn = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['burnToken'],
+                [getBurnCommand(externalSymbol, salt)],
+            );
 
             const firstInput = await getSignedWeightedExecuteInput(
                 dataFirstBurn,
@@ -628,13 +656,18 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            const tx = await gateway.execute(firstInput);
+            const tx = await gateway.execute(firstInput, getGasOptions());
 
             await expect(tx).to.emit(externalToken, 'Transfer').withArgs(depositHandlerAddress, gateway.address, burnAmount);
 
-            await externalToken.transfer(depositHandlerAddress, burnAmount);
+            await externalToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
 
-            const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
+            const dataSecondBurn = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['burnToken'],
+                [getBurnCommand(externalSymbol, salt)],
+            );
 
             const secondInput = await getSignedWeightedExecuteInput(
                 dataSecondBurn,
@@ -644,7 +677,7 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(await gateway.execute(secondInput))
+            await expect(await gateway.execute(secondInput, getGasOptions()))
                 .to.emit(externalToken, 'Transfer')
                 .withArgs(depositHandlerAddress, gateway.address, burnAmount);
 
@@ -663,7 +696,12 @@ describe('AxelarGateway', () => {
             const burnAmount = amount / 2;
             await externalToken.transfer(depositHandlerAddress, burnAmount);
 
-            const dataFirstBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
+            const dataFirstBurn = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['burnToken'],
+                [getBurnCommand(externalSymbol, salt)],
+            );
 
             const firstInput = await getSignedWeightedExecuteInput(
                 dataFirstBurn,
@@ -679,7 +717,12 @@ describe('AxelarGateway', () => {
 
             await externalToken.transfer(depositHandlerAddress, burnAmount);
 
-            const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
+            const dataSecondBurn = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['burnToken'],
+                [getBurnCommand(externalSymbol, salt)],
+            );
 
             const secondInput = await getSignedWeightedExecuteInput(
                 dataSecondBurn,
@@ -705,17 +748,17 @@ describe('AxelarGateway', () => {
             const commandIDs = [getRandomID(), getRandomID()];
             const burnAmount = amount / 2;
 
-            await externalToken.transfer(depositHandlerAddress, burnAmount);
+            await externalToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
             const command = getBurnCommand(externalSymbol, salt);
             const input = await getSignedWeightedExecuteInput(
-                buildCommandBatch(CHAIN_ID, commandIDs, ['burnToken', 'burnToken'], [command, command]),
+                buildCommandBatch(await getChainId(), commandIDs, ['burnToken', 'burnToken'], [command, command]),
                 operators,
                 getWeights(operators),
                 threshold,
                 operators.slice(0, threshold),
             );
 
-            const tx = await gateway.execute(input);
+            const tx = await gateway.execute(input, getGasOptions());
             await expect(tx)
                 .to.emit(gateway, 'Executed')
                 .withArgs(commandIDs[0])
@@ -730,18 +773,18 @@ describe('AxelarGateway', () => {
                 .then((balance) => {
                     expect(balance).to.eq(0);
                 })
-                .then(() => externalToken.transfer(depositHandlerAddress, burnAmount))
+                .then(async () => await externalToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait()))
                 .then(async () => {
                     const commandID = getRandomID();
                     const input = await getSignedWeightedExecuteInput(
-                        buildCommandBatch(CHAIN_ID, [commandID], ['burnToken'], [getBurnCommand(externalSymbol, salt)]),
+                        buildCommandBatch(await getChainId(), [commandID], ['burnToken'], [getBurnCommand(externalSymbol, salt)]),
                         operators,
                         getWeights(operators),
                         threshold,
                         operators.slice(0, threshold),
                     );
 
-                    const tx = await gateway.execute(input);
+                    const tx = await gateway.execute(input, getGasOptions());
                     await expect(tx)
                         .to.emit(gateway, 'Executed')
                         .withArgs(commandID)
@@ -761,7 +804,7 @@ describe('AxelarGateway', () => {
                 istanbul: '0x352c0ce048c2b25b0b6a58f4695613b587f3086b63b4c3a24d22c043aed230d2',
                 berlin: '0xa26b1094ee475518c006cba8bd976fd4d3cd9a6089bcbe4453b1b4cf7f095609',
                 london: '0x9f217a79e864028081339cfcead3c3d1fe92e237fcbe9468d6bb4d1da7aa6352',
-            }[EVM_VERSION];
+            }[getEVMVersion()];
 
             await expect(keccak256(depositHandlerFactory.bytecode)).to.be.equal(expected);
         });
@@ -773,7 +816,7 @@ describe('AxelarGateway', () => {
                 istanbul: '0xfc2522491a56af4f3519968ed49c9ba82abc79798afe8f763f601e7d5e14bdbf',
                 berlin: '0x81f6049561587bf700c0af132c504b22d696a6acfa606eee0257f92fd4ebd865',
                 london: '0x37be59a866fd46ec4179e243e5d5e2639ca1e842b152e45a34628dad6494b94b',
-            }[EVM_VERSION];
+            }[getEVMVersion()];
 
             await expect(keccak256(tokenFactory.bytecode)).to.be.equal(expectedToken);
 
@@ -781,7 +824,7 @@ describe('AxelarGateway', () => {
                 istanbul: '0xc68014e297eb42dbde383254ef3129d59528159e6c51b4f9a38f995be1dd451f',
                 berlin: '0xd3a39792ca8d1ce8e5318135ca29d8a7f0b800837726997b132ebc04f88cf9aa',
                 london: '0x0698929742de660596af20d09d04eb91bfe532ef5e2927858e4c4952034967a5',
-            }[EVM_VERSION];
+            }[getEVMVersion()];
 
             await expect(keccak256(tokenDeployerFactory.bytecode)).to.be.equal(expectedDeployer);
         });
@@ -792,7 +835,7 @@ describe('AxelarGateway', () => {
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['transferOperatorship'],
                 [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2)],
@@ -819,7 +862,7 @@ describe('AxelarGateway', () => {
             const newOperators = [ethers.constants.AddressZero, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['transferOperatorship'],
                 [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2)],
@@ -840,7 +883,7 @@ describe('AxelarGateway', () => {
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
             const transferOperatorshipData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['transferOperatorship'],
                 [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2)],
@@ -864,7 +907,7 @@ describe('AxelarGateway', () => {
             const cap = 1e8;
 
             const deployData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
@@ -884,7 +927,12 @@ describe('AxelarGateway', () => {
 
             const amount = getRandomInt(cap);
 
-            const mintData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
+            const mintData = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['mintToken'],
+                [getMintCommand(symbol, owner.address, amount)],
+            );
 
             const mintInput = await getSignedWeightedExecuteInput(
                 mintData,
@@ -905,7 +953,7 @@ describe('AxelarGateway', () => {
             const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
-            const burnData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const burnData = buildCommandBatch(await getChainId(), [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             await token.transfer(depositHandlerAddress, amount);
             const burnInput = await getSignedWeightedExecuteInput(
@@ -924,16 +972,16 @@ describe('AxelarGateway', () => {
         it('should not allow the previous operators to transfer operatorship', async () => {
             let newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            const buildTransferData = () =>
+            const buildTransferData = async () =>
                 buildCommandBatch(
-                    CHAIN_ID,
+                    await getChainId(),
                     [getRandomID()],
                     ['transferOperatorship'],
                     [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), newOperators.length)],
                 );
 
             let input = await getSignedWeightedExecuteInput(
-                buildTransferData(),
+                await buildTransferData(),
                 operators,
                 getWeights(operators),
                 threshold,
@@ -944,7 +992,7 @@ describe('AxelarGateway', () => {
             newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
 
             input = await getSignedWeightedExecuteInput(
-                buildTransferData(),
+                await buildTransferData(),
                 operators,
                 getWeights(operators),
                 threshold,
@@ -955,18 +1003,18 @@ describe('AxelarGateway', () => {
         });
 
         it('should not allow operatorship transfer to the previous operators', async () => {
-            const updatedOperators = getAddresses(operators.slice(0, threshold));
+            const updatedOperators = getAddresses(operators.slice(0, threshold - 1));
 
-            const buildTransferData = (newOperators, newThreshold = newOperators.length) =>
+            const buildTransferData = async (newOperators, newThreshold = newOperators.length) =>
                 buildCommandBatch(
-                    CHAIN_ID,
+                    await getChainId(),
                     [getRandomID()],
                     ['transferOperatorship'],
                     [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), newThreshold)],
                 );
 
             let input = await getSignedWeightedExecuteInput(
-                buildTransferData(updatedOperators),
+                await buildTransferData(updatedOperators),
                 operators,
                 getWeights(operators),
                 threshold,
@@ -974,26 +1022,27 @@ describe('AxelarGateway', () => {
             );
             await expect(gateway.execute(input)).to.emit(gateway, 'OperatorshipTransferred');
 
+            // now transfer operatorship back to the original operators
             const oldOperators = getAddresses(operators);
 
             input = await getSignedWeightedExecuteInput(
-                buildTransferData(oldOperators, threshold),
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
+                await buildTransferData(oldOperators, threshold),
+                operators.slice(0, threshold - 1),
+                getWeights(updatedOperators),
+                threshold - 1,
+                operators.slice(0, threshold - 1),
             );
 
             await expect(gateway.execute(input)).not.to.emit(gateway, 'OperatorshipTransferred');
         });
 
         it('should not allow multiple operatorship transfers in one batch', async () => {
-            const updatedOperators = getAddresses(operators.slice(0, threshold));
-            const commandIds = Array(3).fill(null).map(getRandomID);
+            const updatedOperators = getAddresses(operators.slice(0, threshold - 1));
+            const commandIds = Array(threshold).fill(null).map(getRandomID);
 
-            const buildTransferData = (newOperators, newThreshold = newOperators.length) =>
+            const buildTransferData = async (newOperators, newThreshold = newOperators.length) =>
                 buildCommandBatch(
-                    CHAIN_ID,
+                    await getChainId(),
                     commandIds,
                     commandIds.map(() => 'transferOperatorship'),
                     commandIds.map((x, i) =>
@@ -1002,16 +1051,16 @@ describe('AxelarGateway', () => {
                 );
 
             const input = await getSignedWeightedExecuteInput(
-                buildTransferData(updatedOperators),
+                await buildTransferData(updatedOperators),
                 operators,
                 getWeights(operators),
                 threshold,
                 operators.slice(0, threshold),
             );
 
-            const result = await gateway.execute(input);
+            const result = await gateway.execute(input).then((tx) => tx.wait());
 
-            await expect((await result.wait()).events.filter(({ event }) => event === 'Executed').length).to.be.equal(1);
+            expect(result.events.filter(({ event }) => event === 'Executed').length).to.be.equal(1);
         });
     });
 
@@ -1023,7 +1072,7 @@ describe('AxelarGateway', () => {
 
         it('should burn internal token and emit an event', async () => {
             const deployAndMintData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
                 [
@@ -1068,7 +1117,7 @@ describe('AxelarGateway', () => {
             await token.mint(owner.address, 1000000);
 
             const deployData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
@@ -1116,7 +1165,7 @@ describe('AxelarGateway', () => {
             await token.mint(owner.address, amount);
 
             const deployData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, capacity, token.address, 0)],
@@ -1136,7 +1185,7 @@ describe('AxelarGateway', () => {
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
             await token.transfer(depositHandlerAddress, amount);
 
-            const burnData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const burnData = buildCommandBatch(await getChainId(), [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
             const burnInput = await getSignedWeightedExecuteInput(
                 burnData,
@@ -1149,7 +1198,7 @@ describe('AxelarGateway', () => {
             await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, gateway.address, amount);
 
             const mintData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['mintToken'],
                 [getMintCommand(symbol, wallets[1].address, amount)],
@@ -1178,7 +1227,7 @@ describe('AxelarGateway', () => {
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken', 'mintToken', 'transferOperatorship'],
                 [
@@ -1240,7 +1289,7 @@ describe('AxelarGateway', () => {
 
         it('should burn internal token and emit an event', async () => {
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID(), getRandomID()],
                 ['deployToken', 'mintToken'],
                 [
@@ -1287,7 +1336,7 @@ describe('AxelarGateway', () => {
             await token.mint(owner.address, 1000000);
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
@@ -1335,7 +1384,7 @@ describe('AxelarGateway', () => {
             const sourceEventIndex = 17;
 
             const approveData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [commandId],
                 ['approveContractCall'],
                 [getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex)],
@@ -1381,7 +1430,7 @@ describe('AxelarGateway', () => {
             await tokenA.mint(gateway.address, 1e6);
 
             const deployTokenData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address, 0)],
@@ -1407,7 +1456,7 @@ describe('AxelarGateway', () => {
             const sourceEventIndex = 17;
 
             const approveWithMintData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [commandId],
                 ['approveContractCallWithMint'],
                 [

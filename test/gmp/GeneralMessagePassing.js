@@ -9,8 +9,6 @@ const { expect } = chai;
 const { deployUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
 
-const CHAIN_ID = 1;
-
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
@@ -20,6 +18,7 @@ const {
     getRandomID,
     getMultisigProxyDeployParams,
     getAddresses,
+    getChainId,
 } = require('../utils');
 
 describe('GeneralMessagePassing', () => {
@@ -68,12 +67,12 @@ describe('GeneralMessagePassing', () => {
     const decimals = 16;
     const capacity = 0;
 
-    const getMintData = (symbol, address, amount) =>
+    const getMintData = async (symbol, address, amount) =>
         arrayify(
             defaultAbiCoder.encode(
                 ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                 [
-                    CHAIN_ID,
+                    await getChainId(),
                     [getRandomID()],
                     ['mintToken'],
                     [defaultAbiCoder.encode(['string', 'address', 'uint256'], [symbol, address, amount])],
@@ -120,12 +119,12 @@ describe('GeneralMessagePassing', () => {
             return gateway;
         };
 
-        const getTokenDeployData = (withAddress) =>
+        const getTokenDeployData = async (withAddress) =>
             arrayify(
                 defaultAbiCoder.encode(
                     ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                     [
-                        CHAIN_ID,
+                        await getChainId(),
                         [getRandomID(), getRandomID()],
                         ['deployToken', 'deployToken'],
                         [
@@ -159,10 +158,10 @@ describe('GeneralMessagePassing', () => {
         tokenB = await mintableCappedERC20Factory.deploy(nameB, symbolB, decimals, capacity).then((d) => d.deployed());
 
         await sourceChainGateway.execute(
-            await getSignedWeightedExecuteInput(getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
+            await getSignedWeightedExecuteInput(await getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
         );
         await destinationChainGateway.execute(
-            await getSignedWeightedExecuteInput(getTokenDeployData(true), [operatorWallet], [1], 1, [operatorWallet]),
+            await getSignedWeightedExecuteInput(await getTokenDeployData(true), [operatorWallet], [1], 1, [operatorWallet]),
         );
 
         destinationChainTokenSwapper = await destinationChainTokenSwapperFactory
@@ -182,7 +181,9 @@ describe('GeneralMessagePassing', () => {
         await tokenB.mint(destinationChainTokenSwapper.address, 1e9);
 
         await sourceChainGateway.execute(
-            await getSignedWeightedExecuteInput(getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [operatorWallet]),
+            await getSignedWeightedExecuteInput(await getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [
+                operatorWallet,
+            ]),
         );
         await tokenA.connect(ownerWallet).mint(userWallet.address, 1e9);
     });
@@ -235,7 +236,7 @@ describe('GeneralMessagePassing', () => {
                 defaultAbiCoder.encode(
                     ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                     [
-                        CHAIN_ID,
+                        await getChainId(),
                         [approveCommandId],
                         ['approveContractCallWithMint'],
                         [
@@ -358,7 +359,7 @@ describe('GeneralMessagePassing', () => {
                 defaultAbiCoder.encode(
                     ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                     [
-                        CHAIN_ID,
+                        await getChainId(),
                         [approveCommandId],
                         ['approveContractCallWithMint'],
                         [

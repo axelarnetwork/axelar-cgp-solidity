@@ -3,9 +3,19 @@
 const reader = require('readline-sync');
 const { execSync } = require('child_process');
 const { sortBy } = require('lodash');
+const fs = require('fs');
+const { outputJsonSync } = require('fs-extra');
 const {
     utils: { computeAddress, parseUnits },
 } = require('ethers');
+
+function printLog(log) {
+    console.log(JSON.stringify({ log }, null, 2));
+}
+
+function printObj(obj) {
+    console.log(JSON.stringify(obj, null, 2));
+}
 
 const getAddresses = (prefix, chain, role) => {
     const keyID = execSync(`${prefix} "axelard q tss key-id ${chain} ${role}"`, {
@@ -26,14 +36,49 @@ const getAddresses = (prefix, chain, role) => {
     };
 };
 
-module.exports = {
-    printLog(log) {
-        console.log(JSON.stringify({ log }));
-    },
+const writeJSON = (data, name) => {
+    outputJsonSync(name, data, {
+        spaces: 2,
+        EOL: '\n',
+    });
+};
 
-    printObj(obj) {
-        console.log(JSON.stringify(obj));
-    },
+const loadNetworks = (env) => {
+    const chains = require(`../info/${env}.json`);
+
+    // Load any keys if they exist
+    const keys = fs.existsSync(`${__dirname}/../info/keys.json`) ? require('../info/keys.json') : {};
+
+    var networks = {
+        hardhat: {
+            chainId: 31337,
+        },
+    };
+
+    var etherscan = {
+        apiKey: {},
+        customChains: [],
+    };
+
+    // Load custom networks
+    for (const chain of chains) {
+        const name = chain.name.toLowerCase();
+        networks[name] = {
+            chainId: chain.chainId,
+            id: chain.id,
+            url: chain.rpc,
+            blockGasLimit: chain.gasOptions?.gasLimit,
+            accounts: keys.accounts || keys[name]?.accounts,
+        };
+    }
+
+    return { networks, etherscan };
+};
+
+module.exports = {
+    printLog,
+
+    printObj,
 
     confirm(values, complete) {
         module.exports.printObj({ 'environment_variables:': values });
@@ -95,6 +140,13 @@ module.exports = {
         return { addresses, weights, threshold };
     },
 
+    getProxy(prefix, chain) {
+        const proxy = JSON.parse(execSync(`${prefix} "axelard q evm gateway-address ${chain} --output json"`)).address;
+        return proxy;
+    },
+
+    loadNetworks,
+
     parseWei(str) {
         if (!str) {
             return;
@@ -125,4 +177,6 @@ module.exports = {
             };
         }
     },
+
+    writeJSON,
 };

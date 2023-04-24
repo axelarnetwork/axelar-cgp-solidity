@@ -1,5 +1,10 @@
 require('@nomicfoundation/hardhat-toolbox');
 
+const fs = require('fs');
+const env = process.env.NETWORK || 'testnet';
+const { loadNetworks } = require('./scripts/utils');
+const { networks, etherscan } = loadNetworks(env);
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -27,12 +32,13 @@ module.exports = {
             },
         },
     },
-    networks: {
-        hardhat: {
-            chainId: 1,
-        },
+    defaultNetwork: 'hardhat',
+    networks: networks,
+    etherscan: etherscan,
+    mocha: {
+        timeout: 1000000,
     },
     gasReporter: {
-        enabled: true,
+        enabled: process.env.REPORT_GAS ? true : false,
     },
 };
