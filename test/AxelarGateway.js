@@ -91,7 +91,7 @@ describe('AxelarGateway', () => {
             expect(await gateway.authModule()).to.eq(auth.address);
         });
 
-        it('should get the correct auth module', async () => {
+        it('should get the correct token deployer', async () => {
             expect(await gateway.tokenDeployer()).to.eq(tokenDeployer.address);
         });
     });
