@@ -43,11 +43,9 @@ describe('GeneralMessagePassing', () => {
     let destinationChainGateway;
     let gmpExpressService;
     let gasService;
-    // let sourceChainGasService;
     let sourceChainSwapCaller;
     let destinationChainSwapExecutable;
     let destinationChainSwapExpress;
-    // let destinationChainSwapForecallable;
     let destinationChainTokenSwapper;
     let tokenA;
     let tokenB;
@@ -59,7 +57,6 @@ describe('GeneralMessagePassing', () => {
     let mintableCappedERC20Factory;
     let sourceChainSwapCallerFactory;
     let destinationChainSwapExecutableFactory;
-    // let destinationChainSwapForecallableFactory;
     let destinationChainTokenSwapperFactory;
 
     let auth;
@@ -101,7 +98,6 @@ describe('GeneralMessagePassing', () => {
         mintableCappedERC20Factory = await ethers.getContractFactory('MintableCappedERC20', ownerWallet);
         sourceChainSwapCallerFactory = await ethers.getContractFactory('SourceChainSwapCaller', ownerWallet);
         destinationChainSwapExecutableFactory = await ethers.getContractFactory('DestinationChainSwapExecutable', ownerWallet);
-        // destinationChainSwapForecallableFactory = await ethers.getContractFactory('DestinationChainSwapForecallable', ownerWallet);
         destinationChainTokenSwapperFactory = await ethers.getContractFactory('DestinationChainTokenSwapper', ownerWallet);
     });
 
@@ -161,10 +157,6 @@ describe('GeneralMessagePassing', () => {
         const create3DeployerFactory = await ethers.getContractFactory(Create3Deployer.abi, Create3Deployer.bytecode, ownerWallet);
         const create3Deployer = await create3DeployerFactory.deploy().then((d) => d.deployed());
 
-        // sourceChainGasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [
-        //     ownerWallet.address,
-        // ]);
-
         gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
 
         const expressProxyDeployerFactory = await ethers.getContractFactory(
@@ -199,10 +191,6 @@ describe('GeneralMessagePassing', () => {
             .deploy(destinationChainGateway.address, destinationChainTokenSwapper.address)
             .then((d) => d.deployed());
 
-        // destinationChainSwapForecallable = await destinationChainSwapForecallableFactory
-        //     .deploy(destinationChainGateway.address, destinationChainTokenSwapper.address)
-        //     .then((d) => d.deployed());
-
         const salt = keccak256(Buffer.from('DestinationChainSwapExpress'));
         const destinationChainSwapExpressFactory = await ethers.getContractFactory('DestinationChainSwapExpress', ownerWallet);
 
@@ -212,12 +200,12 @@ describe('GeneralMessagePassing', () => {
         ).data;
 
         await gmpExpressService.deployExpressExecutable(salt, bytecode, ownerWallet.address, '0x');
-        destinationChainSwapExpress = await destinationChainSwapExpressFactory.attach(
+        destinationChainSwapExpress = destinationChainSwapExpressFactory.attach(
             await gmpExpressService.deployedProxyAddress(salt, ownerWallet.address),
         );
 
         sourceChainSwapCaller = await sourceChainSwapCallerFactory
-            .deploy(sourceChainGateway.address, gasService.address, destinationChain, destinationChainSwapExecutable.address)
+            .deploy(sourceChainGateway.address, gasService.address, destinationChain, destinationChainSwapExecutable.address.toString())
             .then((d) => d.deployed());
 
         await tokenA.mint(destinationChainGateway.address, 1e9);
@@ -336,8 +324,10 @@ describe('GeneralMessagePassing', () => {
                 .and.to.emit(destinationChainGateway, 'TokenSent')
                 .withArgs(destinationChainSwapExecutable.address, sourceChain, userWallet.address.toString(), symbolB, convertedAmount);
         });
+    });
 
-        it('ExpressExecutable', async () => {
+    describe('ExpressExecutable', async () => {
+        it('should expressExecuteWithToken to swap on remote chain', async () => {
             const swapAmount = 1e6;
             const gasFeeAmount = 1e3;
             const convertedAmount = 2 * swapAmount;
@@ -376,7 +366,7 @@ describe('GeneralMessagePassing', () => {
                     swapAmount,
                 );
 
-            await tokenA.connect(userWallet).approve(gmpExpressService.address, swapAmount);
+            await tokenA.connect(userWallet).transfer(gmpExpressService.address, swapAmount);
 
             await expect(
                 gmpExpressService
