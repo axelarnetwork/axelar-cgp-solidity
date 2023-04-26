@@ -160,6 +160,9 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 if (LEGACY_CONTRACTS.includes(contractName)) {
                     proxyAddress = await predictContractConstant(chain.constAddressDeployer, wallet.connect(provider), proxyJson, key);
                 } else {
+                    if (!chain.Create3Deployer) {
+                        throw new Error(`Create3Deployer has not yet been deployed on ${chain.name}.`);
+                    }
                     proxyAddress = await getCreate3Address(chain.Create3Deployer.address, wallet.connect(provider), key);
                 }
 
