@@ -25,7 +25,7 @@ function getProxy(wallet, proxyAddress) {
 }
 
 async function getAdditionalProxyArgs(contractName, chain, wallet) {
-    if (contractName === 'GMPExpressService') {
+    if (contractName === 'GMPExpressService' || contractName === 'AxelarDepositService' || contractName === 'AxelarGasService') {
         return [];
     }
     throw new Error(`${contractName} is not supported.`);
@@ -176,11 +176,12 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 let contract;
                 if (LEGACY_CONTRACTS.includes(contractName)) {
                     contract = await deployUpgradable(
-                        constAddressDeployer,
+                        chain.constAddressDeployer,
                         wallet.connect(provider),
                         implementationJson,
                         proxyJson,
                         args,
+                        await getAdditionalProxyArgs(contractName, chain, wallet.connect(provider)),
                         setupArgs,
                         key,
                         _.get('gasOptions.gasLimit', chain),
