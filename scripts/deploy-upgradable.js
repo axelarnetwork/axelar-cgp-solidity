@@ -77,7 +77,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
         if (deployTo.length > 0 && !deployTo.find((name) => chain.name === name)) continue;
         const rpc = chain.rpc;
         const provider = getDefaultProvider(rpc);
-        const args = getImplementationArgs(contractName, chain);
+        const args = await getImplementationArgs(contractName, chain);
         console.log(`Implementation args for chain ${chain.name}: ${args}`);
         console.log(`Gas override for chain ${chain.name}:`, chain.gasOptions);
 
@@ -103,7 +103,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 implementationJson,
                 args,
                 getUpgradeArgs(contractName, chain),
-                chain.gasOptions,
+                _.get('gasOptions.gasLimit', chain),
             );
 
             chain[contractName]['implementation'] = await contract.implementation();
@@ -128,9 +128,10 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 implementationJson,
                 proxyJson,
                 args,
+                [],
                 setupArgs,
                 key,
-                chain.gasOptions,
+                _.get('gasOptions.gasLimit', chain),
             );
 
             chain[contractName]['salt'] = key;
