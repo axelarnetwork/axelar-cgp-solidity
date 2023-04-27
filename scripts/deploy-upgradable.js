@@ -1,6 +1,6 @@
 'use strict';
 require('dotenv').config();
-const _ = require('lodash/fp');
+const { get, getOr, isEmpty } = require('lodash/fp');
 const {
     Contract,
     Wallet,
@@ -18,16 +18,16 @@ function getProxy(wallet, proxyAddress) {
 
 async function getImplementationArgs(contractName, chain, wallet) {
     if (contractName === 'AxelarGasService') {
-        const collector = _.get('AxelarGasService.collector', chain);
+        const collector = get('AxelarGasService.collector', chain);
         if (!isAddress(collector)) throw new Error(`Missing AxelarGasService.collector in the chain info.`);
         return [collector];
     }
 
     if (contractName === 'AxelarDepositService') {
-        const symbol = _.getOr('', 'AxelarDepositService.wrappedSymbol', chain);
-        if (_.isEmpty(symbol)) console.log(`${chain.name} | AxelarDepositService.wrappedSymbol: wrapped token is disabled`);
+        const symbol = getOr('', 'AxelarDepositService.wrappedSymbol', chain);
+        if (isEmpty(symbol)) console.log(`${chain.name} | AxelarDepositService.wrappedSymbol: wrapped token is disabled`);
 
-        const refundIssuer = _.get('AxelarDepositService.refundIssuer', chain);
+        const refundIssuer = get('AxelarDepositService.refundIssuer', chain);
         if (!isAddress(refundIssuer)) throw new Error(`${chain.name} | Missing AxelarDepositService.refundIssuer in the chain info.`);
 
         return [chain.gateway, symbol, refundIssuer];
@@ -103,7 +103,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 implementationJson,
                 args,
                 getUpgradeArgs(contractName, chain),
-                _.get('gasOptions.gasLimit', chain),
+                get('gasOptions.gasLimit', chain),
             );
 
             chain[contractName]['implementation'] = await contract.implementation();
@@ -131,7 +131,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 [],
                 setupArgs,
                 key,
-                _.get('gasOptions.gasLimit', chain),
+                get('gasOptions.gasLimit', chain),
             );
 
             chain[contractName]['salt'] = key;
