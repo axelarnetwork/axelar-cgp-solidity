@@ -1,6 +1,6 @@
 'use strict';
 require('dotenv').config();
-const _ = require('lodash/fp');
+const { get } = require('lodash/fp');
 const { Wallet, getDefaultProvider } = require('ethers');
 const readlineSync = require('readline-sync');
 const { outputJsonSync } = require('fs-extra');
@@ -59,7 +59,7 @@ async function deploy(env, chains, wallet, contractName, deployTo) {
                     implementationJson,
                     key,
                     [],
-                    _.get('gasOptions.gasLimit', chain),
+                    get('gasOptions.gasLimit', chain),
                 );
 
                 chain[contractName] = {
