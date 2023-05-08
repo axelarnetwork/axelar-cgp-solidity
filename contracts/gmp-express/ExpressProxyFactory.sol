@@ -49,63 +49,6 @@ contract ExpressProxyFactory is AxelarExecutable, IExpressProxyFactory {
         return _deployExpressProxy(deploySalt, implementationAddress, owner, setupParams);
     }
 
-    function deployExpressExecutable(
-        bytes32 salt,
-        bytes memory implementationBytecode,
-        address owner,
-        bytes calldata setupParams
-    ) external returns (address) {
-        bytes32 deploySalt = keccak256(abi.encode(msg.sender, salt));
-        return _deployExpressExecutable(deploySalt, implementationBytecode, owner, setupParams);
-    }
-
-    function deployExpressExecutableOnChains(
-        bytes32 salt,
-        bytes memory implementationBytecode,
-        address owner,
-        bytes calldata setupParams,
-        string[] calldata destinationChains,
-        uint256[] calldata gasPayments,
-        address gasRefundAddress
-    ) external {
-        bytes32 deploySalt = keccak256(abi.encode(msg.sender, salt));
-        uint256 length = destinationChains.length;
-
-        if (implementationBytecode.length == 0) revert EmptyBytecode();
-        if (length != gasPayments.length) revert WrongGasAmounts();
-
-        for (uint256 i; i < length; ++i) {
-            _deployExpressExecutableOnChain(
-                deploySalt,
-                implementationBytecode,
-                owner,
-                setupParams,
-                destinationChains[i],
-                gasPayments[i],
-                gasRefundAddress
-            );
-        }
-    }
-
-    function _execute(
-        string calldata,
-        string calldata sourceAddress,
-        bytes calldata payload
-    ) internal override {
-        if (sourceAddress.toAddress() != address(this)) revert InvalidSourceAddress();
-
-        (Command command, bytes32 deploySalt, bytes memory implementationBytecode, address owner, bytes memory setupParams) = abi.decode(
-            payload,
-            (Command, bytes32, bytes, address, bytes)
-        );
-
-        if (command == Command.DeployExpressExecutable) {
-            _deployExpressExecutable(deploySalt, implementationBytecode, owner, setupParams);
-        } else {
-            revert InvalidCommand();
-        }
-    }
-
     function _deployExpressProxy(
         bytes32 deploySalt,
         address implementationAddress,
@@ -116,49 +59,5 @@ contract ExpressProxyFactory is AxelarExecutable, IExpressProxyFactory {
             abi.encodeWithSelector(IExpressProxyDeployer.deployExpressProxy.selector, deploySalt, implementationAddress, owner, setupParams)
         );
         (deployedAddress) = abi.decode(data, (address));
-    }
-
-    function _deployExpressExecutable(
-        bytes32 deploySalt,
-        bytes memory implementationBytecode,
-        address owner,
-        bytes memory setupParams
-    ) internal returns (address) {
-        if (implementationBytecode.length == 0) revert EmptyBytecode();
-
-        address implementation;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            implementation := create2(0, add(implementationBytecode, 32), mload(implementationBytecode), deploySalt)
-        }
-
-        if (implementation == address(0)) revert FailedDeploy();
-
-        return _deployExpressProxy(deploySalt, implementation, owner, setupParams);
-    }
-
-    function _deployExpressExecutableOnChain(
-        bytes32 deploySalt,
-        bytes memory implementationBytecode,
-        address owner,
-        bytes calldata setupParams,
-        string calldata destinationChain,
-        uint256 gasPayment,
-        address gasRefundAddress
-    ) internal {
-        string memory thisAddress = address(this).toString();
-        bytes memory payload = abi.encode(Command.DeployExpressExecutable, deploySalt, implementationBytecode, owner, setupParams);
-
-        if (gasPayment > 0) {
-            gasService.payNativeGasForContractCall{ value: gasPayment }(
-                address(this),
-                destinationChain,
-                thisAddress,
-                payload,
-                gasRefundAddress
-            );
-        }
-
-        gateway.callContract(destinationChain, address(this).toString(), payload);
     }
 }
