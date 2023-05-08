@@ -1,6 +1,6 @@
 'use strict';
 require('dotenv').config();
-const _ = require('lodash/fp');
+const { get, getOr, isEmpty } = require('lodash/fp');
 const {
     Contract,
     Wallet,
@@ -33,29 +33,29 @@ async function getAdditionalProxyArgs(contractName, chain, wallet) {
 
 async function getImplementationArgs(contractName, chain, wallet) {
     if (contractName === 'AxelarGasService') {
-        const collector = _.get('AxelarGasService.collector', chain);
+        const collector = get('AxelarGasService.collector', chain);
         if (!isAddress(collector)) throw new Error(`Missing AxelarGasService.collector in the chain info.`);
         return [collector];
     }
 
     if (contractName === 'AxelarDepositService') {
-        const symbol = _.getOr('', 'AxelarDepositService.wrappedSymbol', chain);
-        if (_.isEmpty(symbol)) console.log(`${chain.name} | AxelarDepositService.wrappedSymbol: wrapped token is disabled`);
+        const symbol = getOr('', 'AxelarDepositService.wrappedSymbol', chain);
+        if (isEmpty(symbol)) console.log(`${chain.name} | AxelarDepositService.wrappedSymbol: wrapped token is disabled`);
 
-        const refundIssuer = _.get('AxelarDepositService.refundIssuer', chain);
+        const refundIssuer = get('AxelarDepositService.refundIssuer', chain);
         if (!isAddress(refundIssuer)) throw new Error(`Missing AxelarDepositService.refundIssuer in the chain info.`);
 
         return [chain.gateway, symbol, refundIssuer];
     }
 
     if (contractName === 'GMPExpressService') {
-        const gasService = _.get('AxelarGasService.address', chain);
+        const gasService = get('AxelarGasService.address', chain);
         if (!isAddress(gasService)) throw new Error(`Missing AxelarGasService.address in the chain info.`);
 
-        const expressOperator = _.get('GMPExpressService.expressOperator', chain);
+        const expressOperator = get('GMPExpressService.expressOperator', chain);
         if (!isAddress(expressOperator)) throw new Error(`Missing GMPExpressService.expressOperator in the chain info.`);
 
-        let proxyDeployer = _.get('GMPExpressService.proxyDeployer', chain);
+        let proxyDeployer = get('GMPExpressService.proxyDeployer', chain);
 
         if (!isAddress(proxyDeployer)) {
             const deployerJson = require('@axelar-network/axelar-gmp-sdk-solidity/artifacts/contracts/express/ExpressProxyDeployer.sol/ExpressProxyDeployer.json');
@@ -184,7 +184,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                         await getAdditionalProxyArgs(contractName, chain, wallet.connect(provider)),
                         setupArgs,
                         key,
-                        _.get('gasOptions.gasLimit', chain),
+                        get('gasOptions.gasLimit', chain),
                     );
                 } else {
                     contract = await deployCreate3Upgradable(
@@ -196,7 +196,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                         await getAdditionalProxyArgs(contractName, chain, wallet.connect(provider)),
                         setupArgs,
                         key,
-                        _.get('gasOptions.gasLimit', chain),
+                        get('gasOptions.gasLimit', chain),
                     );
                 }
 
