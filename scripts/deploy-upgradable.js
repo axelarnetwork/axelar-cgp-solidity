@@ -1,6 +1,6 @@
 'use strict';
 require('dotenv').config();
-const _ = require('lodash/fp');
+const { get, getOr, isEmpty } = require('lodash/fp');
 const {
     Contract,
     Wallet,
@@ -18,16 +18,16 @@ function getProxy(wallet, proxyAddress) {
 
 async function getImplementationArgs(contractName, chain, wallet) {
     if (contractName === 'AxelarGasService') {
-        const collector = _.get('AxelarGasService.collector', chain);
+        const collector = get('AxelarGasService.collector', chain);
         if (!isAddress(collector)) throw new Error(`Missing AxelarGasService.collector in the chain info.`);
         return [collector];
     }
 
     if (contractName === 'AxelarDepositService') {
-        const symbol = _.getOr('', 'AxelarDepositService.wrappedSymbol', chain);
-        if (_.isEmpty(symbol)) console.log(`${chain.name} | AxelarDepositService.wrappedSymbol: wrapped token is disabled`);
+        const symbol = getOr('', 'AxelarDepositService.wrappedSymbol', chain);
+        if (isEmpty(symbol)) console.log(`${chain.name} | AxelarDepositService.wrappedSymbol: wrapped token is disabled`);
 
-        const refundIssuer = _.get('AxelarDepositService.refundIssuer', chain);
+        const refundIssuer = get('AxelarDepositService.refundIssuer', chain);
         if (!isAddress(refundIssuer)) throw new Error(`${chain.name} | Missing AxelarDepositService.refundIssuer in the chain info.`);
 
         return [chain.gateway, symbol, refundIssuer];
@@ -70,7 +70,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
         if (deployTo.length > 0 && !deployTo.find((name) => chain.name === name)) continue;
         const rpc = chain.rpc;
         const provider = getDefaultProvider(rpc);
-        const args = getImplementationArgs(contractName, chain);
+        const args = await getImplementationArgs(contractName, chain);
         console.log(`Implementation args for chain ${chain.name}: ${args}`);
         console.log(`Gas override for chain ${chain.name}:`, chain.gasOptions);
 
@@ -96,7 +96,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 implementationJson,
                 args,
                 getUpgradeArgs(contractName, chain),
-                chain.gasOptions,
+                get('gasOptions.gasLimit', chain),
             );
 
             chain[contractName]['implementation'] = await contract.implementation();
@@ -121,9 +121,10 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 implementationJson,
                 proxyJson,
                 args,
+                [],
                 setupArgs,
                 key,
-                chain.gasOptions,
+                get('gasOptions.gasLimit', chain),
             );
 
             chain[contractName]['salt'] = key;
