@@ -43,38 +43,6 @@ const writeJSON = (data, name) => {
     });
 };
 
-const loadNetworks = (env) => {
-    const chains = require(`../info/${env}.json`);
-
-    // Load any keys if they exist
-    const keys = fs.existsSync(`${__dirname}/../info/keys.json`) ? require('../info/keys.json') : {};
-
-    var networks = {
-        hardhat: {
-            chainId: 31337,
-        },
-    };
-
-    var etherscan = {
-        apiKey: {},
-        customChains: [],
-    };
-
-    // Load custom networks
-    for (const chain of chains) {
-        const name = chain.name.toLowerCase();
-        networks[name] = {
-            chainId: chain.chainId,
-            id: chain.id,
-            url: chain.rpc,
-            blockGasLimit: chain.gasOptions?.gasLimit,
-            accounts: keys.accounts || keys[name]?.accounts,
-        };
-    }
-
-    return { networks, etherscan };
-};
-
 module.exports = {
     printLog,
 
@@ -144,8 +112,6 @@ module.exports = {
         const proxy = JSON.parse(execSync(`${prefix} "axelard q evm gateway-address ${chain} --output json"`)).address;
         return proxy;
     },
-
-    loadNetworks,
 
     parseWei(str) {
         if (!str) {
