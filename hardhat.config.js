@@ -1,9 +1,11 @@
 require('@nomicfoundation/hardhat-toolbox');
 
 const fs = require('fs');
-const env = process.env.NETWORK || 'testnet';
-const { loadNetworks } = require('./scripts/utils');
-const { networks, etherscan } = loadNetworks(env);
+const env = process.env.ENV || 'testnet';
+const { importNetworks } = require('@axelar-network/axelar-contract-deployments/evm/utils');
+const chains = require(`@axelar-network/axelar-contract-deployments/info/${env}.json`);
+const keys = fs.existsSync('./info/keys.json') ? require('./info/keys.json') : undefined; // Load keys if they exist
+const { networks, etherscan } = importNetworks(chains, keys);
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -39,6 +41,6 @@ module.exports = {
         timeout: 1000000,
     },
     gasReporter: {
-        enabled: process.env.REPORT_GAS ? true : false,
+        enabled: (process.env.REPORT_GAS !== ''),
     },
 };
