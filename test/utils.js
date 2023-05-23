@@ -11,6 +11,11 @@ const getRandomInt = (max) => {
     return Math.floor(Math.random() * max);
 };
 
+const getRandomString = (length) => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from({ length }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
+}
+
 const getAddresses = (wallets) => wallets.map(({ address }) => address);
 
 const getSignaturesProof = async (data, operators, signers) => {
@@ -62,6 +67,10 @@ module.exports = {
     getRandomInt,
 
     getRandomID: () => id(getRandomInt(1e10).toString()),
+
+    getRandomString,
+
+    isHardhat: (network.name === 'hardhat'),
 
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 
