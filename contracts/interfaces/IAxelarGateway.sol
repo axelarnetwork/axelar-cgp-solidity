@@ -12,6 +12,7 @@ interface IAxelarGateway {
     error InvalidCodeHash();
     error SetupFailed();
     error InvalidAuthModule();
+    error InvalidGovernanceModule();
     error InvalidTokenDeployer();
     error InvalidAmount();
     error InvalidChainId();
@@ -146,6 +147,8 @@ interface IAxelarGateway {
 
     function authModule() external view returns (address);
 
+    function governanceModule() external view returns (address);
+
     function tokenDeployer() external view returns (address);
 
     function tokenMintLimit(string memory symbol) external view returns (uint256);
@@ -161,12 +164,6 @@ interface IAxelarGateway {
     function tokenFrozen(string memory symbol) external view returns (bool);
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
-
-    function adminEpoch() external view returns (uint256);
-
-    function adminThreshold(uint256 epoch) external view returns (uint256);
-
-    function admins(uint256 epoch) external view returns (address[] memory);
 
     /*******************\
     |* Admin Functions *|
