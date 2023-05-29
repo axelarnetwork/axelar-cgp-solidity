@@ -307,7 +307,12 @@ describe('AxelarGateway', () => {
         });
     });
 
-    describe('execute', () => {
+    describe('chain id', () => {
+        // hardhat seems to have an issue to detect a revert here for live networks
+        if (!isHardhat) {
+            return;
+        }
+
         before(async () => {
             await deployGateway();
         });

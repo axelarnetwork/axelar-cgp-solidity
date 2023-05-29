@@ -6,7 +6,7 @@ const {
     utils: { splitSignature },
 } = ethers;
 const { expect } = chai;
-const { getChainId } = require('./utils');
+const { getChainId, isHardhat } = require('./utils');
 
 describe('MintableCappedERC20', () => {
     let owner;
@@ -14,7 +14,7 @@ describe('MintableCappedERC20', () => {
     let token;
 
     beforeEach(async () => {
-        if (network.name === 'hardhat') {
+        if (isHardhat) {
             await ethers.provider.send('hardhat_reset');
         }
 
