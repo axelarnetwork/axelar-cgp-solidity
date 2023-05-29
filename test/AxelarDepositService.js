@@ -21,7 +21,7 @@ describe('AxelarDepositService', () => {
     let wallets;
     let ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6;
     let adminWallets;
-    const threshold = 3;
+    const threshold = 2;
 
     let constAddressDeployerFactory;
     let authFactory;
@@ -63,10 +63,8 @@ describe('AxelarDepositService', () => {
         );
 
     before(async () => {
-        wallets = await ethers.getSigners();
-        [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
-            wallets;
-        adminWallets = [adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6];
+        [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2] = await ethers.getSigners();
+        adminWallets = [adminWallet1, adminWallet2];
 
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', ownerWallet);
         tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', ownerWallet);
@@ -75,25 +73,26 @@ describe('AxelarDepositService', () => {
         tokenFactory = await ethers.getContractFactory('TestWeth', ownerWallet);
         gatewayImplementationFactory = await ethers.getContractFactory('AxelarGateway', ownerWallet);
         receiverImplementationFactory = await ethers.getContractFactory('ReceiverImplementation', ownerWallet);
+
+        constAddressDeployer = await constAddressDeployerFactory.deploy().then((d) => d.deployed());
+        tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
     });
 
     beforeEach(async () => {
         const params = arrayify(
             defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
         );
-        constAddressDeployer = await constAddressDeployerFactory.deploy().then((d) => d.deployed());
         auth = await authFactory.deploy(getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])).then((d) => d.deployed());
-        tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
         gatewayImplementation = await gatewayImplementationFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
         gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
-        await auth.transferOwnership(gatewayProxy.address);
+        await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait());
         gateway = await gatewayImplementationFactory.attach(gatewayProxy.address);
 
         token = await tokenFactory.deploy(tokenName, tokenSymbol, decimals, capacity).then((d) => d.deployed());
         wrongToken = await tokenFactory.deploy(wrongTokenName, wrongTokenSymbol, decimals, capacity).then((d) => d.deployed());
 
-        await token.deposit({ value: 1e9 });
-        await wrongToken.deposit({ value: 1e9 });
+        await token.deposit({ value: 1e9 }).then((tx) => tx.wait());
+        await wrongToken.deposit({ value: 1e9 }).then((tx) => tx.wait());
 
         await gateway.execute(
             await getSignedWeightedExecuteInput(
@@ -118,7 +117,7 @@ describe('AxelarDepositService', () => {
                 1,
                 [operatorWallet],
             ),
-        );
+        ).then((tx) => tx.wait());
 
         depositService = await deployUpgradable(constAddressDeployer.address, ownerWallet, DepositService, DepositServiceProxy, [
             gateway.address,
@@ -169,7 +168,7 @@ describe('AxelarDepositService', () => {
 
             expect(depositAddress).to.be.equal(expectedDepositAddress);
 
-            await token.transfer(depositAddress, amount);
+            await token.transfer(depositAddress, amount).then((tx) => tx.wait());
 
             const tx = await depositService.sendTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol);
             await expect(tx)
@@ -193,8 +192,8 @@ describe('AxelarDepositService', () => {
                 tokenSymbol,
             );
 
-            await token.transfer(depositAddress, amount);
-            await wrongToken.transfer(depositAddress, amount * 2);
+            await token.transfer(depositAddress, amount).then((tx) => tx.wait());
+            await wrongToken.transfer(depositAddress, amount * 2).then((tx) => tx.wait());
 
             await expect(
                 depositService
@@ -269,7 +268,7 @@ describe('AxelarDepositService', () => {
                 to: depositAddress,
                 value: amount,
             });
-            await wrongToken.transfer(depositAddress, amount * 2);
+            await wrongToken.transfer(depositAddress, amount * 2).then((tx) => tx.wait());
 
             await expect(
                 depositService.refundNativeDeposit(salt, refundAddress, destinationChain, destinationAddress, [wrongToken.address]),
@@ -294,7 +293,7 @@ describe('AxelarDepositService', () => {
 
             expect(depositAddress).to.be.equal(expectedDepositAddress);
 
-            await token.transfer(depositAddress, amount);
+            await token.transfer(depositAddress, amount).then((tx) => tx.wait());
 
             const tx = await depositService.nativeUnwrap(salt, refundAddress, recipient);
 
@@ -311,8 +310,8 @@ describe('AxelarDepositService', () => {
 
             const depositAddress = await depositService.addressForNativeUnwrap(salt, refundAddress, recipient);
 
-            await token.transfer(depositAddress, amount);
-            await wrongToken.transfer(depositAddress, amount * 2);
+            await token.transfer(depositAddress, amount).then((tx) => tx.wait());
+            await wrongToken.transfer(depositAddress, amount * 2).then((tx) => tx.wait());
 
             await expect(
                 depositService.connect(userWallet).refundNativeUnwrap(salt, refundAddress, recipient, [token.address]),
@@ -342,8 +341,8 @@ describe('AxelarDepositService', () => {
 
             const depositAddress = await depositService.addressForNativeUnwrap(salt, refundAddress, recipient);
 
-            await token.transfer(depositAddress, amount);
-            await wrongToken.transfer(depositAddress, amount * 2);
+            await token.transfer(depositAddress, amount).then((tx) => tx.wait());
+            await wrongToken.transfer(depositAddress, amount * 2).then((tx) => tx.wait());
 
             await expect(
                 depositService.connect(ownerWallet).refundNativeUnwrap(salt, refundAddress, recipient, [token.address]),

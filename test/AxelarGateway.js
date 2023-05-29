@@ -28,8 +28,6 @@ const {
 
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
-const conditionalBeforeEach = before; //isHardhat ? beforeEach : before;
-
 describe('AxelarGateway', () => {
     const threshold = isHardhat ? 4 : 2;
 
@@ -601,7 +599,7 @@ describe('AxelarGateway', () => {
             await deployGateway();
         });
 
-        conditionalBeforeEach(async () => {
+        before(async () => {
             externalToken = await mintableCappedERC20Factory.deploy(externalName, externalSymbol, decimals, cap).then((d) => d.deployed());
             await externalToken.mint(owner.address, amount).then((tx) => tx.wait());
 
