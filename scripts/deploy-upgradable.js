@@ -60,9 +60,8 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
         const rpc = chain.rpc;
         const provider = getDefaultProvider(rpc);
         console.log(
-            `Deployer has ${(await provider.getBalance(wallet.address)) / 1e18} ${
-                chain.tokenSymbol
-            } and nonce ${await provider.getTransactionCount(wallet.address)} on ${chain.name}.`,
+            `Deployer has ${(await provider.getBalance(wallet.address)) / 1e18} ${chain.tokenSymbol}
+            and nonce ${await provider.getTransactionCount(wallet.address)} on ${chain.name}.`,
         );
     }
 
