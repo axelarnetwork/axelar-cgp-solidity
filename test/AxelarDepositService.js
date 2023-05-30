@@ -4,26 +4,24 @@ const chai = require('chai');
 const { expect } = chai;
 const { ethers } = require('hardhat');
 const {
+    Contract,
     utils: { defaultAbiCoder, arrayify, solidityPack, formatBytes32String, keccak256, getCreate2Address },
 } = ethers;
 const { get } = require('lodash/fp');
-const { getChainId, getEVMVersion } = require('./utils');
+const { getChainId, getEVMVersion, getGasOptions } = require('./utils');
 
-const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
 const DepositService = require('../artifacts/contracts/deposit-service/AxelarDepositService.sol/AxelarDepositService.json');
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
 
 const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('./utils');
-const { deployUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 describe('AxelarDepositService', () => {
     let wallets;
-    let ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6;
+    let ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2;
     let adminWallets;
     const threshold = 2;
 
-    let constAddressDeployerFactory;
     let authFactory;
     let tokenDeployerFactory;
     let gatewayImplementationFactory;
@@ -31,7 +29,6 @@ describe('AxelarDepositService', () => {
     let tokenFactory;
     let receiverImplementationFactory;
 
-    let constAddressDeployer;
     let auth;
     let tokenDeployer;
     let gatewayImplementation;
@@ -63,72 +60,79 @@ describe('AxelarDepositService', () => {
         );
 
     before(async () => {
-        [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2] = await ethers.getSigners();
+        [adminWallet1, adminWallet2] = await ethers.getSigners();
         adminWallets = [adminWallet1, adminWallet2];
+        operatorWallet = adminWallet2;
+        ownerWallet = adminWallet1;
+        userWallet = adminWallet2;
 
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', ownerWallet);
         tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', ownerWallet);
-        constAddressDeployerFactory = await ethers.getContractFactory(ConstAddressDeployer.abi, ConstAddressDeployer.bytecode, ownerWallet);
         gatewayProxyFactory = await ethers.getContractFactory('AxelarGatewayProxy', ownerWallet);
         tokenFactory = await ethers.getContractFactory('TestWeth', ownerWallet);
         gatewayImplementationFactory = await ethers.getContractFactory('AxelarGateway', ownerWallet);
         receiverImplementationFactory = await ethers.getContractFactory('ReceiverImplementation', ownerWallet);
 
-        constAddressDeployer = await constAddressDeployerFactory.deploy().then((d) => d.deployed());
         tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
     });
 
-    beforeEach(async () => {
-        const params = arrayify(
-            defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
-        );
-        auth = await authFactory.deploy(getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])).then((d) => d.deployed());
-        gatewayImplementation = await gatewayImplementationFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-        gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
-        await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait());
-        gateway = await gatewayImplementationFactory.attach(gatewayProxy.address);
-
-        token = await tokenFactory.deploy(tokenName, tokenSymbol, decimals, capacity).then((d) => d.deployed());
-        wrongToken = await tokenFactory.deploy(wrongTokenName, wrongTokenSymbol, decimals, capacity).then((d) => d.deployed());
-
-        await token.deposit({ value: 1e9 }).then((tx) => tx.wait());
-        await wrongToken.deposit({ value: 1e9 }).then((tx) => tx.wait());
-
-        await gateway.execute(
-            await getSignedWeightedExecuteInput(
-                arrayify(
-                    defaultAbiCoder.encode(
-                        ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                        [
-                            await getChainId(),
-                            [getRandomID()],
-                            ['deployToken'],
-                            [
-                                defaultAbiCoder.encode(
-                                    ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
-                                    [tokenName, tokenSymbol, decimals, capacity, token.address, 0],
-                                ),
-                            ],
-                        ],
-                    ),
-                ),
-                [operatorWallet],
-                [1],
-                1,
-                [operatorWallet],
-            ),
-        ).then((tx) => tx.wait());
-
-        depositService = await deployUpgradable(constAddressDeployer.address, ownerWallet, DepositService, DepositServiceProxy, [
-            gateway.address,
-            tokenSymbol,
-            ownerWallet.address,
-        ]);
-
-        receiverImplementation = await receiverImplementationFactory.attach(await depositService.receiverImplementation());
-    });
-
     describe('deposit service', () => {
+        beforeEach(async () => {
+            const params = arrayify(
+                defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
+            );
+
+            auth = await authFactory.deploy(getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])).then((d) => d.deployed());
+            gatewayImplementation = await gatewayImplementationFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
+            await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait());
+            gateway = await gatewayImplementationFactory.attach(gatewayProxy.address);
+
+            token = await tokenFactory.deploy(tokenName, tokenSymbol, decimals, capacity).then((d) => d.deployed());
+            wrongToken = await tokenFactory.deploy(wrongTokenName, wrongTokenSymbol, decimals, capacity).then((d) => d.deployed());
+
+            await token.deposit({ value: 1e9 }).then((tx) => tx.wait());
+            await wrongToken.deposit({ value: 1e9 }).then((tx) => tx.wait());
+
+            await gateway.execute(
+                await getSignedWeightedExecuteInput(
+                    arrayify(
+                        defaultAbiCoder.encode(
+                            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                            [
+                                await getChainId(),
+                                [getRandomID()],
+                                ['deployToken'],
+                                [
+                                    defaultAbiCoder.encode(
+                                        ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
+                                        [tokenName, tokenSymbol, decimals, capacity, token.address, 0],
+                                    ),
+                                ],
+                            ],
+                        ),
+                    ),
+                    [operatorWallet],
+                    [1],
+                    1,
+                    [operatorWallet],
+                ),
+            ).then((tx) => tx.wait());
+
+            const depositServiceFactory = await ethers.getContractFactory(DepositService.abi, DepositService.bytecode, ownerWallet);
+            const implementation = await depositServiceFactory.deploy(gateway.address, tokenSymbol, ownerWallet.address).then((d) => d.deployed());
+
+            const depositServiceProxyFactory = await ethers.getContractFactory(DepositServiceProxy.abi, DepositServiceProxy.bytecode, ownerWallet);
+            depositService = await depositServiceProxyFactory.deploy();
+            await depositService.deployed();
+
+            await depositService.init(implementation.address, ownerWallet.address, '0x').then((tx) => tx.wait());
+
+            depositService = new Contract(depositService.address, DepositService.abi, ownerWallet);
+
+            receiverImplementation = await receiverImplementationFactory.attach(await depositService.receiverImplementation());
+        });
+
         it('should send native token', async () => {
             const destinationAddress = userWallet.address.toString();
             const amount = 1e6;
@@ -372,6 +376,9 @@ describe('AxelarDepositService', () => {
             ).to.changeEtherBalance(userWallet, amount);
         });
 
+    });
+
+    describe('deposit service bytecode check', () => {
         it('should have the same receiver bytecode preserved for each EVM', async () => {
             const expected = {
                 istanbul: '0xc0fd88839756e97f51ab0395ce8e6164a5f924bd73a3342204340a14ad306fe1',
