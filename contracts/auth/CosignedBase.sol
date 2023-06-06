@@ -45,7 +45,7 @@ contract CosignedBase is ICosignedBase {
             // Save updated vote count.
             voting.voteCount = voteCount;
             return;
-        } else {
+        } else if (voteCount > 1) {
             // Clear vote count and voted booleans.
             voting.voteCount = 0;
 
