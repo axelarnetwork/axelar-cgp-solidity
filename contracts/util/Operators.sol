@@ -15,32 +15,34 @@ contract Operators is Ownable, IOperators {
         _;
     }
 
-    function isOperator(address _operator) external view returns (bool) {
-        return operators[_operator];
+    function isOperator(address account) external view returns (bool) {
+        return operators[account];
     }
 
-    function addOperator(address _newOperator) external onlyOwner {
-        if (_newOperator == address(0)) revert InvalidOperator();
-        if (operators[_newOperator]) revert OperatorAlreadyAdded();
+    function addOperator(address operator) external onlyOwner {
+        if (operator == address(0)) revert InvalidOperator();
+        if (operators[operator]) revert OperatorAlreadyAdded();
 
-        operators[_newOperator] = true;
+        operators[operator] = true;
 
-        emit OperatorAdded(_newOperator);
+        emit OperatorAdded(operator);
     }
 
-    function removeOperator(address _oldOperator) external onlyOwner {
-        if (_oldOperator == address(0)) revert InvalidOperator();
-        if (!operators[_oldOperator]) revert OperatorAlreadyRemoved();
+    function removeOperator(address operator) external onlyOwner {
+        if (operator == address(0)) revert InvalidOperator();
+        if (!operators[operator]) revert OperatorAlreadyRemoved();
 
-        operators[_oldOperator] = false;
+        operators[operator] = false;
 
-        emit OperatorRemoved(_oldOperator);
+        emit OperatorRemoved(operator);
     }
 
-    function execute(address target, bytes calldata callData) external onlyOperator {
-        (bool success, ) = target.call(callData);
+    function execute(address target, bytes calldata callData) external onlyOperator returns (bytes memory) {
+        (bool success, bytes memory data) = target.call(callData);
         if (!success) {
             revert ExecutionFailed();
         }
+
+        return data;
     }
 }

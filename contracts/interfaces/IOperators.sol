@@ -9,14 +9,14 @@ interface IOperators {
     error OperatorAlreadyRemoved();
     error ExecutionFailed();
 
-    event OperatorAdded(address indexed newOperator);
-    event OperatorRemoved(address indexed oldOperator);
+    event OperatorAdded(address indexed operator);
+    event OperatorRemoved(address indexed operator);
 
-    function isOperator(address operator) external view returns (bool);
+    function isOperator(address account) external view returns (bool);
 
-    function addOperator(address newOperator) external;
+    function addOperator(address operator) external;
 
-    function removeOperator(address oldOperator) external;
+    function removeOperator(address operator) external;
 
-    function execute(address target, bytes calldata callData) external;
+    function execute(address target, bytes calldata callData) external returns (bytes memory);
 }
