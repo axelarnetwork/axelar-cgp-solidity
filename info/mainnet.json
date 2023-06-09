@@ -379,5 +379,38 @@
     "gasOptions": {
       "gasLimit": 500000000
     }
+  },
+  {
+    "name": "Optimism",
+    "id": "optimism",
+    "chainId": 10,
+    "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+    "rpc": "https://mainnet.optimism.io",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Eth",
+    "tokenSymbol": "ETH",
+    "gasReceiver": "0x2d5d7d31F671F86C782533cc367F14109a082712",
+    "AxelarGateway": {
+      "address": "0xe432150cce91c13a887f7D836923d5597adD8E31"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90",
+      "address": "0x2d5d7d31F671F86C782533cc367F14109a082712"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "wrappedSymbol": "",
+      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955"
+    },
+    "explorer": {
+      "url": "https://optimistic.etherscan.io",
+      "api": "https://api-optimistic.etherscan.io/api"
+    },
+    "gasOptions": {
+      "gasLimit": 5000000
+    },
+    "confirmations": 3
   }
 ]

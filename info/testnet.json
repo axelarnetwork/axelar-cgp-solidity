@@ -96,6 +96,9 @@
     "explorer": {
       "url": "https://testnet.ftmscan.com",
       "api": "https://api-testnet.ftmscan.com/api"
+    },
+    "gasOptions": {
+      "gasLimit": 5000000
     }
   },
   {
@@ -370,8 +373,9 @@
       "api": "https://api-goerli-optimism.etherscan.io/api"
     },
     "gasOptions": {
-      "gasLimit": 2500000
-    }
+      "gasLimit": 5000000
+    },
+    "confirmations": 3
   },
   {
     "name": "Base",
@@ -446,6 +450,33 @@
     },
     "gasOptions": {
       "gasLimit": 500000000
+    }
+  },
+  {
+    "name": "zkEVM",
+    "id": "polygon-zkevm",
+    "chainId": 1442,
+    "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+    "rpc": "https://rpc.public.zkevm-test.net",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Eth",
+    "tokenSymbol": "ETH",
+    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "collector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "wrappedSymbol": "",
+      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF"
+    },
+    "explorer": {
+      "url": "https://testnet-zkevm.polygonscan.com",
+      "api": "https://api-testnet-zkevm.polygonscan.com/api"
+    },
+    "gasOptions": {
+      "gasLimit": 5000000
     }
   }
 ]

@@ -28,7 +28,7 @@ const {
 
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
-describe('AxelarGateway', () => {
+describe.only('AxelarGateway', () => {
     const threshold = isHardhat ? 4 : 2;
 
     let wallets;
@@ -54,6 +54,7 @@ describe('AxelarGateway', () => {
         owner = wallets[0];
         operators = sortBy(wallets.slice(0, threshold), (wallet) => wallet.address.toLowerCase());
 
+
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', owner);
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
         tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', owner);
@@ -63,7 +64,8 @@ describe('AxelarGateway', () => {
         mintableCappedERC20Factory = await ethers.getContractFactory('MintableCappedERC20', owner);
 
         // reuse token deployer for all tests
-        tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
+        tokenDeployer = await tokenDeployerFactory.deploy();
+        await tokenDeployer.deployTransaction.wait(network.config.confirmations);
     });
 
     const deployGateway = async () => {
@@ -73,11 +75,14 @@ describe('AxelarGateway', () => {
         const params = getMultisigProxyDeployParams(adminAddresses, threshold, [], threshold);
 
         auth = await authFactory
-            .deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]))
-            .then((d) => d.deployed());
-        const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-        const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
-        await auth.transferOwnership(proxy.address).then((tx) => tx.wait());
+            .deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
+        await auth.deployTransaction.wait(network.config.confirmations);
+        const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address);
+        await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
+
+        const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params); //.then((d) => d.deployTransaction.wait(1));
+        await proxy.deployTransaction.wait(network.config.confirmations);
+        await auth.transferOwnership(proxy.address).then((tx) => tx.wait(network.config.confirmations));
 
         gateway = gatewayFactory.attach(proxy.address);
     };
@@ -93,6 +98,10 @@ describe('AxelarGateway', () => {
 
         it('should get the correct auth module', async () => {
             expect(await gateway.authModule()).to.eq(auth.address);
+        });
+
+        it('auth module should have the correct owner', async () => {
+            expect(await auth.owner()).to.eq(gateway.address);
         });
 
         it('should get the correct token deployer', async () => {
