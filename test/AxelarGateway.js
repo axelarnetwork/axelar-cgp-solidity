@@ -82,19 +82,13 @@ describe('AxelarGateway', () => {
         gateway = gatewayFactory.attach(proxy.address);
     };
 
-    describe('admins', () => {
+    describe('deployment params', () => {
         before(async () => {
             await deployGateway();
         });
 
         it('should get the correct admins', async () => {
             expect(await gateway.admins(1)).to.deep.eq(getAddresses(admins));
-        });
-    });
-
-    describe('external modules', () => {
-        before(async () => {
-            await deployGateway();
         });
 
         it('should get the correct auth module', async () => {
@@ -238,13 +232,13 @@ describe('AxelarGateway', () => {
                     .slice(0, threshold - 1)
                     .map((admin) =>
                         expect(
-                            gateway.connect(admin).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
+                            gateway.connect(admin).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
                         ).to.not.emit(gateway, 'Upgraded'),
                     ),
             );
 
             await expect(
-                gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
+                gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
             )
                 .to.emit(gateway, 'Upgraded')
                 .withArgs(newGatewayImplementation.address);

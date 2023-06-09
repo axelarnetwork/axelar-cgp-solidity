@@ -17,7 +17,6 @@ const DepositServiceProxy = require('../artifacts/contracts/deposit-service/Axel
 const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('./utils');
 
 describe('AxelarDepositService', () => {
-    let wallets;
     let ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2;
     let adminWallets;
     const threshold = 2;
@@ -117,6 +116,7 @@ describe('AxelarDepositService', () => {
                     1,
                     [operatorWallet],
                 ),
+                getGasOptions(),
             ).then((tx) => tx.wait());
 
             const depositServiceFactory = await ethers.getContractFactory(DepositService.abi, DepositService.bytecode, ownerWallet);
