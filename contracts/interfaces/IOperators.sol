@@ -6,7 +6,7 @@ interface IOperators {
     error NotOperator();
     error InvalidOperator();
     error OperatorAlreadyAdded();
-    error OperatorAlreadyRemoved();
+    error NotAnOperator();
     error ExecutionFailed();
 
     event OperatorAdded(address indexed operator);

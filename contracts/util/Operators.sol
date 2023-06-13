@@ -30,7 +30,7 @@ contract Operators is Ownable, IOperators {
 
     function removeOperator(address operator) external onlyOwner {
         if (operator == address(0)) revert InvalidOperator();
-        if (!operators[operator]) revert OperatorAlreadyRemoved();
+        if (!operators[operator]) revert NotAnOperator();
 
         operators[operator] = false;
 
