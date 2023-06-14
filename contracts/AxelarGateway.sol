@@ -30,6 +30,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
 
     /// @dev Storage slot with the address of the current implementation. `keccak256('eip1967.proxy.implementation') - 1`.
     bytes32 internal constant KEY_IMPLEMENTATION = bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
+    bytes32 internal constant KEY_PAUSED = keccak256('gateway-paused');
 
     // AUDIT: slot names should be prefixed with some standard string
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
@@ -52,19 +53,24 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     // solhint-disable-next-line var-name-mixedcase
     address internal immutable GOVERNANCE_MODULE;
     // solhint-disable-next-line var-name-mixedcase
+    address internal immutable MINT_LIMIT_MODULE;
+    // solhint-disable-next-line var-name-mixedcase
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
     constructor(
         address authModule_,
         address governanceModule_,
+        address mintLimitModule_,
         address tokenDeployerImplementation_
     ) {
         if (authModule_.code.length == 0) revert InvalidAuthModule();
         if (governanceModule_.code.length == 0) revert InvalidGovernanceModule();
+        if (mintLimitModule_.code.length == 0) revert InvalidGovernanceModule();
         if (tokenDeployerImplementation_.code.length == 0) revert InvalidTokenDeployer();
 
         AUTH_MODULE = authModule_;
         GOVERNANCE_MODULE = governanceModule_;
+        MINT_LIMIT_MODULE = mintLimitModule_;
         TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation_;
     }
 
@@ -75,7 +81,19 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     }
 
     modifier onlyGovernance() {
-        if (msg.sender != GOVERNANCE_MODULE) revert NotSelf();
+        if (msg.sender != GOVERNANCE_MODULE) revert NotGovernance();
+
+        _;
+    }
+
+    modifier onlyMintLimiter() {
+        if (msg.sender != GOVERNANCE_MODULE && msg.sender != MINT_LIMIT_MODULE) revert NotMintLimiter();
+
+        _;
+    }
+
+    modifier whenNotPaused() {
+        if (_getPaused()) revert GatewayIsPaused();
 
         _;
     }
@@ -89,7 +107,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         string calldata destinationAddress,
         string calldata symbol,
         uint256 amount
-    ) external {
+    ) external whenNotPaused {
         _burnTokenFrom(msg.sender, symbol, amount);
         emit TokenSent(msg.sender, destinationChain, destinationAddress, symbol, amount);
     }
@@ -98,7 +116,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         string calldata destinationChain,
         string calldata destinationContractAddress,
         bytes calldata payload
-    ) external {
+    ) external whenNotPaused {
         emit ContractCall(msg.sender, destinationChain, destinationContractAddress, keccak256(payload), payload);
     }
 
@@ -108,7 +126,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         bytes calldata payload,
         string calldata symbol,
         uint256 amount
-    ) external {
+    ) external whenNotPaused {
         _burnTokenFrom(msg.sender, symbol, amount);
         emit ContractCallWithToken(msg.sender, destinationChain, destinationContractAddress, keccak256(payload), payload, symbol, amount);
     }
@@ -143,7 +161,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes32 payloadHash
-    ) external override returns (bool valid) {
+    ) external override whenNotPaused returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash);
         valid = getBool(key);
         if (valid) _setBool(key, false);
@@ -156,7 +174,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         bytes32 payloadHash,
         string calldata symbol,
         uint256 amount
-    ) external override returns (bool valid) {
+    ) external override whenNotPaused returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedWithMintKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash, symbol, amount);
         valid = getBool(key);
         if (valid) {
@@ -176,6 +194,10 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
 
     function governanceModule() public view returns (address) {
         return GOVERNANCE_MODULE;
+    }
+
+    function mintLimitModule() public view returns (address) {
+        return MINT_LIMIT_MODULE;
     }
 
     function tokenDeployer() public view returns (address) {
@@ -219,7 +241,11 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     |* Governance Functions *|
     \************************/
 
-    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyGovernance {
+    function pauseGateway(bool isPaused) external override onlyGovernance {
+        _setPaused(isPaused);
+    }
+
+    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyMintLimiter {
         uint256 length = symbols.length;
         if (length != limits.length) revert InvalidSetMintLimitsParams();
 
@@ -272,7 +298,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         }
     }
 
-    function execute(bytes calldata input) external override {
+    function execute(bytes calldata input) external override whenNotPaused {
         (bytes memory data, bytes memory proof) = abi.decode(input, (bytes, bytes));
 
         bytes32 messageHash = ECDSA.toEthSignedMessageHash(keccak256(data));
@@ -565,6 +591,10 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     |* Internal Getters *|
     \********************/
 
+    function _getPaused() internal view returns (bool) {
+        return getBool(KEY_PAUSED);
+    }
+
     function _getCreate2Address(bytes32 salt, bytes32 codeHash) internal view returns (address) {
         return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, codeHash)))));
     }
@@ -576,6 +606,12 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     /********************\
     |* Internal Setters *|
     \********************/
+
+    function _setPaused(bool paused) internal {
+        _setBool(KEY_PAUSED, paused);
+
+        emit GatewayPaused(paused);
+    }
 
     function _setTokenMintLimit(string memory symbol, uint256 limit) internal {
         _setUint(_getTokenMintLimitKey(symbol), limit);

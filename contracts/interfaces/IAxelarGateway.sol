@@ -8,6 +8,8 @@ interface IAxelarGateway {
     \**********/
 
     error NotSelf();
+    error NotGovernance();
+    error NotMintLimiter();
     error NotProxy();
     error InvalidCodeHash();
     error SetupFailed();
@@ -25,6 +27,7 @@ interface IAxelarGateway {
     error MintFailed(string symbol);
     error InvalidSetMintLimitsParams();
     error ExceedMintLimit(string symbol);
+    error GatewayIsPaused();
 
     /**********\
     |* Events *|
@@ -79,6 +82,8 @@ interface IAxelarGateway {
     event TokenMintLimitUpdated(string symbol, uint256 limit);
 
     event OperatorshipTransferred(bytes newOperatorsData);
+
+    event GatewayPaused(bool isPaused);
 
     event Upgraded(address indexed implementation);
 
@@ -165,9 +170,11 @@ interface IAxelarGateway {
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
 
-    /*******************\
-    |* Admin Functions *|
-    \*******************/
+    /************************\
+    |* Governance Functions *|
+    \************************/
+
+    function pauseGateway(bool isPaused) external;
 
     function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external;
 
