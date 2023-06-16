@@ -1,4 +1,4 @@
-const { sortBy, get } = require('lodash');
+const { sortBy } = require('lodash');
 const chai = require('chai');
 const { ethers, network } = require('hardhat');
 const {
@@ -12,7 +12,6 @@ const {
     getSignedWeightedExecuteInput,
     getRandomInt,
     getRandomID,
-    getMultisigProxyDeployParams,
     getDeployCommand,
     getMintCommand,
     getBurnCommand,
@@ -28,7 +27,7 @@ const {
 
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
-describe.only('AxelarGateway', () => {
+describe('AxelarGateway', () => {
     const threshold = isHardhat ? 4 : 2;
 
     let wallets;
@@ -72,16 +71,18 @@ describe.only('AxelarGateway', () => {
         const adminAddresses = getAddresses(admins);
         const operatorAddresses = getAddresses(operators);
 
-        const params = getMultisigProxyDeployParams(adminAddresses, threshold, [], threshold);
+        const params = getWeightedProxyDeployParams(adminAddresses, threshold, [], [], threshold);
 
         auth = await authFactory
             .deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
         await auth.deployTransaction.wait(network.config.confirmations);
+
         const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address);
         await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
 
-        const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params); //.then((d) => d.deployTransaction.wait(1));
+        const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
         await proxy.deployTransaction.wait(network.config.confirmations);
+
         await auth.transferOwnership(proxy.address).then((tx) => tx.wait(network.config.confirmations));
 
         gateway = gatewayFactory.attach(proxy.address);
@@ -260,7 +261,7 @@ describe.only('AxelarGateway', () => {
             const newAdminAddresses = getAddresses(admins.slice(0, 2));
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getMultisigProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, 2);
+            const params = getWeightedProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, Array(2).fill(1), 2);
 
             await Promise.all(
                 admins
@@ -281,7 +282,7 @@ describe.only('AxelarGateway', () => {
             const newAdminAddresses = getAddresses(admins.slice(0, 2));
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getMultisigProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, 2);
+            const params = getWeightedProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, Array(2).fill(1), 2);
 
             await expect(gateway.connect(admins[0]).setup(params)).not.to.emit(gateway, 'OperatorshipTransferred');
 
@@ -298,7 +299,7 @@ describe.only('AxelarGateway', () => {
             const newAdminAddresses = getAddresses(admins.slice(0, 2));
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getMultisigProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, 2);
+            const params = getWeightedProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, Array(2).fill(1), 2);
 
             const implementation = gatewayFactory.attach(await gateway.implementation());
 

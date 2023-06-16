@@ -1,7 +1,7 @@
 'use strict';
 
 const chai = require('chai');
-const { ethers, network } = require('hardhat');
+const { ethers } = require('hardhat');
 const {
     utils: { splitSignature },
 } = ethers;
