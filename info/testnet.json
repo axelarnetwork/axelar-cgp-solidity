@@ -453,6 +453,46 @@
     }
   },
   {
+    "name": "Linea",
+    "id": "linea",
+    "chainId": 59140,
+    "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+    "rpc": "https://rpc.goerli.linea.build",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Eth",
+    "tokenSymbol": "ETH",
+    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+    "AxelarGateway": {
+      "address": "0xe432150cce91c13a887f7D836923d5597adD8E31",
+      "implementation": "0x05823c334150a48ACD5D325fBA16147c21bA3653",
+      "authModule": "0x1a920B29eBD437074225cAeE44f78FC700B27a5d",
+      "tokenDeployer": "0x8A156bCA562FB75385c4d41ea6903E270A34B727",
+      "deployer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "collector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "deployer": "0x5b593E7b1725dc6FcbbFe80b2415B19153F94A85",
+      "address": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+      "implementation": "0xCD6b34FaF1FD1056C728A27426AB6807f84BAa1b"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "wrappedSymbol": "",
+      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79"
+    },
+    "explorer": {
+      "url": "https://explorer.goerli.linea.build",
+      "api": "https://explorer.goerli.linea.build/api"
+    },
+    "gasOptions": {
+      "gasLimit": 5000000
+    }
+  },
+  {
     "name": "zkEVM",
     "id": "polygon-zkevm",
     "chainId": 1442,
