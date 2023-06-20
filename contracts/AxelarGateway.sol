@@ -11,9 +11,9 @@ import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
 import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
-import { AdminMultisigBase } from './AdminMultisigBase.sol';
+import { EternalStorage } from './EternalStorage.sol';
 
-contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
+contract AxelarGateway is IAxelarGateway, EternalStorage {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
@@ -50,18 +50,32 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     // solhint-disable-next-line var-name-mixedcase
     address internal immutable AUTH_MODULE;
     // solhint-disable-next-line var-name-mixedcase
+    address internal immutable GOVERNANCE_MODULE;
+    // solhint-disable-next-line var-name-mixedcase
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
-    constructor(address authModule_, address tokenDeployerImplementation_) {
+    constructor(
+        address authModule_,
+        address governanceModule_,
+        address tokenDeployerImplementation_
+    ) {
         if (authModule_.code.length == 0) revert InvalidAuthModule();
+        if (governanceModule_.code.length == 0) revert InvalidGovernanceModule();
         if (tokenDeployerImplementation_.code.length == 0) revert InvalidTokenDeployer();
 
         AUTH_MODULE = authModule_;
+        GOVERNANCE_MODULE = governanceModule_;
         TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation_;
     }
 
     modifier onlySelf() {
         if (msg.sender != address(this)) revert NotSelf();
+
+        _;
+    }
+
+    modifier onlyGovernance() {
+        if (msg.sender != GOVERNANCE_MODULE) revert NotGovernance();
 
         _;
     }
@@ -160,6 +174,10 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return AUTH_MODULE;
     }
 
+    function governanceModule() public view returns (address) {
+        return GOVERNANCE_MODULE;
+    }
+
     function tokenDeployer() public view returns (address) {
         return TOKEN_DEPLOYER_IMPLEMENTATION;
     }
@@ -197,34 +215,15 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getBool(_getIsCommandExecutedKey(commandId));
     }
 
-    /// @dev Returns the current `adminEpoch`.
-    function adminEpoch() external view override returns (uint256) {
-        return _adminEpoch();
-    }
+    /************************\
+    |* Governance Functions *|
+    \************************/
 
-    /// @dev Returns the admin threshold for a given `adminEpoch`.
-    function adminThreshold(uint256 epoch) external view override returns (uint256) {
-        return _getAdminThreshold(epoch);
-    }
+    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyGovernance {
+        uint256 length = symbols.length;
+        if (length != limits.length) revert InvalidSetMintLimitsParams();
 
-    /// @dev Returns the array of admins within a given `adminEpoch`.
-    function admins(uint256 epoch) external view override returns (address[] memory results) {
-        uint256 adminCount = _getAdminCount(epoch);
-        results = new address[](adminCount);
-
-        for (uint256 i; i < adminCount; ++i) {
-            results[i] = _getAdmin(epoch, i);
-        }
-    }
-
-    /*******************\
-    |* Admin Functions *|
-    \*******************/
-
-    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyAdmin {
-        if (symbols.length != limits.length) revert InvalidSetMintLimitsParams();
-
-        for (uint256 i = 0; i < symbols.length; i++) {
+        for (uint256 i; i < length; ++i) {
             string memory symbol = symbols[i];
             uint256 limit = limits[i];
 
@@ -238,7 +237,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address newImplementation,
         bytes32 newImplementationCodeHash,
         bytes calldata setupParams
-    ) external override onlyAdmin {
+    ) external override onlyGovernance {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
         emit Upgraded(newImplementation);
@@ -264,15 +263,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         // Prevent setup from being called on a non-proxy (the implementation).
         if (implementation() == address(0)) revert NotProxy();
 
-        (address[] memory adminAddresses, uint256 newAdminThreshold, bytes memory newOperatorsData) = abi.decode(
-            params,
-            (address[], uint256, bytes)
-        );
-
-        // NOTE: Admin epoch is incremented to easily invalidate current admin-related state.
-        uint256 newAdminEpoch = _adminEpoch() + uint256(1);
-        _setAdminEpoch(newAdminEpoch);
-        _setAdmins(newAdminEpoch, adminAddresses, newAdminThreshold);
+        bytes memory newOperatorsData = abi.decode(params, (bytes));
 
         if (newOperatorsData.length != 0) {
             IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
