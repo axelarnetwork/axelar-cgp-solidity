@@ -9,11 +9,13 @@ interface IAxelarGateway {
 
     error NotSelf();
     error NotGovernance();
+    error NotMintLimiter();
     error NotProxy();
     error InvalidCodeHash();
     error SetupFailed();
     error InvalidAuthModule();
     error InvalidGovernanceModule();
+    error InvalidMintLimiterModule();
     error InvalidTokenDeployer();
     error InvalidAmount();
     error InvalidChainId();
@@ -149,6 +151,8 @@ interface IAxelarGateway {
     function authModule() external view returns (address);
 
     function governanceModule() external view returns (address);
+
+    function mintLimiterModule() external view returns (address);
 
     function tokenDeployer() external view returns (address);
 

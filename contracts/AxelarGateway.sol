@@ -52,19 +52,24 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     // solhint-disable-next-line var-name-mixedcase
     address internal immutable GOVERNANCE_MODULE;
     // solhint-disable-next-line var-name-mixedcase
+    address internal immutable MINT_LIMIT_MODULE;
+    // solhint-disable-next-line var-name-mixedcase
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
     constructor(
         address authModule_,
         address governanceModule_,
+        address mintLimitModule_,
         address tokenDeployerImplementation_
     ) {
         if (authModule_.code.length == 0) revert InvalidAuthModule();
         if (governanceModule_.code.length == 0) revert InvalidGovernanceModule();
+        if (mintLimitModule_.code.length == 0) revert InvalidMintLimiterModule();
         if (tokenDeployerImplementation_.code.length == 0) revert InvalidTokenDeployer();
 
         AUTH_MODULE = authModule_;
         GOVERNANCE_MODULE = governanceModule_;
+        MINT_LIMIT_MODULE = mintLimitModule_;
         TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation_;
     }
 
@@ -76,6 +81,12 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
 
     modifier onlyGovernance() {
         if (msg.sender != GOVERNANCE_MODULE) revert NotGovernance();
+
+        _;
+    }
+
+    modifier onlyMintLimiter() {
+        if (msg.sender != GOVERNANCE_MODULE && msg.sender != MINT_LIMIT_MODULE) revert NotMintLimiter();
 
         _;
     }
@@ -178,6 +189,10 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         return GOVERNANCE_MODULE;
     }
 
+    function mintLimiterModule() public view returns (address) {
+        return MINT_LIMIT_MODULE;
+    }
+
     function tokenDeployer() public view returns (address) {
         return TOKEN_DEPLOYER_IMPLEMENTATION;
     }
@@ -219,7 +234,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     |* Governance Functions *|
     \************************/
 
-    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyGovernance {
+    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyMintLimiter {
         uint256 length = symbols.length;
         if (length != limits.length) revert InvalidSetMintLimitsParams();
 
