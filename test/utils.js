@@ -1,13 +1,19 @@
 'use strict';
 
-const { ethers } = require('hardhat');
+const { config, ethers } = require('hardhat');
 const {
     utils: { defaultAbiCoder, id, arrayify, keccak256 },
 } = ethers;
+const { network } = require('hardhat');
 const { sortBy } = require('lodash');
 
 const getRandomInt = (max) => {
     return Math.floor(Math.random() * max);
+};
+
+const getRandomString = (length) => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from({ length }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
 };
 
 const getAddresses = (wallets) => wallets.map(({ address }) => address);
@@ -31,7 +37,21 @@ const getWeightedSignaturesProof = async (data, operators, weights, threshold, s
     );
 };
 
+const getGasOptions = () => {
+    return network.config.blockGasLimit ? { gasLimit: network.config.blockGasLimit } : {};
+};
+
+const getEVMVersion = () => {
+    return config.solidity.compilers[0].settings.evmVersion;
+};
+
 module.exports = {
+    getChainId: async () => await network.provider.send('eth_chainId'),
+
+    getEVMVersion,
+
+    getGasOptions,
+
     bigNumberToNumber: (bigNumber) => bigNumber.toNumber(),
 
     getSignaturesProof,
@@ -47,6 +67,10 @@ module.exports = {
     getRandomInt,
 
     getRandomID: () => id(getRandomInt(1e10).toString()),
+
+    getRandomString,
+
+    isHardhat: network.name === 'hardhat',
 
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 

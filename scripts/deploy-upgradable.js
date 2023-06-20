@@ -8,7 +8,7 @@ const {
     utils: { isAddress },
 } = require('ethers');
 const readlineSync = require('readline-sync');
-const { outputJsonSync } = require('fs-extra');
+const { writeJSON } = require('./utils');
 const { deployUpgradable, upgradeUpgradable, predictContractConstant } = require('@axelar-network/axelar-gmp-sdk-solidity');
 const IUpgradable = require('@axelar-network/axelar-gmp-sdk-solidity/dist/IUpgradable.json');
 
@@ -49,13 +49,6 @@ function getUpgradeArgs(contractName, chain) {
 }
 
 async function deploy(env, chains, wallet, artifactPath, contractName, deployTo) {
-    const setJSON = (data, name) => {
-        outputJsonSync(name, data, {
-            spaces: 2,
-            EOL: '\n',
-        });
-    };
-
     const implementationPath = artifactPath + contractName + '.sol/' + contractName + '.json';
     const proxyPath = artifactPath + contractName + 'Proxy.sol/' + contractName + 'Proxy.json';
     const implementationJson = require(implementationPath);
@@ -108,7 +101,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
 
             chain[contractName]['implementation'] = await contract.implementation();
 
-            setJSON(chains, `../info/${env}.json`);
+            writeJSON(chains, `../info/${env}.json`);
             console.log(`${chain.name} | New Implementation for ${contractName} is at ${chain[contractName]['implementation']}`);
             console.log(`${chain.name} | Upgraded.`);
         } else {
@@ -118,7 +111,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
             console.log(`Proxy deployment salt: '${key}'`);
 
             const proxyAddress = await predictContractConstant(chain.constAddressDeployer, wallet.connect(provider), proxyJson, key);
-            console.log(`Proxy will be deployed to ${proxyAddress}. Does this match any existing deployments?`);
+            console.log(`Proxy will be deployed to ${proxyAddress} Does this match any existing deployments?`);
             const anwser = readlineSync.question(`Proceed with deployment on ${chain.name}? (y/n) `);
             if (anwser !== 'y') return;
 
@@ -139,7 +132,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
             chain[contractName]['implementation'] = await contract.implementation();
             chain[contractName]['deployer'] = wallet.address;
 
-            setJSON(chains, `../info/${env}.json`);
+            writeJSON(chains, `../info/${env}.json`);
             console.log(`${chain.name} | ConstAddressDeployer is at ${chain.constAddressDeployer}`);
             console.log(`${chain.name} | Implementation for ${contractName} is at ${chain[contractName]['implementation']}`);
             console.log(`${chain.name} | Proxy for ${contractName} is at ${contract.address}`);

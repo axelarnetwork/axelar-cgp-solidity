@@ -29,6 +29,7 @@
     "@axelar-network/axelar-gmp-sdk-solidity": "^3.0.0"
   },
   "devDependencies": {
+    "@axelar-network/axelar-contract-deployments": "git://github.com/axelarnetwork/axelar-contract-deployments.git#7ca071fc69fb2cd39b175cdb92eb0e04b71acb15",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "chai": "^4.3.7",
     "dotenv": "^16.0.1",
