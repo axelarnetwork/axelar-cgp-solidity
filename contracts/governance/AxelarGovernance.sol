@@ -26,16 +26,16 @@ contract AxelarGovernance is AxelarExecutable, TimeLock, IAxelarGovernance {
         governanceAddressHash = keccak256(bytes(governanceAddress_));
     }
 
-    function executeProposal(address targetContract, bytes calldata callData) external virtual {
-        _executeProposal(targetContract, callData);
+    function executeProposal(address target, bytes calldata callData) external payable virtual {
+        _executeProposal(target, callData);
     }
 
-    function _executeProposal(address targetContract, bytes calldata callData) internal {
-        bytes32 proposalHash = keccak256(abi.encodePacked(targetContract, callData));
+    function _executeProposal(address target, bytes calldata callData) internal {
+        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData));
 
         _executeTimeLock(proposalHash);
 
-        (bool success, ) = targetContract.call(callData);
+        (bool success, ) = target.call{ value: msg.value }(callData);
 
         if (!success) {
             revert ExecutionFailed();
@@ -52,20 +52,17 @@ contract AxelarGovernance is AxelarExecutable, TimeLock, IAxelarGovernance {
         if (keccak256(bytes(sourceChain)) != governanceChainHash || keccak256(bytes(sourceAddress)) != governanceAddressHash)
             revert NotGovernance();
 
-        (Command command, address targetContract, bytes memory callData, uint256 eta) = abi.decode(
-            payload,
-            (Command, address, bytes, uint256)
-        );
+        (Command command, address target, bytes memory callData, uint256 eta) = abi.decode(payload, (Command, address, bytes, uint256));
 
-        if (targetContract == address(0)) revert InvalidTargetContract();
+        if (target == address(0)) revert InvalidTarget();
         if (callData.length == 0) revert InvalidCallData();
 
-        bytes32 proposalHash = keccak256(abi.encodePacked(targetContract, callData));
+        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData));
 
         if (command == Command.ScheduleProposal) {
-            _scheduleTimeLock(proposalHash, eta);
+            eta = _scheduleTimeLock(proposalHash, eta);
 
-            emit ProposalScheduled(proposalHash, targetContract, callData, eta);
+            emit ProposalScheduled(proposalHash, target, callData, eta);
         } else if (command == Command.CancelProposal) {
             _cancelTimeLock(proposalHash);
 
