@@ -14,7 +14,7 @@ const getRandomInt = (max) => {
 const getRandomString = (length) => {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     return Array.from({ length }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
-}
+};
 
 const getAddresses = (wallets) => wallets.map(({ address }) => address);
 
@@ -70,7 +70,7 @@ module.exports = {
 
     getRandomString,
 
-    isHardhat: (network.name === 'hardhat'),
+    isHardhat: network.name === 'hardhat',
 
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 

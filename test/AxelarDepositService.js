@@ -4,7 +4,6 @@ const chai = require('chai');
 const { expect } = chai;
 const { ethers, network } = require('hardhat');
 const {
-    Contract,
     utils: { defaultAbiCoder, arrayify, solidityPack, formatBytes32String, keccak256, getCreate2Address },
 } = ethers;
 const { get } = require('lodash/fp');
@@ -81,7 +80,9 @@ describe('AxelarDepositService', () => {
             );
 
             auth = await authFactory.deploy(getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])).then((d) => d.deployed());
-            gatewayImplementation = await gatewayImplementationFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            gatewayImplementation = await gatewayImplementationFactory
+                .deploy(auth.address, tokenDeployer.address)
+                .then((d) => d.deployed());
             gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
             await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait());
             gateway = await gatewayImplementationFactory.attach(gatewayProxy.address);
@@ -92,31 +93,33 @@ describe('AxelarDepositService', () => {
             await token.deposit({ value: 1e9 }).then((tx) => tx.wait());
             await wrongToken.deposit({ value: 1e9 }).then((tx) => tx.wait());
 
-            await gateway.execute(
-                await getSignedWeightedExecuteInput(
-                    arrayify(
-                        defaultAbiCoder.encode(
-                            ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                            [
-                                await getChainId(),
-                                [getRandomID()],
-                                ['deployToken'],
+            await gateway
+                .execute(
+                    await getSignedWeightedExecuteInput(
+                        arrayify(
+                            defaultAbiCoder.encode(
+                                ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                                 [
-                                    defaultAbiCoder.encode(
-                                        ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
-                                        [tokenName, tokenSymbol, decimals, capacity, token.address, 0],
-                                    ),
+                                    await getChainId(),
+                                    [getRandomID()],
+                                    ['deployToken'],
+                                    [
+                                        defaultAbiCoder.encode(
+                                            ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
+                                            [tokenName, tokenSymbol, decimals, capacity, token.address, 0],
+                                        ),
+                                    ],
                                 ],
-                            ],
+                            ),
                         ),
+                        [operatorWallet],
+                        [1],
+                        1,
+                        [operatorWallet],
                     ),
-                    [operatorWallet],
-                    [1],
-                    1,
-                    [operatorWallet],
-                ),
-                getGasOptions(),
-            ).then((tx) => tx.wait());
+                    getGasOptions(),
+                )
+                .then((tx) => tx.wait());
 
             const depositServiceFactory = await ethers.getContractFactory('AxelarDepositService', ownerWallet);
             const implementation = await depositServiceFactory.deploy(gateway.address, tokenSymbol, ownerWallet.address);
@@ -211,10 +214,12 @@ describe('AxelarDepositService', () => {
                     .refundTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [token.address]),
             ).to.emit(token, 'Transfer');
 
-            await ownerWallet.sendTransaction({
-                to: depositAddress,
-                value: amount,
-            }).then((tx) => tx.wait());
+            await ownerWallet
+                .sendTransaction({
+                    to: depositAddress,
+                    value: amount,
+                })
+                .then((tx) => tx.wait());
 
             await expect(
                 await depositService.refundTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [
@@ -246,10 +251,12 @@ describe('AxelarDepositService', () => {
 
             expect(depositAddress).to.be.equal(expectedDepositAddress);
 
-            await ownerWallet.sendTransaction({
-                to: depositAddress,
-                value: amount,
-            }).then((tx) => tx.wait());
+            await ownerWallet
+                .sendTransaction({
+                    to: depositAddress,
+                    value: amount,
+                })
+                .then((tx) => tx.wait());
 
             const tx = await depositService.sendNativeDeposit(salt, refundAddress, destinationChain, destinationAddress);
 
@@ -268,10 +275,12 @@ describe('AxelarDepositService', () => {
 
             const depositAddress = await depositService.addressForNativeDeposit(salt, refundAddress, destinationChain, destinationAddress);
 
-            await ownerWallet.sendTransaction({
-                to: depositAddress,
-                value: amount,
-            }).then((tx) => tx.wait());
+            await ownerWallet
+                .sendTransaction({
+                    to: depositAddress,
+                    value: amount,
+                })
+                .then((tx) => tx.wait());
             await wrongToken.transfer(depositAddress, amount * 2).then((tx) => tx.wait());
 
             await expect(
@@ -326,10 +335,12 @@ describe('AxelarDepositService', () => {
                 'Transfer',
             );
 
-            await ownerWallet.sendTransaction({
-                to: depositAddress,
-                value: amount,
-            }).then((tx) => tx.wait());
+            await ownerWallet
+                .sendTransaction({
+                    to: depositAddress,
+                    value: amount,
+                })
+                .then((tx) => tx.wait());
 
             await expect(await depositService.refundNativeUnwrap(salt, refundAddress, recipient, [wrongToken.address]))
                 .to.emit(wrongToken, 'Transfer')
@@ -352,10 +363,12 @@ describe('AxelarDepositService', () => {
                 depositService.connect(ownerWallet).refundNativeUnwrap(salt, refundAddress, recipient, [token.address]),
             ).not.to.emit(token, 'Transfer');
 
-            await ownerWallet.sendTransaction({
-                to: depositAddress,
-                value: amount,
-            }).then((tx) => tx.wait());
+            await ownerWallet
+                .sendTransaction({
+                    to: depositAddress,
+                    value: amount,
+                })
+                .then((tx) => tx.wait());
 
             await expect(await depositService.refundNativeUnwrap(salt, refundAddress, recipient, [wrongToken.address]))
                 .to.emit(wrongToken, 'Transfer')
@@ -375,7 +388,6 @@ describe('AxelarDepositService', () => {
                 await depositService.connect(ownerWallet).refundLockedAsset(recipient, ethers.constants.AddressZero, amount),
             ).to.changeEtherBalance(userWallet, amount);
         });
-
     });
 
     describe('deposit service bytecode check', () => {
