@@ -1,9 +1,9 @@
 'use strict';
 
 const chai = require('chai');
-const { ethers, config } = require('hardhat');
+const { ethers, network, config } = require('hardhat');
 const {
-    utils: { defaultAbiCoder, keccak256, parseEther, id },
+    utils: { defaultAbiCoder, keccak256, parseUnits, id },
     constants: { AddressZero, HashZero },
 } = ethers;
 const { expect } = chai;
@@ -12,40 +12,46 @@ const EVM_VERSION = config.solidity.compilers[0].settings.evmVersion;
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
 
-const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
-const { deployUpgradable, upgradeUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
+const { upgradeUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 describe('AxelarGasService', () => {
-    let constAddressDeployerFactory;
     let testTokenFactory;
 
-    let constAddressDeployer;
     let gasService;
     let testToken;
 
     let ownerWallet;
     let userWallet;
 
+    const nativeGasFeeAmount = parseUnits('1000', 'wei');
+
     before(async () => {
         [ownerWallet, userWallet] = await ethers.getSigners();
 
-        constAddressDeployerFactory = await ethers.getContractFactory(ConstAddressDeployer.abi, ConstAddressDeployer.bytecode, ownerWallet);
         testTokenFactory = await ethers.getContractFactory('MintableCappedERC20', ownerWallet);
     });
 
-    beforeEach(async () => {
-        constAddressDeployer = await constAddressDeployerFactory.deploy().then((d) => d.deployed());
+    before(async () => {
+        const gasServiceFactory = await ethers.getContractFactory('AxelarGasService', ownerWallet);
+        const implementation = await gasServiceFactory.deploy(ownerWallet.address);
+        await implementation.deployTransaction.wait(network.config.confirmations);
 
-        gasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [ownerWallet.address]);
+        const gasServiceProxyFactory = await ethers.getContractFactory('AxelarGasServiceProxy', ownerWallet);
+        gasService = await gasServiceProxyFactory.deploy();
+        await gasService.deployTransaction.wait(network.config.confirmations);
+
+        await gasService.init(implementation.address, ownerWallet.address, '0x').then((tx) => tx.wait());
+        gasService = gasServiceFactory.attach(gasService.address);
 
         const name = 'testToken';
         const symbol = 'testToken';
         const decimals = 16;
         const capacity = 0;
 
-        testToken = await testTokenFactory.deploy(name, symbol, decimals, capacity).then((d) => d.deployed());
+        testToken = await testTokenFactory.deploy(name, symbol, decimals, capacity);
+        await testToken.deployTransaction.wait(network.config.confirmations);
 
-        await testToken.mint(userWallet.address, 1e9);
+        await testToken.mint(userWallet.address, 1e9).then((tx) => tx.wait());
     });
 
     describe('gas receiver', () => {
@@ -58,9 +64,8 @@ describe('AxelarGasService', () => {
             const amount = 100000;
             const gasToken = testToken.address;
             const gasFeeAmount = 1000;
-            const nativeGasFeeAmount = parseEther('1.0');
 
-            await testToken.connect(userWallet).approve(gasService.address, 1e6);
+            await testToken.connect(userWallet).approve(gasService.address, 1e6).then((tx) => tx.wait());
 
             await expect(
                 gasService
@@ -213,7 +218,7 @@ describe('AxelarGasService', () => {
             const symbol = 'USDC';
             const amount = 100000;
 
-            await testToken.connect(userWallet).approve(gasService.address, 1e6);
+            await testToken.connect(userWallet).approve(gasService.address, 1e6).then((tx) => tx.wait());
 
             await expect(
                 gasService
@@ -258,9 +263,8 @@ describe('AxelarGasService', () => {
             const amount = 100000;
             const gasToken = testToken.address;
             const gasFeeAmount = 1000;
-            const nativeGasFeeAmount = parseEther('1.0');
 
-            await testToken.connect(userWallet).approve(gasService.address, 1e6);
+            await testToken.connect(userWallet).approve(gasService.address, 1e6).then((tx) => tx.wait());
 
             await gasService
                 .connect(userWallet)
@@ -272,7 +276,7 @@ describe('AxelarGasService', () => {
                     gasToken,
                     gasFeeAmount,
                     userWallet.address,
-                );
+                ).then((tx) => tx.wait());
 
             await gasService
                 .connect(userWallet)
@@ -286,19 +290,19 @@ describe('AxelarGasService', () => {
                     gasToken,
                     gasFeeAmount,
                     userWallet.address,
-                );
+                ).then((tx) => tx.wait());
 
             await gasService
                 .connect(userWallet)
                 .payNativeGasForContractCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address, {
                     value: nativeGasFeeAmount,
-                });
+                }).then((tx) => tx.wait());
 
             await gasService
                 .connect(userWallet)
                 .payNativeGasForContractCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address, {
                     value: nativeGasFeeAmount,
-                });
+                }).then((tx) => tx.wait());
 
             await expect(
                 gasService
@@ -355,9 +359,8 @@ describe('AxelarGasService', () => {
             const amount = 100000;
             const gasToken = testToken.address;
             const gasFeeAmount = 1000;
-            const nativeGasFeeAmount = parseEther('1.0');
 
-            await testToken.connect(userWallet).approve(gasService.address, 1e6);
+            await testToken.connect(userWallet).approve(gasService.address, 1e6).then((tx) => tx.wait());
 
             await gasService
                 .connect(userWallet)
@@ -369,7 +372,7 @@ describe('AxelarGasService', () => {
                     gasToken,
                     gasFeeAmount,
                     userWallet.address,
-                );
+                ).then((tx) => tx.wait());
 
             await gasService
                 .connect(userWallet)
@@ -383,19 +386,19 @@ describe('AxelarGasService', () => {
                     gasToken,
                     gasFeeAmount,
                     userWallet.address,
-                );
+                ).then((tx) => tx.wait());
 
             await gasService
                 .connect(userWallet)
                 .payNativeGasForContractCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address, {
                     value: nativeGasFeeAmount,
-                });
+                }).then((tx) => tx.wait());
 
             await gasService
                 .connect(userWallet)
                 .payNativeGasForContractCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address, {
                     value: nativeGasFeeAmount,
-                });
+                }).then((tx) => tx.wait());
 
             const txHash = id('txHash');
             const logIndex = 256;
@@ -486,7 +489,7 @@ describe('AxelarGasService', () => {
                 .and.to.emit(gasService, 'OwnershipTransferred')
                 .withArgs(userWallet.address);
 
-            await expect(await gasService.owner()).to.be.equal(userWallet.address);
+            expect(await gasService.owner()).to.be.equal(userWallet.address);
         });
 
         it('should emit events when gas is added', async () => {
@@ -494,9 +497,8 @@ describe('AxelarGasService', () => {
             const logIndex = 13;
             const gasToken = testToken.address;
             const gasFeeAmount = 1000;
-            const nativeGasFeeAmount = parseEther('1.0');
 
-            await testToken.connect(userWallet).approve(gasService.address, 1e6);
+            await testToken.connect(userWallet).approve(gasService.address, 1e6).then((tx) => tx.wait());
 
             await expect(gasService.connect(userWallet).addGas(txHash, logIndex, gasToken, gasFeeAmount, userWallet.address))
                 .to.emit(gasService, 'GasAdded')
@@ -517,9 +519,8 @@ describe('AxelarGasService', () => {
             const logIndex = 13;
             const gasToken = testToken.address;
             const gasFeeAmount = 1000;
-            const nativeGasFeeAmount = parseEther('1.0');
 
-            await testToken.connect(userWallet).approve(gasService.address, 1e6);
+            await testToken.connect(userWallet).approve(gasService.address, 1e6).then((tx) => tx.wait());
 
             await expect(gasService.connect(userWallet).addExpressGas(txHash, logIndex, gasToken, gasFeeAmount, userWallet.address))
                 .to.emit(gasService, 'ExpressGasAdded')
@@ -542,11 +543,11 @@ describe('AxelarGasService', () => {
             const logIndex = 13;
 
             await expect(
-                gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address, { gasLimit: 250000 }),
+                gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address),
             ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
 
             await expect(
-                gasService.connect(userWallet).addNativeExpressGas(txHash, logIndex, userWallet.address, { gasLimit: 250000 }),
+                gasService.connect(userWallet).addNativeExpressGas(txHash, logIndex, userWallet.address),
             ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
         });
 

@@ -135,7 +135,7 @@ describe('AxelarDepositService', () => {
 
         it('should send native token', async () => {
             const destinationAddress = userWallet.address.toString();
-            const amount = 1e6;
+            const amount = 1e3;
 
             const tx = await depositService.sendNative(destinationChain, destinationAddress, { value: amount });
             await expect(tx)
@@ -149,7 +149,7 @@ describe('AxelarDepositService', () => {
             const refundAddress = ownerWallet.address;
             const destinationAddress = userWallet.address.toString();
             const salt = formatBytes32String(1);
-            const amount = 1e6;
+            const amount = 1e3;
 
             const expectedDepositAddress = getDepositAddress(
                 salt,
@@ -186,7 +186,7 @@ describe('AxelarDepositService', () => {
             const refundAddress = ownerWallet.address;
             const destinationAddress = userWallet.address.toString();
             const salt = formatBytes32String(1);
-            const amount = 1e6;
+            const amount = 1e3;
 
             const depositAddress = await depositService.addressForTokenDeposit(
                 salt,
@@ -230,7 +230,7 @@ describe('AxelarDepositService', () => {
             const refundAddress = ownerWallet.address;
             const destinationAddress = userWallet.address.toString();
             const salt = formatBytes32String(1);
-            const amount = 1e6;
+            const amount = 1e3;
 
             const expectedDepositAddress = getDepositAddress(
                 salt,
@@ -264,7 +264,7 @@ describe('AxelarDepositService', () => {
             const refundAddress = ownerWallet.address;
             const destinationAddress = userWallet.address.toString();
             const salt = formatBytes32String(1);
-            const amount = 1e6;
+            const amount = 1e3;
 
             const depositAddress = await depositService.addressForNativeDeposit(salt, refundAddress, destinationChain, destinationAddress);
 
@@ -285,7 +285,7 @@ describe('AxelarDepositService', () => {
             const refundAddress = ownerWallet.address;
             const recipient = userWallet.address;
             const salt = formatBytes32String(1);
-            const amount = 1e6;
+            const amount = 1e3;
 
             const expectedDepositAddress = getDepositAddress(
                 salt,
@@ -310,7 +310,7 @@ describe('AxelarDepositService', () => {
             const refundAddress = ownerWallet.address;
             const recipient = userWallet.address;
             const salt = formatBytes32String(1);
-            const amount = 1e6;
+            const amount = 1e3;
 
             const depositAddress = await depositService.addressForNativeUnwrap(salt, refundAddress, recipient);
 
@@ -341,7 +341,7 @@ describe('AxelarDepositService', () => {
             const refundAddress = ethers.constants.AddressZero;
             const recipient = userWallet.address;
             const salt = formatBytes32String(1);
-            const amount = 1e6;
+            const amount = 1e3;
 
             const depositAddress = await depositService.addressForNativeUnwrap(salt, refundAddress, recipient);
 
