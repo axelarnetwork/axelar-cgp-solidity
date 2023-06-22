@@ -4,12 +4,13 @@
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
-    "build": "rm -rf artifacts && hardhat compile",
+    "build": "rm -rf artifacts cache && hardhat compile",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'",
-    "flatten": "sh scripts/flatten-contracts.sh"
+    "flatten": "sh scripts/flatten-contracts.sh",
+    "coverage": "cross-env COVERAGE=true hardhat coverage"
   },
   "repository": {
     "type": "git",
@@ -32,6 +33,7 @@
     "@axelar-network/axelar-contract-deployments": "git://github.com/axelarnetwork/axelar-contract-deployments.git#7ca071fc69fb2cd39b175cdb92eb0e04b71acb15",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "chai": "^4.3.7",
+    "cross-env": "^7.0.3",
     "dotenv": "^16.0.1",
     "eslint": "^8.36.0",
     "eslint-config-richardpringle": "^2.0.0",
