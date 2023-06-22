@@ -6,6 +6,7 @@ const { importNetworks } = require('@axelar-network/axelar-contract-deployments/
 const chains = require(`@axelar-network/axelar-contract-deployments/info/${env}.json`);
 const keys = fs.existsSync(`${__dirname}/info/keys.json`) ? require(`${__dirname}/info/keys.json`) : undefined; // Load keys if they exist
 const { networks, etherscan } = importNetworks(chains, keys);
+require('solidity-coverage');
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -19,12 +20,12 @@ module.exports = {
                 enabled: true,
                 runs: 1000,
                 details: {
-                    peephole: true,
-                    inliner: true,
+                    peephole: process.env.COVERAGE === undefined,
+                    inliner: process.env.COVERAGE === undefined,
                     jumpdestRemover: true,
                     orderLiterals: true,
                     deduplicate: true,
-                    cse: true,
+                    cse: process.env.COVERAGE === undefined,
                     constantOptimizer: true,
                     yul: true,
                     yulDetails: {

@@ -390,7 +390,7 @@ describe('AxelarDepositService', () => {
         });
     });
 
-    describe('deposit service bytecode check', () => {
+    describe('should preserve the bytecode [ @skip-on-coverage ]', () => {
         it('should have the same receiver bytecode preserved for each EVM', async () => {
             const expected = {
                 istanbul: '0xc0fd88839756e97f51ab0395ce8e6164a5f924bd73a3342204340a14ad306fe1',

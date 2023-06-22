@@ -578,7 +578,7 @@ describe('AxelarGasService', () => {
             ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
         });
 
-        it('should have the same proxy bytecode preserved for each EVM', async () => {
+        it('should preserve the bytecode [ @skip-on-coverage ]', async () => {
             const proxyBytecode = GasServiceProxy.bytecode;
             const proxyBytecodeHash = keccak256(proxyBytecode);
             const expected = {
