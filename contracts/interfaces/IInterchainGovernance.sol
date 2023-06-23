@@ -4,10 +4,10 @@ pragma solidity 0.8.9;
 
 import '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarExecutable.sol';
 
-interface IAxelarGovernance is IAxelarExecutable {
+interface IInterchainGovernance is IAxelarExecutable {
     error NotGovernance();
     error InvalidCommand();
-    error InvalidTargetContract();
+    error InvalidTarget();
     error InvalidCallData();
     error ExecutionFailed();
     error TokenNotSupported();
@@ -16,5 +16,5 @@ interface IAxelarGovernance is IAxelarExecutable {
     event ProposalCancelled(bytes32 indexed proposalHash);
     event ProposalExecuted(bytes32 indexed proposalHash);
 
-    function executeProposal(address targetContract, bytes calldata callData) external;
+    function executeProposal(address targetContract, bytes calldata callData) external payable;
 }

@@ -14,7 +14,7 @@ interface IAxelarGateway {
     error InvalidCodeHash();
     error SetupFailed();
     error InvalidAuthModule();
-    error InvalidGovernanceModule();
+    error InvalidGovernance();
     error InvalidMintLimiterModule();
     error InvalidTokenDeployer();
     error InvalidAmount();
@@ -150,7 +150,7 @@ interface IAxelarGateway {
 
     function authModule() external view returns (address);
 
-    function governanceModule() external view returns (address);
+    function governance() external view returns (address);
 
     function mintLimiterModule() external view returns (address);
 

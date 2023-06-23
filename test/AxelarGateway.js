@@ -108,7 +108,7 @@ describe('AxelarGateway', () => {
         });
     });
 
-    describe('check contract bytecode changes', () => {
+    describe('should preserve the bytecode [ @skip-on-coverage ]', () => {
         it('should preserve the same proxy bytecode for each EVM', async () => {
             const proxyBytecode = gatewayProxyFactory.bytecode;
             const proxyBytecodeHash = keccak256(proxyBytecode);

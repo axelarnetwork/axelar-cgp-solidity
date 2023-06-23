@@ -31,5 +31,5 @@ interface IMultisigBase {
     |* Setters *|
     \***********/
 
-    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external;
+    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external payable;
 }
