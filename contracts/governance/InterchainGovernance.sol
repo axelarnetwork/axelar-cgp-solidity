@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.0;
 
 import { AxelarExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol';
 import { TimeLock } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/TimeLock.sol';
-import { IAxelarGovernance } from '../interfaces/IAxelarGovernance.sol';
+import { IInterchainGovernance } from '../interfaces/IInterchainGovernance.sol';
 
-contract AxelarGovernance is AxelarExecutable, TimeLock, IAxelarGovernance {
-    enum Command {
-        ScheduleProposal,
-        CancelProposal
+contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernance {
+    enum GovernanceCommand {
+        ScheduleTimeLockProposal,
+        CancelTimeLockProposal
     }
 
     bytes32 public immutable governanceChainHash;
@@ -26,12 +26,8 @@ contract AxelarGovernance is AxelarExecutable, TimeLock, IAxelarGovernance {
         governanceAddressHash = keccak256(bytes(governanceAddress_));
     }
 
-    function executeProposal(address target, bytes calldata callData) external payable virtual {
-        _executeProposal(target, callData);
-    }
-
-    function _executeProposal(address target, bytes calldata callData) internal {
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData));
+    function executeProposal(address target, bytes calldata callData) external payable {
+        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, msg.value));
 
         _executeTimeLock(proposalHash);
 
@@ -52,18 +48,32 @@ contract AxelarGovernance is AxelarExecutable, TimeLock, IAxelarGovernance {
         if (keccak256(bytes(sourceChain)) != governanceChainHash || keccak256(bytes(sourceAddress)) != governanceAddressHash)
             revert NotGovernance();
 
-        (Command command, address target, bytes memory callData, uint256 eta) = abi.decode(payload, (Command, address, bytes, uint256));
+        (uint256 command, address target, bytes memory callData, uint256 nativeValue, uint256 eta) = abi.decode(
+            payload,
+            (uint256, address, bytes, uint256, uint256)
+        );
 
         if (target == address(0)) revert InvalidTarget();
         if (callData.length == 0) revert InvalidCallData();
 
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData));
+        _processCommand(command, target, callData, nativeValue, eta);
+    }
 
-        if (command == Command.ScheduleProposal) {
+    function _processCommand(
+        uint256 commandId,
+        address target,
+        bytes memory callData,
+        uint256 nativeValue,
+        uint256 eta
+    ) internal virtual {
+        GovernanceCommand command = GovernanceCommand(commandId);
+        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, nativeValue));
+
+        if (command == GovernanceCommand.ScheduleTimeLockProposal) {
             eta = _scheduleTimeLock(proposalHash, eta);
 
             emit ProposalScheduled(proposalHash, target, callData, eta);
-        } else if (command == Command.CancelProposal) {
+        } else if (command == GovernanceCommand.CancelTimeLockProposal) {
             _cancelTimeLock(proposalHash);
 
             emit ProposalCancelled(proposalHash);

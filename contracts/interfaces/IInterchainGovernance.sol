@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 
 import '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarExecutable.sol';
 
-interface IAxelarGovernance is IAxelarExecutable {
+interface IInterchainGovernance is IAxelarExecutable {
     error NotGovernance();
     error InvalidCommand();
     error InvalidTarget();
