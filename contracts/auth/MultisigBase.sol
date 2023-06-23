@@ -2,9 +2,12 @@
 
 pragma solidity 0.8.9;
 
+import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IMultisigBase } from '../interfaces/IMultisigBase.sol';
 
 contract MultisigBase is IMultisigBase {
+    using SafeNativeTransfer for address;
+
     struct Voting {
         uint256 voteCount;
         mapping(address => bool) hasVoted;
@@ -43,6 +46,10 @@ contract MultisigBase is IMultisigBase {
         if (voteCount < signers.threshold) {
             // Save updated vote count.
             voting.voteCount = voteCount;
+
+            if (msg.value > 0) {
+                msg.sender.safeNativeTransfer(msg.value);
+            }
             return;
         } else {
             // Clear vote count and voted booleans.
@@ -78,7 +85,7 @@ contract MultisigBase is IMultisigBase {
     |* Setters *|
     \***********/
 
-    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external virtual onlySigners {
+    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external payable virtual onlySigners {
         _rotateSigners(newAccounts, newThreshold);
     }
 
