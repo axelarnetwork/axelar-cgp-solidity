@@ -38,7 +38,7 @@ const getWeightedSignaturesProof = async (data, operators, weights, threshold, s
 };
 
 const getGasOptions = () => {
-    return network.config.blockGasLimit ? { gasLimit: network.config.blockGasLimit } : {};
+    return network.config.blockGasLimit ? { gasLimit: network.config.blockGasLimit.toString() } : {};
 };
 
 const getEVMVersion = () => {
