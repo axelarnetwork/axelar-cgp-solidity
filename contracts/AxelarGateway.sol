@@ -52,24 +52,24 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     // solhint-disable-next-line var-name-mixedcase
     address internal immutable GOVERNANCE;
     // solhint-disable-next-line var-name-mixedcase
-    address internal immutable MINT_LIMIT_MODULE;
+    address internal immutable MINT_LIMITER;
     // solhint-disable-next-line var-name-mixedcase
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
     constructor(
         address authModule_,
         address governance_,
-        address mintLimitModule_,
+        address mintLimiter_,
         address tokenDeployerImplementation_
     ) {
         if (authModule_.code.length == 0) revert InvalidAuthModule();
         if (governance_ == address(0)) revert InvalidGovernance();
-        if (mintLimitModule_.code.length == 0) revert InvalidMintLimiterModule();
+        if (mintLimiter_ == address(0)) revert InvalidMintLimiter();
         if (tokenDeployerImplementation_.code.length == 0) revert InvalidTokenDeployer();
 
         AUTH_MODULE = authModule_;
         GOVERNANCE = governance_;
-        MINT_LIMIT_MODULE = mintLimitModule_;
+        MINT_LIMITER = mintLimiter_;
         TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation_;
     }
 
@@ -86,7 +86,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     }
 
     modifier onlyMintLimiter() {
-        if (msg.sender != GOVERNANCE_MODULE && msg.sender != MINT_LIMIT_MODULE) revert NotMintLimiter();
+        if (msg.sender != GOVERNANCE && msg.sender != MINT_LIMITER) revert NotMintLimiter();
 
         _;
     }
@@ -181,16 +181,16 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     |* Getters *|
     \***********/
 
-    function authModule() public view returns (address) {
+    function authModule() public view override returns (address) {
         return AUTH_MODULE;
     }
 
-    function governance() public view returns (address) {
+    function governance() public view override returns (address) {
         return GOVERNANCE;
     }
 
-    function mintLimiterModule() public view returns (address) {
-        return MINT_LIMIT_MODULE;
+    function mintLimiter() public view override returns (address) {
+        return MINT_LIMITER;
     }
 
     function tokenDeployer() public view returns (address) {
