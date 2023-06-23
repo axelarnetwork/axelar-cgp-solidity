@@ -13,7 +13,7 @@ interface IAxelarGateway {
     error InvalidCodeHash();
     error SetupFailed();
     error InvalidAuthModule();
-    error InvalidGovernanceModule();
+    error InvalidGovernance();
     error InvalidTokenDeployer();
     error InvalidAmount();
     error InvalidChainId();
@@ -148,7 +148,7 @@ interface IAxelarGateway {
 
     function authModule() external view returns (address);
 
-    function governanceModule() external view returns (address);
+    function governance() external view returns (address);
 
     function tokenDeployer() external view returns (address);
 
