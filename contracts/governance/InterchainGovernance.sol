@@ -27,7 +27,6 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
      * @param governanceAddress_ The address of the governance contract
      * @param minimumTimeDelay The minimum time delay for timelock operations
      */
-    // solhint-disable-next-line no-empty-blocks
     constructor(
         address gateway,
         string memory governanceChain_,
