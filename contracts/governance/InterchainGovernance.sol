@@ -47,7 +47,7 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
     function executeProposal(address target, bytes calldata callData) external payable {
         bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, msg.value));
 
-        _executeTimeLock(proposalHash);
+        _finalizeTimeLock(proposalHash);
 
         (bool success, ) = target.call{ value: msg.value }(callData);
 
