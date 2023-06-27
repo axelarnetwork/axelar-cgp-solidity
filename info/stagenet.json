@@ -1,0 +1,342 @@
+[
+  {
+    "name": "Ethereum",
+    "id": "ethereum-2",
+    "chainId": 5,
+    "rpc": "https://goerli.infura.io/v3/a4812158fbab4a2aaa849e6f4a6dc605",
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Ether",
+    "tokenSymbol": "ETH",
+    "gasReceiver": "",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "WETH",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "explorer": {
+      "url": "https://goerli.etherscan.io",
+      "api": "https://api-goerli.etherscan.io/api"
+    }
+  },
+  {
+    "name": "Avalanche",
+    "id": "Avalanche",
+    "chainId": 43113,
+    "rpc": "https://api.avax-test.network/ext/bc/C/rpc",
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Avax",
+    "tokenSymbol": "AVAX",
+    "gasReceiver": "",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "WAVAX",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "explorer": {
+      "url": "https://testnet.snowtrace.io",
+      "api": "https://api-testnet.snowtrace.io/api"
+    }
+  },
+  {
+    "name": "Fantom",
+    "id": "Fantom",
+    "chainId": 4002,
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "rpc": "https://xapi.testnet.fantom.network/lachesis",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Fantom",
+    "tokenSymbol": "FTM",
+    "gasReceiver": "",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "WFTM",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "explorer": {
+      "url": "https://testnet.ftmscan.com",
+      "api": "https://api-testnet.ftmscan.com/api"
+    }
+  },
+  {
+    "name": "Polygon",
+    "id": "Polygon",
+    "chainId": 80001,
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "rpc": "https://polygon-mumbai.g.alchemy.com/v2/Ksd4J1QVWaOJAJJNbr_nzTcJBJU-6uP3",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Matic",
+    "tokenSymbol": "MATIC",
+    "gasReceiver": "",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "WMATIC",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "explorer": {
+      "url": "https://mumbai.polygonscan.com",
+      "api": "https://api-testnet.polygonscan.com/api"
+    },
+    "gasOptions": {
+      "gasLimit": 6000000
+    }
+  },
+  {
+    "name": "Moonbeam",
+    "id": "Moonbeam",
+    "chainId": 1287,
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "rpc": "https://moonbeam-alpha.api.onfinality.io/public",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "DEV",
+    "tokenSymbol": "DEV",
+    "gasReceiver": "",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "WDEV",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "explorer": {
+      "url": "https://moonbase.moonscan.io",
+      "api": "https://api-moonbase.moonscan.io/api"
+    }
+  },
+  {
+    "name": "Binance",
+    "id": "binance",
+    "chainId": 97,
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "rpc": "https://data-seed-prebsc-1-s1.binance.org:8545/",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Binance Coin",
+    "tokenSymbol": "BNB",
+    "gasReceiver": "",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "WBNB",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "explorer": {
+      "url": "https://testnet.bscscan.com",
+      "api": "https://api-testnet.bscscan.com/api"
+    }
+  },
+  {
+    "name": "Arbitrum",
+    "id": "arbitrum",
+    "chainId": 421613,
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "rpc": "https://goerli-rollup.arbitrum.io/rpc",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Eth",
+    "tokenSymbol": "ETH",
+    "gasReceiver": "",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "gasOptions": {
+      "gasLimit": 20000000
+    },
+    "explorer": {
+      "url": "https://goerli.arbiscan.io",
+      "api": "https://api-goerli.arbiscan.io/api"
+    }
+  },
+  {
+    "name": "Kava",
+    "id": "kava",
+    "chainId": 2221,
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "rpc": "https://evm.testnet.kava.io",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Kava",
+    "tokenSymbol": "KAVA",
+    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "explorer": {
+      "url": "https://explorer.evm-alpha.kava.io"
+    }
+  },
+  {
+    "name": "Optimism",
+    "id": "optimism",
+    "chainId": 420,
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "rpc": "https://optimism-goerli.public.blastapi.io",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Eth",
+    "tokenSymbol": "ETH",
+    "gasReceiver": "",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "address": "",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "explorer": {
+      "url": "https://goerli-optimism.etherscan.io",
+      "api": "https://api-goerli-optimism.etherscan.io/api"
+    },
+    "gasOptions": {
+      "gasLimit": 2500000
+    }
+  },
+  {
+    "name": "Base",
+    "id": "base",
+    "chainId": 84531,
+    "gateway": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488",
+    "rpc": "https://goerli.base.org",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
+    "tokenName": "Eth",
+    "tokenSymbol": "ETH",
+    "gasReceiver": "",
+    "AxelarGateway": {
+      "address": "0x6aF9C075d8C11b9A2CD66bbA801481b3c7A96488"
+    },
+    "AxelarGasService": {
+      "salt": "AxelarGasService",
+      "address": "0x47E840B35e0eca3E7C0577835DD78d95574873e7",
+      "implementation": "0xb0D90eEd481cCA3Ba68978762f5920567AC0eA6E",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
+      "collector": "0x378b2d388b1665b63089553251C18aA8684e4245"
+    },
+    "AxelarDepositService": {
+      "salt": "AxelarDepositService",
+      "implementation": "",
+      "deployer": "",
+      "wrappedSymbol": "",
+      "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
+    },
+    "explorer": {
+      "url": "https://goerli.basescan.org",
+      "api": "https://api-goerli.basescan.org/api"
+    },
+    "gasOptions": {
+      "gasLimit": 5000000
+    }
+  }
+]

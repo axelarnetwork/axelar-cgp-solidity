@@ -112,3 +112,6 @@ artifacts/
 
 info/local.json
 keys.json
+
+# temporary files
+tmp/**/*
