@@ -43,11 +43,17 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
 
     /**
      * @notice Returns the ETA of a proposal
-     * @param proposalHash The hash of the proposal
+     * @param target The address of the contract targeted by the proposal
+     * @param callData The call data to be sent to the target contract
+     * @param nativeValue The amount of native tokens to be sent to the target contract
      * @return uint256 The ETA of the proposal
      */
-    function getProposalEta(bytes32 proposalHash) external view returns (uint256) {
-        return _getTimeLockEta(proposalHash);
+    function getProposalEta(
+        address target,
+        bytes calldata callData,
+        uint256 nativeValue
+    ) external view returns (uint256) {
+        return _getTimeLockEta(_getProposalHash(target, callData, nativeValue));
     }
 
     /**
@@ -116,7 +122,7 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
         uint256 eta
     ) internal virtual {
         GovernanceCommand command = GovernanceCommand(commandId);
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, nativeValue));
+        bytes32 proposalHash = _getProposalHash(target, callData, nativeValue);
 
         if (command == GovernanceCommand.ScheduleTimeLockProposal) {
             eta = _scheduleTimeLock(proposalHash, eta);
@@ -129,6 +135,17 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
         } else {
             revert InvalidCommand();
         }
+    }
+
+    /**
+     * @dev Get proposal hash using the target, callData, and nativeValue
+     */
+    function _getProposalHash(
+        address target,
+        bytes memory callData,
+        uint256 nativeValue
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(target, callData, nativeValue));
     }
 
     /**

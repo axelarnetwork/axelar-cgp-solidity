@@ -26,8 +26,8 @@ interface IInterchainGovernance is IAxelarExecutable {
     function governanceChain() external view returns (string memory);
 
     /**
-     * @notice Returns the address of the governance contract.
-     * @return string The address of the governance contract
+     * @notice Returns the address of the governance address.
+     * @return string The address of the governance address
      */
     function governanceAddress() external view returns (string memory);
 
@@ -38,17 +38,23 @@ interface IInterchainGovernance is IAxelarExecutable {
     function governanceChainHash() external view returns (bytes32);
 
     /**
-     * @notice Returns the hash of the governance contract.
-     * @return bytes32 The hash of the governance contract
+     * @notice Returns the hash of the governance address.
+     * @return bytes32 The hash of the governance address
      */
     function governanceAddressHash() external view returns (bytes32);
 
     /**
      * @notice Returns the ETA of a proposal.
-     * @param proposalHash The hash of the proposal
+     * @param target The address of the contract targeted by the proposal
+     * @param callData The call data to be sent to the target contract
+     * @param nativeValue The amount of native tokens to be sent to the target contract
      * @return uint256 The ETA of the proposal
      */
-    function getProposalEta(bytes32 proposalHash) external view returns (uint256);
+    function getProposalEta(
+        address target,
+        bytes calldata callData,
+        uint256 nativeValue
+    ) external view returns (uint256);
 
     /**
      * @notice Executes a governance proposal.
