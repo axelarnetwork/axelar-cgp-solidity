@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.0;
 
-/**
- * @dev Library with functions to securly transfer native assets
- */
 import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IMultisigBase } from '../interfaces/IMultisigBase.sol';
 

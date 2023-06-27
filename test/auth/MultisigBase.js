@@ -6,7 +6,7 @@ const {
 } = ethers;
 const { expect } = chai;
 
-describe('AxelarAuthWeighted', () => {
+describe('MultisigBase', () => {
     let signer1, signer2, signer3, signer4, signer5, signer6, nonSigner;
     let initAccounts;
     let rotatedAccounts;
@@ -24,6 +24,13 @@ describe('AxelarAuthWeighted', () => {
 
     beforeEach(async () => {
         multiSig = await multiSigFactory.deploy(initAccounts, 2).then((d) => d.deployed());
+    });
+
+    it('should return the current epoch', async () => {
+        const currentEpoch = 1;
+        const returnedEpoch = await multiSig.signerEpoch();
+
+        expect(currentEpoch).to.equal(returnedEpoch);
     });
 
     it('should return the signer threshold for a given epoch', async () => {
