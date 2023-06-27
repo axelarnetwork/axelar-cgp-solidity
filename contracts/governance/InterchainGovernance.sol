@@ -29,11 +29,11 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
      */
     // solhint-disable-next-line no-empty-blocks
     constructor(
-        address gatewayAddress,
+        address gateway,
         string memory governanceChain_,
         string memory governanceAddress_,
         uint256 minimumTimeDelay
-    ) AxelarExecutable(gatewayAddress) TimeLock(minimumTimeDelay) {
+    ) AxelarExecutable(gateway) TimeLock(minimumTimeDelay) {
         governanceChainHash = keccak256(bytes(governanceChain_));
         governanceAddressHash = keccak256(bytes(governanceAddress_));
     }
