@@ -17,12 +17,14 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
         CancelTimeLockProposal
     }
 
+    string public governanceChain;
+    string public governanceAddress;
     bytes32 public immutable governanceChainHash;
     bytes32 public immutable governanceAddressHash;
 
     /**
      * @notice Initializes the contract
-     * @param gatewayAddress The address of the Axelar gateway contract
+     * @param gateway The address of the Axelar gateway contract
      * @param governanceChain_ The name of the governance chain
      * @param governanceAddress_ The address of the governance contract
      * @param minimumTimeDelay The minimum time delay for timelock operations
@@ -33,8 +35,19 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
         string memory governanceAddress_,
         uint256 minimumTimeDelay
     ) AxelarExecutable(gateway) TimeLock(minimumTimeDelay) {
+        governanceChain = governanceChain_;
+        governanceAddress = governanceAddress_;
         governanceChainHash = keccak256(bytes(governanceChain_));
         governanceAddressHash = keccak256(bytes(governanceAddress_));
+    }
+
+    /**
+     * @notice Returns the ETA of a proposal
+     * @param proposalHash The hash of the proposal
+     * @return uint256 The ETA of the proposal
+     */
+    function getProposalEta(bytes32 proposalHash) external view returns (uint256) {
+        return _getTimeLockEta(proposalHash);
     }
 
     /**
@@ -43,19 +56,24 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
      * transfered to the target contract.
      * @param target The target address of the contract to call
      * @param callData The data containing the function and arguments for the contract to call
+     * @param value The amount of native token to send to the target contract
      */
-    function executeProposal(address target, bytes calldata callData) external payable {
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, msg.value));
+    function executeProposal(
+        address target,
+        bytes calldata callData,
+        uint256 value
+    ) external payable {
+        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, value));
 
         _finalizeTimeLock(proposalHash);
 
-        (bool success, ) = target.call{ value: msg.value }(callData);
+        (bool success, ) = target.call{ value: value }(callData);
 
         if (!success) {
             revert ExecutionFailed();
         }
 
-        emit ProposalExecuted(proposalHash);
+        emit ProposalExecuted(proposalHash, target, callData, value, block.timestamp);
     }
 
     /**
@@ -78,7 +96,6 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
         );
 
         if (target == address(0)) revert InvalidTarget();
-        if (callData.length == 0) revert InvalidCallData();
 
         _processCommand(command, target, callData, nativeValue, eta);
     }
@@ -104,11 +121,11 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
         if (command == GovernanceCommand.ScheduleTimeLockProposal) {
             eta = _scheduleTimeLock(proposalHash, eta);
 
-            emit ProposalScheduled(proposalHash, target, callData, eta);
+            emit ProposalScheduled(proposalHash, target, callData, nativeValue, eta);
         } else if (command == GovernanceCommand.CancelTimeLockProposal) {
             _cancelTimeLock(proposalHash);
 
-            emit ProposalCancelled(proposalHash);
+            emit ProposalCancelled(proposalHash, target, callData, nativeValue, eta);
         } else {
             revert InvalidCommand();
         }
@@ -127,4 +144,9 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
     ) internal pure override {
         revert TokenNotSupported();
     }
+
+    /**
+     * @notice Making contact able to receive native value
+     */
+    receive() external payable {}
 }
