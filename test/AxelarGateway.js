@@ -123,16 +123,16 @@ describe('AxelarGateway', () => {
         });
 
         it('should preserve the implementation bytecode for each EVM', async () => {
-            const proxyBytecode = gatewayFactory.bytecode;
-            const proxyBytecodeHash = keccak256(proxyBytecode);
+            const implementationBytecode = gatewayFactory.bytecode;
+            const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0x402fae9dea4f794e4974367713309309b21eedfb0255cf23343f368a53b1f47e',
-                berlin: '0x7b2d78a6c1c9c60a3fd1b784aa944dd1a5af372fb020fb5e499037e5cd6e52c4',
-                london: '0x9f807d086826e5944545772a21bb96784c6d9fe62b9a2b6dfd361974466c7f33',
+                istanbul: '0x8a91092ac8850a1fdb52de0d0b32c7840425e62f8a29dc5bfbeea2d01321037a',
+                berlin: '0x3b837bf86a4efc421e6f954f7a62ca79ab7bca5ddd51686594bd8e82461172f7',
+                london: '0x1d212242c23b575c119cc0c6ef52c5a6782f39a993eee1847620365a8b4c9672',
             }[getEVMVersion()];
 
-            expect(proxyBytecodeHash).to.be.equal(expected);
+            expect(implementationBytecodeHash).to.be.equal(expected);
         });
 
         it('should have the same deposit handler bytecode preserved for each EVM', async () => {
