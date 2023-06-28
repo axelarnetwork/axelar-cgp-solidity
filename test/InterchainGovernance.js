@@ -59,7 +59,7 @@ describe('InterchainGovernance', () => {
 
         await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(interchainGovernance, 'ProposalScheduled')
-            .withArgs(proposalHash, target, calldata, eta);
+            .withArgs(proposalHash, target, calldata, nativeValue, eta);
     });
 
     it('should revert on scheduling a proposal if source chain is not the governance chain', async () => {
@@ -129,7 +129,7 @@ describe('InterchainGovernance', () => {
         ).to.be.revertedWithCustomError(interchainGovernance, 'InvalidTarget');
     });
 
-    it('should revert on scheduling a proposal with empty calldata', async () => {
+    it('should withdraw native ether from governance', async () => {
         const commandID = 0;
         const target = governanceTarget.address;
         const nativeValue = 100;
@@ -144,9 +144,21 @@ describe('InterchainGovernance', () => {
             [commandID, target, calldata, nativeValue, eta],
         );
 
-        await expect(
-            interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload),
-        ).to.be.revertedWithCustomError(interchainGovernance, 'InvalidCallData');
+        await ownerWallet
+            .sendTransaction({
+                to: interchainGovernance.address,
+                value: nativeValue,
+            })
+            .then((tx) => tx.wait());
+
+        await interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload);
+
+        await network.provider.send('evm_increaseTime', [timeDelay]);
+        await network.provider.send('evm_mine');
+
+        const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue);
+
+        await expect(tx).to.emit(interchainGovernance, 'ProposalExecuted').to.changeEtherBalance(governanceTarget, nativeValue);
     });
 
     it('should cancel an existing proposal', async () => {
@@ -171,7 +183,7 @@ describe('InterchainGovernance', () => {
 
         await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(interchainGovernance, 'ProposalScheduled')
-            .withArgs(proposalHash, target, calldata, eta);
+            .withArgs(proposalHash, target, calldata, nativeValue, eta);
 
         const cancelPayload = defaultAbiCoder.encode(
             ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
@@ -180,7 +192,7 @@ describe('InterchainGovernance', () => {
 
         await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, cancelPayload))
             .to.emit(interchainGovernance, 'ProposalCancelled')
-            .withArgs(proposalHash);
+            .withArgs(proposalHash, target, calldata, nativeValue, eta);
     });
 
     it('should execute an existing proposal', async () => {
@@ -204,14 +216,17 @@ describe('InterchainGovernance', () => {
 
         await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(interchainGovernance, 'ProposalScheduled')
-            .withArgs(proposalHash, target, calldata, eta);
+            .withArgs(proposalHash, target, calldata, nativeValue, eta);
 
         await network.provider.send('evm_increaseTime', [timeDelay]);
         await network.provider.send('evm_mine');
 
-        await expect(interchainGovernance.executeProposal(target, calldata, { value: nativeValue }))
+        const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue, { value: nativeValue });
+        const executionTimestamp = (await ethers.provider.getBlock(tx.blockNumber)).timestamp;
+
+        await expect(tx)
             .to.emit(interchainGovernance, 'ProposalExecuted')
-            .withArgs(proposalHash)
+            .withArgs(proposalHash, target, calldata, nativeValue, executionTimestamp)
             .and.to.emit(governanceTarget, 'TargetCalled');
     });
 
@@ -237,14 +252,13 @@ describe('InterchainGovernance', () => {
 
         await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(interchainGovernance, 'ProposalScheduled')
-            .withArgs(proposalHash, target, calldata, eta);
+            .withArgs(proposalHash, target, calldata, nativeValue, eta);
 
         await network.provider.send('evm_increaseTime', [timeDelay]);
         await network.provider.send('evm_mine');
 
-        await expect(interchainGovernance.executeProposal(target, calldata, { value: nativeValue })).to.be.revertedWithCustomError(
-            interchainGovernance,
-            'ExecutionFailed',
-        );
+        await expect(
+            interchainGovernance.executeProposal(target, calldata, nativeValue, { value: nativeValue }),
+        ).to.be.revertedWithCustomError(interchainGovernance, 'ExecutionFailed');
     });
 });
