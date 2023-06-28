@@ -124,7 +124,7 @@ async function deploy(env, chains, wallet, artifactPath, contractName, deployTo)
                 [],
                 setupArgs,
                 key,
-                get('gasOptions.gasLimit', chain),
+                get('gasOptions', chain),
             );
 
             chain[contractName]['salt'] = key;

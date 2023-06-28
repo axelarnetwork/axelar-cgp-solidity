@@ -21,9 +21,9 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "address": "",
-      "implementation": "",
-      "deployer": "",
+      "address": "0xd637fAACEA8D45A44B3C900FE85C4A09A2E50A4b",
+      "implementation": "0xCeF61b4592205C91bAC7bA9eEE5DFB495B34F25C",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
       "wrappedSymbol": "WETH",
       "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
     },
@@ -54,9 +54,9 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "address": "",
-      "implementation": "",
-      "deployer": "",
+      "address": "0xd637fAACEA8D45A44B3C900FE85C4A09A2E50A4b",
+      "implementation": "0xCeF61b4592205C91bAC7bA9eEE5DFB495B34F25C",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
       "wrappedSymbol": "WAVAX",
       "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
     },
@@ -87,9 +87,9 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "address": "",
-      "implementation": "",
-      "deployer": "",
+      "address": "0xd637fAACEA8D45A44B3C900FE85C4A09A2E50A4b",
+      "implementation": "0xCeF61b4592205C91bAC7bA9eEE5DFB495B34F25C",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
       "wrappedSymbol": "WFTM",
       "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
     },
@@ -120,18 +120,15 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "address": "",
-      "implementation": "",
-      "deployer": "",
+      "address": "0xd637fAACEA8D45A44B3C900FE85C4A09A2E50A4b",
+      "implementation": "0xCeF61b4592205C91bAC7bA9eEE5DFB495B34F25C",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
       "wrappedSymbol": "WMATIC",
       "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
     },
     "explorer": {
       "url": "https://mumbai.polygonscan.com",
       "api": "https://api-testnet.polygonscan.com/api"
-    },
-    "gasOptions": {
-      "gasLimit": 6000000
     }
   },
   {
@@ -156,9 +153,9 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "address": "",
-      "implementation": "",
-      "deployer": "",
+      "address": "0xd637fAACEA8D45A44B3C900FE85C4A09A2E50A4b",
+      "implementation": "0xCeF61b4592205C91bAC7bA9eEE5DFB495B34F25C",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
       "wrappedSymbol": "WDEV",
       "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
     },
@@ -189,9 +186,9 @@
     },
     "AxelarDepositService": {
       "salt": "AxelarDepositService",
-      "address": "",
-      "implementation": "",
-      "deployer": "",
+      "address": "0xd637fAACEA8D45A44B3C900FE85C4A09A2E50A4b",
+      "implementation": "0xCeF61b4592205C91bAC7bA9eEE5DFB495B34F25C",
+      "deployer": "0x9D97cf3AC20b73c81d8A5233d9FBe09618d4F8bd",
       "wrappedSymbol": "WBNB",
       "refundIssuer": "0x2517bA7a3E2cef54c1CD8618e7B0B661A7623817"
     },
