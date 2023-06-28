@@ -416,7 +416,7 @@
   {
     "name": "Filecoin",
     "id": "filecoin",
-    "chainId": 3141,
+    "chainId": 314159,
     "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
     "rpc": "https://rpc.ankr.com/filecoin_testnet",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
