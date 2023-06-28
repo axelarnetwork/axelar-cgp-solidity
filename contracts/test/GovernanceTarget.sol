@@ -8,4 +8,6 @@ contract GovernanceTarget {
     function callTarget() external payable {
         emit TargetCalled();
     }
+
+    receive() external payable {}
 }
