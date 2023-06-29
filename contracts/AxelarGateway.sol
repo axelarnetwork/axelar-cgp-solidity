@@ -5,6 +5,7 @@ pragma solidity 0.8.9;
 import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
+import { IGovernable } from './interfaces/IGovernable.sol';
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
@@ -13,7 +14,7 @@ import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { EternalStorage } from './EternalStorage.sol';
 
-contract AxelarGateway is IAxelarGateway, EternalStorage {
+contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
@@ -30,6 +31,9 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
 
     /// @dev Storage slot with the address of the current implementation. `keccak256('eip1967.proxy.implementation') - 1`.
     bytes32 internal constant KEY_IMPLEMENTATION = bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
+
+    /// @dev Storage slot with the address of the current governance. `keccak256('governance') - 1`.
+    bytes32 internal constant KEY_GOVERNANCE = bytes32(0xabea6fd3db56a6e6d0242111b43ebb13d1c42709651c032c7894962023a1f909);
 
     // AUDIT: slot names should be prefixed with some standard string
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
@@ -50,21 +54,13 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     // solhint-disable-next-line var-name-mixedcase
     address internal immutable AUTH_MODULE;
     // solhint-disable-next-line var-name-mixedcase
-    address internal immutable GOVERNANCE;
-    // solhint-disable-next-line var-name-mixedcase
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
-    constructor(
-        address authModule_,
-        address governance_,
-        address tokenDeployerImplementation_
-    ) {
+    constructor(address authModule_, address tokenDeployerImplementation_) {
         if (authModule_.code.length == 0) revert InvalidAuthModule();
-        if (governance_ == address(0)) revert InvalidGovernance();
         if (tokenDeployerImplementation_.code.length == 0) revert InvalidTokenDeployer();
 
         AUTH_MODULE = authModule_;
-        GOVERNANCE = governance_;
         TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation_;
     }
 
@@ -75,7 +71,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     }
 
     modifier onlyGovernance() {
-        if (msg.sender != GOVERNANCE) revert NotGovernance();
+        if (msg.sender != getAddress(KEY_GOVERNANCE)) revert NotGovernance();
 
         _;
     }
@@ -175,7 +171,7 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     }
 
     function governance() public view returns (address) {
-        return GOVERNANCE;
+        return getAddress(KEY_GOVERNANCE);
     }
 
     function tokenDeployer() public view returns (address) {
@@ -195,6 +191,21 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     /// tokens that were deployed before the token freeze functionality was removed
     function allTokensFrozen() external pure override returns (bool) {
         return false;
+    }
+
+    /// @dev Deprecated.
+    function adminEpoch() external pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @dev Deprecated.
+    function adminThreshold(uint256) external pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @dev Deprecated.
+    function admins(uint256) external pure override returns (address[] memory) {
+        return new address[](0);
     }
 
     function implementation() public view override returns (address) {
@@ -218,6 +229,18 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
     /************************\
     |* Governance Functions *|
     \************************/
+
+    function transferGovernance(address newGovernance) external override onlyGovernance {
+        if (newGovernance == address(0)) revert InvalidGovernance();
+
+        _transferGovernance(newGovernance);
+    }
+
+    function _transferGovernance(address newGovernance) internal {
+        emit GovernanceTransferred(governance(), newGovernance);
+
+        _setAddress(KEY_GOVERNANCE, newGovernance);
+    }
 
     function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyGovernance {
         uint256 length = symbols.length;
@@ -263,7 +286,11 @@ contract AxelarGateway is IAxelarGateway, EternalStorage {
         // Prevent setup from being called on a non-proxy (the implementation).
         if (implementation() == address(0)) revert NotProxy();
 
-        bytes memory newOperatorsData = abi.decode(params, (bytes));
+        (address governance_, bytes memory newOperatorsData) = abi.decode(params, (address, bytes));
+
+        if (governance_ != address(0)) {
+            _transferGovernance(governance_);
+        }
 
         if (newOperatorsData.length != 0) {
             IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);

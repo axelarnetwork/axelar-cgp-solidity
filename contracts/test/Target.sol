@@ -8,4 +8,6 @@ contract Target {
     function callTarget() external payable {
         emit TargetCalled();
     }
+
+    receive() external payable {}
 }

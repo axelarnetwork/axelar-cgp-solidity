@@ -36,14 +36,14 @@ interface IMultisigBase {
      * @param epoch The epoch to get the threshold for
      * @return uint The threshold for the given epoch
      */
-    function signerThreshold(uint256 epoch) external view returns (uint256);
+    function signerThreshold() external view returns (uint256);
 
     /**
      * @notice Gets the array of signers for a given epoch.
      * @param epoch The epoch to get the signers for
      * @return array of signers for the given epoch
      */
-    function signerAccounts(uint256 epoch) external view returns (address[] memory);
+    function signerAccounts() external view returns (address[] memory);
 
     /***********\
     |* Setters *|
@@ -54,5 +54,5 @@ interface IMultisigBase {
      * @param newAccounts The array of new signers
      * @param newThreshold The new threshold of signers required
      */
-    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external payable;
+    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external;
 }
