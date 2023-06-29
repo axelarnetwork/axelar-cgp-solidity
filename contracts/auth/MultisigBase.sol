@@ -25,7 +25,11 @@ contract MultisigBase is IMultisigBase {
         _rotateSigners(accounts, threshold);
     }
 
-    // NOTE: Given the early void return, this modifier should be used with care on functions that return data.
+    /**
+     * @notice Checks that the sender is a signer
+     * @dev If the sender is not a signer, the function returns without executing the function body
+     * @dev Given the early void return, this modifier should be used with care on functions that return data.
+     */
     modifier onlySigners() {
         if (!signers.isSigner[msg.sender]) revert NotSigner();
 
@@ -79,6 +83,12 @@ contract MultisigBase is IMultisigBase {
     |* Setters *|
     \***********/
 
+    /**
+     * @notice Rotates the signers
+     * @dev This function can only be called by a signer
+     * @param newAccounts The new signers
+     * @param newThreshold The new threshold
+     */
     function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external virtual onlySigners {
         _rotateSigners(newAccounts, newThreshold);
     }
