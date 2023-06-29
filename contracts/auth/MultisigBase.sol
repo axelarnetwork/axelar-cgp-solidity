@@ -4,6 +4,11 @@ pragma solidity ^0.8.0;
 
 import { IMultisigBase } from '../interfaces/IMultisigBase.sol';
 
+/**
+ * @title MultisigBase Contract
+ * @notice This contract implements a custom multisignature wallet where transactions must be confirmed by a
+ * threshold of signers. The signers and threshold may be updated every `epoch`.
+ */
 contract MultisigBase is IMultisigBase {
     struct Voting {
         uint256 voteCount;
@@ -21,13 +26,19 @@ contract MultisigBase is IMultisigBase {
     // uint256 is for epoch, bytes32 for vote topic hash
     mapping(uint256 => mapping(bytes32 => Voting)) public votingPerTopic;
 
+    /**
+     * @notice Contract constructor
+     * @dev Sets the initial list of signers and corresponding threshold.
+     * @param accounts Address array of the signers
+     * @param threshold Signature threshold required to validate a transaction
+     */
     constructor(address[] memory accounts, uint256 threshold) {
         _rotateSigners(accounts, threshold);
     }
 
     /**
-     * @notice Checks that the sender is a signer
-     * @dev If the sender is not a signer, the function returns without executing the function body
+     * @notice Modifier to ensure the caller is a signer
+     * @dev Keeps track of votes for each operation and resets the vote count if the operation is executed.
      * @dev Given the early void return, this modifier should be used with care on functions that return data.
      */
     modifier onlySigners() {
@@ -69,12 +80,18 @@ contract MultisigBase is IMultisigBase {
     |* Public Getters *|
     \******************/
 
-    /// @dev Returns the signer threshold for a given `epoch`.
+    /**
+     * @notice Returns the current signer threshold
+     * @return uint The signer threshold
+     */
     function signerThreshold() external view override returns (uint256) {
         return signers.threshold;
     }
 
-    /// @dev Returns the array of signers within a given `epoch`.
+    /**
+     * @notice Returns an array of current signers
+     * @return array of signer addresses
+     */
     function signerAccounts() external view override returns (address[] memory) {
         return signers.accounts;
     }
@@ -84,15 +101,19 @@ contract MultisigBase is IMultisigBase {
     \***********/
 
     /**
-     * @notice Rotates the signers
-     * @dev This function can only be called by a signer
-     * @param newAccounts The new signers
-     * @param newThreshold The new threshold
+     * @notice Rotate the signers for the multisig
+     * @dev Updates the current set of signers and threshold and increments the `epoch`
+     * @dev This function is protected by the onlySigners modifier
+     * @param newAccounts Address array of the new signers
+     * @param newThreshold The new signature threshold for executing operations
      */
     function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external virtual onlySigners {
         _rotateSigners(newAccounts, newThreshold);
     }
 
+    /**
+     * @dev Internal function that implements signer rotation logic
+     */
     function _rotateSigners(address[] memory newAccounts, uint256 newThreshold) internal {
         uint256 length = signers.accounts.length;
 

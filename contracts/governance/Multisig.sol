@@ -5,20 +5,45 @@ pragma solidity ^0.8.0;
 import { IMultisig } from '../interfaces/IMultisig.sol';
 import { MultisigBase } from '../auth/MultisigBase.sol';
 
-contract AxelarMultisigMintLimiter is MultisigBase, IMultisig {
+/**
+ * @title Multisig Contract
+ * @notice An extension of MultisigBase that can call functions on any contract.
+ */
+contract Multisig is MultisigBase, IMultisig {
+    /**
+     * @notice Contract constructor
+     * @dev Sets the initial list of signers and corresponding threshold.
+     * @param accounts Address array of the signers
+     * @param threshold Signature threshold required to validate a transaction
+     */
     constructor(address[] memory accounts, uint256 threshold) MultisigBase(accounts, threshold) {}
 
     /**
-     * @notice Executes a transaction
-     * @param target The address of the contract targeted by the transaction
-     * @param callData The call data to be sent to the target contract
-     * @param nativeValue The amount of native tokens to be sent to the target contract
+     * @notice Executes an external contract call.
+     * @dev Calls a target address with specified calldata and optionally sends value.
+     * This function is protected by the onlySigners modifier.
+     * @param target The address of the contract to call
+     * @param callData The data encoding the function and arguments to call
+     * @param nativeValue The amount of native currency (e.g., ETH) to send along with the call
      */
     function execute(
         address target,
         bytes calldata callData,
         uint256 nativeValue
-    ) external onlySigners {
+    ) external payable onlySigners {
+        _call(target, callData, nativeValue);
+    }
+
+    /**
+     * @dev Calls a target address with specified calldata and optionally sends value.
+     */
+    function _call(
+        address target,
+        bytes calldata callData,
+        uint256 nativeValue
+    ) internal {
+        if (nativeValue > address(this).balance) revert InsufficientBalance();
+
         (bool success, ) = target.call{ value: nativeValue }(callData);
         if (!success) {
             revert ExecutionFailed();
