@@ -6,7 +6,6 @@ const { ethers, network } = require('hardhat');
 const {
     utils: { defaultAbiCoder, arrayify, solidityPack, formatBytes32String, keccak256, getCreate2Address },
 } = ethers;
-const { get } = require('lodash/fp');
 const { getChainId, getEVMVersion, getGasOptions } = require('./utils');
 
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
@@ -16,8 +15,6 @@ const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID }
 
 describe('AxelarDepositService', () => {
     let ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2;
-    let adminWallets;
-    const threshold = 2;
 
     let authFactory;
     let tokenDeployerFactory;
@@ -58,7 +55,6 @@ describe('AxelarDepositService', () => {
 
     before(async () => {
         [adminWallet1, adminWallet2] = await ethers.getSigners();
-        adminWallets = [adminWallet1, adminWallet2];
         operatorWallet = adminWallet2;
         ownerWallet = adminWallet1;
         userWallet = adminWallet2;
@@ -75,13 +71,11 @@ describe('AxelarDepositService', () => {
 
     describe('deposit service', () => {
         before(async () => {
-            const params = arrayify(
-                defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
-            );
+            const params = arrayify(defaultAbiCoder.encode(['bytes'], ['0x']));
 
             auth = await authFactory.deploy(getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])).then((d) => d.deployed());
             gatewayImplementation = await gatewayImplementationFactory
-                .deploy(auth.address, tokenDeployer.address)
+                .deploy(auth.address, ownerWallet.address, tokenDeployer.address)
                 .then((d) => d.deployed());
             gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
             await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait());

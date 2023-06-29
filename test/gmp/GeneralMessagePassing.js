@@ -25,13 +25,6 @@ describe('GeneralMessagePassing', () => {
     let ownerWallet;
     let operatorWallet;
     let userWallet;
-    let adminWallet1;
-    let adminWallet2;
-    let adminWallet3;
-    let adminWallet4;
-    let adminWallet5;
-    let adminWallet6;
-    let adminWallets;
     let threshold;
 
     let sourceChainGateway;
@@ -81,9 +74,7 @@ describe('GeneralMessagePassing', () => {
         );
 
     before(async () => {
-        [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
-            await ethers.getSigners();
-        adminWallets = [adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6];
+        [ownerWallet, operatorWallet, userWallet] = await ethers.getSigners();
         threshold = 3;
 
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', ownerWallet);
@@ -99,16 +90,17 @@ describe('GeneralMessagePassing', () => {
 
     beforeEach(async () => {
         const deployGateway = async () => {
-            const adminAddresses = getAddresses(adminWallets);
             const operatorAddresses = getAddresses([operatorWallet]);
 
-            const params = getMultisigProxyDeployParams(adminAddresses, threshold, [], threshold);
+            const params = getMultisigProxyDeployParams([], threshold);
 
             auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [[1]], [1])).then((d) => d.deployed());
 
             tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
 
-            const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            const gatewayImplementation = await gatewayFactory
+                .deploy(auth.address, ownerWallet.address, tokenDeployer.address)
+                .then((d) => d.deployed());
 
             const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
 
