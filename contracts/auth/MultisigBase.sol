@@ -27,6 +27,16 @@ contract MultisigBase is IMultisigBase {
     mapping(uint256 => mapping(bytes32 => Voting)) public votingPerTopic;
 
     /**
+     * @notice Contract constructor
+     * @dev Sets the initial list of signers and corresponding threshold.
+     * @param accounts Address array of the signers
+     * @param threshold Signature threshold required to validate a transaction
+     */
+    constructor(address[] memory accounts, uint256 threshold) {
+        _rotateSigners(accounts, threshold);
+    }
+
+    /**
      * @notice Modifier to ensure the caller is a signer
      * @dev Keeps track of votes for each operation and resets the vote count if the operation is executed.
      * @dev Given the early void return, this modifier should be used with care on functions that return data.
@@ -71,18 +81,16 @@ contract MultisigBase is IMultisigBase {
     \******************/
 
     /**
-     * @notice Returns the signer threshold for a given `epoch`
-     * @param epoch The epoch to get the threshold for
-     * @return uint The signer threshold for the given epoch
+     * @notice Returns the current signer threshold
+     * @return uint The signer threshold
      */
     function signerThreshold() external view override returns (uint256) {
         return signers.threshold;
     }
 
     /**
-     * @notice Returns an array of signers for a given `epoch`
-     * @param epoch The epoch to get the signers for
-     * @return array of signer addresses for the given epoch
+     * @notice Returns an array of current signers
+     * @return array of signer addresses
      */
     function signerAccounts() external view override returns (address[] memory) {
         return signers.accounts;
@@ -99,7 +107,7 @@ contract MultisigBase is IMultisigBase {
      * @param newAccounts Address array of the new signers
      * @param newThreshold The new signature threshold for executing operations
      */
-    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external payable virtual onlySigners {
+    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external virtual onlySigners {
         _rotateSigners(newAccounts, newThreshold);
     }
 

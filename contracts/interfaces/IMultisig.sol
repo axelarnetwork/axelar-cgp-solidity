@@ -4,18 +4,23 @@ pragma solidity ^0.8.0;
 
 import { IMultisigBase } from './IMultisigBase.sol';
 
+/**
+ * @title IMultisig Interface
+ * @notice This interface extends IMultisigBase by adding an execute function for multisignature transactions.
+ */
 interface IMultisig is IMultisigBase {
+    error InsufficientBalance();
     error ExecutionFailed();
 
     /**
-     * @notice Executes a transaction
-     * @param target The address of the contract targeted by the transaction
-     * @param callData The call data to be sent to the target contract
-     * @param nativeValue The amount of native tokens to be sent to the target contract
+     * @notice Executes a function on an external target.
+     * @param target The address of the target to call
+     * @param callData The call data to be sent
+     * @param nativeValue The native token value to be sent (e.g., ETH)
      */
     function execute(
         address target,
         bytes calldata callData,
         uint256 nativeValue
-    ) external;
+    ) external payable;
 }

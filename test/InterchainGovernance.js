@@ -158,7 +158,7 @@ describe('InterchainGovernance', () => {
 
         const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue);
 
-        await expect(tx).to.emit(interchainGovernance, 'ProposalExecuted').to.changeEtherBalance(governanceTarget, nativeValue);
+        await expect(tx).to.emit(interchainGovernance, 'ProposalExecuted').to.changeEtherBalance(target, nativeValue);
     });
 
     it('should cancel an existing proposal', async () => {

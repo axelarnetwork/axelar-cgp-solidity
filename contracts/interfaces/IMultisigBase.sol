@@ -32,16 +32,14 @@ interface IMultisigBase {
     function signerEpoch() external view returns (uint256);
 
     /**
-     * @notice Gets the threshold of signers required for a given epoch.
-     * @param epoch The epoch to get the threshold for
-     * @return uint The threshold for the given epoch
+     * @notice Gets the threshold of current signers.
+     * @return uint The threshold number
      */
     function signerThreshold() external view returns (uint256);
 
     /**
-     * @notice Gets the array of signers for a given epoch.
-     * @param epoch The epoch to get the signers for
-     * @return array of signers for the given epoch
+     * @notice Gets the array of current signers.
+     * @return array of signer addresses
      */
     function signerAccounts() external view returns (address[] memory);
 
