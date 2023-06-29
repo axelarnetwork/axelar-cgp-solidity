@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IGovernance {
+interface IGovernable {
     error NotGovernance();
     error InvalidGovernance();
 
