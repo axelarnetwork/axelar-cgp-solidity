@@ -71,13 +71,13 @@ describe('AxelarGateway', () => {
     const deployGateway = async () => {
         const operatorAddresses = getAddresses(operators);
 
-        const params = getWeightedProxyDeployParams([], [], threshold);
-
         auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
         await auth.deployTransaction.wait(network.config.confirmations);
 
-        const gatewayImplementation = await gatewayFactory.deploy(auth.address, governance.address, tokenDeployer.address);
+        const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address);
         await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
+
+        const params = getWeightedProxyDeployParams(governance.address, [], [], threshold);
 
         const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
         await proxy.deployTransaction.wait(network.config.confirmations);
@@ -93,7 +93,7 @@ describe('AxelarGateway', () => {
         });
 
         it('should get the correct governance address', async () => {
-            expect(await gateway.governance()).to.deep.eq(governance.address);
+            expect(await gateway.governance()).to.eq(governance.address);
         });
 
         it('should get the correct auth module', async () => {
@@ -128,9 +128,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0x8a91092ac8850a1fdb52de0d0b32c7840425e62f8a29dc5bfbeea2d01321037a',
-                berlin: '0x3b837bf86a4efc421e6f954f7a62ca79ab7bca5ddd51686594bd8e82461172f7',
-                london: '0x1d212242c23b575c119cc0c6ef52c5a6782f39a993eee1847620365a8b4c9672',
+                istanbul: '0xa560921b9e71eec3b3dd17678b9b66a5e62a65b9ba7d8953bb97675c5f395ffa',
+                berlin: '0xac9cf186514f8c516bc1dd2fa68ad74e1ec8fac99a5adf5a57729f8a9ed18b08',
+                london: '0xb8136af4e1dadfb592e88295549a7a0e8840161ad03f9f3d9ed569e3227e0be7',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -211,21 +211,39 @@ describe('AxelarGateway', () => {
         });
     });
 
+    describe('governance', () => {
+        beforeEach(async () => {
+            await deployGateway();
+        });
+
+        it('should allow transferring governance', async () => {
+            await expect(
+                gateway.connect(notGovernance).transferGovernance(governance.address, getGasOptions()),
+            ).to.be.revertedWithCustomError(gateway, 'NotGovernance');
+
+            await expect(await gateway.connect(governance).transferGovernance(notGovernance.address, getGasOptions()))
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address);
+
+            await expect(gateway.connect(governance).transferGovernance(governance.address, getGasOptions())).to.be.revertedWithCustomError(
+                gateway,
+                'NotGovernance',
+            );
+
+            expect(await gateway.governance()).to.be.equal(notGovernance.address);
+        });
+    });
+
     describe('upgrade', () => {
         beforeEach(async () => {
             await deployGateway();
         });
 
         it('should allow governance to upgrade to the correct implementation', async () => {
-            const newGatewayImplementation = await gatewayFactory
-                .deploy(auth.address, governance.address, tokenDeployer.address)
-                .then((d) => d.deployed());
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
             const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
             const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
-
-            const newOperatorAddresses = getAddresses(operators.slice(0, threshold - 1));
-
-            const params = getWeightedProxyDeployParams(newOperatorAddresses, getWeights(newOperatorAddresses), threshold - 1);
+            const params = '0x';
 
             await expect(
                 gateway
@@ -239,18 +257,65 @@ describe('AxelarGateway', () => {
                     .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
             )
                 .to.emit(gateway, 'Upgraded')
-                .withArgs(newGatewayImplementation.address);
+                .withArgs(newGatewayImplementation.address)
+                .to.not.emit(gateway, 'GovernanceTransferred')
+                .to.not.emit(gateway, 'OperatorshipTransferred');
+        });
+
+        it('should allow governance to upgrade to the correct implementation with new governance and operators', async () => {
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
+            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+
+            const newOperatorAddresses = getAddresses(operators.slice(0, threshold - 1));
+
+            const params = getWeightedProxyDeployParams(
+                notGovernance.address,
+                newOperatorAddresses,
+                getWeights(newOperatorAddresses),
+                threshold - 1,
+            );
+
+            await expect(
+                gateway
+                    .connect(governance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+            )
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation.address)
+                .to.emit(auth, 'OperatorshipTransferred')
+                .withArgs(newOperatorAddresses, getWeights(newOperatorAddresses), threshold - 1)
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address);
+
+            expect(await gateway.governance()).to.be.eq(notGovernance.address);
+        });
+
+        it('should allow governance to upgrade to the same implementation with new governance', async () => {
+            const newGatewayImplementation = await gateway.implementation();
+            const newGatewayImplementationCode = await governance.provider.getCode(newGatewayImplementation);
+            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+            const params = getWeightedProxyDeployParams(notGovernance.address, [], [], 1);
+
+            await expect(
+                gateway.connect(governance).upgrade(newGatewayImplementation, newGatewayImplementationCodeHash, params, getGasOptions()),
+            )
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation)
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address)
+                .to.not.emit(gateway, 'OperatorshipTransferred');
+
+            expect(await gateway.governance()).to.be.eq(notGovernance.address);
         });
 
         it('should not allow governance to upgrade to a wrong implementation', async () => {
-            const newGatewayImplementation = await gatewayFactory
-                .deploy(auth.address, governance.address, tokenDeployer.address)
-                .then((d) => d.deployed());
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
             const wrongImplementationCodeHash = keccak256(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`);
 
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getWeightedProxyDeployParams(newOperatorAddresses, Array(2).fill(1), 2);
+            const params = getWeightedProxyDeployParams(governance.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             await expect(
                 gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
@@ -264,7 +329,7 @@ describe('AxelarGateway', () => {
         it('should not allow calling the setup function directly', async () => {
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getWeightedProxyDeployParams(newOperatorAddresses, Array(2).fill(1), 2);
+            const params = getWeightedProxyDeployParams(governance.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             await expect(gateway.connect(governance).setup(params)).not.to.emit(gateway, 'OperatorshipTransferred');
 
@@ -274,15 +339,13 @@ describe('AxelarGateway', () => {
         });
 
         it('should not allow calling the upgrade on the implementation', async () => {
-            const newGatewayImplementation = await gatewayFactory
-                .deploy(auth.address, governance.address, tokenDeployer.address)
-                .then((d) => d.deployed());
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
             const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
             const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
 
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getWeightedProxyDeployParams(newOperatorAddresses, Array(2).fill(1), 2);
+            const params = getWeightedProxyDeployParams(governance.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             const implementation = gatewayFactory.attach(await gateway.implementation());
 

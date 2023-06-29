@@ -6,7 +6,7 @@ const { ethers, network } = require('hardhat');
 const {
     utils: { defaultAbiCoder, arrayify, solidityPack, formatBytes32String, keccak256, getCreate2Address },
 } = ethers;
-const { getChainId, getEVMVersion, getGasOptions } = require('./utils');
+const { getChainId, getEVMVersion, getGasOptions, getWeightedProxyDeployParams } = require('./utils');
 
 const DepositReceiver = require('../artifacts/contracts/deposit-service/DepositReceiver.sol/DepositReceiver.json');
 const DepositServiceProxy = require('../artifacts/contracts/deposit-service/AxelarDepositServiceProxy.sol/AxelarDepositServiceProxy.json');
@@ -71,13 +71,14 @@ describe('AxelarDepositService', () => {
 
     describe('deposit service', () => {
         before(async () => {
-            const params = arrayify(defaultAbiCoder.encode(['bytes'], ['0x']));
-
             auth = await authFactory.deploy(getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])).then((d) => d.deployed());
             gatewayImplementation = await gatewayImplementationFactory
-                .deploy(auth.address, ownerWallet.address, tokenDeployer.address)
+                .deploy(auth.address, tokenDeployer.address)
                 .then((d) => d.deployed());
+
+            const params = getWeightedProxyDeployParams(ownerWallet.address, [], [], 1);
             gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
+
             await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait());
             gateway = await gatewayImplementationFactory.attach(gatewayProxy.address);
 

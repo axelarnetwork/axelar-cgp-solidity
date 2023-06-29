@@ -16,16 +16,15 @@ const {
     getWeightedAuthDeployParam,
     getSignedWeightedExecuteInput,
     getRandomID,
-    getMultisigProxyDeployParams,
     getAddresses,
     getChainId,
+    getWeightedProxyDeployParams,
 } = require('../utils');
 
 describe('GeneralMessagePassing', () => {
     let ownerWallet;
     let operatorWallet;
     let userWallet;
-    let threshold;
 
     let sourceChainGateway;
     let destinationChainGateway;
@@ -75,7 +74,6 @@ describe('GeneralMessagePassing', () => {
 
     before(async () => {
         [ownerWallet, operatorWallet, userWallet] = await ethers.getSigners();
-        threshold = 3;
 
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', ownerWallet);
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', ownerWallet);
@@ -92,15 +90,13 @@ describe('GeneralMessagePassing', () => {
         const deployGateway = async () => {
             const operatorAddresses = getAddresses([operatorWallet]);
 
-            const params = getMultisigProxyDeployParams([], threshold);
-
             auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [[1]], [1])).then((d) => d.deployed());
 
             tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
 
-            const gatewayImplementation = await gatewayFactory
-                .deploy(auth.address, ownerWallet.address, tokenDeployer.address)
-                .then((d) => d.deployed());
+            const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+
+            const params = getWeightedProxyDeployParams(ownerWallet.address, [], [], 1);
 
             const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
 
