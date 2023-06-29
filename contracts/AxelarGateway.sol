@@ -5,7 +5,7 @@ pragma solidity 0.8.9;
 import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
-import { IGovernance } from './interfaces/IGovernance.sol';
+import { IGovernable } from './interfaces/IGovernable.sol';
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
@@ -14,7 +14,7 @@ import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { EternalStorage } from './EternalStorage.sol';
 
-contract AxelarGateway is IAxelarGateway, IGovernance, EternalStorage {
+contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
