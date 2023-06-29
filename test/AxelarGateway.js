@@ -6,6 +6,7 @@ const {
 } = ethers;
 const { expect } = chai;
 const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString } = require('./utils');
+const { getBytecodeHash } = require('@axelar-network/axelar-contract-deployments');
 
 const {
     bigNumberToNumber,
@@ -223,8 +224,7 @@ describe('AxelarGateway', () => {
 
         it('should allow the admins to upgrade to the correct implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
-            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
 
             const newAdminAddresses = getAddresses(admins.slice(0, threshold - 1));
             const newOperatorAddresses = getAddresses(operators.slice(0, threshold - 1));
