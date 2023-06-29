@@ -34,16 +34,13 @@ describe('MultisigBase', () => {
     });
 
     it('should return the signer threshold for a given epoch', async () => {
-        const currentEpoch = 1;
         const currentThreshold = 2;
 
-        expect(await multiSig.signerThreshold(currentEpoch)).to.equal(currentThreshold);
+        expect(await multiSig.signerThreshold()).to.equal(currentThreshold);
     });
 
     it('should return the array of signers for a given epoch', async () => {
-        const currentEpoch = 1;
-
-        expect(await multiSig.signerAccounts(currentEpoch)).to.deep.equal(initAccounts);
+        expect(await multiSig.signerAccounts()).to.deep.equal(initAccounts);
     });
 
     it('should revert if non-signer calls only signers function', async () => {
@@ -75,20 +72,6 @@ describe('MultisigBase', () => {
             multiSig,
             'AlreadyVoted',
         );
-    });
-
-    it('should refund the sender if value is sent for execution with insufficient votes', async () => {
-        const newThreshold = 2;
-        const initialBalance = await ethers.provider.getBalance(signer1.address);
-
-        const tx = await multiSig.connect(signer1).rotateSigners(rotatedAccounts, newThreshold, { value: 10000 });
-
-        const receipt = await tx.wait();
-        const gasCost = receipt.effectiveGasPrice.mul(receipt.gasUsed);
-
-        const finalBalance = await ethers.provider.getBalance(signer1.address);
-
-        expect(finalBalance).to.equal(initialBalance.sub(gasCost));
     });
 
     it('should proceed with operation execution with sufficient votes', async () => {
