@@ -51,17 +51,16 @@ contract MultisigBase is IMultisigBase {
                 msg.sender.safeNativeTransfer(msg.value);
             }
             return;
-        } else {
-            // Clear vote count and voted booleans.
-            voting.voteCount = 0;
-
-            uint256 count = signers.accounts.length;
-
-            for (uint256 i; i < count; ++i) {
-                voting.hasVoted[signers.accounts[i]] = false;
-            }
         }
+        // Clear vote count and voted booleans.
+        voting.voteCount = 0;
 
+        uint256 count = signers.accounts.length;
+
+        for (uint256 i; i < count; ++i) {
+            voting.hasVoted[signers.accounts[i]] = false;
+        }
+        
         emit MultisigOperationExecuted(topic);
 
         _;
@@ -96,8 +95,7 @@ contract MultisigBase is IMultisigBase {
 
         if (newThreshold == 0) revert InvalidSignerThreshold();
 
-        uint256 newEpoch = signerEpoch + 1;
-        signerEpoch = newEpoch;
+        uint256 newEpoch = ++signerEpoch;
         Signers storage newSigners = signersPerEpoch[newEpoch];
 
         newSigners.accounts = newAccounts;
