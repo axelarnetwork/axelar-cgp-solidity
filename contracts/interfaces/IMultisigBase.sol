@@ -23,13 +23,13 @@ interface IMultisigBase {
 
     function signerEpoch() external view returns (uint256);
 
-    function signerThreshold(uint256 epoch) external view returns (uint256);
+    function signerThreshold() external view returns (uint256);
 
-    function signerAccounts(uint256 epoch) external view returns (address[] memory);
+    function signerAccounts() external view returns (address[] memory);
 
     /***********\
     |* Setters *|
     \***********/
 
-    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external payable;
+    function rotateSigners(address[] memory newAccounts, uint256 newThreshold) external;
 }
