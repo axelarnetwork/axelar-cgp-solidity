@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.0;
 
 import { IMultisigBase } from '../interfaces/IMultisigBase.sol';
 
@@ -20,6 +20,10 @@ contract MultisigBase is IMultisigBase {
     uint256 public signerEpoch;
     // uint256 is for epoch, bytes32 for vote topic hash
     mapping(uint256 => mapping(bytes32 => Voting)) public votingPerTopic;
+
+    constructor(address[] memory accounts, uint256 threshold) {
+        _rotateSigners(accounts, threshold);
+    }
 
     // NOTE: Given the early void return, this modifier should be used with care on functions that return data.
     modifier onlySigners() {
