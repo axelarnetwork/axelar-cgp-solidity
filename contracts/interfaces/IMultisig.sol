@@ -3,15 +3,13 @@
 pragma solidity ^0.8.0;
 
 import { IMultisigBase } from './IMultisigBase.sol';
+import { ICaller } from './ICaller.sol';
 
 /**
  * @title IMultisig Interface
  * @notice This interface extends IMultisigBase by adding an execute function for multisignature transactions.
  */
-interface IMultisig is IMultisigBase {
-    error InsufficientBalance();
-    error ExecutionFailed();
-
+interface IMultisig is ICaller, IMultisigBase {
     /**
      * @notice Executes a function on an external target.
      * @param target The address of the target to call

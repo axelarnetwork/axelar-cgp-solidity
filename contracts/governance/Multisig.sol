@@ -4,12 +4,13 @@ pragma solidity ^0.8.0;
 
 import { IMultisig } from '../interfaces/IMultisig.sol';
 import { MultisigBase } from '../auth/MultisigBase.sol';
+import { Caller } from '../util/Caller.sol';
 
 /**
  * @title Multisig Contract
  * @notice An extension of MultisigBase that can call functions on any contract.
  */
-contract Multisig is MultisigBase, IMultisig {
+contract Multisig is Caller, MultisigBase, IMultisig {
     /**
      * @notice Contract constructor
      * @dev Sets the initial list of signers and corresponding threshold.
@@ -32,22 +33,6 @@ contract Multisig is MultisigBase, IMultisig {
         uint256 nativeValue
     ) external payable onlySigners {
         _call(target, callData, nativeValue);
-    }
-
-    /**
-     * @dev Calls a target address with specified calldata and optionally sends value.
-     */
-    function _call(
-        address target,
-        bytes calldata callData,
-        uint256 nativeValue
-    ) internal {
-        if (nativeValue > address(this).balance) revert InsufficientBalance();
-
-        (bool success, ) = target.call{ value: nativeValue }(callData);
-        if (!success) {
-            revert ExecutionFailed();
-        }
     }
 
     /**
