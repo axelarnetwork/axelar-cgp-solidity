@@ -59,23 +59,23 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
 
     /**
      * @notice Executes a proposal
-     * @dev The proposal is executed by calling the target contract with calldata. `msg.value` is
-     * transfered to the target contract.
+     * @dev The proposal is executed by calling the target contract with calldata. Native value is
+     * transferred with the call to the target contract.
      * @param target The target address of the contract to call
      * @param callData The data containing the function and arguments for the contract to call
-     * @param value The amount of native token to send to the target contract
+     * @param nativeValue The amount of native token to send to the target contract
      */
     function executeProposal(
         address target,
         bytes calldata callData,
-        uint256 value
+        uint256 nativeValue
     ) external payable {
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, value));
+        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, nativeValue));
 
         _finalizeTimeLock(proposalHash);
-        _call(target, callData, value);
+        _call(target, callData, nativeValue);
 
-        emit ProposalExecuted(proposalHash, target, callData, value, block.timestamp);
+        emit ProposalExecuted(proposalHash, target, callData, nativeValue, block.timestamp);
     }
 
     /**
@@ -107,7 +107,7 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
      * @param commandId The id of the command, 0 for proposal creation and 1 for proposal cancellation
      * @param target The target address the proposal will call
      * @param callData The data the encodes the function and arguments to call on the target contract
-     * @param nativeValue The value of native token to be sent to the target contract
+     * @param nativeValue The nativeValue of native token to be sent to the target contract
      * @param eta The time after which the proposal can be executed
      */
     function _processCommand(
@@ -117,6 +117,10 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
         uint256 nativeValue,
         uint256 eta
     ) internal virtual {
+        if (commandId > uint256(type(GovernanceCommand).max)) {
+            revert InvalidCommand();
+        }
+
         GovernanceCommand command = GovernanceCommand(commandId);
         bytes32 proposalHash = _getProposalHash(target, callData, nativeValue);
 
@@ -124,12 +128,12 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
             eta = _scheduleTimeLock(proposalHash, eta);
 
             emit ProposalScheduled(proposalHash, target, callData, nativeValue, eta);
+            return;
         } else if (command == GovernanceCommand.CancelTimeLockProposal) {
             _cancelTimeLock(proposalHash);
 
             emit ProposalCancelled(proposalHash, target, callData, nativeValue, eta);
-        } else {
-            revert InvalidCommand();
+            return;
         }
     }
 

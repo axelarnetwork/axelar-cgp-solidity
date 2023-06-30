@@ -27,7 +27,7 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
      * @param governanceChain The name of the governance chain
      * @param governanceAddress The address of the governance contract
      * @param minimumTimeDelay The minimum time delay for timelock operations
-     * @param signers The list of initial signers
+     * @param cosigners The list of initial signers
      * @param threshold The number of required signers to validate a transaction
      */
     constructor(
@@ -37,27 +37,28 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
         uint256 minimumTimeDelay,
         address[] memory cosigners,
         uint256 threshold
-    ) InterchainGovernance(gateway, governanceChain, governanceAddress, minimumTimeDelay) MultisigBase(signers, threshold) {}
+    ) InterchainGovernance(gateway, governanceChain, governanceAddress, minimumTimeDelay) MultisigBase(cosigners, threshold) {}
 
     /**
      * @notice Executes a multisig proposal.
      * @param target The target address the proposal will call
      * @param callData The data that encodes the function and arguments to call on the target contract
+     * @param nativeValue The value of native token to be sent to the target contract
      */
     function executeMultisigProposal(
         address target,
         bytes calldata callData,
-        uint256 value
+        uint256 nativeValue
     ) external payable onlySigners {
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, value));
+        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, nativeValue));
 
         if (!multisigApprovals[proposalHash]) revert NotApproved();
 
         multisigApprovals[proposalHash] = false;
 
-        _call(target, callData, value);
+        _call(target, callData, nativeValue);
 
-        emit MultisigExecuted(proposalHash, target, callData, value);
+        emit MultisigExecuted(proposalHash, target, callData, nativeValue);
     }
 
     /**
@@ -75,6 +76,10 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
         uint256 nativeValue,
         uint256 eta
     ) internal override {
+        if (commandId > uint256(type(ServiceGovernanceCommand).max)) {
+            revert InvalidCommand();
+        }
+
         ServiceGovernanceCommand command = ServiceGovernanceCommand(commandId);
         bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, nativeValue));
 
@@ -82,20 +87,22 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
             eta = _scheduleTimeLock(proposalHash, eta);
 
             emit ProposalScheduled(proposalHash, target, callData, nativeValue, eta);
+            return;
         } else if (command == ServiceGovernanceCommand.CancelTimeLockProposal) {
             _cancelTimeLock(proposalHash);
 
             emit ProposalCancelled(proposalHash, target, callData, nativeValue, eta);
+            return;
         } else if (command == ServiceGovernanceCommand.ApproveMultisigProposal) {
             multisigApprovals[proposalHash] = true;
 
             emit MultisigApproved(proposalHash, target, callData, nativeValue);
+            return;
         } else if (command == ServiceGovernanceCommand.CancelMultisigApproval) {
             multisigApprovals[proposalHash] = false;
 
             emit MultisigCancelled(proposalHash, target, callData, nativeValue);
-        } else {
-            revert InvalidCommand();
+            return;
         }
     }
 }
