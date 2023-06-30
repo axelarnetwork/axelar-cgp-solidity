@@ -82,25 +82,13 @@ module.exports = {
             defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [operators, weightSets[i], operatorThresholds[i]]),
         ),
 
-    getMultisigProxyDeployParams: (admins, adminThreshold, operators, operatorThreshold) =>
+    getWeightedProxyDeployParams: (governance, mintLimiter, operators, weights, operatorThreshold) =>
         arrayify(
             defaultAbiCoder.encode(
-                ['address[]', 'uint8', 'bytes'],
+                ['address', 'address', 'bytes'],
                 [
-                    admins,
-                    adminThreshold,
-                    operators.length ? defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThreshold]) : '0x',
-                ],
-            ),
-        ),
-
-    getWeightedProxyDeployParams: (admins, adminThreshold, operators, weights, operatorThreshold) =>
-        arrayify(
-            defaultAbiCoder.encode(
-                ['address[]', 'uint8', 'bytes'],
-                [
-                    admins,
-                    adminThreshold,
+                    governance,
+                    mintLimiter,
                     operators.length
                         ? defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [operators, weights, operatorThreshold])
                         : '0x',

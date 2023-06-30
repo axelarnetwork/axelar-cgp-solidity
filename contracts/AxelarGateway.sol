@@ -5,6 +5,7 @@ pragma solidity 0.8.9;
 import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
+import { IGovernable } from './interfaces/IGovernable.sol';
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
@@ -13,7 +14,7 @@ import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
 import { AdminMultisigBase } from './AdminMultisigBase.sol';
 
-contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
+contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
@@ -30,6 +31,12 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     /// @dev Storage slot with the address of the current implementation. `keccak256('eip1967.proxy.implementation') - 1`.
     bytes32 internal constant KEY_IMPLEMENTATION = bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
+
+    /// @dev Storage slot with the address of the current governance. `keccak256('governance') - 1`.
+    bytes32 internal constant KEY_GOVERNANCE = bytes32(0xabea6fd3db56a6e6d0242111b43ebb13d1c42709651c032c7894962023a1f909);
+
+    /// @dev Storage slot with the address of the current governance. `keccak256('mint-limiter') - 1`.
+    bytes32 internal constant KEY_MINT_LIMITER = bytes32(0x627f0c11732837b3240a2de89c0b6343512886dd50978b99c76a68c6416a4d92);
 
     // AUDIT: slot names should be prefixed with some standard string
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
@@ -62,6 +69,21 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     modifier onlySelf() {
         if (msg.sender != address(this)) revert NotSelf();
+
+        _;
+    }
+
+    modifier onlyGovernance() {
+        if (msg.sender != getAddress(KEY_GOVERNANCE)) revert NotGovernance();
+
+        _;
+    }
+
+    /*
+     * @dev Reverts with an error if the sender is not the mint limiter or governance.
+     */
+    modifier onlyMintLimiter() {
+        if (msg.sender != getAddress(KEY_MINT_LIMITER) && msg.sender != getAddress(KEY_GOVERNANCE)) revert NotMintLimiter();
 
         _;
     }
@@ -156,8 +178,16 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
     |* Getters *|
     \***********/
 
-    function authModule() public view returns (address) {
+    function authModule() public view override returns (address) {
         return AUTH_MODULE;
+    }
+
+    function governance() public view override returns (address) {
+        return getAddress(KEY_GOVERNANCE);
+    }
+
+    function mintLimiter() public view override returns (address) {
+        return getAddress(KEY_MINT_LIMITER);
     }
 
     function tokenDeployer() public view returns (address) {
@@ -179,6 +209,21 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return false;
     }
 
+    /// @dev Deprecated.
+    function adminEpoch() external pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @dev Deprecated.
+    function adminThreshold(uint256) external pure override returns (uint256) {
+        return 0;
+    }
+
+    /// @dev Deprecated.
+    function admins(uint256) external pure override returns (address[] memory) {
+        return new address[](0);
+    }
+
     function implementation() public view override returns (address) {
         return getAddress(KEY_IMPLEMENTATION);
     }
@@ -197,34 +242,27 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         return getBool(_getIsCommandExecutedKey(commandId));
     }
 
-    /// @dev Returns the current `adminEpoch`.
-    function adminEpoch() external view override returns (uint256) {
-        return _adminEpoch();
+    /************************\
+    |* Governance Functions *|
+    \************************/
+
+    function transferGovernance(address newGovernance) external override onlyGovernance {
+        if (newGovernance == address(0)) revert InvalidGovernance();
+
+        _transferGovernance(newGovernance);
     }
 
-    /// @dev Returns the admin threshold for a given `adminEpoch`.
-    function adminThreshold(uint256 epoch) external view override returns (uint256) {
-        return _getAdminThreshold(epoch);
+    function transferMintLimiter(address newMintLimiter) external override onlyMintLimiter {
+        if (newMintLimiter == address(0)) revert InvalidMintLimiter();
+
+        _transferMintLimiter(newMintLimiter);
     }
 
-    /// @dev Returns the array of admins within a given `adminEpoch`.
-    function admins(uint256 epoch) external view override returns (address[] memory results) {
-        uint256 adminCount = _getAdminCount(epoch);
-        results = new address[](adminCount);
+    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyMintLimiter {
+        uint256 length = symbols.length;
+        if (length != limits.length) revert InvalidSetMintLimitsParams();
 
-        for (uint256 i; i < adminCount; ++i) {
-            results[i] = _getAdmin(epoch, i);
-        }
-    }
-
-    /*******************\
-    |* Admin Functions *|
-    \*******************/
-
-    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyAdmin {
-        if (symbols.length != limits.length) revert InvalidSetMintLimitsParams();
-
-        for (uint256 i = 0; i < symbols.length; i++) {
+        for (uint256 i; i < length; ++i) {
             string memory symbol = symbols[i];
             uint256 limit = limits[i];
 
@@ -238,7 +276,7 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         address newImplementation,
         bytes32 newImplementationCodeHash,
         bytes calldata setupParams
-    ) external override onlyAdmin {
+    ) external override onlyGovernance {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
         emit Upgraded(newImplementation);
@@ -264,15 +302,10 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
         // Prevent setup from being called on a non-proxy (the implementation).
         if (implementation() == address(0)) revert NotProxy();
 
-        (address[] memory adminAddresses, uint256 newAdminThreshold, bytes memory newOperatorsData) = abi.decode(
-            params,
-            (address[], uint256, bytes)
-        );
+        (address governance_, address mintLimiter_, bytes memory newOperatorsData) = abi.decode(params, (address, address, bytes));
 
-        // NOTE: Admin epoch is incremented to easily invalidate current admin-related state.
-        uint256 newAdminEpoch = _adminEpoch() + uint256(1);
-        _setAdminEpoch(newAdminEpoch);
-        _setAdmins(newAdminEpoch, adminAddresses, newAdminThreshold);
+        if (governance_ != address(0)) _transferGovernance(governance_);
+        if (mintLimiter_ != address(0)) _transferMintLimiter(mintLimiter_);
 
         if (newOperatorsData.length != 0) {
             IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
@@ -639,5 +672,17 @@ contract AxelarGateway is IAxelarGateway, AdminMultisigBase {
 
     function _setImplementation(address newImplementation) internal {
         _setAddress(KEY_IMPLEMENTATION, newImplementation);
+    }
+
+    function _transferGovernance(address newGovernance) internal {
+        emit GovernanceTransferred(getAddress(KEY_GOVERNANCE), newGovernance);
+
+        _setAddress(KEY_GOVERNANCE, newGovernance);
+    }
+
+    function _transferMintLimiter(address newMintLimiter) internal {
+        emit MintLimiterTransferred(getAddress(KEY_MINT_LIMITER), newMintLimiter);
+
+        _setAddress(KEY_MINT_LIMITER, newMintLimiter);
     }
 }
