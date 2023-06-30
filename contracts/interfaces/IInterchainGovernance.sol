@@ -2,17 +2,17 @@
 
 pragma solidity ^0.8.0;
 
-import '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarExecutable.sol';
+import { IAxelarExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarExecutable.sol';
+import { ICaller } from './ICaller.sol';
 
 /**
  * @title IInterchainGovernance Interface
  * @notice This interface extends IAxelarExecutable for interchain governance mechanisms.
  */
-interface IInterchainGovernance is IAxelarExecutable {
+interface IInterchainGovernance is IAxelarExecutable, ICaller {
     error NotGovernance();
     error InvalidCommand();
     error InvalidTarget();
-    error ExecutionFailed();
     error TokenNotSupported();
 
     event ProposalScheduled(bytes32 indexed proposalHash, address indexed target, bytes callData, uint256 value, uint256 indexed eta);

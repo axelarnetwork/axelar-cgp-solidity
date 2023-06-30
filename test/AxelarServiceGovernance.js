@@ -127,7 +127,7 @@ describe('AxelarServiceGovernance', () => {
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
-            .withArgs(proposalHash, target, calldata);
+            .withArgs(proposalHash, target, calldata, nativeValue);
     });
 
     it('should cancel an approved multisig proposal', async () => {
@@ -147,7 +147,7 @@ describe('AxelarServiceGovernance', () => {
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigCancelled')
-            .withArgs(proposalHash);
+            .withArgs(proposalHash, target, calldata, nativeValue);
     });
 
     it('should re-approve a multisig proposal after cancelling it', async () => {
@@ -173,15 +173,15 @@ describe('AxelarServiceGovernance', () => {
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
-            .withArgs(proposalHash, target, calldata);
+            .withArgs(proposalHash, target, calldata, nativeValue);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payloadCancel))
             .to.emit(serviceGovernance, 'MultisigCancelled')
-            .withArgs(proposalHash);
+            .withArgs(proposalHash, target, calldata, nativeValue);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
-            .withArgs(proposalHash, target, calldata);
+            .withArgs(proposalHash, target, calldata, nativeValue);
     });
 
     it('should revert on executing a multisig proposal if called by non-signer', async () => {
@@ -190,7 +190,7 @@ describe('AxelarServiceGovernance', () => {
         const targetInterface = new Interface(['function callTarget() external']);
         const calldata = targetInterface.encodeFunctionData('callTarget');
 
-        await expect(serviceGovernance.connect(ownerWallet).executeMultisigProposal(target, calldata)).to.be.revertedWithCustomError(
+        await expect(serviceGovernance.connect(ownerWallet).executeMultisigProposal(target, calldata, 0)).to.be.revertedWithCustomError(
             serviceGovernance,
             'NotSigner',
         );
@@ -204,10 +204,10 @@ describe('AxelarServiceGovernance', () => {
 
         await serviceGovernance
             .connect(signer1)
-            .executeMultisigProposal(target, calldata)
+            .executeMultisigProposal(target, calldata, 0)
             .then((tx) => tx.wait());
 
-        await expect(serviceGovernance.connect(signer2).executeMultisigProposal(target, calldata)).to.be.revertedWithCustomError(
+        await expect(serviceGovernance.connect(signer2).executeMultisigProposal(target, calldata, 0)).to.be.revertedWithCustomError(
             serviceGovernance,
             'NotApproved',
         );
@@ -231,17 +231,16 @@ describe('AxelarServiceGovernance', () => {
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
-            .withArgs(proposalHash, target, calldata);
+            .withArgs(proposalHash, target, calldata, nativeValue);
 
         await serviceGovernance
             .connect(signer1)
-            .executeMultisigProposal(target, calldata)
+            .executeMultisigProposal(target, calldata, nativeValue)
             .then((tx) => tx.wait());
 
-        await expect(serviceGovernance.connect(signer2).executeMultisigProposal(target, calldata)).to.be.revertedWithCustomError(
-            serviceGovernance,
-            'ExecutionFailed',
-        );
+        await expect(
+            serviceGovernance.connect(signer2).executeMultisigProposal(target, calldata, nativeValue),
+        ).to.be.revertedWithCustomError(serviceGovernance, 'ExecutionFailed');
     });
 
     it('should not execute a multisig proposal if only one signer votes', async () => {
@@ -261,9 +260,9 @@ describe('AxelarServiceGovernance', () => {
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
-            .withArgs(proposalHash, target, calldata);
+            .withArgs(proposalHash, target, calldata, nativeValue);
 
-        await expect(serviceGovernance.connect(signer1).executeMultisigProposal(target, calldata)).to.not.emit(
+        await expect(serviceGovernance.connect(signer1).executeMultisigProposal(target, calldata, 0)).to.not.emit(
             serviceGovernance,
             'MultisigExecuted',
         );
@@ -286,16 +285,16 @@ describe('AxelarServiceGovernance', () => {
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
-            .withArgs(proposalHash, target, calldata);
+            .withArgs(proposalHash, target, calldata, nativeValue);
 
         await serviceGovernance
             .connect(signer1)
-            .executeMultisigProposal(target, calldata)
+            .executeMultisigProposal(target, calldata, nativeValue)
             .then((tx) => tx.wait());
 
-        await expect(serviceGovernance.connect(signer2).executeMultisigProposal(target, calldata))
+        await expect(serviceGovernance.connect(signer2).executeMultisigProposal(target, calldata, nativeValue))
             .to.emit(serviceGovernance, 'MultisigExecuted')
-            .withArgs(proposalHash)
+            .withArgs(proposalHash, target, calldata, nativeValue)
             .and.to.emit(targetContract, 'TargetCalled');
     });
 
@@ -316,16 +315,19 @@ describe('AxelarServiceGovernance', () => {
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
-            .withArgs(proposalHash, target, calldata);
+            .withArgs(proposalHash, target, calldata, nativeValue);
 
         await serviceGovernance
             .connect(signer1)
-            .executeMultisigProposal(target, calldata)
+            .executeMultisigProposal(target, calldata, nativeValue)
             .then((tx) => tx.wait());
 
-        const tx = await serviceGovernance.connect(signer2).executeMultisigProposal(target, calldata, { value: nativeValue });
+        const tx = await serviceGovernance.connect(signer2).executeMultisigProposal(target, calldata, nativeValue, { value: nativeValue });
 
-        await expect(tx).to.emit(serviceGovernance, 'MultisigExecuted').withArgs(proposalHash).and.to.emit(targetContract, 'TargetCalled');
+        await expect(tx)
+            .to.emit(serviceGovernance, 'MultisigExecuted')
+            .withArgs(proposalHash, target, calldata, nativeValue)
+            .and.to.emit(targetContract, 'TargetCalled');
         await expect(tx).to.changeEtherBalance(target, nativeValue);
     });
 });

@@ -5,13 +5,14 @@ pragma solidity ^0.8.0;
 import { AxelarExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol';
 import { TimeLock } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/TimeLock.sol';
 import { IInterchainGovernance } from '../interfaces/IInterchainGovernance.sol';
+import { Caller } from '../util/Caller.sol';
 
 /**
  * @title Interchain Governance contract
  * @notice This contract handles cross-chain governance actions. It includes functionality
  * to create, cancel, and execute governance proposals.
  */
-contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernance {
+contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchainGovernance {
     enum GovernanceCommand {
         ScheduleTimeLockProposal,
         CancelTimeLockProposal
@@ -72,12 +73,7 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, IInterchainGovernan
         bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, value));
 
         _finalizeTimeLock(proposalHash);
-
-        (bool success, ) = target.call{ value: value }(callData);
-
-        if (!success) {
-            revert ExecutionFailed();
-        }
+        _call(target, callData, value);
 
         emit ProposalExecuted(proposalHash, target, callData, value, block.timestamp);
     }

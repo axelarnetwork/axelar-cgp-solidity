@@ -44,20 +44,20 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
      * @param target The target address the proposal will call
      * @param callData The data that encodes the function and arguments to call on the target contract
      */
-    function executeMultisigProposal(address target, bytes calldata callData) external payable onlySigners {
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, msg.value));
+    function executeMultisigProposal(
+        address target,
+        bytes calldata callData,
+        uint256 value
+    ) external payable onlySigners {
+        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, value));
 
         if (!multisigApprovals[proposalHash]) revert NotApproved();
 
         multisigApprovals[proposalHash] = false;
 
-        (bool success, ) = target.call{ value: msg.value }(callData);
+        _call(target, callData, value);
 
-        if (!success) {
-            revert ExecutionFailed();
-        }
-
-        emit MultisigExecuted(proposalHash);
+        emit MultisigExecuted(proposalHash, target, callData, value);
     }
 
     /**
@@ -89,11 +89,11 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
         } else if (command == ServiceGovernanceCommand.ApproveMultisigProposal) {
             multisigApprovals[proposalHash] = true;
 
-            emit MultisigApproved(proposalHash, target, callData);
+            emit MultisigApproved(proposalHash, target, callData, nativeValue);
         } else if (command == ServiceGovernanceCommand.CancelMultisigApproval) {
             multisigApprovals[proposalHash] = false;
 
-            emit MultisigCancelled(proposalHash);
+            emit MultisigCancelled(proposalHash, target, callData, nativeValue);
         } else {
             revert InvalidCommand();
         }
