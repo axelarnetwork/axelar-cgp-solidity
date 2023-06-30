@@ -6,6 +6,7 @@ const {
 } = ethers;
 const { expect } = chai;
 const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString } = require('./utils');
+const { getBytecodeHash } = require('@axelar-network/axelar-contract-deployments');
 
 const {
     bigNumberToNumber,
@@ -265,8 +266,7 @@ describe('AxelarGateway', () => {
 
         it('should allow governance to upgrade to the correct implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
-            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
             const params = '0x';
 
             await expect(
@@ -288,8 +288,7 @@ describe('AxelarGateway', () => {
 
         it('should allow governance to upgrade to the correct implementation with new governance and operators', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
-            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
 
             const newOperatorAddresses = getAddresses(operators.slice(0, threshold - 1));
 
@@ -317,16 +316,17 @@ describe('AxelarGateway', () => {
         });
 
         it('should allow governance to upgrade to the same implementation with new governance', async () => {
-            const newGatewayImplementation = await gateway.implementation();
-            const newGatewayImplementationCode = await governance.provider.getCode(newGatewayImplementation);
-            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+            const newGatewayImplementation = await gatewayFactory.attach(await gateway.implementation());
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
             const params = getWeightedProxyDeployParams(notGovernance.address, mintLimiter.address, [], [], 1);
 
             await expect(
-                gateway.connect(governance).upgrade(newGatewayImplementation, newGatewayImplementationCodeHash, params, getGasOptions()),
+                gateway
+                    .connect(governance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
             )
                 .to.emit(gateway, 'Upgraded')
-                .withArgs(newGatewayImplementation)
+                .withArgs(newGatewayImplementation.address)
                 .to.emit(gateway, 'GovernanceTransferred')
                 .withArgs(governance.address, notGovernance.address)
                 .to.not.emit(gateway, 'OperatorshipTransferred');
@@ -365,8 +365,7 @@ describe('AxelarGateway', () => {
 
         it('should not allow calling the upgrade on the implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
-            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
 
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
