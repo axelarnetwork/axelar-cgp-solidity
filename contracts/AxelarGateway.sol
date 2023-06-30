@@ -59,8 +59,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     // solhint-disable-next-line var-name-mixedcase
     address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
 
-    constructor(address authModule_, address mintLimiter_,
-        address tokenDeployerImplementation_) {
+    constructor(address authModule_, address tokenDeployerImplementation_) {
         if (authModule_.code.length == 0) revert InvalidAuthModule();
         if (tokenDeployerImplementation_.code.length == 0) revert InvalidTokenDeployer();
 
@@ -81,7 +80,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     modifier onlyMintLimiter() {
-        if (msg.sender != GOVERNANCE && msg.sender != MINT_LIMITER) revert NotMintLimiter();
+        if (msg.sender != getAddress(KEY_GOVERNANCE) && msg.sender != getAddress(KEY_MINT_LIMITER)) revert NotMintLimiter();
 
         _;
     }
@@ -185,7 +184,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     function mintLimiter() public view override returns (address) {
-        return MINT_LIMITER;
+        return getAddress(KEY_MINT_LIMITER);
     }
 
     function tokenDeployer() public view returns (address) {
@@ -250,10 +249,10 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         _transferGovernance(newGovernance);
     }
 
-    function _transferGovernance(address newGovernance) internal {
-        emit GovernanceTransferred(governance(), newGovernance);
+    function transferMintLimiting(address newMintLimiter) external override onlyMintLimiter {
+        if (newMintLimiter == address(0)) revert InvalidMintLimiter();
 
-        _setAddress(KEY_GOVERNANCE, newGovernance);
+        _transferMintLimiting(newMintLimiter);
     }
 
     function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyMintLimiter {
@@ -300,11 +299,10 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         // Prevent setup from being called on a non-proxy (the implementation).
         if (implementation() == address(0)) revert NotProxy();
 
-        (address governance_, bytes memory newOperatorsData) = abi.decode(params, (address, bytes));
+        (address governance_, address mintLimiter_, bytes memory newOperatorsData) = abi.decode(params, (address, address, bytes));
 
-        if (governance_ != address(0)) {
-            _transferGovernance(governance_);
-        }
+        if (governance_ != address(0)) _transferGovernance(governance_);
+        if (mintLimiter_ != address(0)) _transferMintLimiting(mintLimiter_);
 
         if (newOperatorsData.length != 0) {
             IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
@@ -671,5 +669,17 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
 
     function _setImplementation(address newImplementation) internal {
         _setAddress(KEY_IMPLEMENTATION, newImplementation);
+    }
+
+    function _transferGovernance(address newGovernance) internal {
+        emit GovernanceTransferred(governance(), newGovernance);
+
+        _setAddress(KEY_GOVERNANCE, newGovernance);
+    }
+
+    function _transferMintLimiting(address newMintLimiter) internal {
+        emit MintLimiterTransferred(mintLimiter(), newMintLimiter);
+
+        _setAddress(KEY_MINT_LIMITER, newMintLimiter);
     }
 }
