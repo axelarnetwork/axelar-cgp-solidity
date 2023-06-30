@@ -34,6 +34,7 @@ describe('AxelarGateway', () => {
     let owner;
     let operators;
     let governance;
+    let mintLimiter;
     let notGovernance;
 
     let gatewayFactory;
@@ -51,7 +52,7 @@ describe('AxelarGateway', () => {
     before(async () => {
         wallets = await ethers.getSigners();
         owner = wallets[0];
-        governance = owner;
+        governance = mintLimiter = owner;
         notGovernance = wallets[1];
         operators = sortBy(wallets.slice(0, threshold), (wallet) => wallet.address.toLowerCase());
 
@@ -77,7 +78,7 @@ describe('AxelarGateway', () => {
         const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address);
         await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
 
-        const params = getWeightedProxyDeployParams(governance.address, [], [], threshold);
+        const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, [], [], threshold);
 
         const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
         await proxy.deployTransaction.wait(network.config.confirmations);
@@ -94,6 +95,10 @@ describe('AxelarGateway', () => {
 
         it('should get the correct governance address', async () => {
             expect(await gateway.governance()).to.eq(governance.address);
+        });
+
+        it('should get the correct mint limiter address', async () => {
+            expect(await gateway.mintLimiter()).to.eq(mintLimiter.address);
         });
 
         it('should get the correct auth module', async () => {
@@ -128,9 +133,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0x82df35ec7bcda6c3238323d5bb8b4bb49b4507c84892531774f864f9c13a9789',
-                berlin: '0xa02a25fda8589ad3c99130d77c33252f6cc4b0da739d4e69090b0332f2fa622e',
-                london: '0xf1a00018de7631bc44cfabfce300b72db4ab796445d770bc59ca6b17992266c8',
+                istanbul: '0x17a01ff5bbba4c774611e48aa3fe775d0816d7e3dc4598fb518c07112cdd1c6c',
+                berlin: '0x5760b30dd8560a5036202d1dfcdb4cbd6293799816c97aa71155e23b3e265d12',
+                london: '0xe724c1ace9300cc8e768faee4b445062212155cd2d767b13ccba36aff016232d',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -194,7 +199,7 @@ describe('AxelarGateway', () => {
 
             await expect(gateway.connect(notGovernance).setTokenMintLimits(symbols, limits, getGasOptions())).to.be.revertedWithCustomError(
                 gateway,
-                'NotGovernance',
+                'NotMintLimiter',
             );
 
             await gateway
@@ -211,7 +216,7 @@ describe('AxelarGateway', () => {
         });
     });
 
-    describe('governance', () => {
+    describe('gateway operators', () => {
         beforeEach(async () => {
             await deployGateway();
         });
@@ -231,6 +236,25 @@ describe('AxelarGateway', () => {
             );
 
             expect(await gateway.governance()).to.be.equal(notGovernance.address);
+        });
+
+        it('should allow transferring mint limiter', async () => {
+            const notMintLimiter = notGovernance;
+
+            await expect(
+                gateway.connect(notMintLimiter).transferMintLimiter(notMintLimiter.address, getGasOptions()),
+            ).to.be.revertedWithCustomError(gateway, 'NotMintLimiter');
+
+            await expect(await gateway.connect(mintLimiter).transferMintLimiter(notMintLimiter.address, getGasOptions()))
+                .to.emit(gateway, 'MintLimiterTransferred')
+                .withArgs(mintLimiter.address, notMintLimiter.address);
+
+            expect(await gateway.mintLimiter()).to.be.equal(notMintLimiter.address);
+
+            // test that governance can transfer mint limiter too
+            await expect(await gateway.connect(governance).transferMintLimiter(mintLimiter.address, getGasOptions()))
+                .to.emit(gateway, 'MintLimiterTransferred')
+                .withArgs(notMintLimiter.address, mintLimiter.address);
         });
     });
 
@@ -271,6 +295,7 @@ describe('AxelarGateway', () => {
 
             const params = getWeightedProxyDeployParams(
                 notGovernance.address,
+                mintLimiter.address,
                 newOperatorAddresses,
                 getWeights(newOperatorAddresses),
                 threshold - 1,
@@ -295,7 +320,7 @@ describe('AxelarGateway', () => {
             const newGatewayImplementation = await gateway.implementation();
             const newGatewayImplementationCode = await governance.provider.getCode(newGatewayImplementation);
             const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
-            const params = getWeightedProxyDeployParams(notGovernance.address, [], [], 1);
+            const params = getWeightedProxyDeployParams(notGovernance.address, mintLimiter.address, [], [], 1);
 
             await expect(
                 gateway.connect(governance).upgrade(newGatewayImplementation, newGatewayImplementationCodeHash, params, getGasOptions()),
@@ -315,7 +340,7 @@ describe('AxelarGateway', () => {
 
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getWeightedProxyDeployParams(governance.address, newOperatorAddresses, Array(2).fill(1), 2);
+            const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             await expect(
                 gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
@@ -329,7 +354,7 @@ describe('AxelarGateway', () => {
         it('should not allow calling the setup function directly', async () => {
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getWeightedProxyDeployParams(governance.address, newOperatorAddresses, Array(2).fill(1), 2);
+            const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             await expect(gateway.connect(governance).setup(params)).not.to.emit(gateway, 'OperatorshipTransferred');
 
@@ -345,7 +370,7 @@ describe('AxelarGateway', () => {
 
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getWeightedProxyDeployParams(governance.address, newOperatorAddresses, Array(2).fill(1), 2);
+            const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             const implementation = gatewayFactory.attach(await gateway.implementation());
 

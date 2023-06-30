@@ -12,9 +12,9 @@ import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
 import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
-import { EternalStorage } from './EternalStorage.sol';
+import { AdminMultisigBase } from './AdminMultisigBase.sol';
 
-contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
+contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
@@ -34,6 +34,9 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
 
     /// @dev Storage slot with the address of the current governance. `keccak256('governance') - 1`.
     bytes32 internal constant KEY_GOVERNANCE = bytes32(0xabea6fd3db56a6e6d0242111b43ebb13d1c42709651c032c7894962023a1f909);
+
+    /// @dev Storage slot with the address of the current governance. `keccak256('mint-limiter') - 1`.
+    bytes32 internal constant KEY_MINT_LIMITER = bytes32(0x627f0c11732837b3240a2de89c0b6343512886dd50978b99c76a68c6416a4d92);
 
     // AUDIT: slot names should be prefixed with some standard string
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
@@ -72,6 +75,15 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
 
     modifier onlyGovernance() {
         if (msg.sender != getAddress(KEY_GOVERNANCE)) revert NotGovernance();
+
+        _;
+    }
+
+    /*
+     * @dev Reverts with an error if the sender is not the mint limiter or governance.
+     */
+    modifier onlyMintLimiter() {
+        if (msg.sender != getAddress(KEY_MINT_LIMITER) && msg.sender != getAddress(KEY_GOVERNANCE)) revert NotMintLimiter();
 
         _;
     }
@@ -166,12 +178,16 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     |* Getters *|
     \***********/
 
-    function authModule() public view returns (address) {
+    function authModule() public view override returns (address) {
         return AUTH_MODULE;
     }
 
-    function governance() public view returns (address) {
+    function governance() public view override returns (address) {
         return getAddress(KEY_GOVERNANCE);
+    }
+
+    function mintLimiter() public view override returns (address) {
+        return getAddress(KEY_MINT_LIMITER);
     }
 
     function tokenDeployer() public view returns (address) {
@@ -236,13 +252,13 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         _transferGovernance(newGovernance);
     }
 
-    function _transferGovernance(address newGovernance) internal {
-        emit GovernanceTransferred(governance(), newGovernance);
+    function transferMintLimiter(address newMintLimiter) external override onlyMintLimiter {
+        if (newMintLimiter == address(0)) revert InvalidMintLimiter();
 
-        _setAddress(KEY_GOVERNANCE, newGovernance);
+        _transferMintLimiter(newMintLimiter);
     }
 
-    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyGovernance {
+    function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyMintLimiter {
         uint256 length = symbols.length;
         if (length != limits.length) revert InvalidSetMintLimitsParams();
 
@@ -286,11 +302,10 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         // Prevent setup from being called on a non-proxy (the implementation).
         if (implementation() == address(0)) revert NotProxy();
 
-        (address governance_, bytes memory newOperatorsData) = abi.decode(params, (address, bytes));
+        (address governance_, address mintLimiter_, bytes memory newOperatorsData) = abi.decode(params, (address, address, bytes));
 
-        if (governance_ != address(0)) {
-            _transferGovernance(governance_);
-        }
+        if (governance_ != address(0)) _transferGovernance(governance_);
+        if (mintLimiter_ != address(0)) _transferMintLimiter(mintLimiter_);
 
         if (newOperatorsData.length != 0) {
             IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
@@ -657,5 +672,17 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
 
     function _setImplementation(address newImplementation) internal {
         _setAddress(KEY_IMPLEMENTATION, newImplementation);
+    }
+
+    function _transferGovernance(address newGovernance) internal {
+        emit GovernanceTransferred(getAddress(KEY_GOVERNANCE), newGovernance);
+
+        _setAddress(KEY_GOVERNANCE, newGovernance);
+    }
+
+    function _transferMintLimiter(address newMintLimiter) internal {
+        emit MintLimiterTransferred(getAddress(KEY_MINT_LIMITER), newMintLimiter);
+
+        _setAddress(KEY_MINT_LIMITER, newMintLimiter);
     }
 }

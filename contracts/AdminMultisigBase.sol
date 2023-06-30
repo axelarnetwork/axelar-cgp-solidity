@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 
 import { EternalStorage } from './EternalStorage.sol';
 
+// Deprecated. See InterchainGovernance instead.
 contract AdminMultisigBase is EternalStorage {
     error NotAdmin();
     error AlreadyVoted();
