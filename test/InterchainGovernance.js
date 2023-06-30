@@ -16,8 +16,8 @@ describe('InterchainGovernance', () => {
     let interchainGovernanceFactory;
     let interchainGovernance;
 
-    let governanceTargetFactory;
-    let governanceTarget;
+    let targetFactory;
+    let targetContract;
 
     const governanceChain = 'Governance Chain';
 
@@ -25,7 +25,7 @@ describe('InterchainGovernance', () => {
         [ownerWallet, governanceAddress, gatewayAddress] = await ethers.getSigners();
 
         interchainGovernanceFactory = await ethers.getContractFactory('TestInterchainGovernance', ownerWallet);
-        governanceTargetFactory = await ethers.getContractFactory('GovernanceTarget', ownerWallet);
+        targetFactory = await ethers.getContractFactory('Target', ownerWallet);
     });
 
     beforeEach(async () => {
@@ -35,12 +35,18 @@ describe('InterchainGovernance', () => {
             .deploy(gatewayAddress.address, governanceChain, governanceAddress.address, buffer)
             .then((d) => d.deployed());
 
-        governanceTarget = await governanceTargetFactory.deploy().then((d) => d.deployed());
+        targetContract = await targetFactory.deploy().then((d) => d.deployed());
+    });
+
+    it('should initialize the governance contract with correct parameters', async () => {
+        expect(await interchainGovernance.gateway()).to.equal(gatewayAddress.address);
+        expect(await interchainGovernance.governanceChain()).to.equal(governanceChain);
+        expect(await interchainGovernance.governanceAddress()).to.equal(governanceAddress.address);
     });
 
     it('should schedule a proposal', async () => {
         const commandID = 0;
-        const target = governanceTarget.address;
+        const target = targetContract.address;
         const nativeValue = 100;
         const timeDelay = 12 * 60 * 60;
 
@@ -62,9 +68,37 @@ describe('InterchainGovernance', () => {
             .withArgs(proposalHash, target, calldata, nativeValue, eta);
     });
 
+    it('should get the eta of a proposal', async () => {
+        const commandID = 0;
+        const target = targetContract.address;
+        const nativeValue = 100;
+        const timeDelay = 12 * 60 * 60;
+
+        const targetInterface = new Interface(['function callTarget() external']);
+        const calldata = targetInterface.encodeFunctionData('callTarget');
+
+        const block = await ethers.provider.getBlock('latest');
+        const eta = block.timestamp + timeDelay;
+
+        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
+
+        const payload = defaultAbiCoder.encode(
+            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
+            [commandID, target, calldata, nativeValue, eta],
+        );
+
+        await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
+            .to.emit(interchainGovernance, 'ProposalScheduled')
+            .withArgs(proposalHash, target, calldata, nativeValue, eta);
+
+        const proposalEta = await interchainGovernance.getProposalEta(target, calldata, nativeValue);
+
+        expect(proposalEta).to.equal(eta);
+    });
+
     it('should revert on scheduling a proposal if source chain is not the governance chain', async () => {
         const commandID = 0;
-        const target = governanceTarget.address;
+        const target = targetContract.address;
         const nativeValue = 100;
         const timeDelay = 12 * 60 * 60;
         const sourceChain = 'Source Chain';
@@ -87,7 +121,7 @@ describe('InterchainGovernance', () => {
 
     it('should revert on scheduling a proposal if source address is not the governance address', async () => {
         const commandID = 0;
-        const target = governanceTarget.address;
+        const target = targetContract.address;
         const nativeValue = 100;
         const timeDelay = 12 * 60 * 60;
 
@@ -131,7 +165,7 @@ describe('InterchainGovernance', () => {
 
     it('should withdraw native ether from governance', async () => {
         const commandID = 0;
-        const target = governanceTarget.address;
+        const target = targetContract.address;
         const nativeValue = 100;
         const timeDelay = 12 * 60 * 60;
         const calldata = '0x';
@@ -158,13 +192,13 @@ describe('InterchainGovernance', () => {
 
         const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue);
 
-        await expect(tx).to.emit(interchainGovernance, 'ProposalExecuted').to.changeEtherBalance(governanceTarget, nativeValue);
+        await expect(tx).to.emit(interchainGovernance, 'ProposalExecuted').to.changeEtherBalance(target, nativeValue);
     });
 
     it('should cancel an existing proposal', async () => {
         const commandID = 0;
         const commandIDCancel = 1;
-        const target = governanceTarget.address;
+        const target = targetContract.address;
         const nativeValue = 100;
         const timeDelay = 12 * 60 * 60;
 
@@ -197,7 +231,7 @@ describe('InterchainGovernance', () => {
 
     it('should execute an existing proposal', async () => {
         const commandID = 0;
-        const target = governanceTarget.address;
+        const target = targetContract.address;
         const nativeValue = 100;
         const timeDelay = 12 * 60 * 60;
 
@@ -227,12 +261,12 @@ describe('InterchainGovernance', () => {
         await expect(tx)
             .to.emit(interchainGovernance, 'ProposalExecuted')
             .withArgs(proposalHash, target, calldata, nativeValue, executionTimestamp)
-            .and.to.emit(governanceTarget, 'TargetCalled');
+            .and.to.emit(targetContract, 'TargetCalled');
     });
 
     it('should revert on executing a proposal if call to target fails', async () => {
         const commandID = 0;
-        const target = governanceTarget.address;
+        const target = targetContract.address;
         const nativeValue = 100;
         const timeDelay = 12 * 60 * 60;
 
