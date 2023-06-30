@@ -321,7 +321,9 @@ describe('AxelarGateway', () => {
             const params = getWeightedProxyDeployParams(notGovernance.address, mintLimiter.address, [], [], 1);
 
             await expect(
-                gateway.connect(governance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+                gateway
+                    .connect(governance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
             )
                 .to.emit(gateway, 'Upgraded')
                 .withArgs(newGatewayImplementation.address)
