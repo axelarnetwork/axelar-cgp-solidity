@@ -35,7 +35,7 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
         string memory governanceChain,
         string memory governanceAddress,
         uint256 minimumTimeDelay,
-        address[] memory signers,
+        address[] memory cosigners,
         uint256 threshold
     ) InterchainGovernance(gateway, governanceChain, governanceAddress, minimumTimeDelay) MultisigBase(signers, threshold) {}
 
