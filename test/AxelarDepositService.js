@@ -76,7 +76,7 @@ describe('AxelarDepositService', () => {
                 .deploy(auth.address, tokenDeployer.address)
                 .then((d) => d.deployed());
 
-            const params = getWeightedProxyDeployParams(ownerWallet.address, [], [], 1);
+            const params = getWeightedProxyDeployParams(ownerWallet.address, ownerWallet.address, [], [], 1);
             gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
 
             await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait());
