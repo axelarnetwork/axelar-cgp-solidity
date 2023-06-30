@@ -37,9 +37,7 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
         uint256 minimumTimeDelay,
         address[] memory signers,
         uint256 threshold
-    ) InterchainGovernance(gatewayAddress, governanceChain, governanceAddress, minimumTimeDelay) {
-        _rotateSigners(signers, threshold);
-    }
+    ) InterchainGovernance(gatewayAddress, governanceChain, governanceAddress, minimumTimeDelay) MultisigBase(signers, threshold) {}
 
     /**
      * @notice Executes a multisig proposal.
