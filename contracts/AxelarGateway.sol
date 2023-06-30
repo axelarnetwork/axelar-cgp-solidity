@@ -79,8 +79,11 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
         _;
     }
 
+    /*
+     * @dev Reverts with an error if the sender is not the mint limiter or governance.
+     */
     modifier onlyMintLimiter() {
-        if (msg.sender != getAddress(KEY_GOVERNANCE) && msg.sender != getAddress(KEY_MINT_LIMITER)) revert NotMintLimiter();
+        if (msg.sender != getAddress(KEY_MINT_LIMITER) && msg.sender != getAddress(KEY_GOVERNANCE)) revert NotMintLimiter();
 
         _;
     }
@@ -249,10 +252,10 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
         _transferGovernance(newGovernance);
     }
 
-    function transferMintLimiting(address newMintLimiter) external override onlyMintLimiter {
+    function transferMintLimiter(address newMintLimiter) external override onlyMintLimiter {
         if (newMintLimiter == address(0)) revert InvalidMintLimiter();
 
-        _transferMintLimiting(newMintLimiter);
+        _transferMintLimiter(newMintLimiter);
     }
 
     function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyMintLimiter {
@@ -302,7 +305,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
         (address governance_, address mintLimiter_, bytes memory newOperatorsData) = abi.decode(params, (address, address, bytes));
 
         if (governance_ != address(0)) _transferGovernance(governance_);
-        if (mintLimiter_ != address(0)) _transferMintLimiting(mintLimiter_);
+        if (mintLimiter_ != address(0)) _transferMintLimiter(mintLimiter_);
 
         if (newOperatorsData.length != 0) {
             IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
@@ -672,13 +675,13 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
     }
 
     function _transferGovernance(address newGovernance) internal {
-        emit GovernanceTransferred(governance(), newGovernance);
+        emit GovernanceTransferred(getAddress(KEY_GOVERNANCE), newGovernance);
 
         _setAddress(KEY_GOVERNANCE, newGovernance);
     }
 
-    function _transferMintLimiting(address newMintLimiter) internal {
-        emit MintLimiterTransferred(mintLimiter(), newMintLimiter);
+    function _transferMintLimiter(address newMintLimiter) internal {
+        emit MintLimiterTransferred(getAddress(KEY_MINT_LIMITER), newMintLimiter);
 
         _setAddress(KEY_MINT_LIMITER, newMintLimiter);
     }

@@ -17,5 +17,5 @@ interface IGovernable {
 
     function transferGovernance(address newGovernance) external;
 
-    function transferMintLimiting(address newGovernance) external;
+    function transferMintLimiter(address newGovernance) external;
 }

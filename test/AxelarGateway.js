@@ -97,6 +97,10 @@ describe('AxelarGateway', () => {
             expect(await gateway.governance()).to.eq(governance.address);
         });
 
+        it('should get the correct mint limiter address', async () => {
+            expect(await gateway.mintLimiter()).to.eq(mintLimiter.address);
+        });
+
         it('should get the correct auth module', async () => {
             expect(await gateway.authModule()).to.eq(auth.address);
         });
@@ -129,9 +133,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0x8ee8bb3992221a7e56bce4ae418c47e48759013335ca181b6c4003802d450d55',
-                berlin: '0xffdd6438362eb54375c6873448b0446ceba9dd733ffc3b90045ba31b3293fbea',
-                london: '0x96697b810ee401fa90f6be0e290791f021b467b2b294f2e7610ce2be396156b9',
+                istanbul: '0x17a01ff5bbba4c774611e48aa3fe775d0816d7e3dc4598fb518c07112cdd1c6c',
+                berlin: '0x5760b30dd8560a5036202d1dfcdb4cbd6293799816c97aa71155e23b3e265d12',
+                london: '0xe724c1ace9300cc8e768faee4b445062212155cd2d767b13ccba36aff016232d',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -212,7 +216,7 @@ describe('AxelarGateway', () => {
         });
     });
 
-    describe('governance', () => {
+    describe('gateway operators', () => {
         beforeEach(async () => {
             await deployGateway();
         });
@@ -232,6 +236,25 @@ describe('AxelarGateway', () => {
             );
 
             expect(await gateway.governance()).to.be.equal(notGovernance.address);
+        });
+
+        it('should allow transferring mint limiter', async () => {
+            const notMintLimiter = notGovernance;
+
+            await expect(
+                gateway.connect(notMintLimiter).transferMintLimiter(notMintLimiter.address, getGasOptions()),
+            ).to.be.revertedWithCustomError(gateway, 'NotMintLimiter');
+
+            await expect(await gateway.connect(mintLimiter).transferMintLimiter(notMintLimiter.address, getGasOptions()))
+                .to.emit(gateway, 'MintLimiterTransferred')
+                .withArgs(mintLimiter.address, notMintLimiter.address);
+
+            expect(await gateway.mintLimiter()).to.be.equal(notMintLimiter.address);
+
+            // test that governance can transfer mint limiter too
+            await expect(await gateway.connect(governance).transferMintLimiter(mintLimiter.address, getGasOptions()))
+                .to.emit(gateway, 'MintLimiterTransferred')
+                .withArgs(notMintLimiter.address, mintLimiter.address);
         });
     });
 
