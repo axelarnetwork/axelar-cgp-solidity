@@ -43,7 +43,6 @@ describe('AxelarServiceGovernance', () => {
 
     it('should initialize the service governance with correct parameters', async () => {
         // will need to remove epoch param when merged with updated multisig
-        const currentEpoch = 1;
         const currentThreshold = 2;
 
         expect(await serviceGovernance.gateway()).to.equal(gatewayAddress.address);
