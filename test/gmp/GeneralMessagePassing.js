@@ -96,7 +96,7 @@ describe('GeneralMessagePassing', () => {
 
             const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
 
-            const params = getWeightedProxyDeployParams(ownerWallet.address, [], [], 1);
+            const params = getWeightedProxyDeployParams(ownerWallet.address, ownerWallet.address, [], [], 1);
 
             const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
 
