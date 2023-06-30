@@ -6,13 +6,13 @@ import { AxelarServiceGovernance } from '../governance/AxelarServiceGovernance.s
 
 contract TestServiceGovernance is AxelarServiceGovernance {
     constructor(
-        address gatewayAddress,
+        address gateway,
         string memory governanceChain_,
         string memory governanceAddress_,
         uint256 minimumTimeDelay,
         address[] memory signers,
         uint256 threshold
-    ) AxelarServiceGovernance(gatewayAddress, governanceChain_, governanceAddress_, minimumTimeDelay, signers, threshold) {}
+    ) AxelarServiceGovernance(gateway, governanceChain_, governanceAddress_, minimumTimeDelay, signers, threshold) {}
 
     function executeProposalAction(
         string calldata sourceChain,

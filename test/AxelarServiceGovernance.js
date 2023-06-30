@@ -10,7 +10,7 @@ const { expect } = chai;
 describe('AxelarServiceGovernance', () => {
     let ownerWallet;
     let governanceAddress;
-    let gatewayAddress;
+    let gateway;
     let signer1, signer2, signer3;
     let signers;
 
@@ -23,7 +23,7 @@ describe('AxelarServiceGovernance', () => {
     const governanceChain = 'Governance Chain';
 
     before(async () => {
-        [ownerWallet, governanceAddress, gatewayAddress, signer1, signer2, signer3] = await ethers.getSigners();
+        [ownerWallet, governanceAddress, gateway, signer1, signer2, signer3] = await ethers.getSigners();
         signers = [signer1, signer2, signer3].map((signer) => signer.address);
 
         serviceGovernanceFactory = await ethers.getContractFactory('TestServiceGovernance', ownerWallet);
@@ -35,7 +35,7 @@ describe('AxelarServiceGovernance', () => {
         const threshold = 2;
 
         serviceGovernance = await serviceGovernanceFactory
-            .deploy(gatewayAddress.address, governanceChain, governanceAddress.address, minimumTimeDelay, signers, threshold)
+            .deploy(gateway.address, governanceChain, governanceAddress.address, minimumTimeDelay, signers, threshold)
             .then((d) => d.deployed());
 
         targetContract = await targetFactory.deploy().then((d) => d.deployed());
@@ -45,7 +45,7 @@ describe('AxelarServiceGovernance', () => {
         // will need to remove epoch param when merged with updated multisig
         const currentThreshold = 2;
 
-        expect(await serviceGovernance.gateway()).to.equal(gatewayAddress.address);
+        expect(await serviceGovernance.gateway()).to.equal(gateway.address);
         expect(await serviceGovernance.governanceChain()).to.equal(governanceChain);
         expect(await serviceGovernance.governanceAddress()).to.equal(governanceAddress.address);
         expect(await serviceGovernance.signerThreshold()).to.equal(currentThreshold);
