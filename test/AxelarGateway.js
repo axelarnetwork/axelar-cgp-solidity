@@ -6,6 +6,7 @@ const {
 } = ethers;
 const { expect } = chai;
 const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString } = require('./utils');
+const { getBytecodeHash } = require('@axelar-network/axelar-contract-deployments');
 
 const {
     bigNumberToNumber,
@@ -33,7 +34,9 @@ describe('AxelarGateway', () => {
     let wallets;
     let owner;
     let operators;
-    let admins;
+    let governance;
+    let mintLimiter;
+    let notGovernance;
 
     let gatewayFactory;
     let authFactory;
@@ -49,8 +52,9 @@ describe('AxelarGateway', () => {
 
     before(async () => {
         wallets = await ethers.getSigners();
-        admins = wallets.slice(0, threshold);
         owner = wallets[0];
+        governance = mintLimiter = owner;
+        notGovernance = wallets[1];
         operators = sortBy(wallets.slice(0, threshold), (wallet) => wallet.address.toLowerCase());
 
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', owner);
@@ -67,16 +71,15 @@ describe('AxelarGateway', () => {
     });
 
     const deployGateway = async () => {
-        const adminAddresses = getAddresses(admins);
         const operatorAddresses = getAddresses(operators);
-
-        const params = getWeightedProxyDeployParams(adminAddresses, threshold, [], [], threshold);
 
         auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
         await auth.deployTransaction.wait(network.config.confirmations);
 
         const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address);
         await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
+
+        const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, [], [], threshold);
 
         const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
         await proxy.deployTransaction.wait(network.config.confirmations);
@@ -91,8 +94,12 @@ describe('AxelarGateway', () => {
             await deployGateway();
         });
 
-        it('should get the correct admins', async () => {
-            expect(await gateway.admins(1)).to.deep.eq(getAddresses(admins));
+        it('should get the correct governance address', async () => {
+            expect(await gateway.governance()).to.eq(governance.address);
+        });
+
+        it('should get the correct mint limiter address', async () => {
+            expect(await gateway.mintLimiter()).to.eq(mintLimiter.address);
         });
 
         it('should get the correct auth module', async () => {
@@ -127,9 +134,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0x8a91092ac8850a1fdb52de0d0b32c7840425e62f8a29dc5bfbeea2d01321037a',
-                berlin: '0x3b837bf86a4efc421e6f954f7a62ca79ab7bca5ddd51686594bd8e82461172f7',
-                london: '0x1d212242c23b575c119cc0c6ef52c5a6782f39a993eee1847620365a8b4c9672',
+                istanbul: '0x17a01ff5bbba4c774611e48aa3fe775d0816d7e3dc4598fb518c07112cdd1c6c',
+                berlin: '0x5760b30dd8560a5036202d1dfcdb4cbd6293799816c97aa71155e23b3e265d12',
+                london: '0xe724c1ace9300cc8e768faee4b445062212155cd2d767b13ccba36aff016232d',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -187,23 +194,17 @@ describe('AxelarGateway', () => {
             );
         });
 
-        it("should allow admins to set a token's daily limit", async () => {
+        it("should allow governance to set a token's daily limit", async () => {
             const limit = getRandomInt(Number.MAX_SAFE_INTEGER);
             const limits = symbols.map(() => limit);
 
-            await Promise.all(
-                admins
-                    .slice(0, threshold - 1)
-                    .map((admin) =>
-                        expect(gateway.connect(admin).setTokenMintLimits(symbols, limits, getGasOptions())).to.not.emit(
-                            gateway,
-                            'TokenMintLimitUpdated',
-                        ),
-                    ),
+            await expect(gateway.connect(notGovernance).setTokenMintLimits(symbols, limits, getGasOptions())).to.be.revertedWithCustomError(
+                gateway,
+                'NotMintLimiter',
             );
 
-            return gateway
-                .connect(admins[threshold - 1])
+            await gateway
+                .connect(governance)
                 .setTokenMintLimits(symbols, limits, getGasOptions())
                 .then((tx) =>
                     Promise.all(symbols.map((symbol) => expect(tx).to.emit(gateway, 'TokenMintLimitUpdated').withArgs(symbol, limit))),
@@ -216,100 +217,165 @@ describe('AxelarGateway', () => {
         });
     });
 
+    describe('gateway operators', () => {
+        beforeEach(async () => {
+            await deployGateway();
+        });
+
+        it('should allow transferring governance', async () => {
+            await expect(
+                gateway.connect(notGovernance).transferGovernance(governance.address, getGasOptions()),
+            ).to.be.revertedWithCustomError(gateway, 'NotGovernance');
+
+            await expect(await gateway.connect(governance).transferGovernance(notGovernance.address, getGasOptions()))
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address);
+
+            await expect(gateway.connect(governance).transferGovernance(governance.address, getGasOptions())).to.be.revertedWithCustomError(
+                gateway,
+                'NotGovernance',
+            );
+
+            expect(await gateway.governance()).to.be.equal(notGovernance.address);
+        });
+
+        it('should allow transferring mint limiter', async () => {
+            const notMintLimiter = notGovernance;
+
+            await expect(
+                gateway.connect(notMintLimiter).transferMintLimiter(notMintLimiter.address, getGasOptions()),
+            ).to.be.revertedWithCustomError(gateway, 'NotMintLimiter');
+
+            await expect(await gateway.connect(mintLimiter).transferMintLimiter(notMintLimiter.address, getGasOptions()))
+                .to.emit(gateway, 'MintLimiterTransferred')
+                .withArgs(mintLimiter.address, notMintLimiter.address);
+
+            expect(await gateway.mintLimiter()).to.be.equal(notMintLimiter.address);
+
+            // test that governance can transfer mint limiter too
+            await expect(await gateway.connect(governance).transferMintLimiter(mintLimiter.address, getGasOptions()))
+                .to.emit(gateway, 'MintLimiterTransferred')
+                .withArgs(notMintLimiter.address, mintLimiter.address);
+        });
+    });
+
     describe('upgrade', () => {
         beforeEach(async () => {
             await deployGateway();
         });
 
-        it('should allow the admins to upgrade to the correct implementation', async () => {
+        it('should allow governance to upgrade to the correct implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
-            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
+            const params = '0x';
 
-            const newAdminAddresses = getAddresses(admins.slice(0, threshold - 1));
+            await expect(
+                gateway
+                    .connect(notGovernance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+            ).to.be.revertedWithCustomError(gateway, 'NotGovernance');
+
+            await expect(
+                gateway
+                    .connect(governance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+            )
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation.address)
+                .to.not.emit(gateway, 'GovernanceTransferred')
+                .to.not.emit(gateway, 'OperatorshipTransferred');
+        });
+
+        it('should allow governance to upgrade to the correct implementation with new governance and operators', async () => {
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
+
             const newOperatorAddresses = getAddresses(operators.slice(0, threshold - 1));
 
             const params = getWeightedProxyDeployParams(
-                newAdminAddresses,
-                threshold - 1,
+                notGovernance.address,
+                mintLimiter.address,
                 newOperatorAddresses,
                 getWeights(newOperatorAddresses),
                 threshold - 1,
             );
 
-            await Promise.all(
-                admins
-                    .slice(0, threshold - 1)
-                    .map((admin) =>
-                        expect(
-                            gateway
-                                .connect(admin)
-                                .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
-                        ).to.not.emit(gateway, 'Upgraded'),
-                    ),
-            );
-
             await expect(
                 gateway
-                    .connect(admins[threshold - 1])
+                    .connect(governance)
                     .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
             )
                 .to.emit(gateway, 'Upgraded')
-                .withArgs(newGatewayImplementation.address);
+                .withArgs(newGatewayImplementation.address)
+                .to.emit(auth, 'OperatorshipTransferred')
+                .withArgs(newOperatorAddresses, getWeights(newOperatorAddresses), threshold - 1)
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address);
+
+            expect(await gateway.governance()).to.be.eq(notGovernance.address);
         });
 
-        it('should not allow the admins to upgrade to a wrong implementation', async () => {
+        it('should allow governance to upgrade to the same implementation with new governance', async () => {
+            const newGatewayImplementation = await gatewayFactory.attach(await gateway.implementation());
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
+            const params = getWeightedProxyDeployParams(notGovernance.address, mintLimiter.address, [], [], 1);
+
+            await expect(
+                gateway
+                    .connect(governance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+            )
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation.address)
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address)
+                .to.not.emit(gateway, 'OperatorshipTransferred');
+
+            expect(await gateway.governance()).to.be.eq(notGovernance.address);
+        });
+
+        it('should not allow governance to upgrade to a wrong implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
             const wrongImplementationCodeHash = keccak256(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`);
 
-            const newAdminAddresses = getAddresses(admins.slice(0, 2));
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getWeightedProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, Array(2).fill(1), 2);
-
-            await Promise.all(
-                admins
-                    .slice(0, threshold - 1)
-                    .map((admin) =>
-                        expect(
-                            gateway.connect(admin).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
-                        ).to.not.emit(gateway, 'Upgraded'),
-                    ),
-            );
+            const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             await expect(
-                gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
+                gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
+            ).to.be.revertedWithCustomError(gateway, 'NotGovernance');
+
+            await expect(
+                gateway.connect(governance).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
             ).to.be.revertedWithCustomError(gateway, 'InvalidCodeHash');
         });
 
         it('should not allow calling the setup function directly', async () => {
-            const newAdminAddresses = getAddresses(admins.slice(0, 2));
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getWeightedProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, Array(2).fill(1), 2);
+            const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
-            await expect(gateway.connect(admins[0]).setup(params)).not.to.emit(gateway, 'OperatorshipTransferred');
+            await expect(gateway.connect(governance).setup(params)).not.to.emit(gateway, 'OperatorshipTransferred');
 
             const implementation = gatewayFactory.attach(await gateway.implementation());
 
-            await expect(implementation.connect(admins[0]).setup(params)).to.be.revertedWithCustomError(implementation, 'NotProxy');
+            await expect(implementation.connect(governance).setup(params)).to.be.revertedWithCustomError(implementation, 'NotProxy');
         });
 
         it('should not allow calling the upgrade on the implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
-            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
 
-            const newAdminAddresses = getAddresses(admins.slice(0, 2));
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getWeightedProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, Array(2).fill(1), 2);
+            const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             const implementation = gatewayFactory.attach(await gateway.implementation());
 
             await expect(
-                implementation.connect(admins[0]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-            ).to.be.revertedWithCustomError(implementation, 'NotAdmin');
+                implementation.connect(notGovernance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
+            ).to.be.revertedWithCustomError(implementation, 'NotGovernance');
         });
     });
 
@@ -490,9 +556,7 @@ describe('AxelarGateway', () => {
         it('should not allow the operators to mint tokens exceeding the daily limit', async () => {
             const limit = getRandomInt(cap / 2);
 
-            await Promise.all(
-                admins.slice(0, threshold).map((admin) => gateway.connect(admin).setTokenMintLimits([symbol], [limit], getGasOptions())),
-            );
+            await gateway.connect(governance).setTokenMintLimits([symbol], [limit], getGasOptions());
 
             const data = buildCommandBatch(
                 await getChainId(),

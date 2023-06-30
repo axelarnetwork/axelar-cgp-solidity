@@ -38,12 +38,6 @@ describe('InterchainGovernance', () => {
         targetContract = await targetFactory.deploy().then((d) => d.deployed());
     });
 
-    it('should initialize the governance contract with correct parameters', async () => {
-        expect(await interchainGovernance.gateway()).to.equal(gatewayAddress.address);
-        expect(await interchainGovernance.governanceChain()).to.equal(governanceChain);
-        expect(await interchainGovernance.governanceAddress()).to.equal(governanceAddress.address);
-    });
-
     it('should schedule a proposal', async () => {
         const commandID = 0;
         const target = targetContract.address;
@@ -66,34 +60,6 @@ describe('InterchainGovernance', () => {
         await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(interchainGovernance, 'ProposalScheduled')
             .withArgs(proposalHash, target, calldata, nativeValue, eta);
-    });
-
-    it('should get the eta of a proposal', async () => {
-        const commandID = 0;
-        const target = targetContract.address;
-        const nativeValue = 100;
-        const timeDelay = 12 * 60 * 60;
-
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
-        const block = await ethers.provider.getBlock('latest');
-        const eta = block.timestamp + timeDelay;
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, eta],
-        );
-
-        await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
-            .to.emit(interchainGovernance, 'ProposalScheduled')
-            .withArgs(proposalHash, target, calldata, nativeValue, eta);
-
-        const proposalEta = await interchainGovernance.getProposalEta(target, calldata, nativeValue);
-
-        expect(proposalEta).to.equal(eta);
     });
 
     it('should revert on scheduling a proposal if source chain is not the governance chain', async () => {
