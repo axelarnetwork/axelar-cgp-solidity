@@ -49,8 +49,8 @@ describe('AxelarServiceGovernance', () => {
         expect(await serviceGovernance.gateway()).to.equal(gatewayAddress.address);
         expect(await serviceGovernance.governanceChain()).to.equal(governanceChain);
         expect(await serviceGovernance.governanceAddress()).to.equal(governanceAddress.address);
-        expect(await serviceGovernance.signerThreshold(currentEpoch)).to.equal(currentThreshold);
-        expect(await serviceGovernance.signerAccounts(currentEpoch)).to.deep.equal(signers);
+        expect(await serviceGovernance.signerThreshold()).to.equal(currentThreshold);
+        expect(await serviceGovernance.signerAccounts()).to.deep.equal(signers);
     });
 
     it('should schedule a proposal', async () => {
