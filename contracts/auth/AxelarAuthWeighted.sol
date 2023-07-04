@@ -11,7 +11,6 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
     mapping(uint256 => bytes32) public hashForEpoch;
     mapping(bytes32 => uint256) public epochForHash;
 
-    // solhint-disable-next-line var-name-mixedcase
     uint256 internal constant OLD_KEY_RETENTION = 16;
 
     constructor(bytes[] memory recentOperators) {
