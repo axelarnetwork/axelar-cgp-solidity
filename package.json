@@ -4,7 +4,7 @@
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
-    "build": "rm -rf artifacts cache && hardhat compile",
+    "build": "hardhat clean && hardhat compile",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
