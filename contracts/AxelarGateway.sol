@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
@@ -199,7 +199,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
     }
 
     function tokenMintAmount(string memory symbol) public view override returns (uint256) {
-        // solhint-disable-next-line not-rely-on-time
         return getUint(_getTokenMintAmountKey(symbol, block.timestamp / 6 hours));
     }
 
@@ -284,7 +283,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
         // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
         //        if `upgrade` is entered within the context of _this_ implementation itself.
         if (setupParams.length != 0) {
-            // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams));
 
             if (!success) revert SetupFailed();
@@ -364,7 +362,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
 
             // Prevent a re-entrancy from executing this command before it can be marked as successful.
             _setCommandExecuted(commandId, true);
-            // solhint-disable-next-line avoid-low-level-calls
+
             (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i], commandId));
 
             if (success) emit Executed(commandId);
@@ -389,7 +387,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
             // If token address is no specified, it indicates a request to deploy one.
             bytes32 salt = keccak256(abi.encodePacked(symbol));
 
-            // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
                 abi.encodeWithSelector(ITokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
             );
@@ -629,7 +626,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
         uint256 limit = tokenMintLimit(symbol);
         if (limit > 0 && amount > limit) revert ExceedMintLimit(symbol);
 
-        // solhint-disable-next-line not-rely-on-time
         _setUint(_getTokenMintAmountKey(symbol, block.timestamp / 6 hours), amount);
     }
 

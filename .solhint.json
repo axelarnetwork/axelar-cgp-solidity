@@ -4,6 +4,10 @@
   "rules": {
     "quotes": ["error", "single"],
     "compiler-version": ["off"],
-    "func-visibility": ["warn", {"ignoreConstructors": true}]
+    "func-visibility": ["warn", { "ignoreConstructors": true }],
+    "no-inline-assembly": "off",
+    "no-empty-blocks": "off",
+    "avoid-low-level-calls": "off",
+    "not-rely-on-time": "off"
   }
 }
