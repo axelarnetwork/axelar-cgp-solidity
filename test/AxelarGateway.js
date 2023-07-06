@@ -134,9 +134,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0x17a01ff5bbba4c774611e48aa3fe775d0816d7e3dc4598fb518c07112cdd1c6c',
-                berlin: '0x5760b30dd8560a5036202d1dfcdb4cbd6293799816c97aa71155e23b3e265d12',
-                london: '0xe724c1ace9300cc8e768faee4b445062212155cd2d767b13ccba36aff016232d',
+                istanbul: '0x4527cc060ff9adfc7aef56f5fe88c26c480bcf25782096cb12c0097a97697bc5',
+                berlin: '0xce17dc82d28a93316b9f3b49d14788730be1e09282c0b548f5e452ede09b6b22',
+                london: '0x95757e66925af26e8d922bf3b8b501b688f04fa28075e0edb1ae7ac754fb31c4',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -336,19 +336,26 @@ describe('AxelarGateway', () => {
 
         it('should not allow governance to upgrade to a wrong implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const wrongImplementationCodeHash = keccak256(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`);
+            const wrongCodeHash = keccak256(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`);
+            const depositServiceFactory = await ethers.getContractFactory('AxelarDepositService', owner);
+            const wrongImplementation = await depositServiceFactory.deploy(gateway.address, '', owner.address);
+            const wrongImplementationCodeHash = await getBytecodeHash(wrongImplementation);
 
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
             const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             await expect(
-                gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
+                gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, wrongCodeHash, params),
             ).to.be.revertedWithCustomError(gateway, 'NotGovernance');
 
             await expect(
-                gateway.connect(governance).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
+                gateway.connect(governance).upgrade(newGatewayImplementation.address, wrongCodeHash, params),
             ).to.be.revertedWithCustomError(gateway, 'InvalidCodeHash');
+
+            await expect(
+                gateway.connect(governance).upgrade(wrongImplementation.address, wrongImplementationCodeHash, params),
+            ).to.be.revertedWithCustomError(gateway, 'InvalidImplementation');
         });
 
         it('should not allow calling the setup function directly', async () => {

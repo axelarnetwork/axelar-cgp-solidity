@@ -19,6 +19,8 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
 
+    error InvalidImplementation();
+
     enum TokenType {
         InternalBurnable,
         InternalBurnableFrom,
@@ -242,6 +244,10 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
         return getBool(_getIsCommandExecutedKey(commandId));
     }
 
+    function contractId() public pure returns (bytes32) {
+        return keccak256('axelar-gateway');
+    }
+
     /************************\
     |* Governance Functions *|
     \************************/
@@ -278,6 +284,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
         bytes calldata setupParams
     ) external override onlyGovernance {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
+        if (AxelarGateway(newImplementation).contractId() != contractId()) revert InvalidImplementation();
 
         emit Upgraded(newImplementation);
 
