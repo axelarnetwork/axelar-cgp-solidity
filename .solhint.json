@@ -8,13 +8,6 @@
     "no-inline-assembly": "off",
     "no-empty-blocks": "off",
     "avoid-low-level-calls": "off",
-    "not-rely-on-time": "off",
-    "no-complex-fallback": "off",
-    "const-name-snakecase": "off",
-    "var-name-mixedcase": "off",
-    "func-name-mixedcase": "off",
-    "state-visibility": "off",
-    "reason-string": "off",
-    "no-global-import": "off"
+    "not-rely-on-time": "off"
   }
 }

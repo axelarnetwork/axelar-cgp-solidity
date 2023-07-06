@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.9;
 
 import { IAxelarAuthWeighted } from '../interfaces/IAxelarAuthWeighted.sol';
 import { ECDSA } from '../ECDSA.sol';

@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 
 import { EternalStorage } from './EternalStorage.sol';
 
-// Deprecated. See InterchainGovernance instead.
+// Deprecated. See InterchainGovernance instead. AxelarGateway still inherits to preserve storage layout for EternalStorage.
 contract AdminMultisigBase is EternalStorage {
     error NotAdmin();
     error AlreadyVoted();
