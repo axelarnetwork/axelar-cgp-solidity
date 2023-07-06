@@ -283,6 +283,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
         bytes calldata setupParams
     ) external override onlyGovernance {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
+
         if (AxelarGateway(newImplementation).contractId() != contractId()) revert InvalidImplementation();
 
         emit Upgraded(newImplementation);
