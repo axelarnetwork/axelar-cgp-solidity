@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.0;
 
-import '../interfaces/IUpgradable.sol';
+import { IUpgradable } from '../interfaces/IUpgradable.sol';
 
 abstract contract Upgradable is IUpgradable {
     // bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)

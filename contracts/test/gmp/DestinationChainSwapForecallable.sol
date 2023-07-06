@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.9;
+pragma solidity ^0.8.0;
 
-import { IAxelarForecallable } from '../../interfaces/IAxelarForecallable.sol';
 import { IERC20 } from '../../interfaces/IERC20.sol';
 import { DestinationChainTokenSwapper } from './DestinationChainTokenSwapper.sol';
+import { AxelarForecallable } from './AxelarForecallable.sol';
 
-contract DestinationChainSwapForecallable is IAxelarForecallable {
+contract DestinationChainSwapForecallable is AxelarForecallable {
     DestinationChainTokenSwapper public swapper;
 
-    constructor(address gatewayAddress, address swapperAddress) IAxelarForecallable(gatewayAddress) {
+    constructor(address gatewayAddress, address swapperAddress) AxelarForecallable(gatewayAddress) {
         swapper = DestinationChainTokenSwapper(swapperAddress);
     }
 

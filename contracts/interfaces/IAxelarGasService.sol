@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.0;
 
-import './IUpgradable.sol';
+import { IUpgradable } from './IUpgradable.sol';
 
-// This should be owned by the microservice that is paying for gas.
 interface IAxelarGasService is IUpgradable {
     error NothingReceived();
     error InvalidAddress();
