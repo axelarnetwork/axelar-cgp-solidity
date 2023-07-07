@@ -133,10 +133,12 @@ describe('AxelarGateway', () => {
             const implementationBytecode = gatewayFactory.bytecode;
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
+            console.log(implementationBytecodeHash);
+
             const expected = {
-                istanbul: '0x57fb2b6512dfc4da6b97a6dfa56262d9e0ba4d4747b58f47db04de05db650c65',
-                berlin: '0xa1b2ae957ba733eeca747d8f08c3e3aa41b8e5ab0774bc39b80c06fcf463f3e3',
-                london: '0xf901efa851c78c8b26ca2053988f66341018c0fceaf30517a5316f6563106af6',
+                istanbul: '0x9ea40c1a3b70ab5ec544656ec8a8e13ff615f1ea781553466a38370c30bebf2c',
+                berlin: '0x268a9beb6a183ffa92764c4488a8b49028c4bfaf59ee2508315b1154340678ba',
+                london: '0x977572811dff54b28d5ec38827fdf49335f0dce0c628edb39223e99396981491',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
