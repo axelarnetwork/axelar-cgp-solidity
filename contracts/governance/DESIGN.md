@@ -23,7 +23,7 @@ The Interchain Governance Contract facilitates cross-chain governance actions wi
 The TimeLock contract institutes a mechanism that guarantees the secure execution of functions after a designated time delay. This mechanism not only enables the scheduling, cancellation, and finalization of function calls, but it also enforces a minimum time delay before any function can be either scheduled or finalized, thereby enhancing the contract's security.
 
 ### Governance Operations
-The contract manages two types of governance operations: Proposal Scheduling and Proposal Cancellation.
+The TimeLock contract manages two types of governance operations: Proposal Scheduling and Proposal Cancellation.
 
 - **Proposal Scheduling**: Facilitates the creation of a new proposal. With every scheduled proposal, a corresponding TimeLock is set, which must expire prior to its execution.
 
