@@ -20,7 +20,7 @@ The Multisig contract incorporates safeguards to deter misuse. These safeguards 
 The Interchain Governance Contract is u enables cross-chain governance actions on the Axelar network, allowing creation, cancellation, and execution of governance proposals. It institutes a TimeLock mechanism which introduces a mandatory delay before execution, safeguarding against abrupt changes.
 
 ### Timelock Mechanism
-The contract establishes a TimeLock mechanism ensuring secure function execution after a designated time delay. This mechanism supports scheduling, cancellation, and finalizing functions and imposes a minimum delay before any function can be scheduled or finalized.
+The TimeLock contract institutes a mechanism that guarantees the secure execution of functions after a designated time delay. This mechanism not only enables the scheduling, cancellation, and finalization of function calls, but it also enforces a minimum time delay before any function can be either scheduled or finalized, thereby enhancing the contract's security.
 
 ### Governance Operations
 The contract manages two types of governance operations: Proposal Scheduling and Proposal Cancellation.
