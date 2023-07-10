@@ -10,7 +10,7 @@ For each transaction, a voting process is initiated among the signers. Every tim
 The Multisig contract facilitates a rotation mechanism for signers. Existing signers can refresh the list of signatory addresses and the threshold value using the `rotateSigners` function. Each rotation is tracked by incrementing an epoch.
 
 ### Execution of External Contracts
-The Multisig contract extends its purview to external contracts. The `execute` function allows signers to call any external contract. The data for this call encodes the target contract function and arguments, and may include native tokens to accompany the call.
+The Multisig contract extends its purview functionality to include external contract calls. The `execute` function allows signers to call any function on any external contract. The data accompanying this call contains the target contract's function and its associated arguments. It may also include native tokens as part of the transaction.
 
 ### Safeguards
 Multisig contract incorporates safeguards to deter misuse. Checks to prevent multiple votes from the same account within an epoch or duplicating a signer, as well as a requirement for transactions to meet the voting threshold before execution are in place as preventive measures.
