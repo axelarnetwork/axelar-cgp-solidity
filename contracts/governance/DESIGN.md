@@ -47,7 +47,7 @@ Multisig operations demand multi-signatory authorization for proposal execution.
 ### Service Governance Operations
 The contract orchestrates four governance operations:
 
-- **Schedule TimeLock Proposal**: Similar to Interchain Governance, it schedules a new governance proposal with a timelock.
+- **Schedule TimeLock Proposal**: Similar to Interchain Governance, it schedules a new governance proposal with a TimeLock.
 
 - **Cancel TimeLock Proposal**: Again, akin to Interchain Governance, it cancels an existing governance proposal.
 
