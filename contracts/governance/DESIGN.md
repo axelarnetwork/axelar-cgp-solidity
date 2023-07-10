@@ -27,7 +27,7 @@ The TimeLock contract manages two types of governance operations: Proposal Sched
 
 - **Proposal Scheduling**:  Facilitates the creation of new proposals. For each scheduled proposal, it sets a corresponding TimeLock that must expire before the proposal's execution.
 
-- **Proposal Cancellation**: Allows the cancellation of an existing proposal, setting its corresponding TimeLock timestamp to zero and blocking its execution.
+- **Proposal Cancellation**: Facilitates the cancellation of an existing proposal by setting its corresponding TimeLock timestamp to zero and thereby blocking its execution.
 
 Both operations demand matching source chain and source address with governance chain and governance address in the contract, thereby ensuring only authorized entities have scheduling or cancellation privileges.
 
