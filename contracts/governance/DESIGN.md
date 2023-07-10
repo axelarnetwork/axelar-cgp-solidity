@@ -1,7 +1,7 @@
 # Axelar Governance Protocol
 
 ## Multisig
-Central to the Axelar Governance Protocol is a Multisig contract, incorporating MultisigBase and Multisig components. This contract maintains a list of signer accounts and enforces a threshold or minimum number of signers required to execute certain functions. It plays a pivotal role in defining token mint limits at the gateway.
+Central to the Axelar Governance Protocol is a Multisig contract, incorporating MultisigBase and Multisig components. This contract maintains a list of signer accounts and enforces a threshold or minimum number of signers required to execute certain functions. It plays a pivotal role in defining token mint limits for the gateway.
 
 ### Voting Procedure
 For each transaction, a voting process is initiated among the signers. Each time a signer casts a vote, the count increments and the act is documented against the signer's address. Upon reaching the threshold, the transaction executes and the voting counter resets.
