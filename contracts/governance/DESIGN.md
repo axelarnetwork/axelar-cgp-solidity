@@ -56,4 +56,4 @@ The contract orchestrates four governance operations:
 - **Cancel Multisig Approval**: Cancels an approved multisig proposal, setting the approval status of the proposal to false and indicating successful cancellation through a `MultisigCancelled` event.
 
 ### Secure Execution of Multisig Proposals
-A multisig proposal, upon requisite signatory approval, is eligible for execution. Pre-execution, the proposal's approval status is verified by the contract; lack of approval results in transaction reversion. Upon successful execution, the proposal’s approval status resets, triggering a `MultisigExecuted` event.
+Upon receiving the necessary number of signatory approvals, a multisig proposal becomes eligible for execution. Before execution, the contract verifies the proposal's approval status; if the approval status is false, the transaction is reverted. Following successful execution, the proposal's approval status is reset, and a `MultisigExecuted` event is emitted.
