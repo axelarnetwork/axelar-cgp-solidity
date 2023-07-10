@@ -39,7 +39,7 @@ The system ensures the uniqueness of each proposal by generating hashes with the
 
 ## Service Governance
 
-Building upon the Interchain Governance, the Service Governance Contract specializes in addressing operations requiring coordination. Incorporating a MultisigBase, it introduces functionalities to approve, execute, and cancel multisig proposals, alongside scheduling and cancelling timelock proposals.
+Building upon the Interchain Governance Contract, the Service Governance Contract is specifically designed to manage operations that require coordination. By incorporating a MultisigBase, it introduces the functionality to approve, execute, and cancel multisig proposals, as well as to schedule and cancel TimeLock proposals.
 
 ### Multisig Operations
 Multisig operations demand multi-signatory authorization for proposal execution. A mapping mechanism tracks approvals for different proposals, requiring a proposal to garner sufficient approval to meet the predefined threshold before its execution.
