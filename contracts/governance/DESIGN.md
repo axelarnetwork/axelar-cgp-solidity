@@ -35,7 +35,7 @@ Both operations require a match between the source chain and source address, and
 Once their corresponding TimeLock expires, proposals become executable. For ensured safety during execution, the contract revalidates the TimeLock right before initiating the proposal execution.
 
 ### Generating Proposal Hashes
-Uniqueness of each proposal is ensured through generating hashes employing the Keccak256 hashing algorithm on the target contract's address, function call data encoding, and the native token transfer value.
+The system ensures the uniqueness of each proposal by generating hashes with the Keccak256 algorithm. The hashes are derived from the target contract's address, encoded function call data, and the native token transfer value.
 
 ## Service Governance
 
