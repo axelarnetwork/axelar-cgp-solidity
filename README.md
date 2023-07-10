@@ -71,3 +71,15 @@ See Axelar [examples](https://github.com/axelarnetwork/axelar-examples) for conc
    on the gateway contract.
 9. As part of this, the gateway contract records that the destination address has validated the approval, to not allow a replay.
 10. The destination contract uses the `payload` for it's own application.
+
+## References
+
+Network resources: https://docs.axelar.dev/resources
+
+Deployed contracts: https://docs.axelar.dev/resources/mainnet
+
+General Message Passing Usage: https://docs.axelar.dev/dev/gmp
+
+Example cross-chain token swap app: https://app.squidrouter.com
+
+EVM module of the Axelar network that prepares commands for the gateway: https://github.com/axelarnetwork/axelar-core/blob/main/x/evm/keeper/msg_server.go
