@@ -32,7 +32,7 @@ The TimeLock contract manages two types of governance operations: Proposal Sched
 Both operations require a match between the source chain and source address, and the governance chain and governance address in the contract. This check guarantees that only authorized entities can schedule or cancel actions.
 
 ### Secure Execution of Proposals
-Proposals can be executed once their respective TimeLock has expired. To guarantee safe execution, the contract rechecks the TimeLock immediately prior to proposal execution.
+Once their corresponding TimeLock expires, proposals become executable. For ensured safety during execution, the contract revalidates the TimeLock right before initiating the proposal execution.
 
 ### Generating Proposal Hashes
 Uniqueness of each proposal is ensured through generating hashes employing the Keccak256 hashing algorithm on the target contract's address, function call data encoding, and the native token transfer value.
