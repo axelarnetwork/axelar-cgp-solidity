@@ -1,6 +1,6 @@
-# Axelar Governance Protocol
+## Axelar Governance Protocol
 
-## Multisig
+# Multisig
 Central to the Axelar Governance Protocol is a Multisig contract, incorporating MultisigBase and Multisig components. This contract maintains a list of signer accounts and enforces a threshold or minimum number of signers required to execute certain functions. It plays a pivotal role in defining token mint limits for the gateway.
 
 ### Voting Procedure
@@ -15,7 +15,7 @@ The Multisig contract extends its purview functionality to include external cont
 ### Safeguards
 The Multisig contract incorporates safeguards to deter misuse. These safeguards enforce preventive measures such as prohibiting multiple votes from the same account within an epoch, preventing signer duplication, and requiring transactions to meet the voting threshold before execution.
 
-## Interchain Governance
+# Interchain Governance
 
 The Interchain Governance Contract facilitates cross-chain governance actions within the Axelar network. It enables the creation, cancellation, and execution of governance proposals while incorporating a TimeLock mechanism. The TimeLock mechanism institutes a mandatory time delay before any proposal execution, thereby offering robust protection against sudden, potentially disruptive changes.
 
@@ -37,7 +37,7 @@ Once their corresponding TimeLock expires, proposals become executable. For ensu
 ### Generating Proposal Hashes
 The system ensures the uniqueness of each proposal by generating hashes with the Keccak256 algorithm. The hashes are derived from the target contract's address, encoded function call data, and the native token transfer value.
 
-## Service Governance
+# Service Governance
 
 Building upon the Interchain Governance Contract, the Service Governance Contract is specifically designed to manage operations that require coordination. By incorporating a MultisigBase, it introduces the functionality to approve, execute, and cancel multisig proposals, as well as to schedule and cancel TimeLock proposals.
 
