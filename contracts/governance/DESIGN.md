@@ -4,7 +4,7 @@
 Central to the Axelar Governance Protocol is a Multisig contract, incorporating MultisigBase and Multisig components. This contract maintains a list of signer accounts and enforces a threshold or minimum number of signers required to execute certain functions. It plays a pivotal role in defining token mint limits for the gateway.
 
 ### Voting Procedure
-For each transaction, a voting process is initiated among the signers. Each time a signer casts a vote, the count increments and the act is documented against the signer's address. Upon reaching the threshold, the transaction executes and the voting counter resets.
+For each transaction, a voting process is initiated among the signers. Every time a signer casts a vote, the counter increases, and the action is recorded under the signer's address. Once the threshold is met, the transaction is carried out, and the voting counter is reset.
 
 ### Rotation of Signers
 The Multisig contract facilitates a rotation mechanism for signers. Existing signers can refresh the list of signatory addresses and the threshold value using the `rotateSigners` function. Each rotation is tracked by incrementing an epoch.
