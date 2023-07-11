@@ -39,6 +39,16 @@ describe('MultisigBase', () => {
         expect(await multiSig.signerThreshold()).to.equal(currentThreshold);
     });
 
+    it('should return true if an account is a signer', async () => {
+        expect(await multiSig.isSigner(signer1.address)).to.equal(true);
+        expect(await multiSig.isSigner(signer2.address)).to.equal(true);
+        expect(await multiSig.isSigner(signer3.address)).to.equal(true);
+    });
+
+    it('should return false if an account is not a signer', async () => {
+        expect(await multiSig.isSigner(nonSigner.address)).to.equal(false);
+    });
+
     it('should return the array of signers for a given epoch', async () => {
         expect(await multiSig.signerAccounts()).to.deep.equal(initAccounts);
     });

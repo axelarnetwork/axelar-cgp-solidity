@@ -1,7 +1,7 @@
 const chai = require('chai');
 const { ethers } = require('hardhat');
 const {
-    utils: { Interface },
+    utils: { Interface, keccak256 },
 } = ethers;
 const { expect } = chai;
 
@@ -65,6 +65,72 @@ describe('Multisig', () => {
         await expect(
             multisig.connect(signer2).execute(targetContract.address, calldata, nativeValue, { value: nativeValue }),
         ).to.be.revertedWithCustomError(multisig, 'ExecutionFailed');
+    });
+
+    it('should return true if signer has voted on a given topic', async () => {
+        const targetInterface = new Interface(['function callTarget() external']);
+        const calldata = targetInterface.encodeFunctionData('callTarget');
+        const nativeValue = 1000;
+
+        const multiSigInterface = new Interface([
+            'function execute(address target, bytes calldata callData, uint256 nativeValue) external payable',
+        ]);
+        const calldataMultiSig = multiSigInterface.encodeFunctionData('execute', [targetContract.address, calldata, nativeValue]);
+        const calldataMultiSigHash = keccak256(calldataMultiSig);
+
+        await multisig
+            .connect(signer1)
+            .execute(targetContract.address, calldata, nativeValue)
+            .then((tx) => tx.wait());
+
+        expect(await multisig.hasSignerVoted(signer1.address, calldataMultiSigHash)).to.equal(true);
+    });
+
+    it('should return false if a signer has not voted on a given topic', async () => {
+        const targetInterface = new Interface(['function callTarget() external']);
+        const calldata = targetInterface.encodeFunctionData('callTarget');
+        const nativeValue = 1000;
+
+        const multiSigInterface = new Interface([
+            'function execute(address target, bytes calldata callData, uint256 nativeValue) external payable',
+        ]);
+        const calldataMultiSig = multiSigInterface.encodeFunctionData('execute', [targetContract.address, calldata, nativeValue]);
+        const calldataMultiSigHash = keccak256(calldataMultiSig);
+
+        await multisig
+            .connect(signer1)
+            .execute(targetContract.address, calldata, nativeValue)
+            .then((tx) => tx.wait());
+
+        expect(await multisig.hasSignerVoted(signer2.address, calldataMultiSigHash)).to.equal(false);
+    });
+
+    it('should return the correct vote count for a given topic', async () => {
+        const targetInterface = new Interface(['function callTarget() external']);
+        const calldata = targetInterface.encodeFunctionData('callTarget');
+        const nativeValue = 1000;
+
+        const multiSigInterface = new Interface([
+            'function execute(address target, bytes calldata callData, uint256 nativeValue) external payable',
+        ]);
+        const calldataMultiSig = multiSigInterface.encodeFunctionData('execute', [targetContract.address, calldata, nativeValue]);
+        const calldataMultiSigHash = keccak256(calldataMultiSig);
+
+        expect(await multisig.getSignerVotesCount(calldataMultiSigHash)).to.equal(0);
+
+        await multisig
+            .connect(signer1)
+            .execute(targetContract.address, calldata, nativeValue)
+            .then((tx) => tx.wait());
+
+        expect(await multisig.getSignerVotesCount(calldataMultiSigHash)).to.equal(1);
+
+        await expect(multisig.connect(signer2).execute(targetContract.address, calldata, nativeValue, { value: nativeValue })).to.emit(
+            targetContract,
+            'TargetCalled',
+        );
+
+        expect(await multisig.getSignerVotesCount(calldataMultiSigHash)).to.equal(0);
     });
 
     it('should execute function on target contract', async () => {
