@@ -116,7 +116,7 @@ contract MultisigBase is IMultisigBase {
      * @notice Get the number of votes for a topic
      * @return uint256 indicating the number of votes for a topic
      */
-    function getSignerVoteCount(bytes32 topic) external view override returns (uint256) {
+    function getSignerVotesCount(bytes32 topic) external view override returns (uint256) {
         uint256 length = signers.accounts.length;
         uint256 voteCount;
         for (uint256 i; i < length; ++i) {

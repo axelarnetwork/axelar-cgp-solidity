@@ -59,7 +59,7 @@ interface IMultisigBase {
      * @notice Get the number of votes for a topic
      * @return uint256 indicating the number of votes for a topic
      */
-    function getSignerVoteCount(bytes32 topic) external view returns (uint256);
+    function getSignerVotesCount(bytes32 topic) external view returns (uint256);
 
     /***********\
     |* Setters *|
