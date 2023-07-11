@@ -43,6 +43,24 @@ interface IMultisigBase {
      */
     function signerAccounts() external view returns (address[] memory);
 
+    /**
+     * @notice Getter to determine if an account is a signer
+     * @return boolean indicating if the account is a signer
+     */
+    function isSigner(address account) external view returns (bool);
+
+    /**
+     * @notice Getter to determine if an account has voted on a topic
+     * @return boolean indicating if the account has voted
+     */
+    function hasSignerVoted(address account, bytes32 topic) external view returns (bool);
+
+    /**
+     * @notice Get the number of votes for a topic
+     * @return uint256 indicating the number of votes for a topic
+     */
+    function getSignerVotesCount(bytes32 topic) external view returns (uint256);
+
     /***********\
     |* Setters *|
     \***********/

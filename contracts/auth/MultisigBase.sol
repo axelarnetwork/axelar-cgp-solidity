@@ -96,6 +96,38 @@ contract MultisigBase is IMultisigBase {
         return signers.accounts;
     }
 
+    /**
+     * @notice Getter to determine if an account is a signer
+     * @return boolean indicating if the account is a signer
+     */
+    function isSigner(address account) external view override returns (bool) {
+        return signers.isSigner[account];
+    }
+
+    /**
+     * @notice Getter to determine if an account has voted on a topic
+     * @return boolean indicating if the account has voted
+     */
+    function hasSignerVoted(address account, bytes32 topic) external view override returns (bool) {
+        return votingPerTopic[signerEpoch][topic].hasVoted[account];
+    }
+
+    /**
+     * @notice Get the number of votes for a topic
+     * @return uint256 indicating the number of votes for a topic
+     */
+    function getSignerVotesCount(bytes32 topic) external view override returns (uint256) {
+        uint256 length = signers.accounts.length;
+        uint256 voteCount;
+        for (uint256 i; i < length; ++i) {
+            if (votingPerTopic[signerEpoch][topic].hasVoted[signers.accounts[i]]) {
+                voteCount++;
+            }
+        }
+
+        return voteCount;
+    }
+
     /***********\
     |* Setters *|
     \***********/
