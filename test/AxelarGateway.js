@@ -133,8 +133,6 @@ describe('AxelarGateway', () => {
             const implementationBytecode = gatewayFactory.bytecode;
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
-            console.log(implementationBytecodeHash);
-
             const expected = {
                 istanbul: '0x9ea40c1a3b70ab5ec544656ec8a8e13ff615f1ea781553466a38370c30bebf2c',
                 berlin: '0x268a9beb6a183ffa92764c4488a8b49028c4bfaf59ee2508315b1154340678ba',
