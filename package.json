@@ -4,7 +4,8 @@
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
-    "build": "hardhat clean && hardhat compile",
+    "build": "hardhat clean && hardhat compile && npm run copy:artifacts",
+    "copy:artifacts": "rm -rf dist && mkdir dist && cp artifacts/contracts/*Gateway*/*.json artifacts/contracts/*ERC20*/*.json artifacts/contracts/*Handler*/*.json artifacts/contracts/*service*/*/*.json artifacts/contracts/governance/*/*.json artifacts/contracts/auth/*/*.json dist/ && rm dist/*.dbg.json",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
@@ -27,7 +28,7 @@
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "^4.0.0"
+    "@axelar-network/axelar-gmp-sdk-solidity": "^4.0.1"
   },
   "devDependencies": {
     "@axelar-network/axelar-contract-deployments": "git://github.com/axelarnetwork/axelar-contract-deployments.git#74b942fdf10875a27b532d9bd6dfe2bd6db8a094",
@@ -39,7 +40,7 @@
     "eslint-config-richardpringle": "^2.0.0",
     "ethers": "^5.7.2",
     "fs-extra": "^11.1.1",
-    "hardhat": "^2.13.0",
+    "hardhat": "^2.17.0",
     "lodash": "^4.17.21",
     "mocha": "^10.2.0",
     "prettier": "^2.8.7",
@@ -49,5 +50,14 @@
   },
   "engines": {
     "node": "^16.0.0 || ^18.0.0"
-  }
+  },
+  "files": [
+    "artifacts",
+    "contracts",
+    "dist",
+    "interfaces",
+    "scripts",
+    "README.md",
+    "hardhat.config.js"
+  ]
 }
