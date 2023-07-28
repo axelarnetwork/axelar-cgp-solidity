@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "hardhat clean && hardhat compile && npm run copy:artifacts",
-    "copy:artifacts": "rm -rf dist && mkdir dist && cp artifacts/contracts/*Gateway*/*.json artifacts/contracts/*ERC20*/*.json artifacts/contracts/*Handler*/*.json artifacts/contracts/*service*/*/*.json artifacts/contracts/governance/*/*.json artifacts/contracts/auth/*/*.json dist/ && rm dist/*.dbg.json",
+    "copy:interfaces": "rm -rf interfaces && mkdir interfaces && cp artifacts/contracts/interfaces/*/*.json interfaces/",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
@@ -54,7 +54,6 @@
   "files": [
     "artifacts",
     "contracts",
-    "dist",
     "interfaces",
     "scripts",
     "README.md",
