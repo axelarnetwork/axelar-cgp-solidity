@@ -4,7 +4,7 @@
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
-    "build": "hardhat clean && hardhat compile && npm run copy:artifacts",
+    "build": "hardhat clean && hardhat compile",
     "copy:interfaces": "rm -rf interfaces && mkdir interfaces && cp artifacts/contracts/interfaces/*/*.json interfaces/",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
