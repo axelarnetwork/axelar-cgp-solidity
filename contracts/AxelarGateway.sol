@@ -12,9 +12,9 @@ import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
 
 import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
-import { AdminMultisigBase } from './AdminMultisigBase.sol';
+import { EternalStorage } from './EternalStorage.sol';
 
-contract AxelarGateway is IAxelarGateway, IGovernable, AdminMultisigBase {
+contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
