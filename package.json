@@ -1,6 +1,6 @@
 {
   "name": "@axelar-network/axelar-cgp-solidity",
-  "version": "5.0.1",
+  "version": "5.1.0",
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
