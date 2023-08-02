@@ -104,12 +104,12 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
 
     /**
      * @notice Withdraws native token from the contract
-     * @param to The address to send the native token to
+     * @param recipient The address to send the native token to
      * @param amount The amount of native token to send
      * @dev This function is only callable by the contract itself after passing according proposal
      */
-    function withdraw(address to, uint256 amount) external onlySelf {
-        to.safeNativeTransfer(amount);
+    function withdraw(address recipient, uint256 amount) external onlySelf {
+        recipient.safeNativeTransfer(amount);
     }
 
     /**
