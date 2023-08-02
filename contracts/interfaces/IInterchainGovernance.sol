@@ -11,6 +11,7 @@ import { ICaller } from './ICaller.sol';
  */
 interface IInterchainGovernance is IAxelarExecutable, ICaller {
     error NotGovernance();
+    error NotSelf();
     error InvalidCommand();
     error InvalidTarget();
     error TokenNotSupported();
@@ -67,4 +68,12 @@ interface IInterchainGovernance is IAxelarExecutable, ICaller {
         bytes calldata callData,
         uint256 value
     ) external payable;
+
+    /**
+     * @notice Withdraws native token from the contract
+     * @param to The address to send the native token to
+     * @param amount The amount of native token to send
+     * @dev This function is only callable by the contract itself after passing according proposal
+     */
+    function withdraw(address to, uint256 amount) external;
 }

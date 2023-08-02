@@ -50,7 +50,7 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
         bytes calldata callData,
         uint256 nativeValue
     ) external payable onlySigners {
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, nativeValue));
+        bytes32 proposalHash = _getProposalHash(target, callData, nativeValue);
 
         if (!multisigApprovals[proposalHash]) revert NotApproved();
 
@@ -81,7 +81,7 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
         }
 
         ServiceGovernanceCommand command = ServiceGovernanceCommand(commandId);
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, nativeValue));
+        bytes32 proposalHash = _getProposalHash(target, callData, nativeValue);
 
         if (command == ServiceGovernanceCommand.ScheduleTimeLockProposal) {
             eta = _scheduleTimeLock(proposalHash, eta);
