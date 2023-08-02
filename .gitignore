@@ -109,6 +109,7 @@ dist
 build/
 cache/
 artifacts/
+interfaces/
 
 info/local.json
 keys.json

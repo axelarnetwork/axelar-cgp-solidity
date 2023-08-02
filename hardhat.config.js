@@ -1,11 +1,15 @@
 require('@nomicfoundation/hardhat-toolbox');
+require('solidity-coverage');
+const { importNetworks, readJSON } = require('@axelar-network/axelar-contract-deployments/evm/utils');
+
+if (process.env.STORAGE_LAYOUT) {
+    require('hardhat-storage-layout');
+}
 
 const env = process.env.ENV || 'testnet';
-const { importNetworks, readJSON } = require('@axelar-network/axelar-contract-deployments/evm/utils');
 const chains = require(`@axelar-network/axelar-contract-deployments/info/${env}.json`);
 const keys = readJSON(`${__dirname}/info/keys.json`);
 const { networks, etherscan } = importNetworks(chains, keys);
-require('solidity-coverage');
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -35,8 +39,8 @@ module.exports = {
         },
     },
     defaultNetwork: 'hardhat',
-    networks: networks,
-    etherscan: etherscan,
+    networks,
+    etherscan,
     mocha: {
         timeout: 1000000,
     },
