@@ -11,7 +11,8 @@
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'",
     "flatten": "sh scripts/flatten-contracts.sh",
-    "coverage": "cross-env COVERAGE=true hardhat coverage"
+    "coverage": "cross-env COVERAGE=true hardhat coverage",
+    "storage-layout": "STORAGE_LAYOUT=true npm run build && STORAGE_LAYOUT=true hardhat check"
   },
   "repository": {
     "type": "git",
