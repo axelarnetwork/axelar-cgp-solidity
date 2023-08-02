@@ -2,7 +2,9 @@ require('@nomicfoundation/hardhat-toolbox');
 require('solidity-coverage');
 const { importNetworks, readJSON } = require('@axelar-network/axelar-contract-deployments/evm/utils');
 
-if (process.env.STORAGE_LAYOUT || process.argv[2] === 'check') require('hardhat-storage-layout');
+if (process.env.STORAGE_LAYOUT) {
+    require('hardhat-storage-layout');
+}
 
 const env = process.env.ENV || 'testnet';
 const chains = require(`@axelar-network/axelar-contract-deployments/info/${env}.json`);
