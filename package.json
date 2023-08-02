@@ -12,7 +12,7 @@
     "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'",
     "flatten": "sh scripts/flatten-contracts.sh",
     "coverage": "cross-env COVERAGE=true hardhat coverage",
-    "storage-layout": "STORAGE_LAYOUT=true npm run build && STORAGE_LAYOUT=true hardhat check"
+    "storage-layout": "cross-env STORAGE_LAYOUT=true npm run build && cross-env STORAGE_LAYOUT=true hardhat check"
   },
   "repository": {
     "type": "git",
