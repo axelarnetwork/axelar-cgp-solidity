@@ -6,7 +6,7 @@ pragma solidity ^0.8.9;
 
 import { MintableCappedERC20 } from '../MintableCappedERC20.sol';
 
-contract InvalidMintableCappedERC20 is MintableCappedERC20 {
+contract TestNonStandardERC20 is MintableCappedERC20 {
     bool public shouldFailTransfer;
 
     constructor(
