@@ -1,6 +1,6 @@
 {
   "name": "@axelar-network/axelar-cgp-solidity",
-  "version": "5.0.1",
+  "version": "5.1.0",
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,8 @@
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'",
     "flatten": "sh scripts/flatten-contracts.sh",
-    "coverage": "cross-env COVERAGE=true hardhat coverage"
+    "coverage": "cross-env COVERAGE=true hardhat coverage",
+    "storage-layout": "cross-env STORAGE_LAYOUT=true npm run build && cross-env STORAGE_LAYOUT=true hardhat check"
   },
   "repository": {
     "type": "git",
@@ -41,12 +42,14 @@
     "ethers": "^5.7.2",
     "fs-extra": "^11.1.1",
     "hardhat": "^2.17.0",
+    "hardhat-storage-layout": "^0.1.7",
     "lodash": "^4.17.21",
     "mocha": "^10.2.0",
     "prettier": "^2.8.7",
     "prettier-plugin-solidity": "1.0.0-beta.19",
     "readline-sync": "^1.4.10",
-    "solhint": "^3.4.1"
+    "solhint": "^3.4.1",
+    "solidity-coverage": "^0.8.4"
   },
   "engines": {
     "node": "^16.0.0 || ^18.0.0"
