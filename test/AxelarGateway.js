@@ -52,6 +52,12 @@ describe('AxelarGateway', () => {
     let tokenDeployer;
     let gateway;
 
+    let externalToken;
+    let externalName;
+    let externalSymbol;
+    let externalDecimals;
+    let externalCap;
+
     before(async () => {
         wallets = await ethers.getSigners();
         owner = wallets[0];
@@ -71,6 +77,15 @@ describe('AxelarGateway', () => {
         // reuse token deployer for all tests
         tokenDeployer = await tokenDeployerFactory.deploy();
         await tokenDeployer.deployTransaction.wait(network.config.confirmations);
+
+        // reuse external token for all tests
+        externalName = 'An External Token';
+        externalSymbol = 'AET';
+        externalDecimals = 18;
+        externalCap = 1e8;
+
+        externalToken = await mintableCappedERC20Factory.deploy(externalName, externalSymbol, externalDecimals, externalCap);
+        await externalToken.deployTransaction.wait(network.config.confirmations);
     });
 
     const deployGateway = async (invalidDeployer = false) => {
@@ -818,26 +833,17 @@ describe('AxelarGateway', () => {
     describe('command burnToken', () => {
         const name = 'An Awesome Token';
         const symbol = 'AAT';
-        const externalName = 'An External Token';
-        const externalSymbol = 'AET';
-        const decimals = 18;
-        const cap = 1e8;
         const burnAmount = 100;
         const amount = 10 * burnAmount;
 
         let token;
-        let externalToken;
 
-        describe('positive test cases', () => {
+        describe('burn token positive tests', () => {
             before(async () => {
                 await deployGateway();
             });
 
             before(async () => {
-                externalToken = await mintableCappedERC20Factory
-                    .deploy(externalName, externalSymbol, decimals, cap)
-                    .then((d) => d.deployed());
-
                 await externalToken.mint(owner.address, amount).then((tx) => tx.wait());
 
                 const data = buildCommandBatch(
@@ -845,8 +851,8 @@ describe('AxelarGateway', () => {
                     [getRandomID(), getRandomID(), getRandomID()],
                     ['deployToken', 'deployToken', 'mintToken'],
                     [
-                        getDeployCommand(externalName, externalSymbol, decimals, cap, externalToken.address, 0),
-                        getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0),
+                        getDeployCommand(externalName, externalSymbol, externalDecimals, externalCap, externalToken.address, 0),
+                        getDeployCommand(name, symbol, externalDecimals, externalCap, ethers.constants.AddressZero, 0),
                         getMintCommand(symbol, owner.address, amount),
                     ],
                 );
@@ -971,7 +977,7 @@ describe('AxelarGateway', () => {
                 const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
                 const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
-                await wallets[0].sendTransaction({ to: depositHandlerAddress, value: '100000000000000000' }).then((tx) => tx.wait());
+                await owner.sendTransaction({ to: depositHandlerAddress, value: '1' }).then((tx) => tx.wait());
 
                 const burnAmount = amount / 10;
                 await externalToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
@@ -1085,13 +1091,15 @@ describe('AxelarGateway', () => {
             });
         });
 
-        describe('negative test cases', () => {
+        describe('burn token negative tests', () => {
             before(async () => {
                 await deployGateway();
             });
 
             before(async () => {
-                externalToken = await nonStandardERC20Factory.deploy(externalName, externalSymbol, decimals, cap).then((d) => d.deployed());
+                externalToken = await nonStandardERC20Factory
+                    .deploy(externalName, externalSymbol, externalDecimals, externalCap)
+                    .then((d) => d.deployed());
 
                 await externalToken.mint(owner.address, amount).then((tx) => tx.wait());
 
@@ -1100,8 +1108,8 @@ describe('AxelarGateway', () => {
                     [getRandomID(), getRandomID(), getRandomID()],
                     ['deployToken', 'deployToken', 'mintToken'],
                     [
-                        getDeployCommand(externalName, externalSymbol, decimals, cap, externalToken.address, 0),
-                        getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0),
+                        getDeployCommand(externalName, externalSymbol, externalDecimals, externalCap, externalToken.address, 0),
+                        getDeployCommand(name, symbol, externalDecimals, externalCap, ethers.constants.AddressZero, 0),
                         getMintCommand(symbol, owner.address, amount),
                     ],
                 );
@@ -1448,7 +1456,7 @@ describe('AxelarGateway', () => {
         const decimals = 18;
         const cap = 1e9;
 
-        describe('invalid token deployer', () => {
+        describe('send token negative tests', () => {
             before(async () => {
                 await deployGateway(true);
             });
@@ -1478,7 +1486,7 @@ describe('AxelarGateway', () => {
             });
         });
 
-        describe('valid token deployer', () => {
+        describe('send token positive tests', () => {
             before(async () => {
                 await deployGateway();
             });
@@ -1528,10 +1536,11 @@ describe('AxelarGateway', () => {
             });
 
             it('should lock external token and emit an event', async () => {
-                const tokenSymbol = `TEST${getRandomString(10)}`;
-                const token = await mintableCappedERC20Factory.deploy(tokenName, tokenSymbol, decimals, cap).then((d) => d.deployed());
+                const tokenSymbol = externalSymbol;
+                const token = externalToken;
+                const amount = 1000;
 
-                await token.mint(owner.address, 1000000).then((tx) => tx.wait());
+                await token.mint(owner.address, amount).then((tx) => tx.wait());
 
                 const deployData = buildCommandBatch(
                     await getChainId(),
@@ -1552,7 +1561,6 @@ describe('AxelarGateway', () => {
 
                 const issuer = owner.address;
                 const locker = gateway.address;
-                const amount = 1000;
                 const destination = operators[1].address;
 
                 await expect(token.approve(locker, amount)).to.emit(token, 'Approval').withArgs(issuer, locker, amount);
@@ -1581,7 +1589,7 @@ describe('AxelarGateway', () => {
         });
 
         it('should fail if external ERC20 token address is invalid', async () => {
-            const token = wallets[0];
+            const token = owner;
 
             const deployData = buildCommandBatch(
                 await getChainId(),
@@ -1682,12 +1690,9 @@ describe('AxelarGateway', () => {
             const payloadHash = keccak256(payload);
             let data = buildCommandBatch(
                 await getChainId(),
-                [getRandomID(), getRandomID(), getRandomID()],
-                ['approveContractCall', 'approveContractCall'],
-                [
-                    getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex),
-                    getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex),
-                ],
+                [getRandomID(), getRandomID()],
+                ['approveContractCall'],
+                [getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex)],
             );
 
             let input = await getSignedWeightedExecuteInput(
@@ -1786,7 +1791,7 @@ describe('AxelarGateway', () => {
         it('should burn internal token and emit an event', async () => {
             const chain = 'Polygon';
             const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
-            const payload = defaultAbiCoder.encode(['address', 'uint256'], [wallets[0].address, 1000]);
+            const payload = defaultAbiCoder.encode(['address', 'uint256'], [owner.address, 1000]);
 
             const tx = await gateway.connect(owner).callContract(chain, destination, payload);
 
@@ -1890,16 +1895,17 @@ describe('AxelarGateway', () => {
         });
 
         it('should lock external token and emit an event', async () => {
-            const externalTokenSymbol = getRandomString(10);
-            const token = await mintableCappedERC20Factory.deploy(tokenName, externalTokenSymbol, decimals, cap).then((d) => d.deployed());
+            const externalTokenSymbol = externalSymbol;
+            const token = externalToken;
+            const amount = 1000;
 
-            await token.mint(owner.address, 1000000).then((tx) => tx.wait());
+            await token.mint(owner.address, amount).then((tx) => tx.wait());
 
             const data = buildCommandBatch(
                 await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(tokenName, externalTokenSymbol, decimals, cap, token.address, 0)],
+                [getDeployCommand(externalName, externalTokenSymbol, externalDecimals, externalCap, token.address, 0)],
             );
 
             const input = await getSignedWeightedExecuteInput(
@@ -1914,7 +1920,6 @@ describe('AxelarGateway', () => {
 
             const issuer = owner.address;
             const locker = gateway.address;
-            const amount = 1000;
             const chain = 'Polygon';
             const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
             const payload = defaultAbiCoder.encode(['address', 'address'], [owner.address, destination]);
@@ -2152,13 +2157,19 @@ describe('AxelarGateway', () => {
         });
 
         it('should return correct value for adminThreshold', async () => {
-            const epoch = getRandomInt(Number.MAX_SAFE_INTEGER);
+            let epoch = 1;
+            expect(await gateway.adminThreshold(epoch)).to.eq(0);
+
+            epoch = getRandomInt(Number.MAX_SAFE_INTEGER);
             expect(await gateway.adminThreshold(epoch)).to.eq(0);
         });
 
         it('should return correct value for admins', async () => {
-            const num = getRandomInt(Number.MAX_SAFE_INTEGER);
-            expect(await gateway.admins(num)).to.deep.equal([]);
+            let epoch = 1;
+            expect(await gateway.admins(epoch)).to.deep.equal([]);
+
+            epoch = getRandomInt(Number.MAX_SAFE_INTEGER);
+            expect(await gateway.admins(epoch)).to.deep.equal([]);
         });
 
         it('should return correct value for tokenFrozen', async () => {
