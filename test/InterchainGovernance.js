@@ -154,7 +154,7 @@ describe('InterchainGovernance', () => {
         const withdrawInterface = new Interface(['function withdraw(address recipient, uint256 amount) external']);
         const withdrawCalldata = withdrawInterface.encodeFunctionData('withdraw', [recipient, nativeValue]);
 
-        const [payload] = await getPayloadAndProposalHash(commandID, target, nativeValue, withdrawCalldata, timeDelay);
+        const [payload] = await getPayloadAndProposalHash(commandID, target, 0, withdrawCalldata, timeDelay);
 
         await ownerWallet
             .sendTransaction({
@@ -172,7 +172,7 @@ describe('InterchainGovernance', () => {
             await new Promise((resolve) => setTimeout(resolve, timeDelay * 1000));
         }
 
-        const tx = await interchainGovernance.executeProposal(target, withdrawCalldata, nativeValue);
+        const tx = await interchainGovernance.executeProposal(target, withdrawCalldata, 0);
 
         await expect(tx).to.emit(interchainGovernance, 'ProposalExecuted').to.changeEtherBalance(recipient, nativeValue);
     });
