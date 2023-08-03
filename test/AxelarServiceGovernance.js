@@ -3,9 +3,10 @@
 const chai = require('chai');
 const { ethers } = require('hardhat');
 const {
-    utils: { defaultAbiCoder, Interface, solidityKeccak256 },
+    utils: { defaultAbiCoder, Interface },
 } = ethers;
 const { expect } = chai;
+const { getPayloadAndProposalHash } = require('./utils');
 
 describe('AxelarServiceGovernance', () => {
     let ownerWallet;
@@ -21,6 +22,10 @@ describe('AxelarServiceGovernance', () => {
     let targetContract;
 
     const governanceChain = 'Governance Chain';
+    const timeDelay = 12 * 60 * 60;
+
+    const targetInterface = new Interface(['function callTarget() external']);
+    const calldata = targetInterface.encodeFunctionData('callTarget');
 
     before(async () => {
         [ownerWallet, governanceAddress, gateway, signer1, signer2, signer3] = await ethers.getSigners();
@@ -42,7 +47,6 @@ describe('AxelarServiceGovernance', () => {
     });
 
     it('should initialize the service governance with correct parameters', async () => {
-        // will need to remove epoch param when merged with updated multisig
         const currentThreshold = 2;
 
         expect(await serviceGovernance.gateway()).to.equal(gateway.address);
@@ -52,24 +56,24 @@ describe('AxelarServiceGovernance', () => {
         expect(await serviceGovernance.signerAccounts()).to.deep.equal(signers);
     });
 
+    it('should revert on invalid command', async () => {
+        const commandID = 4;
+        const target = targetContract.address;
+        const nativeValue = 100;
+
+        const [payload] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata, timeDelay);
+
+        await expect(
+            serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload),
+        ).to.be.revertedWithCustomError(serviceGovernance, 'InvalidCommand');
+    });
+
     it('should schedule a proposal', async () => {
         const commandID = 0;
         const target = targetContract.address;
         const nativeValue = 100;
-        const timeDelay = 12 * 60 * 60;
 
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
-        const block = await ethers.provider.getBlock('latest');
-        const eta = block.timestamp + timeDelay;
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, eta],
-        );
+        const [payload, proposalHash, eta] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata, timeDelay);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'ProposalScheduled')
@@ -81,20 +85,8 @@ describe('AxelarServiceGovernance', () => {
         const commandIDCancel = 1;
         const target = targetContract.address;
         const nativeValue = 100;
-        const timeDelay = 12 * 60 * 60;
 
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
-        const block = await ethers.provider.getBlock('latest');
-        const eta = block.timestamp + timeDelay;
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, eta],
-        );
+        const [payload, proposalHash, eta] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata, timeDelay);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'ProposalScheduled')
@@ -115,15 +107,7 @@ describe('AxelarServiceGovernance', () => {
         const target = targetContract.address;
         const nativeValue = 100;
 
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, 0],
-        );
+        const [payload, proposalHash] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
@@ -135,15 +119,7 @@ describe('AxelarServiceGovernance', () => {
         const target = targetContract.address;
         const nativeValue = 100;
 
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, 0],
-        );
+        const [payload, proposalHash] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigCancelled')
@@ -156,15 +132,7 @@ describe('AxelarServiceGovernance', () => {
         const target = targetContract.address;
         const nativeValue = 100;
 
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, 0],
-        );
+        const [payload, proposalHash] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata);
 
         const payloadCancel = defaultAbiCoder.encode(
             ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
@@ -187,9 +155,6 @@ describe('AxelarServiceGovernance', () => {
     it('should revert on executing a multisig proposal if called by non-signer', async () => {
         const target = targetContract.address;
 
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
         await expect(serviceGovernance.connect(ownerWallet).executeMultisigProposal(target, calldata, 0)).to.be.revertedWithCustomError(
             serviceGovernance,
             'NotSigner',
@@ -198,9 +163,6 @@ describe('AxelarServiceGovernance', () => {
 
     it('should revert on executing a multisig proposal if proposal is not approved', async () => {
         const target = targetContract.address;
-
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
 
         await serviceGovernance
             .connect(signer1)
@@ -219,27 +181,22 @@ describe('AxelarServiceGovernance', () => {
         const nativeValue = 0;
 
         // Encode function that does not exist on target
-        const targetInterface = new Interface(['function set() external']);
-        const calldata = targetInterface.encodeFunctionData('set');
+        const invalidTargetInterface = new Interface(['function set() external']);
+        const invalidCalldata = invalidTargetInterface.encodeFunctionData('set');
 
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, 0],
-        );
+        const [payload, proposalHash] = await getPayloadAndProposalHash(commandID, target, nativeValue, invalidCalldata);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
-            .withArgs(proposalHash, target, calldata, nativeValue);
+            .withArgs(proposalHash, target, invalidCalldata, nativeValue);
 
         await serviceGovernance
             .connect(signer1)
-            .executeMultisigProposal(target, calldata, nativeValue)
+            .executeMultisigProposal(target, invalidCalldata, nativeValue)
             .then((tx) => tx.wait());
 
         await expect(
-            serviceGovernance.connect(signer2).executeMultisigProposal(target, calldata, nativeValue),
+            serviceGovernance.connect(signer2).executeMultisigProposal(target, invalidCalldata, nativeValue),
         ).to.be.revertedWithCustomError(serviceGovernance, 'ExecutionFailed');
     });
 
@@ -248,15 +205,7 @@ describe('AxelarServiceGovernance', () => {
         const target = targetContract.address;
         const nativeValue = 0;
 
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, 0],
-        );
+        const [payload, proposalHash] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
@@ -273,15 +222,7 @@ describe('AxelarServiceGovernance', () => {
         const target = targetContract.address;
         const nativeValue = 0;
 
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, 0],
-        );
+        const [payload, proposalHash] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')
@@ -303,15 +244,7 @@ describe('AxelarServiceGovernance', () => {
         const target = targetContract.address;
         const nativeValue = 1000;
 
-        const targetInterface = new Interface(['function callTarget() external']);
-        const calldata = targetInterface.encodeFunctionData('callTarget');
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, 0],
-        );
+        const [payload, proposalHash] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata);
 
         await expect(serviceGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload))
             .to.emit(serviceGovernance, 'MultisigApproved')

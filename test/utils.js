@@ -37,6 +37,26 @@ const getWeightedSignaturesProof = async (data, operators, weights, threshold, s
     );
 };
 
+const getPayloadAndProposalHash = async (commandID, target, nativeValue, calldata, timeDelay) => {
+    let eta;
+
+    if (timeDelay) {
+        const block = await ethers.provider.getBlock('latest');
+        eta = block.timestamp + timeDelay;
+    } else {
+        eta = 0;
+    }
+
+    const proposalHash = keccak256(defaultAbiCoder.encode(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]));
+
+    const payload = defaultAbiCoder.encode(
+        ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
+        [commandID, target, calldata, nativeValue, eta],
+    );
+
+    return [payload, proposalHash, eta];
+};
+
 const getGasOptions = () => {
     return network.config.blockGasLimit ? { gasLimit: network.config.blockGasLimit.toString() } : {};
 };
@@ -57,6 +77,8 @@ module.exports = {
     getSignaturesProof,
 
     getWeightedSignaturesProof,
+
+    getPayloadAndProposalHash,
 
     getSignedMultisigExecuteInput: async (data, operators, signers) =>
         defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),
