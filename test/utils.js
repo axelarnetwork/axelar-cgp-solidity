@@ -18,6 +18,10 @@ const getRandomString = (length) => {
 
 const getAddresses = (wallets) => wallets.map(({ address }) => address);
 
+const isHardhat = () => {
+    return network.name === 'hardhat';
+};
+
 const getSignaturesProof = async (data, operators, signers) => {
     const hash = arrayify(keccak256(data));
     const signatures = await Promise.all(
@@ -57,6 +61,15 @@ const getPayloadAndProposalHash = async (commandID, target, nativeValue, calldat
     return [payload, proposalHash, eta];
 };
 
+const increaseTime = async (timeDelay) => {
+    if (isHardhat) {
+        await network.provider.send('evm_increaseTime', [timeDelay]);
+        await network.provider.send('evm_mine');
+    } else {
+        await new Promise((resolve) => setTimeout(resolve, timeDelay * 1000));
+    }
+};
+
 const getGasOptions = () => {
     return network.config.blockGasLimit ? { gasLimit: network.config.blockGasLimit.toString() } : {};
 };
@@ -80,6 +93,8 @@ module.exports = {
 
     getPayloadAndProposalHash,
 
+    increaseTime,
+
     getSignedMultisigExecuteInput: async (data, operators, signers) =>
         defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),
 
@@ -92,7 +107,7 @@ module.exports = {
 
     getRandomString,
 
-    isHardhat: network.name === 'hardhat',
+    isHardhat,
 
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 

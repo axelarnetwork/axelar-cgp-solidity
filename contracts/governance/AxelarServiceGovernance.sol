@@ -63,46 +63,43 @@ contract AxelarServiceGovernance is InterchainGovernance, MultisigBase, IAxelarS
 
     /**
      * @notice Internal function to process a governance command
-     * @param commandId The id of the command
+     * @param commandType The type of the command
      * @param target The target address the proposal will call
      * @param callData The data the encodes the function and arguments to call on the target contract
      * @param nativeValue The value of native token to be sent to the target contract
      * @param eta The time after which the proposal can be executed
      */
     function _processCommand(
-        uint256 commandId,
+        uint256 commandType,
         address target,
         bytes memory callData,
         uint256 nativeValue,
         uint256 eta
     ) internal override {
-        if (commandId > uint256(type(ServiceGovernanceCommand).max)) {
-            revert InvalidCommand();
-        }
-
-        ServiceGovernanceCommand command = ServiceGovernanceCommand(commandId);
         bytes32 proposalHash = _getProposalHash(target, callData, nativeValue);
 
-        if (command == ServiceGovernanceCommand.ScheduleTimeLockProposal) {
+        if (commandType == uint256(ServiceGovernanceCommand.ScheduleTimeLockProposal)) {
             eta = _scheduleTimeLock(proposalHash, eta);
 
             emit ProposalScheduled(proposalHash, target, callData, nativeValue, eta);
             return;
-        } else if (command == ServiceGovernanceCommand.CancelTimeLockProposal) {
+        } else if (commandType == uint256(ServiceGovernanceCommand.CancelTimeLockProposal)) {
             _cancelTimeLock(proposalHash);
 
             emit ProposalCancelled(proposalHash, target, callData, nativeValue, eta);
             return;
-        } else if (command == ServiceGovernanceCommand.ApproveMultisigProposal) {
+        } else if (commandType == uint256(ServiceGovernanceCommand.ApproveMultisigProposal)) {
             multisigApprovals[proposalHash] = true;
 
             emit MultisigApproved(proposalHash, target, callData, nativeValue);
             return;
-        } else if (command == ServiceGovernanceCommand.CancelMultisigApproval) {
+        } else if (commandType == uint256(ServiceGovernanceCommand.CancelMultisigApproval)) {
             multisigApprovals[proposalHash] = false;
 
             emit MultisigCancelled(proposalHash, target, callData, nativeValue);
             return;
+        } else {
+            revert InvalidCommand();
         }
     }
 }

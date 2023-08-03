@@ -135,36 +135,33 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
 
     /**
      * @notice Internal function to process a governance command
-     * @param commandId The id of the command, 0 for proposal creation and 1 for proposal cancellation
+     * @param commandType The type of the command, 0 for proposal creation and 1 for proposal cancellation
      * @param target The target address the proposal will call
      * @param callData The data the encodes the function and arguments to call on the target contract
      * @param nativeValue The nativeValue of native token to be sent to the target contract
      * @param eta The time after which the proposal can be executed
      */
     function _processCommand(
-        uint256 commandId,
+        uint256 commandType,
         address target,
         bytes memory callData,
         uint256 nativeValue,
         uint256 eta
     ) internal virtual {
-        if (commandId > uint256(type(GovernanceCommand).max)) {
-            revert InvalidCommand();
-        }
-
-        GovernanceCommand command = GovernanceCommand(commandId);
         bytes32 proposalHash = _getProposalHash(target, callData, nativeValue);
 
-        if (command == GovernanceCommand.ScheduleTimeLockProposal) {
+        if (commandType == uint256(GovernanceCommand.ScheduleTimeLockProposal)) {
             eta = _scheduleTimeLock(proposalHash, eta);
 
             emit ProposalScheduled(proposalHash, target, callData, nativeValue, eta);
             return;
-        } else if (command == GovernanceCommand.CancelTimeLockProposal) {
+        } else if (commandType == uint256(GovernanceCommand.CancelTimeLockProposal)) {
             _cancelTimeLock(proposalHash);
 
             emit ProposalCancelled(proposalHash, target, callData, nativeValue, eta);
             return;
+        } else {
+            revert InvalidCommand();
         }
     }
 

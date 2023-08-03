@@ -21,11 +21,11 @@ describe('AxelarServiceGovernance', () => {
     let targetFactory;
     let targetContract;
 
+    let targetInterface;
+    let calldata;
+
     const governanceChain = 'Governance Chain';
     const timeDelay = 12 * 60 * 60;
-
-    const targetInterface = new Interface(['function callTarget() external']);
-    const calldata = targetInterface.encodeFunctionData('callTarget');
 
     before(async () => {
         [ownerWallet, governanceAddress, gateway, signer1, signer2, signer3] = await ethers.getSigners();
@@ -44,6 +44,9 @@ describe('AxelarServiceGovernance', () => {
             .then((d) => d.deployed());
 
         targetContract = await targetFactory.deploy().then((d) => d.deployed());
+
+        targetInterface = new ethers.utils.Interface(targetContract.interface.fragments);
+        calldata = targetInterface.encodeFunctionData('callTarget');
     });
 
     it('should initialize the service governance with correct parameters', async () => {
