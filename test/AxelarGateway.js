@@ -830,7 +830,7 @@ describe('AxelarGateway', () => {
         });
     });
 
-    describe.only('command burnToken', () => {
+    describe('command burnToken', () => {
         const name = 'An Awesome Token';
         const symbol = 'AAT';
         const burnAmount = 100;
@@ -1623,7 +1623,7 @@ describe('AxelarGateway', () => {
 
             const salt = '0x2b3e73733ff31436169744c5808241dad2ff8921cf7e4cca6405a6e38d4f7b37';
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
-            const tx = await externalToken.transfer(depositHandlerAddress, amount);
+            await externalToken.transfer(depositHandlerAddress, amount);
 
             const burnData = buildCommandBatch(await getChainId(), [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
 
