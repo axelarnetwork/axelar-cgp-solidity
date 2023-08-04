@@ -17,6 +17,13 @@ interface IAxelarServiceGovernance is IMultisigBase, IInterchainGovernance {
     event MultisigExecuted(bytes32 indexed proposalHash, address indexed targetContract, bytes callData, uint256 nativeValue);
 
     /**
+     * @notice Returns whether a multisig proposal has been approved
+     * @param proposalHash The hash of the proposal
+     * @return bool Whether the proposal has been approved
+     */
+    function multisigApprovals(bytes32 proposalHash) external view returns (bool);
+
+    /**
      * @notice Executes a multisig proposal
      * @param targetContract The target address the proposal will call
      * @param callData The data that encodes the function and arguments to call on the target contract

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import { AxelarExecutable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutable.sol';
 import { TimeLock } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/TimeLock.sol';
+import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
 import { IInterchainGovernance } from '../interfaces/IInterchainGovernance.sol';
 import { Caller } from '../util/Caller.sol';
 
@@ -13,6 +14,8 @@ import { Caller } from '../util/Caller.sol';
  * to create, cancel, and execute governance proposals.
  */
 contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchainGovernance {
+    using SafeNativeTransfer for address;
+
     enum GovernanceCommand {
         ScheduleTimeLockProposal,
         CancelTimeLockProposal
@@ -43,6 +46,27 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
     }
 
     /**
+     * @notice Modifier to check if the caller is the governance contract
+     * @param sourceChain The source chain of the proposal, must equal the governance chain
+     * @param sourceAddress The source address of the proposal, must equal the governance address
+     */
+    modifier onlyGovernance(string calldata sourceChain, string calldata sourceAddress) {
+        if (keccak256(bytes(sourceChain)) != governanceChainHash || keccak256(bytes(sourceAddress)) != governanceAddressHash)
+            revert NotGovernance();
+
+        _;
+    }
+
+    /**
+     * @notice Modifier to check if the caller is the contract itself
+     */
+    modifier onlySelf() {
+        if (msg.sender != address(this)) revert NotSelf();
+
+        _;
+    }
+
+    /**
      * @notice Returns the ETA of a proposal
      * @param target The address of the contract targeted by the proposal
      * @param callData The call data to be sent to the target contract
@@ -70,12 +94,22 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
         bytes calldata callData,
         uint256 nativeValue
     ) external payable {
-        bytes32 proposalHash = keccak256(abi.encodePacked(target, callData, nativeValue));
+        bytes32 proposalHash = _getProposalHash(target, callData, nativeValue);
 
         _finalizeTimeLock(proposalHash);
         _call(target, callData, nativeValue);
 
         emit ProposalExecuted(proposalHash, target, callData, nativeValue, block.timestamp);
+    }
+
+    /**
+     * @notice Withdraws native token from the contract
+     * @param recipient The address to send the native token to
+     * @param amount The amount of native token to send
+     * @dev This function is only callable by the contract itself after passing according proposal
+     */
+    function withdraw(address recipient, uint256 amount) external onlySelf {
+        recipient.safeNativeTransfer(amount);
     }
 
     /**
@@ -88,10 +122,7 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes calldata payload
-    ) internal override {
-        if (keccak256(bytes(sourceChain)) != governanceChainHash || keccak256(bytes(sourceAddress)) != governanceAddressHash)
-            revert NotGovernance();
-
+    ) internal override onlyGovernance(sourceChain, sourceAddress) {
         (uint256 command, address target, bytes memory callData, uint256 nativeValue, uint256 eta) = abi.decode(
             payload,
             (uint256, address, bytes, uint256, uint256)
@@ -104,36 +135,33 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
 
     /**
      * @notice Internal function to process a governance command
-     * @param commandId The id of the command, 0 for proposal creation and 1 for proposal cancellation
+     * @param commandType The type of the command, 0 for proposal creation and 1 for proposal cancellation
      * @param target The target address the proposal will call
      * @param callData The data the encodes the function and arguments to call on the target contract
      * @param nativeValue The nativeValue of native token to be sent to the target contract
      * @param eta The time after which the proposal can be executed
      */
     function _processCommand(
-        uint256 commandId,
+        uint256 commandType,
         address target,
         bytes memory callData,
         uint256 nativeValue,
         uint256 eta
     ) internal virtual {
-        if (commandId > uint256(type(GovernanceCommand).max)) {
-            revert InvalidCommand();
-        }
-
-        GovernanceCommand command = GovernanceCommand(commandId);
         bytes32 proposalHash = _getProposalHash(target, callData, nativeValue);
 
-        if (command == GovernanceCommand.ScheduleTimeLockProposal) {
+        if (commandType == uint256(GovernanceCommand.ScheduleTimeLockProposal)) {
             eta = _scheduleTimeLock(proposalHash, eta);
 
             emit ProposalScheduled(proposalHash, target, callData, nativeValue, eta);
             return;
-        } else if (command == GovernanceCommand.CancelTimeLockProposal) {
+        } else if (commandType == uint256(GovernanceCommand.CancelTimeLockProposal)) {
             _cancelTimeLock(proposalHash);
 
             emit ProposalCancelled(proposalHash, target, callData, nativeValue, eta);
             return;
+        } else {
+            revert InvalidCommand();
         }
     }
 
@@ -145,7 +173,7 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
         bytes memory callData,
         uint256 nativeValue
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(target, callData, nativeValue));
+        return keccak256(abi.encode(target, callData, nativeValue));
     }
 
     /**
