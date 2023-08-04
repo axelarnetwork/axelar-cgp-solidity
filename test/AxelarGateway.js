@@ -881,7 +881,7 @@ describe('AxelarGateway', () => {
             });
 
             before(async () => {
-                burnTokenSetup(true);
+                await burnTokenSetup(true);
             });
 
             it('should allow the operators to burn internal tokens', async () => {
@@ -1110,7 +1110,7 @@ describe('AxelarGateway', () => {
             });
 
             before(async () => {
-                burnTokenSetup(false);
+                await burnTokenSetup(false);
             });
 
             it('should fail if symbol does not correspond to internal token', async () => {
