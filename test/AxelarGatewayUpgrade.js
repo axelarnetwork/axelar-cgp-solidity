@@ -4,15 +4,28 @@ const chai = require('chai');
 const { sortBy } = require('lodash');
 const { ethers, network } = require('hardhat');
 const {
-    utils: { defaultAbiCoder, Interface, solidityKeccak256 },
+    utils: { Interface, solidityKeccak256, keccak256 },
 } = ethers;
 const { expect } = chai;
-const { isHardhat, getAddresses, getWeightedAuthDeployParam, getWeightedProxyDeployParams } = require('./utils');
+const {
+    isHardhat,
+    waitFor,
+    getAddresses,
+    getRandomID,
+    getChainId,
+    getGasOptions,
+    buildCommandBatch,
+    getApproveContractCall,
+    getWeightedAuthDeployParam,
+    getWeightedProxyDeployParams,
+    getSignedWeightedExecuteInput,
+    getPayloadAndProposalHash,
+} = require('./utils');
 const { getBytecodeHash } = require('@axelar-network/axelar-contract-deployments');
 
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
-describe('InterchainGovernance', () => {
+describe('AxelarGatewayUpgrade', () => {
     const threshold = isHardhat ? 4 : 2;
 
     let ownerWallet;
@@ -43,7 +56,7 @@ describe('InterchainGovernance', () => {
         governanceAddress = wallets[1].address;
         operators = sortBy(wallets.slice(0, threshold), (wallet) => wallet.address.toLowerCase());
 
-        interchainGovernanceFactory = await ethers.getContractFactory('TestInterchainGovernance', ownerWallet);
+        interchainGovernanceFactory = await ethers.getContractFactory('InterchainGovernance', ownerWallet);
 
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', owner);
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
@@ -51,10 +64,12 @@ describe('InterchainGovernance', () => {
         tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', owner);
         tokenDeployer = await tokenDeployerFactory.deploy();
         await tokenDeployer.deployTransaction.wait(network.config.confirmations);
+
+        await deployGateway();
     });
 
-    beforeEach(async () => {
-        const buffer = 10 * 60 * 60;
+    const deployGateway = async () => {
+        const buffer = isHardhat ? 10 * 60 * 60 : 10;
 
         const operatorAddresses = getAddresses(operators);
 
@@ -78,37 +93,23 @@ describe('InterchainGovernance', () => {
             .then((d) => d.deployed());
 
         await gateway.transferGovernance(interchainGovernance.address).then((tx) => tx.wait(network.config.confirmations));
-    });
+    };
 
-    it('should get the correct governance address', async () => {
+    it('should deploy gateway with the correct variables', async () => {
         expect(await gateway.governance()).to.eq(interchainGovernance.address);
-    });
-
-    it('should get the correct mint limiter address', async () => {
         expect(await gateway.mintLimiter()).to.eq(mintLimiter.address);
-    });
-
-    it('should get the correct auth module', async () => {
         expect(await gateway.authModule()).to.eq(auth.address);
-    });
-
-    it('auth module should have the correct owner', async () => {
         expect(await auth.owner()).to.eq(gateway.address);
-    });
-
-    it('should get the correct token deployer', async () => {
         expect(await gateway.tokenDeployer()).to.eq(tokenDeployer.address);
     });
 
-    it('should schedule a proposal to upgrade AxelarGateway', async () => {
+    it('should upgrade AxelarGateway through InterchainGovernance proposal', async () => {
         const commandID = 0;
         const target = gateway.address;
         const nativeValue = 0;
-        const timeDelay = 12 * 60 * 60;
+        const timeDelay = isHardhat ? 12 * 60 * 60 : 20;
 
-        const targetInterface = new Interface([
-            'function upgrade(address newImplementation, bytes32 newImplementationCodeHash, bytes calldata setupParams) external',
-        ]);
+        const targetInterface = new Interface(gateway.interface.fragments);
         const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
         const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
         const setupParams = '0x';
@@ -118,57 +119,56 @@ describe('InterchainGovernance', () => {
             setupParams,
         ]);
 
-        const block = await ethers.provider.getBlock('latest');
-        const eta = block.timestamp + timeDelay;
+        const [payload, proposalHash, eta] = await getPayloadAndProposalHash(commandID, target, nativeValue, calldata, timeDelay);
 
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
+        const payloadHash = solidityKeccak256(['bytes'], [payload]);
+        const commandIdGateway = getRandomID();
+        const sourceTxHash = keccak256('0x123abc123abc');
+        const sourceEventIndex = 17;
 
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, eta],
+        const approveData = buildCommandBatch(
+            await getChainId(),
+            [commandIdGateway],
+            ['approveContractCall'],
+            [
+                getApproveContractCall(
+                    governanceChain,
+                    governanceAddress,
+                    interchainGovernance.address,
+                    payloadHash,
+                    sourceTxHash,
+                    sourceEventIndex,
+                ),
+            ],
         );
 
-        await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress, payload))
-            .to.emit(interchainGovernance, 'ProposalScheduled')
-            .withArgs(proposalHash, target, calldata, nativeValue, eta);
-    });
-
-    it('should execute an upgrade proposal on AxelarGateway', async () => {
-        const commandID = 0;
-        const target = gateway.address;
-        const nativeValue = 0;
-        const timeDelay = 12 * 60 * 60;
-
-        const targetInterface = new Interface([
-            'function upgrade(address newImplementation, bytes32 newImplementationCodeHash, bytes calldata setupParams) external',
-        ]);
-        const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-        const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation);
-        const setupParams = '0x';
-        const calldata = targetInterface.encodeFunctionData('upgrade', [
-            newGatewayImplementation.address,
-            newGatewayImplementationCodeHash,
-            setupParams,
-        ]);
-
-        const block = await ethers.provider.getBlock('latest');
-        const eta = block.timestamp + timeDelay;
-
-        const proposalHash = solidityKeccak256(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]);
-
-        const payload = defaultAbiCoder.encode(
-            ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
-            [commandID, target, calldata, nativeValue, eta],
+        const approveInput = await getSignedWeightedExecuteInput(
+            approveData,
+            operators,
+            getWeights(operators),
+            threshold,
+            operators.slice(0, threshold),
         );
 
-        await expect(interchainGovernance.executeProposalAction(governanceChain, governanceAddress, payload))
+        await expect(gateway.execute(approveInput, getGasOptions()))
+            .to.emit(gateway, 'ContractCallApproved')
+            .withArgs(
+                commandIdGateway,
+                governanceChain,
+                governanceAddress,
+                interchainGovernance.address,
+                payloadHash,
+                sourceTxHash,
+                sourceEventIndex,
+            );
+
+        await expect(interchainGovernance.execute(commandIdGateway, governanceChain, governanceAddress, payload, getGasOptions()))
             .to.emit(interchainGovernance, 'ProposalScheduled')
             .withArgs(proposalHash, target, calldata, nativeValue, eta);
 
-        await network.provider.send('evm_increaseTime', [timeDelay]);
-        await network.provider.send('evm_mine');
+        await waitFor(timeDelay);
 
-        const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue, { value: nativeValue });
+        const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue);
         const executionTimestamp = (await ethers.provider.getBlock(tx.blockNumber)).timestamp;
 
         await expect(tx)
