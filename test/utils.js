@@ -18,6 +18,8 @@ const getRandomString = (length) => {
 
 const getAddresses = (wallets) => wallets.map(({ address }) => address);
 
+const isHardhat = network.name === 'hardhat';
+
 const getSignaturesProof = async (data, operators, signers) => {
     const hash = arrayify(keccak256(data));
     const signatures = await Promise.all(
@@ -35,6 +37,35 @@ const getWeightedSignaturesProof = async (data, operators, weights, threshold, s
         ['address[]', 'uint256[]', 'uint256', 'bytes[]'],
         [getAddresses(operators), weights, threshold, signatures],
     );
+};
+
+const getPayloadAndProposalHash = async (commandID, target, nativeValue, calldata, timeDelay) => {
+    let eta;
+
+    if (timeDelay) {
+        const block = await ethers.provider.getBlock('latest');
+        eta = block.timestamp + timeDelay;
+    } else {
+        eta = 0;
+    }
+
+    const proposalHash = keccak256(defaultAbiCoder.encode(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]));
+
+    const payload = defaultAbiCoder.encode(
+        ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
+        [commandID, target, calldata, nativeValue, eta],
+    );
+
+    return [payload, proposalHash, eta];
+};
+
+const waitFor = async (timeDelay) => {
+    if (isHardhat) {
+        await network.provider.send('evm_increaseTime', [timeDelay]);
+        await network.provider.send('evm_mine');
+    } else {
+        await new Promise((resolve) => setTimeout(resolve, timeDelay * 1000));
+    }
 };
 
 const getGasOptions = () => {
@@ -58,6 +89,10 @@ module.exports = {
 
     getWeightedSignaturesProof,
 
+    getPayloadAndProposalHash,
+
+    waitFor,
+
     getSignedMultisigExecuteInput: async (data, operators, signers) =>
         defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),
 
@@ -70,7 +105,7 @@ module.exports = {
 
     getRandomString,
 
-    isHardhat: network.name === 'hardhat',
+    isHardhat,
 
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 
