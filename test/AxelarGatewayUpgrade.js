@@ -107,7 +107,7 @@ describe('AxelarGatewayUpgrade', () => {
         const commandID = 0;
         const target = gateway.address;
         const nativeValue = 0;
-        const timeDelay = isHardhat ? 12 * 60 * 60 : 15;
+        const timeDelay = isHardhat ? 12 * 60 * 60 : 12;
 
         const targetInterface = new Interface(gateway.interface.fragments);
         const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
