@@ -95,7 +95,7 @@ describe('AxelarGatewayUpgrade', () => {
         await gateway.transferGovernance(interchainGovernance.address).then((tx) => tx.wait(network.config.confirmations));
     };
 
-    it('should deploy gateway with the correct variables', async () => {
+    it('should deploy gateway with the correct modules', async () => {
         expect(await gateway.governance()).to.eq(interchainGovernance.address);
         expect(await gateway.mintLimiter()).to.eq(mintLimiter.address);
         expect(await gateway.authModule()).to.eq(auth.address);
@@ -169,7 +169,8 @@ describe('AxelarGatewayUpgrade', () => {
         await waitFor(timeDelay);
 
         const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue);
-        const executionTimestamp = (await ethers.provider.getBlock(tx.blockNumber)).timestamp;
+        const receipt = await tx.wait();
+        const executionTimestamp = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
 
         await expect(tx)
             .to.emit(interchainGovernance, 'ProposalExecuted')
