@@ -191,7 +191,7 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
     }
 
     /**
-     * @notice Making contact able to receive native value
+     * @notice Allow contract to receive native gas token
      */
     receive() external payable {}
 }
