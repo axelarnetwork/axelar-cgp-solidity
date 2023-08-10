@@ -39,6 +39,10 @@ contract InterchainGovernance is AxelarExecutable, TimeLock, Caller, IInterchain
         string memory governanceAddress_,
         uint256 minimumTimeDelay
     ) AxelarExecutable(gateway) TimeLock(minimumTimeDelay) {
+        if (bytes(governanceChain_).length == 0 || bytes(governanceAddress_).length == 0) {
+            revert InvalidAddress();
+        }
+
         governanceChain = governanceChain_;
         governanceAddress = governanceAddress_;
         governanceChainHash = keccak256(bytes(governanceChain_));
