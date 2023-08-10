@@ -6,6 +6,7 @@ const {
 } = ethers;
 const { network } = require('hardhat');
 const { sortBy } = require('lodash');
+const { expect } = require('chai');
 
 const getRandomInt = (max) => {
     return Math.floor(Math.random() * max);
@@ -76,6 +77,14 @@ const getEVMVersion = () => {
     return config.solidity.compilers[0].settings.evmVersion;
 };
 
+const expectRevert = async (txFunc, contract, error) => {
+    if (network.config.contracts?.skipRevertTests) {
+        await expect(txFunc(getGasOptions())).to.be.reverted;
+    } else {
+        await expect(txFunc(null)).to.be.revertedWithCustomError(contract, error);
+    }
+};
+
 module.exports = {
     getChainId: async () => await network.provider.send('eth_chainId'),
 
@@ -92,6 +101,8 @@ module.exports = {
     getPayloadAndProposalHash,
 
     waitFor,
+
+    expectRevert,
 
     getSignedMultisigExecuteInput: async (data, operators, signers) =>
         defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),

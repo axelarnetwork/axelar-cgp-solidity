@@ -5,6 +5,8 @@
     "quotes": ["error", "single"],
     "compiler-version": ["off"],
     "func-visibility": ["warn", { "ignoreConstructors": true }],
+    "func-name-mixedcase": "error",
+    "var-name-mixedcase": "error",
     "no-inline-assembly": "off",
     "no-empty-blocks": "off",
     "avoid-low-level-calls": "off",
