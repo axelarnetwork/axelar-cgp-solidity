@@ -42,7 +42,7 @@ contract MultisigBase is IMultisigBase {
      * @dev Given the early void return, this modifier should be used with care on functions that return data.
      */
     modifier onlySigners() {
-        if (_onlySigners()) return;
+        if (!_isFinalSignerVote()) return;
         _;
     }
 
@@ -143,7 +143,7 @@ contract MultisigBase is IMultisigBase {
     /**
      * @dev Internal function that implements onlySigners logic
      */
-    function _onlySigners() internal returns (bool) {
+    function _isFinalSignerVote() internal returns (bool) {
         if (!signers.isSigner[msg.sender]) revert NotSigner();
 
         bytes32 topic = keccak256(msg.data);
@@ -161,7 +161,7 @@ contract MultisigBase is IMultisigBase {
         if (voteCount < signers.threshold) {
             // Save updated vote count.
             voting.voteCount = voteCount;
-            return true;
+            return false;
         }
 
         // Clear vote count and voted booleans.
@@ -175,6 +175,6 @@ contract MultisigBase is IMultisigBase {
 
         emit MultisigOperationExecuted(topic);
 
-        return false;
+        return true;
     }
 }
