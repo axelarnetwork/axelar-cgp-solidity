@@ -3,7 +3,7 @@
 ## Protocol overview
 
 Axelar is a decentralized interoperability network connecting all blockchains, assets and apps through a universal set of protocols and APIs.
-It is built on top off the Cosmos SDK. Users/Applications can use Axelar network to send tokens between any Cosmos and EVM chains. They can also
+It is built on top of the Cosmos SDK. Users/Applications can use Axelar network to send tokens between any Cosmos and EVM chains. They can also
 send arbitrary messages between EVM chains.
 
 Axelar network's decentralized validators confirm events emitted on EVM chains (such as deposit confirmation and message send),
@@ -70,7 +70,7 @@ See Axelar [examples](https://github.com/axelarnetwork/axelar-examples) for conc
 8. `executeWithToken` of the destination contract verifies that the contract call was indeed approved by calling `AxelarGateway.validateContractCallAndMint()`
    on the gateway contract.
 9. As part of this, the gateway contract records that the destination address has validated the approval, to not allow a replay.
-10. The destination contract uses the `payload` for it's own application.
+10. The destination contract uses the `payload` for its own application.
 
 ## References
 
