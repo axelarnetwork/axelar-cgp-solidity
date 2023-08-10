@@ -22,6 +22,7 @@ const {
     getPayloadAndProposalHash,
 } = require('./utils');
 const { getBytecodeHash } = require('@axelar-network/axelar-contract-deployments');
+const InterchainGovernance = require('@axelar-network/axelar-gmp-sdk-solidity/dist/InterchainGovernance.json');
 
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
@@ -56,7 +57,7 @@ describe('AxelarGatewayUpgrade', () => {
         governanceAddress = wallets[1].address;
         operators = sortBy(wallets.slice(0, threshold), (wallet) => wallet.address.toLowerCase());
 
-        interchainGovernanceFactory = await ethers.getContractFactory('InterchainGovernance', ownerWallet);
+        interchainGovernanceFactory = await ethers.getContractFactory(InterchainGovernance.abi, InterchainGovernance.bytecode, ownerWallet);
 
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', owner);
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
