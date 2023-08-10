@@ -6,7 +6,7 @@ const {
     constants: { AddressZero, HashZero },
 } = ethers;
 const { expect } = chai;
-const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString } = require('./utils');
+const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString, expectRevert } = require('./utils');
 const { getBytecodeHash } = require('@axelar-network/axelar-contract-deployments');
 
 const {
@@ -110,19 +110,18 @@ describe('AxelarGateway', () => {
     };
 
     describe('constructor checks', () => {
-        before(async () => {
-            await deployGateway();
-        });
-
         it('should revert if auth module is not a contract', async () => {
-            await expect(gatewayFactory.deploy(owner.address, tokenDeployer.address)).to.be.revertedWithCustomError(
-                gateway,
-                'InvalidAuthModule',
+            await expectRevert(
+                (gasOptions) => gatewayFactory.deploy(owner.address, externalToken.address, gasOptions),
+                gatewayFactory, 'InvalidAuthModule',
             );
         });
 
         it('should revert if token deployer is not a contract', async () => {
-            await expect(gatewayFactory.deploy(auth.address, owner.address)).to.be.revertedWithCustomError(gateway, 'InvalidTokenDeployer');
+            await expectRevert(
+                (gasOptions) => gatewayFactory.deploy(externalToken.address, owner.address, gasOptions),
+                gatewayFactory, 'InvalidTokenDeployer',
+            );
         });
     });
 
@@ -160,27 +159,45 @@ describe('AxelarGateway', () => {
         });
 
         it('should fail on external call to deployToken', async () => {
-            await expect(gateway.deployToken(params, HashZero)).to.be.revertedWithCustomError(gateway, 'NotSelf');
+            await expectRevert(
+                (gasOptions) => gateway.deployToken(params, HashZero, gasOptions),
+                gateway, 'NotSelf',
+            );
         });
 
         it('should fail on external call to mintToken', async () => {
-            await expect(gateway.mintToken(params, HashZero)).to.be.revertedWithCustomError(gateway, 'NotSelf');
+            await expectRevert(
+                (gasOptions) => gateway.mintToken(params, HashZero, gasOptions),
+                gateway, 'NotSelf',
+            );
         });
 
         it('should fail on external call to burnToken', async () => {
-            await expect(gateway.burnToken(params, HashZero)).to.be.revertedWithCustomError(gateway, 'NotSelf');
+            await expectRevert(
+                (gasOptions) => gateway.burnToken(params, HashZero, gasOptions),
+                gateway, 'NotSelf',
+            );
         });
 
         it('should fail on external call to approveContractCall', async () => {
-            await expect(gateway.approveContractCall(params, HashZero)).to.be.revertedWithCustomError(gateway, 'NotSelf');
+            await expectRevert(
+                (gasOptions) => gateway.approveContractCall(params, HashZero, gasOptions),
+                gateway, 'NotSelf',
+            );
         });
 
         it('should fail on external call to approveContractCallWithMint', async () => {
-            await expect(gateway.approveContractCallWithMint(params, HashZero)).to.be.revertedWithCustomError(gateway, 'NotSelf');
+            await expectRevert(
+                (gasOptions) => gateway.approveContractCallWithMint(params, HashZero, gasOptions),
+                gateway, 'NotSelf',
+            );
         });
 
         it('should fail on external call to transferOperatorship', async () => {
-            await expect(gateway.transferOperatorship(params, HashZero)).to.be.revertedWithCustomError(gateway, 'NotSelf');
+            await expectRevert(
+                (gasOptions) => gateway.transferOperatorship(params, HashZero, gasOptions),
+                gateway, 'NotSelf',
+            );
         });
     });
 
@@ -267,24 +284,25 @@ describe('AxelarGateway', () => {
             const limit = getRandomInt(Number.MAX_SAFE_INTEGER);
             const limits = symbols.map(() => limit);
 
-            await expect(gateway.connect(notGovernance).setTokenMintLimits(symbols, limits)).to.be.revertedWithCustomError(
-                gateway,
-                'NotMintLimiter',
+            await expectRevert(
+                (gasOptions) => gateway.connect(notGovernance).setTokenMintLimits(symbols, limits, gasOptions),
+                gateway, 'NotMintLimiter',
             );
 
             const invalidLimits = [...limits];
             invalidLimits.pop();
 
-            await expect(gateway.connect(governance).setTokenMintLimits(symbols, invalidLimits)).to.be.revertedWithCustomError(
-                gateway,
-                'InvalidSetMintLimitsParams',
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).setTokenMintLimits(symbols, invalidLimits, gasOptions),
+                gateway, 'InvalidSetMintLimitsParams',
             );
 
             const invalidSymbols = ['TokenX', 'TokenY'];
 
-            await expect(gateway.connect(governance).setTokenMintLimits(invalidSymbols, limits))
-                .to.be.revertedWithCustomError(gateway, 'TokenDoesNotExist')
-                .withArgs(invalidSymbols[0]);
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).setTokenMintLimits(invalidSymbols, limits, gasOptions),
+                gateway, 'TokenDoesNotExist',
+            );
 
             await gateway
                 .connect(governance)
@@ -306,24 +324,25 @@ describe('AxelarGateway', () => {
         });
 
         it('should allow transferring governance', async () => {
-            await expect(gateway.connect(notGovernance).transferGovernance(governance.address)).to.be.revertedWithCustomError(
-                gateway,
-                'NotGovernance',
+
+            await expectRevert(
+                (gasOptions) => gateway.connect(notGovernance).transferGovernance(governance.address, gasOptions),
+                gateway, 'NotGovernance',
             );
 
-            await expect(gateway.connect(governance).transferGovernance(AddressZero)).to.be.revertedWithCustomError(
-                gateway,
-                'InvalidGovernance',
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).transferGovernance(AddressZero, gasOptions),
+                gateway, 'InvalidGovernance',
             );
 
             await expect(await gateway.connect(governance).transferGovernance(notGovernance.address, getGasOptions()))
                 .to.emit(gateway, 'GovernanceTransferred')
                 .withArgs(governance.address, notGovernance.address);
 
-            await expect(gateway.connect(governance).transferGovernance(governance.address)).to.be.revertedWithCustomError(
-                gateway,
-                'NotGovernance',
-            );
+            await expectRevert(
+                    (gasOptions) => gateway.connect(governance).transferGovernance(governance.address, gasOptions),
+                    gateway, 'NotGovernance',
+                );
 
             expect(await gateway.governance()).to.be.equal(notGovernance.address);
         });
@@ -331,14 +350,14 @@ describe('AxelarGateway', () => {
         it('should allow transferring mint limiter', async () => {
             const notMintLimiter = notGovernance;
 
-            await expect(gateway.connect(notMintLimiter).transferMintLimiter(notMintLimiter.address)).to.be.revertedWithCustomError(
-                gateway,
-                'NotMintLimiter',
+            await expectRevert(
+                (gasOptions) => gateway.connect(notMintLimiter).transferMintLimiter(notMintLimiter.address, gasOptions),
+                gateway, 'NotMintLimiter',
             );
 
-            await expect(gateway.connect(mintLimiter).transferMintLimiter(AddressZero)).to.be.revertedWithCustomError(
-                gateway,
-                'InvalidMintLimiter',
+            await expectRevert(
+                (gasOptions) => gateway.connect(mintLimiter).transferMintLimiter(AddressZero, gasOptions),
+                gateway, 'InvalidMintLimiter',
             );
 
             await expect(await gateway.connect(mintLimiter).transferMintLimiter(notMintLimiter.address, getGasOptions()))
@@ -364,14 +383,15 @@ describe('AxelarGateway', () => {
             const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
             const params = '0x';
 
-            await expect(
-                gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-            ).to.be.revertedWithCustomError(gateway, 'NotGovernance');
+            await expectRevert(
+                (gasOptions) => gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, gasOptions),
+                gateway, 'NotGovernance',
+            );
 
             await expect(
                 gateway
                     .connect(governance)
-                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
             )
                 .to.emit(gateway, 'Upgraded')
                 .withArgs(newGatewayImplementation.address)
@@ -382,12 +402,12 @@ describe('AxelarGateway', () => {
         it('should allow governance to upgrade to the correct implementation with new governance and mint limiter', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
             const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
-
             let params = '0x';
 
-            await expect(
-                gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-            ).to.be.revertedWithCustomError(gateway, 'NotGovernance');
+            await expectRevert(
+                (gasOptions) => gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, gasOptions),
+                gateway, 'NotGovernance',
+            );
 
             params = getWeightedProxyDeployParams(notGovernance.address, notGovernance.address, []);
 
@@ -493,17 +513,20 @@ describe('AxelarGateway', () => {
 
             const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
-            await expect(
-                gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, wrongCodeHash, params),
-            ).to.be.revertedWithCustomError(gateway, 'NotGovernance');
+            await expectRevert(
+                (gasOptions) => gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, wrongCodeHash, params, gasOptions),
+                gateway, 'NotGovernance',
+            );
 
-            await expect(
-                gateway.connect(governance).upgrade(newGatewayImplementation.address, wrongCodeHash, params),
-            ).to.be.revertedWithCustomError(gateway, 'InvalidCodeHash');
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).upgrade(newGatewayImplementation.address, wrongCodeHash, params, gasOptions),
+                gateway, 'InvalidCodeHash',
+            );
 
-            await expect(
-                gateway.connect(governance).upgrade(wrongImplementation.address, wrongImplementationCodeHash, params),
-            ).to.be.revertedWithCustomError(gateway, 'InvalidImplementation');
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).upgrade(wrongImplementation.address, wrongImplementationCodeHash, params, gasOptions),
+                gateway, 'InvalidImplementation',
+            );
         });
 
         it('should not allow calling the setup function directly', async () => {
@@ -515,7 +538,10 @@ describe('AxelarGateway', () => {
 
             const implementation = gatewayFactory.attach(await gateway.implementation());
 
-            await expect(implementation.connect(governance).setup(params)).to.be.revertedWithCustomError(implementation, 'NotProxy');
+            await expectRevert(
+                (gasOptions) => implementation.connect(governance).setup(params, gasOptions),
+                gateway, 'NotProxy',
+            );
         });
 
         it('should not allow malicious proxy to call setup function directly and transfer governance or mint limiter', async () => {
@@ -540,9 +566,10 @@ describe('AxelarGateway', () => {
 
             const implementation = gatewayFactory.attach(await gateway.implementation());
 
-            await expect(
-                implementation.connect(notGovernance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-            ).to.be.revertedWithCustomError(implementation, 'NotGovernance');
+            await expectRevert(
+                (gasOptions) => implementation.connect(notGovernance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, gasOptions),
+                gateway, 'NotGovernance',
+            );
         });
 
         it('should revert on upgrade if setup fails for any reason', async () => {
@@ -552,9 +579,10 @@ describe('AxelarGateway', () => {
             // invalid setup params
             const params = '0x1234';
 
-            await expect(
-                gateway.connect(governance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-            ).to.be.revertedWithCustomError(gateway, 'SetupFailed');
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, gasOptions),
+                gateway, 'SetupFailed',
+            );
         });
     });
 
@@ -585,7 +613,10 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(input)).to.be.revertedWithCustomError(gateway, 'InvalidChainId');
+            await expectRevert(
+                (gasOptions) => gateway.execute(input, gasOptions),
+                gateway, 'InvalidChainId',
+            );
         });
     });
 
@@ -1688,7 +1719,11 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(input)).to.be.revertedWithCustomError(gateway, 'InvalidCommands');
+
+            await expectRevert(
+                (gasOptions) => gateway.execute(input, gasOptions),
+                gateway, 'InvalidCommands',
+            );
 
             data = buildCommandBatch(
                 await getChainId(),
@@ -1699,7 +1734,10 @@ describe('AxelarGateway', () => {
 
             input = await getSignedWeightedExecuteInput(data, operators, getWeights(operators), threshold, operators.slice(0, threshold));
 
-            await expect(gateway.execute(input)).to.be.revertedWithCustomError(gateway, 'InvalidCommands');
+            await expectRevert(
+                (gasOptions) => gateway.execute(input, gasOptions),
+                gateway, 'InvalidCommands',
+            );
         });
 
         it('should batch execute multiple commands and skip any unknown commands', async () => {
@@ -1821,9 +1859,10 @@ describe('AxelarGateway', () => {
             const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
             const payload = defaultAbiCoder.encode(['address', 'address'], [owner.address, destination]);
 
-            await expect(
-                gateway.callContractWithToken(chain, destination, payload, invalidTokenSymbol, amount),
-            ).to.be.revertedWithCustomError(gateway, 'TokenDoesNotExist');
+            await expectRevert(
+                (gasOptions) => gateway.callContractWithToken(chain, destination, payload, invalidTokenSymbol, amount, gasOptions),
+                gateway, 'TokenDoesNotExist',
+            );
         });
 
         it('should revert if token amount is invalid', async () => {
@@ -1832,9 +1871,9 @@ describe('AxelarGateway', () => {
             const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
             const payload = defaultAbiCoder.encode(['address', 'address'], [owner.address, destination]);
 
-            await expect(gateway.callContractWithToken(chain, destination, payload, tokenSymbol, amount)).to.be.revertedWithCustomError(
-                gateway,
-                'InvalidAmount',
+            await expectRevert(
+                (gasOptions) => gateway.callContractWithToken(chain, destination, payload, tokenSymbol, amount, gasOptions),
+                gateway, 'InvalidAmount',
             );
         });
 
