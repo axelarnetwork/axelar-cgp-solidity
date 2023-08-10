@@ -6,7 +6,7 @@ import { IMultisigBase } from '../interfaces/IMultisigBase.sol';
 
 /**
  * @title MultisigBase Contract
- * @notice This contract implements a custom multisignature wallet where transactions must be confirmed by a
+ * @notice This contract implements a custom multi-signature wallet where transactions must be confirmed by a
  * threshold of signers. The signers and threshold may be updated every `epoch`.
  */
 contract MultisigBase is IMultisigBase {
