@@ -42,37 +42,7 @@ contract MultisigBase is IMultisigBase {
      * @dev Given the early void return, this modifier should be used with care on functions that return data.
      */
     modifier onlySigners() {
-        if (!signers.isSigner[msg.sender]) revert NotSigner();
-
-        bytes32 topic = keccak256(msg.data);
-        Voting storage voting = votingPerTopic[signerEpoch][topic];
-
-        // Check that signer has not voted, then record that they have voted.
-        if (voting.hasVoted[msg.sender]) revert AlreadyVoted();
-
-        voting.hasVoted[msg.sender] = true;
-
-        // Determine the new vote count.
-        uint256 voteCount = voting.voteCount + 1;
-
-        // Do not proceed with operation execution if insufficient votes.
-        if (voteCount < signers.threshold) {
-            // Save updated vote count.
-            voting.voteCount = voteCount;
-            return;
-        }
-
-        // Clear vote count and voted booleans.
-        voting.voteCount = 0;
-
-        uint256 count = signers.accounts.length;
-
-        for (uint256 i; i < count; ++i) {
-            voting.hasVoted[signers.accounts[i]] = false;
-        }
-
-        emit MultisigOperationExecuted(topic);
-
+        if (!_isFinalSignerVote()) return;
         _;
     }
 
@@ -117,15 +87,7 @@ contract MultisigBase is IMultisigBase {
      * @return uint256 indicating the number of votes for a topic
      */
     function getSignerVotesCount(bytes32 topic) external view override returns (uint256) {
-        uint256 length = signers.accounts.length;
-        uint256 voteCount;
-        for (uint256 i; i < length; ++i) {
-            if (votingPerTopic[signerEpoch][topic].hasVoted[signers.accounts[i]]) {
-                voteCount++;
-            }
-        }
-
-        return voteCount;
+        return votingPerTopic[signerEpoch][topic].voteCount;
     }
 
     /***********\
@@ -151,7 +113,7 @@ contract MultisigBase is IMultisigBase {
 
         // Clean up old signers.
         for (uint256 i; i < length; ++i) {
-            signers.isSigner[signers.accounts[i]] = false;
+            delete signers.isSigner[signers.accounts[i]];
         }
 
         length = newAccounts.length;
@@ -176,5 +138,43 @@ contract MultisigBase is IMultisigBase {
         }
 
         emit SignersRotated(newAccounts, newThreshold);
+    }
+
+    /**
+     * @dev Internal function that implements onlySigners logic
+     */
+    function _isFinalSignerVote() internal returns (bool) {
+        if (!signers.isSigner[msg.sender]) revert NotSigner();
+
+        bytes32 topic = keccak256(msg.data);
+        Voting storage voting = votingPerTopic[signerEpoch][topic];
+
+        // Check that signer has not voted, then record that they have voted.
+        if (voting.hasVoted[msg.sender]) revert AlreadyVoted();
+
+        voting.hasVoted[msg.sender] = true;
+
+        // Determine the new vote count.
+        uint256 voteCount = voting.voteCount + 1;
+
+        // Do not proceed with operation execution if insufficient votes.
+        if (voteCount < signers.threshold) {
+            // Save updated vote count.
+            voting.voteCount = voteCount;
+            return false;
+        }
+
+        // Clear vote count and voted booleans.
+        delete voting.voteCount;
+
+        uint256 count = signers.accounts.length;
+
+        for (uint256 i; i < count; ++i) {
+            delete voting.hasVoted[signers.accounts[i]];
+        }
+
+        emit MultisigOperationExecuted(topic);
+
+        return true;
     }
 }

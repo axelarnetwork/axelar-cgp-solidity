@@ -46,6 +46,20 @@ describe('InterchainGovernance', () => {
         calldata = targetInterface.encodeFunctionData('callTarget');
     });
 
+    it('should revert on invalid constructor args', async () => {
+        await expect(
+            interchainGovernanceFactory.deploy(AddressZero, governanceChain, governanceAddress.address, timeDelay),
+        ).to.be.revertedWithCustomError(interchainGovernance, 'InvalidAddress');
+
+        await expect(
+            interchainGovernanceFactory.deploy(gatewayAddress.address, '', governanceAddress.address, timeDelay),
+        ).to.be.revertedWithCustomError(interchainGovernance, 'InvalidAddress');
+
+        await expect(
+            interchainGovernanceFactory.deploy(gatewayAddress.address, governanceChain, '', timeDelay),
+        ).to.be.revertedWithCustomError(interchainGovernance, 'InvalidAddress');
+    });
+
     it('should revert on invalid command', async () => {
         const commandID = 2;
         const target = targetContract.address;
