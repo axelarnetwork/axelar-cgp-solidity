@@ -83,7 +83,7 @@ const expectRevert = async (txFunc, contract, error) => {
     } else {
         await expect(txFunc(null)).to.be.revertedWithCustomError(contract, error);
     }
-}
+};
 
 module.exports = {
     getChainId: async () => await network.provider.send('eth_chainId'),
