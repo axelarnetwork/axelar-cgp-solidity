@@ -63,12 +63,12 @@ contract MultisigBase is IMultisigBase {
         }
 
         // Clear vote count and voted booleans.
-        voting.voteCount = 0;
+        delete voting.voteCount;
 
         uint256 count = signers.accounts.length;
 
         for (uint256 i; i < count; ++i) {
-            voting.hasVoted[signers.accounts[i]] = false;
+            delete voting.hasVoted[signers.accounts[i]];
         }
 
         emit MultisigOperationExecuted(topic);
@@ -117,15 +117,7 @@ contract MultisigBase is IMultisigBase {
      * @return uint256 indicating the number of votes for a topic
      */
     function getSignerVotesCount(bytes32 topic) external view override returns (uint256) {
-        uint256 length = signers.accounts.length;
-        uint256 voteCount;
-        for (uint256 i; i < length; ++i) {
-            if (votingPerTopic[signerEpoch][topic].hasVoted[signers.accounts[i]]) {
-                voteCount++;
-            }
-        }
-
-        return voteCount;
+        return votingPerTopic[signerEpoch][topic].voteCount;
     }
 
     /***********\
@@ -151,7 +143,7 @@ contract MultisigBase is IMultisigBase {
 
         // Clean up old signers.
         for (uint256 i; i < length; ++i) {
-            signers.isSigner[signers.accounts[i]] = false;
+            delete signers.isSigner[signers.accounts[i]];
         }
 
         length = newAccounts.length;
