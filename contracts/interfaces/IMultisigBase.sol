@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title IMultisigBase Interface
- * @notice An interface defining the base operations for a multisignature contract.
+ * @notice An interface defining the base operations for a multi-signature contract.
  */
 interface IMultisigBase {
     error NotSigner();
