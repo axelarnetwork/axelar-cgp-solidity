@@ -1,15 +1,25 @@
 'use strict';
 
+const { config, ethers } = require('hardhat');
 const {
     utils: { defaultAbiCoder, id, arrayify, keccak256 },
-} = require('ethers');
+} = ethers;
+const { network } = require('hardhat');
 const { sortBy } = require('lodash');
+const { expect } = require('chai');
 
 const getRandomInt = (max) => {
     return Math.floor(Math.random() * max);
 };
 
+const getRandomString = (length) => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    return Array.from({ length }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
+};
+
 const getAddresses = (wallets) => wallets.map(({ address }) => address);
+
+const isHardhat = network.name === 'hardhat';
 
 const getSignaturesProof = async (data, operators, signers) => {
     const hash = arrayify(keccak256(data));
@@ -30,12 +40,69 @@ const getWeightedSignaturesProof = async (data, operators, weights, threshold, s
     );
 };
 
+const getPayloadAndProposalHash = async (commandID, target, nativeValue, calldata, timeDelay) => {
+    let eta;
+
+    if (timeDelay) {
+        const block = await ethers.provider.getBlock('latest');
+        eta = block.timestamp + timeDelay;
+    } else {
+        eta = 0;
+    }
+
+    const proposalHash = keccak256(defaultAbiCoder.encode(['address', 'bytes', 'uint256'], [target, calldata, nativeValue]));
+
+    const payload = defaultAbiCoder.encode(
+        ['uint256', 'address', 'bytes', 'uint256', 'uint256'],
+        [commandID, target, calldata, nativeValue, eta],
+    );
+
+    return [payload, proposalHash, eta];
+};
+
+const waitFor = async (timeDelay) => {
+    if (isHardhat) {
+        await network.provider.send('evm_increaseTime', [timeDelay]);
+        await network.provider.send('evm_mine');
+    } else {
+        await new Promise((resolve) => setTimeout(resolve, timeDelay * 1000));
+    }
+};
+
+const getGasOptions = () => {
+    return network.config.blockGasLimit ? { gasLimit: network.config.blockGasLimit.toString() } : {};
+};
+
+const getEVMVersion = () => {
+    return config.solidity.compilers[0].settings.evmVersion;
+};
+
+const expectRevert = async (txFunc, contract, error) => {
+    if (network.config.contracts?.skipRevertTests) {
+        await expect(txFunc(getGasOptions())).to.be.reverted;
+    } else {
+        await expect(txFunc(null)).to.be.revertedWithCustomError(contract, error);
+    }
+};
+
 module.exports = {
+    getChainId: async () => await network.provider.send('eth_chainId'),
+
+    getEVMVersion,
+
+    getGasOptions,
+
     bigNumberToNumber: (bigNumber) => bigNumber.toNumber(),
 
     getSignaturesProof,
 
     getWeightedSignaturesProof,
+
+    getPayloadAndProposalHash,
+
+    waitFor,
+
+    expectRevert,
 
     getSignedMultisigExecuteInput: async (data, operators, signers) =>
         defaultAbiCoder.encode(['bytes', 'bytes'], [data, await getSignaturesProof(data, operators, signers)]),
@@ -47,6 +114,10 @@ module.exports = {
 
     getRandomID: () => id(getRandomInt(1e10).toString()),
 
+    getRandomString,
+
+    isHardhat,
+
     tickBlockTime: (provider, seconds) => provider.send('evm_increaseTime', [seconds]),
 
     getAuthDeployParam: (operatorSets, operatorThresholds) =>
@@ -57,25 +128,13 @@ module.exports = {
             defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [operators, weightSets[i], operatorThresholds[i]]),
         ),
 
-    getMultisigProxyDeployParams: (admins, adminThreshold, operators, operatorThreshold) =>
+    getWeightedProxyDeployParams: (governance, mintLimiter, operators, weights, operatorThreshold) =>
         arrayify(
             defaultAbiCoder.encode(
-                ['address[]', 'uint8', 'bytes'],
+                ['address', 'address', 'bytes'],
                 [
-                    admins,
-                    adminThreshold,
-                    operators.length ? defaultAbiCoder.encode(['address[]', 'uint256'], [operators, operatorThreshold]) : '0x',
-                ],
-            ),
-        ),
-
-    getWeightedProxyDeployParams: (admins, adminThreshold, operators, weights, operatorThreshold) =>
-        arrayify(
-            defaultAbiCoder.encode(
-                ['address[]', 'uint8', 'bytes'],
-                [
-                    admins,
-                    adminThreshold,
+                    governance,
+                    mintLimiter,
                     operators.length
                         ? defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [operators, weights, operatorThreshold])
                         : '0x',
@@ -114,14 +173,14 @@ module.exports = {
             [sourceChain, source, destination, payloadHash, symbol, amount, sourceTxHash, sourceEventIndex],
         ),
 
-    buildCommandBatch: (chianId, commandIDs, commandNames, commands) =>
-        arrayify(defaultAbiCoder.encode(['uint256', 'bytes32[]', 'string[]', 'bytes[]'], [chianId, commandIDs, commandNames, commands])),
+    buildCommandBatch: (chainId, commandIDs, commandNames, commands) =>
+        arrayify(defaultAbiCoder.encode(['uint256', 'bytes32[]', 'string[]', 'bytes[]'], [chainId, commandIDs, commandNames, commands])),
 
-    buildCommandBatchWithRole: (chianId, role, commandIDs, commandNames, commands) =>
+    buildCommandBatchWithRole: (chainId, role, commandIDs, commandNames, commands) =>
         arrayify(
             defaultAbiCoder.encode(
                 ['uint256', 'uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                [chianId, role, commandIDs, commandNames, commands],
+                [chainId, role, commandIDs, commandNames, commands],
             ),
         ),
 

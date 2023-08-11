@@ -1,20 +1,19 @@
 const { sortBy } = require('lodash');
 const chai = require('chai');
-const { ethers } = require('hardhat');
+const { ethers, network } = require('hardhat');
 const {
     utils: { id, keccak256, getCreate2Address, defaultAbiCoder },
+    constants: { AddressZero, HashZero },
 } = ethers;
 const { expect } = chai;
-
-const CHAIN_ID = 1;
-const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
+const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString, expectRevert } = require('./utils');
+const { getBytecodeHash } = require('@axelar-network/axelar-contract-deployments');
 
 const {
     bigNumberToNumber,
     getSignedWeightedExecuteInput,
     getRandomInt,
     getRandomID,
-    getMultisigProxyDeployParams,
     getDeployCommand,
     getMintCommand,
     getBurnCommand,
@@ -31,12 +30,14 @@ const {
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
 describe('AxelarGateway', () => {
-    const threshold = 3;
+    const threshold = isHardhat ? 4 : 2;
 
     let wallets;
     let owner;
     let operators;
-    let admins;
+    let governance;
+    let mintLimiter;
+    let notGovernance;
 
     let gatewayFactory;
     let authFactory;
@@ -45,16 +46,24 @@ describe('AxelarGateway', () => {
     let burnableMintableCappedERC20Factory;
     let depositHandlerFactory;
     let mintableCappedERC20Factory;
+    let nonStandardERC20Factory;
 
     let auth;
     let tokenDeployer;
     let gateway;
 
+    let externalToken;
+    let externalTokenName;
+    let externalSymbol;
+    let externalDecimals;
+    let externalCap;
+
     before(async () => {
         wallets = await ethers.getSigners();
-        admins = wallets.slice(0, 3);
         owner = wallets[0];
-        operators = sortBy(wallets.slice(3, 9), (wallet) => wallet.address.toLowerCase());
+        governance = mintLimiter = owner;
+        notGovernance = wallets[1];
+        operators = sortBy(wallets.slice(0, threshold), (wallet) => wallet.address.toLowerCase());
 
         gatewayFactory = await ethers.getContractFactory('AxelarGateway', owner);
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
@@ -63,28 +72,174 @@ describe('AxelarGateway', () => {
         burnableMintableCappedERC20Factory = await ethers.getContractFactory('BurnableMintableCappedERC20', owner);
         depositHandlerFactory = await ethers.getContractFactory('DepositHandler', owner);
         mintableCappedERC20Factory = await ethers.getContractFactory('MintableCappedERC20', owner);
+        nonStandardERC20Factory = await ethers.getContractFactory('TestNonStandardERC20', owner);
+
+        // reuse token deployer for all tests
+        tokenDeployer = await tokenDeployerFactory.deploy();
+        await tokenDeployer.deployTransaction.wait(network.config.confirmations);
+
+        // reuse external token for all tests
+        externalTokenName = 'An External Token';
+        externalSymbol = 'AET';
+        externalDecimals = 18;
+        externalCap = 0;
+
+        externalToken = await mintableCappedERC20Factory.deploy(externalTokenName, externalSymbol, externalDecimals, externalCap);
+        await externalToken.deployTransaction.wait(network.config.confirmations);
     });
 
-    beforeEach(async () => {
-        const adminAddresses = getAddresses(admins);
+    const deployGateway = async (invalidDeployer = false) => {
         const operatorAddresses = getAddresses(operators);
 
-        const params = getMultisigProxyDeployParams(adminAddresses, threshold, [], threshold);
+        auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
+        await auth.deployTransaction.wait(network.config.confirmations);
 
-        auth = await authFactory
-            .deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]))
-            .then((d) => d.deployed());
-        tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
-        const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-        const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
-        await auth.transferOwnership(proxy.address);
+        const gatewayImplementation = invalidDeployer
+            ? await gatewayFactory.deploy(auth.address, auth.address)
+            : await gatewayFactory.deploy(auth.address, tokenDeployer.address);
+        await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
+
+        const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, [], [], threshold);
+
+        const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
+        await proxy.deployTransaction.wait(network.config.confirmations);
+
+        await auth.transferOwnership(proxy.address).then((tx) => tx.wait(network.config.confirmations));
 
         gateway = gatewayFactory.attach(proxy.address);
+    };
+
+    describe('constructor checks', () => {
+        it('should revert if auth module is not a contract', async () => {
+            await expectRevert(
+                (gasOptions) => gatewayFactory.deploy(owner.address, externalToken.address, gasOptions),
+                gatewayFactory,
+                'InvalidAuthModule',
+            );
+        });
+
+        it('should revert if token deployer is not a contract', async () => {
+            await expectRevert(
+                (gasOptions) => gatewayFactory.deploy(externalToken.address, owner.address, gasOptions),
+                gatewayFactory,
+                'InvalidTokenDeployer',
+            );
+        });
     });
 
-    describe('admins', () => {
-        it('should get the correct admins', async () => {
-            expect(await gateway.admins(1)).to.deep.eq(getAddresses(admins));
+    describe('deployment params', () => {
+        before(async () => {
+            await deployGateway();
+        });
+
+        it('should get the correct governance address', async () => {
+            expect(await gateway.governance()).to.eq(governance.address);
+        });
+
+        it('should get the correct mint limiter address', async () => {
+            expect(await gateway.mintLimiter()).to.eq(mintLimiter.address);
+        });
+
+        it('should get the correct auth module', async () => {
+            expect(await gateway.authModule()).to.eq(auth.address);
+        });
+
+        it('auth module should have the correct owner', async () => {
+            expect(await auth.owner()).to.eq(gateway.address);
+        });
+
+        it('should get the correct token deployer', async () => {
+            expect(await gateway.tokenDeployer()).to.eq(tokenDeployer.address);
+        });
+    });
+
+    describe('check external methods that should only be called by self', () => {
+        const params = '0x';
+
+        before(async () => {
+            await deployGateway();
+        });
+
+        it('should fail on external call to deployToken', async () => {
+            await expectRevert((gasOptions) => gateway.deployToken(params, HashZero, gasOptions), gateway, 'NotSelf');
+        });
+
+        it('should fail on external call to mintToken', async () => {
+            await expectRevert((gasOptions) => gateway.mintToken(params, HashZero, gasOptions), gateway, 'NotSelf');
+        });
+
+        it('should fail on external call to burnToken', async () => {
+            await expectRevert((gasOptions) => gateway.burnToken(params, HashZero, gasOptions), gateway, 'NotSelf');
+        });
+
+        it('should fail on external call to approveContractCall', async () => {
+            await expectRevert((gasOptions) => gateway.approveContractCall(params, HashZero, gasOptions), gateway, 'NotSelf');
+        });
+
+        it('should fail on external call to approveContractCallWithMint', async () => {
+            await expectRevert((gasOptions) => gateway.approveContractCallWithMint(params, HashZero, gasOptions), gateway, 'NotSelf');
+        });
+
+        it('should fail on external call to transferOperatorship', async () => {
+            await expectRevert((gasOptions) => gateway.transferOperatorship(params, HashZero, gasOptions), gateway, 'NotSelf');
+        });
+    });
+
+    describe('should preserve the bytecode [ @skip-on-coverage ]', () => {
+        it('should preserve the same proxy bytecode for each EVM', async () => {
+            const proxyBytecode = gatewayProxyFactory.bytecode;
+            const proxyBytecodeHash = keccak256(proxyBytecode);
+
+            const expected = {
+                istanbul: '0x6905e9ed2ee714532275d658b7cc3e3186acc52da48ffd499a2705a1185b8dde',
+                berlin: '0x374b511f48e03dfc872c49b1f3234785b50e4db2fb5eb135ef0c3f58b20c8b7a',
+                london: '0xcac4f10cb12909b2256570ae01df6fee5830b78afb230097fc401a69efa896cd',
+            }[getEVMVersion()];
+
+            expect(proxyBytecodeHash).to.be.equal(expected);
+        });
+
+        it('should preserve the implementation bytecode for each EVM', async () => {
+            const implementationBytecode = gatewayFactory.bytecode;
+            const implementationBytecodeHash = keccak256(implementationBytecode);
+
+            const expected = {
+                istanbul: '0xdd610dfaf2c8ddc8c037b0dce21c34ea2b5f8443cbdfde082cc98b8a4558f99d',
+                berlin: '0xda40bad4df7799b00ce27c5b170fe94d7e0d1f230b08023db125740890f6366d',
+                london: '0x7f0364a42fd3d028ec51bca1556b1c98c5f13f80c4235eab4c01e1694aef014f',
+            }[getEVMVersion()];
+
+            expect(implementationBytecodeHash).to.be.equal(expected);
+        });
+
+        it('should have the same deposit handler bytecode preserved for each EVM', async () => {
+            const expected = {
+                istanbul: '0x352c0ce048c2b25b0b6a58f4695613b587f3086b63b4c3a24d22c043aed230d2',
+                berlin: '0xa26b1094ee475518c006cba8bd976fd4d3cd9a6089bcbe4453b1b4cf7f095609',
+                london: '0x9f217a79e864028081339cfcead3c3d1fe92e237fcbe9468d6bb4d1da7aa6352',
+            }[getEVMVersion()];
+
+            expect(keccak256(depositHandlerFactory.bytecode)).to.be.equal(expected);
+        });
+
+        it('should have the same token bytecode preserved for each EVM', async () => {
+            const tokenFactory = await ethers.getContractFactory('BurnableMintableCappedERC20', owner);
+
+            const expectedToken = {
+                istanbul: '0xfc2522491a56af4f3519968ed49c9ba82abc79798afe8f763f601e7d5e14bdbf',
+                berlin: '0x81f6049561587bf700c0af132c504b22d696a6acfa606eee0257f92fd4ebd865',
+                london: '0x37be59a866fd46ec4179e243e5d5e2639ca1e842b152e45a34628dad6494b94b',
+            }[getEVMVersion()];
+
+            expect(keccak256(tokenFactory.bytecode)).to.be.equal(expectedToken);
+
+            const expectedDeployer = {
+                istanbul: '0xc68014e297eb42dbde383254ef3129d59528159e6c51b4f9a38f995be1dd451f',
+                berlin: '0xd3a39792ca8d1ce8e5318135ca29d8a7f0b800837726997b132ebc04f88cf9aa',
+                london: '0x0698929742de660596af20d09d04eb91bfe532ef5e2927858e4c4952034967a5',
+            }[getEVMVersion()];
+
+            expect(keccak256(tokenDeployerFactory.bytecode)).to.be.equal(expectedDeployer);
         });
     });
 
@@ -92,29 +247,53 @@ describe('AxelarGateway', () => {
         const symbols = ['tokenA', 'tokenB'];
         const decimals = 8;
 
-        beforeEach(() => {
+        before(async () => {
+            await deployGateway();
+        });
+
+        beforeEach(async () => {
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 symbols.map(getRandomID),
                 symbols.map(() => 'deployToken'),
-                symbols.map((symbol) => getDeployCommand(symbol, symbol, decimals, 0, ADDRESS_ZERO, 0)),
+                symbols.map((symbol) => getDeployCommand(symbol, symbol, decimals, 0, ethers.constants.AddressZero, 0)),
             );
 
             return getSignedWeightedExecuteInput(data, operators, getWeights(operators), threshold, operators.slice(0, threshold)).then(
-                (input) => gateway.execute(input),
+                (input) => gateway.execute(input, getGasOptions()).then((tx) => tx.wait()),
             );
         });
 
-        it("should allow admins to set a token's daily limit", () => {
+        it("should allow governance to set a token's daily limit", async () => {
             const limit = getRandomInt(Number.MAX_SAFE_INTEGER);
             const limits = symbols.map(() => limit);
 
-            return expect(gateway.connect(admins[0]).setTokenMintLimits(symbols, limits))
-                .to.not.emit(gateway, 'TokenMintLimitUpdated')
-                .then(() =>
-                    expect(gateway.connect(admins[1]).setTokenMintLimits(symbols, limits)).to.not.emit(gateway, 'TokenMintLimitUpdated'),
-                )
-                .then(() => gateway.connect(admins[2]).setTokenMintLimits(symbols, limits))
+            await expectRevert(
+                (gasOptions) => gateway.connect(notGovernance).setTokenMintLimits(symbols, limits, gasOptions),
+                gateway,
+                'NotMintLimiter',
+            );
+
+            const invalidLimits = [...limits];
+            invalidLimits.pop();
+
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).setTokenMintLimits(symbols, invalidLimits, gasOptions),
+                gateway,
+                'InvalidSetMintLimitsParams',
+            );
+
+            const invalidSymbols = ['TokenX', 'TokenY'];
+
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).setTokenMintLimits(invalidSymbols, limits, gasOptions),
+                gateway,
+                'TokenDoesNotExist',
+            );
+
+            await gateway
+                .connect(governance)
+                .setTokenMintLimits(symbols, limits, getGasOptions())
                 .then((tx) =>
                     Promise.all(symbols.map((symbol) => expect(tx).to.emit(gateway, 'TokenMintLimitUpdated').withArgs(symbol, limit))),
                 )
@@ -126,93 +305,299 @@ describe('AxelarGateway', () => {
         });
     });
 
-    describe('upgrade', () => {
-        it('should allow the admins to upgrade to the correct implementation', async () => {
-            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
-            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
-
-            const newAdminAddresses = getAddresses(admins.slice(0, 2));
-            const newOperatorAddresses = getAddresses(operators.slice(0, 2));
-
-            const params = getWeightedProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, getWeights(newOperatorAddresses), 2);
-
-            await Promise.all(
-                admins
-                    .slice(0, threshold - 1)
-                    .map((admin) =>
-                        expect(
-                            gateway.connect(admin).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-                        ).to.not.emit(gateway, 'Upgraded'),
-                    ),
-            );
-
-            await expect(
-                gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-            )
-                .to.emit(gateway, 'Upgraded')
-                .withArgs(newGatewayImplementation.address);
+    describe('gateway operators', () => {
+        beforeEach(async () => {
+            await deployGateway();
         });
 
-        it('should not allow the admins to upgrade to a wrong implementation', async () => {
+        it('should allow transferring governance', async () => {
+            await expectRevert(
+                (gasOptions) => gateway.connect(notGovernance).transferGovernance(governance.address, gasOptions),
+                gateway,
+                'NotGovernance',
+            );
+
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).transferGovernance(AddressZero, gasOptions),
+                gateway,
+                'InvalidGovernance',
+            );
+
+            await expect(await gateway.connect(governance).transferGovernance(notGovernance.address, getGasOptions()))
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address);
+
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).transferGovernance(governance.address, gasOptions),
+                gateway,
+                'NotGovernance',
+            );
+
+            expect(await gateway.governance()).to.be.equal(notGovernance.address);
+        });
+
+        it('should allow transferring mint limiter', async () => {
+            const notMintLimiter = notGovernance;
+
+            await expectRevert(
+                (gasOptions) => gateway.connect(notMintLimiter).transferMintLimiter(notMintLimiter.address, gasOptions),
+                gateway,
+                'NotMintLimiter',
+            );
+
+            await expectRevert(
+                (gasOptions) => gateway.connect(mintLimiter).transferMintLimiter(AddressZero, gasOptions),
+                gateway,
+                'InvalidMintLimiter',
+            );
+
+            await expect(await gateway.connect(mintLimiter).transferMintLimiter(notMintLimiter.address, getGasOptions()))
+                .to.emit(gateway, 'MintLimiterTransferred')
+                .withArgs(mintLimiter.address, notMintLimiter.address);
+
+            expect(await gateway.mintLimiter()).to.be.equal(notMintLimiter.address);
+
+            // test that governance can transfer mint limiter too
+            await expect(await gateway.connect(governance).transferMintLimiter(mintLimiter.address, getGasOptions()))
+                .to.emit(gateway, 'MintLimiterTransferred')
+                .withArgs(notMintLimiter.address, mintLimiter.address);
+        });
+    });
+
+    describe('upgrade', () => {
+        beforeEach(async () => {
+            await deployGateway();
+        });
+
+        it('should allow governance to upgrade to the correct implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const wrongImplementationCodeHash = keccak256(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`);
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
+            const params = '0x';
 
-            const newAdminAddresses = getAddresses(admins.slice(0, 2));
-            const newOperatorAddresses = getAddresses(operators.slice(0, 2));
+            await expectRevert(
+                (gasOptions) =>
+                    gateway
+                        .connect(notGovernance)
+                        .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, gasOptions),
+                gateway,
+                'NotGovernance',
+            );
 
-            const params = getMultisigProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, 2);
+            await expect(gateway.connect(governance).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params))
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation.address)
+                .to.not.emit(gateway, 'GovernanceTransferred')
+                .to.not.emit(gateway, 'OperatorshipTransferred');
+        });
 
-            await Promise.all(
-                admins
-                    .slice(0, threshold - 1)
-                    .map((admin) =>
-                        expect(
-                            gateway.connect(admin).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
-                        ).to.not.emit(gateway, 'Upgraded'),
-                    ),
+        it('should allow governance to upgrade to the correct implementation with new governance and mint limiter', async () => {
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
+            let params = '0x';
+
+            await expectRevert(
+                (gasOptions) =>
+                    gateway
+                        .connect(notGovernance)
+                        .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, gasOptions),
+                gateway,
+                'NotGovernance',
+            );
+
+            params = getWeightedProxyDeployParams(notGovernance.address, notGovernance.address, []);
+
+            await expect(
+                gateway
+                    .connect(governance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+            )
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation.address)
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address)
+                .to.emit(gateway, 'MintLimiterTransferred')
+                .withArgs(governance.address, notGovernance.address);
+        });
+
+        it('should allow governance to upgrade to the correct implementation with new operators', async () => {
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
+
+            const newOperatorAddresses = getAddresses(operators.slice(0, threshold - 1));
+
+            const params = getWeightedProxyDeployParams(
+                AddressZero,
+                AddressZero,
+                newOperatorAddresses,
+                getWeights(newOperatorAddresses),
+                threshold - 1,
             );
 
             await expect(
-                gateway.connect(admins[threshold - 1]).upgrade(newGatewayImplementation.address, wrongImplementationCodeHash, params),
-            ).to.be.revertedWith('InvalidCodeHash()');
+                gateway
+                    .connect(governance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+            )
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation.address)
+                .to.emit(auth, 'OperatorshipTransferred')
+                .withArgs(newOperatorAddresses, getWeights(newOperatorAddresses), threshold - 1)
+                .to.not.emit(gateway, 'GovernanceTransferred')
+                .to.not.emit(gateway, 'MintLimiterTransferred');
+
+            expect(await gateway.governance()).to.be.eq(governance.address);
+            expect(await gateway.mintLimiter()).to.be.eq(governance.address);
+        });
+
+        it('should allow governance to upgrade to the correct implementation with new governance and operators', async () => {
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
+
+            const newOperatorAddresses = getAddresses(operators.slice(0, threshold - 1));
+
+            const params = getWeightedProxyDeployParams(
+                notGovernance.address,
+                mintLimiter.address,
+                newOperatorAddresses,
+                getWeights(newOperatorAddresses),
+                threshold - 1,
+            );
+
+            await expect(
+                gateway
+                    .connect(governance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+            )
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation.address)
+                .to.emit(auth, 'OperatorshipTransferred')
+                .withArgs(newOperatorAddresses, getWeights(newOperatorAddresses), threshold - 1)
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address);
+
+            expect(await gateway.governance()).to.be.eq(notGovernance.address);
+        });
+
+        it('should allow governance to upgrade to the same implementation with new governance', async () => {
+            const newGatewayImplementation = await gatewayFactory.attach(await gateway.implementation());
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
+            const params = getWeightedProxyDeployParams(notGovernance.address, mintLimiter.address, [], [], 1);
+
+            await expect(
+                gateway
+                    .connect(governance)
+                    .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, getGasOptions()),
+            )
+                .to.emit(gateway, 'Upgraded')
+                .withArgs(newGatewayImplementation.address)
+                .to.emit(gateway, 'GovernanceTransferred')
+                .withArgs(governance.address, notGovernance.address)
+                .to.not.emit(gateway, 'OperatorshipTransferred');
+
+            expect(await gateway.governance()).to.be.eq(notGovernance.address);
+        });
+
+        it('should not allow governance to upgrade to a wrong implementation', async () => {
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            const wrongCodeHash = keccak256(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`);
+            const depositServiceFactory = await ethers.getContractFactory('AxelarDepositService', owner);
+            const wrongImplementation = await depositServiceFactory.deploy(gateway.address, '', owner.address).then((d) => d.deployed());
+            const wrongImplementationCodeHash = await getBytecodeHash(wrongImplementation, network.config.id);
+
+            const newOperatorAddresses = getAddresses(operators.slice(0, 2));
+
+            const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
+
+            await expectRevert(
+                (gasOptions) => gateway.connect(notGovernance).upgrade(newGatewayImplementation.address, wrongCodeHash, params, gasOptions),
+                gateway,
+                'NotGovernance',
+            );
+
+            await expectRevert(
+                (gasOptions) => gateway.connect(governance).upgrade(newGatewayImplementation.address, wrongCodeHash, params, gasOptions),
+                gateway,
+                'InvalidCodeHash',
+            );
+
+            await expectRevert(
+                (gasOptions) =>
+                    gateway.connect(governance).upgrade(wrongImplementation.address, wrongImplementationCodeHash, params, gasOptions),
+                gateway,
+                'InvalidImplementation',
+            );
         });
 
         it('should not allow calling the setup function directly', async () => {
-            const newAdminAddresses = getAddresses(admins.slice(0, 2));
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getMultisigProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, 2);
+            const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
-            await expect(gateway.connect(admins[0]).setup(params)).not.to.emit(gateway, 'OperatorshipTransferred');
+            await expect(gateway.connect(governance).setup(params)).not.to.emit(gateway, 'OperatorshipTransferred');
 
             const implementation = gatewayFactory.attach(await gateway.implementation());
 
-            await expect(implementation.connect(admins[0]).setup(params)).to.be.revertedWith('NotProxy()');
+            await expectRevert((gasOptions) => implementation.connect(governance).setup(params, gasOptions), gateway, 'NotProxy');
+        });
+
+        it('should not allow malicious proxy to call setup function directly and transfer governance or mint limiter', async () => {
+            const params = getWeightedProxyDeployParams(notGovernance.address, notGovernance.address, []);
+
+            const implementation = await gateway.implementation();
+
+            const maliciousProxy = await gatewayProxyFactory.deploy(implementation, params);
+            await maliciousProxy.deployTransaction.wait(network.config.confirmations);
+
+            expect(await gateway.governance()).to.eq(governance.address);
+            expect(await gateway.mintLimiter()).to.eq(governance.address);
         });
 
         it('should not allow calling the upgrade on the implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
-            const newGatewayImplementationCode = await newGatewayImplementation.provider.getCode(newGatewayImplementation.address);
-            const newGatewayImplementationCodeHash = keccak256(newGatewayImplementationCode);
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
 
-            const newAdminAddresses = getAddresses(admins.slice(0, 2));
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
 
-            const params = getMultisigProxyDeployParams(newAdminAddresses, 2, newOperatorAddresses, 2);
+            const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, newOperatorAddresses, Array(2).fill(1), 2);
 
             const implementation = gatewayFactory.attach(await gateway.implementation());
 
-            await expect(
-                implementation.connect(admins[0]).upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params),
-            ).to.be.revertedWith('NotAdmin()');
+            await expectRevert(
+                (gasOptions) =>
+                    implementation
+                        .connect(notGovernance)
+                        .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, gasOptions),
+                gateway,
+                'NotGovernance',
+            );
+        });
+
+        it('should revert on upgrade if setup fails for any reason', async () => {
+            const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+            const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
+
+            // invalid setup params
+            const params = '0x1234';
+
+            await expectRevert(
+                (gasOptions) =>
+                    gateway
+                        .connect(governance)
+                        .upgrade(newGatewayImplementation.address, newGatewayImplementationCodeHash, params, gasOptions),
+                gateway,
+                'SetupFailed',
+            );
         });
     });
 
-    describe('execute', () => {
+    describe('chain id', () => {
+        before(async () => {
+            await deployGateway();
+        });
+
         it('should fail if chain id mismatches', async () => {
             const data = buildCommandBatch(
-                CHAIN_ID + 1,
+                (await getChainId()) + 1,
                 [getRandomID()],
                 ['transferOperatorship'],
                 [
@@ -232,25 +617,31 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(input)).to.be.revertedWith('InvalidChainId()');
+            await expectRevert((gasOptions) => gateway.execute(input, gasOptions), gateway, 'InvalidChainId');
         });
     });
 
     describe('command deployToken', () => {
         const name = 'An Awesome Token';
-        const symbol = 'AAT';
         const decimals = 18;
         const cap = 10000;
         const limit = 1000;
 
+        let symbol;
+
+        before(async () => {
+            await deployGateway();
+        });
+
         it('should allow operators to deploy a new token', async () => {
             const commandID = getRandomID();
+            symbol = `AAT${getRandomInt(1e10)}`;
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [commandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, limit)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, limit)],
             );
 
             const { data: tokenInitCode } = burnableMintableCappedERC20Factory.getDeployTransaction(name, symbol, decimals, cap);
@@ -264,7 +655,7 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            const tx = await gateway.execute(input);
+            const tx = await gateway.execute(input, getGasOptions());
 
             await expect(tx)
                 .to.emit(gateway, 'TokenDeployed')
@@ -289,12 +680,13 @@ describe('AxelarGateway', () => {
 
         it('should not deploy a duplicate token', async () => {
             const firstCommandID = getRandomID();
+            symbol = `AAT${getRandomInt(1e10)}`;
 
             const firstData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [firstCommandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
             );
 
             const firstInput = await getSignedWeightedExecuteInput(
@@ -304,7 +696,8 @@ describe('AxelarGateway', () => {
                 threshold,
                 operators.slice(0, threshold),
             );
-            await expect(gateway.execute(firstInput))
+
+            await expect(gateway.execute(firstInput, getGasOptions()))
                 .to.emit(gateway, 'TokenDeployed')
                 .and.to.emit(gateway, 'Executed')
                 .withArgs(firstCommandID);
@@ -312,10 +705,10 @@ describe('AxelarGateway', () => {
             const secondCommandID = getRandomID();
 
             const secondData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [secondCommandID],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
             );
 
             const secondInput = await getSignedWeightedExecuteInput(
@@ -325,27 +718,33 @@ describe('AxelarGateway', () => {
                 threshold,
                 operators.slice(0, threshold),
             );
-            await expect(gateway.execute(secondInput))
-                .to.not.emit(gateway, 'TokenDeployed')
-                .and.to.emit(gateway, 'Executed')
-                .withArgs(secondCommandID);
+            const executeTx = await gateway.execute(secondInput, getGasOptions());
+
+            await expect(executeTx).to.not.emit(gateway, 'Executed');
+            await expect(executeTx).to.not.emit(gateway, 'TokenDeployed');
         });
     });
 
     describe('command mintToken', () => {
         const name = 'An Awesome Token';
-        const symbol = 'AAT';
         const decimals = 18;
         const cap = 1e8;
 
         let token;
+        let symbol;
+
+        before(async () => {
+            await deployGateway();
+        });
 
         beforeEach(async () => {
+            symbol = `AAT${getRandomInt(1e10)}`;
+
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
             );
 
             const input = await getSignedWeightedExecuteInput(
@@ -355,110 +754,73 @@ describe('AxelarGateway', () => {
                 threshold,
                 operators.slice(0, threshold),
             );
-            await gateway.execute(input);
+
+            await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
             token = burnableMintableCappedERC20Factory.attach(tokenAddress);
         });
 
-        it('should mint tokens', async () => {
-            const amount = 9999;
-
-            const firstMintData = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['mintToken'],
-                [getMintCommand(symbol, owner.address, amount)],
-            );
-
-            const firstMintInput = await getSignedWeightedExecuteInput(
-                firstMintData,
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
-            );
-            const tx = await gateway.execute(firstMintInput);
-            await expect(tx).to.emit(gateway, 'Executed');
-
-            const secondMintData = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['mintToken'],
-                [getMintCommand(symbol, owner.address, amount)],
-            );
-
-            const secondMintInput = getSignedWeightedExecuteInput(
-                secondMintData,
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
-            );
-
-            await expect(gateway.execute(secondMintInput)).to.emit(gateway, 'Executed');
-
-            console.log('mintToken gas:', (await tx.wait()).gasUsed.toNumber());
-        });
-
-        it('should not allow the operators to mint tokens exceeding the daily limit', () => {
+        it('should not allow the operators to mint tokens exceeding the daily limit', async () => {
             const limit = getRandomInt(cap / 2);
 
-            return Promise.all(admins.slice(0, threshold).map((admin) => gateway.connect(admin).setTokenMintLimits([symbol], [limit])))
-                .then(() => {
-                    const data = buildCommandBatch(
-                        CHAIN_ID,
-                        [getRandomID()],
-                        ['mintToken'],
-                        [getMintCommand(symbol, owner.address, limit)],
-                    );
+            await gateway
+                .connect(governance)
+                .setTokenMintLimits([symbol], [limit], getGasOptions())
+                .then((tx) => tx.wait());
 
-                    return getSignedWeightedExecuteInput(
-                        data,
-                        operators,
-                        getWeights(operators),
-                        threshold,
-                        operators.slice(0, threshold),
-                    ).then((input) =>
-                        expect(gateway.execute(input))
-                            .to.emit(token, 'Transfer')
-                            .withArgs(ADDRESS_ZERO, owner.address, limit)
-                            .and.to.emit(gateway, 'Executed'),
-                    );
-                })
-                .then(async () => {
-                    const mintAmount = await gateway.tokenMintAmount(symbol);
-                    expect(mintAmount.toNumber()).to.eq(limit);
-                })
-                .then(async () => {
-                    const amount = 1;
-                    const data = buildCommandBatch(
-                        CHAIN_ID,
-                        [getRandomID()],
-                        ['mintToken'],
-                        [getMintCommand(symbol, owner.address, amount)],
-                    );
-                    const input = await getSignedWeightedExecuteInput(
-                        data,
-                        operators,
-                        getWeights(operators),
-                        threshold,
-                        operators.slice(0, threshold),
-                    );
+            const data = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['mintToken'],
+                [getMintCommand(symbol, owner.address, limit)],
+            );
 
-                    await expect(gateway.execute(input)).to.not.emit(gateway, 'Executed');
-                    await tickBlockTime(gateway.provider, 6 * 60 * 60); // 6 hours later
-                    await expect(gateway.execute(input))
-                        .to.emit(token, 'Transfer')
-                        .withArgs(ADDRESS_ZERO, owner.address, amount)
-                        .and.to.emit(gateway, 'Executed');
-                });
+            const input = getSignedWeightedExecuteInput(data, operators, getWeights(operators), threshold, operators.slice(0, threshold));
+
+            await expect(gateway.execute(input, getGasOptions()))
+                .to.emit(token, 'Transfer')
+                .withArgs(ethers.constants.AddressZero, owner.address, limit)
+                .and.to.emit(gateway, 'Executed');
+
+            const mintAmount = await gateway.tokenMintAmount(symbol);
+            expect(mintAmount.toNumber()).to.eq(limit);
+
+            const amount = 1;
+            const data2 = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['mintToken'],
+                [getMintCommand(symbol, owner.address, amount)],
+            );
+            const input2 = await getSignedWeightedExecuteInput(
+                data2,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
+
+            await expect(gateway.execute(input2, getGasOptions())).to.not.emit(gateway, 'Executed');
+
+            if (isHardhat) {
+                await tickBlockTime(gateway.provider, 6 * 60 * 60); // 6 hours later
+                await expect(gateway.execute(input2, getGasOptions()))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(ethers.constants.AddressZero, owner.address, amount)
+                    .and.to.emit(gateway, 'Executed');
+            }
         });
 
         it('should allow the operators to mint tokens', async () => {
             const amount = getRandomInt(cap);
 
-            const data = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
+            const data = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['mintToken'],
+                [getMintCommand(symbol, owner.address, amount)],
+            );
 
             const input = await getSignedWeightedExecuteInput(
                 data,
@@ -468,9 +830,9 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(input))
+            await expect(gateway.execute(input, getGasOptions()))
                 .to.emit(token, 'Transfer')
-                .withArgs(ADDRESS_ZERO, owner.address, amount)
+                .withArgs(ethers.constants.AddressZero, owner.address, amount)
                 .and.to.emit(gateway, 'Executed');
 
             expect(await token.balanceOf(owner.address).then(bigNumberToNumber)).to.eq(amount);
@@ -480,7 +842,7 @@ describe('AxelarGateway', () => {
             const amount = getRandomInt(cap);
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID(), getRandomID()],
                 ['mintToken', 'mintToken'],
                 [getMintCommand('wrongSymbol', owner.address, amount), getMintCommand('', owner.address, amount)],
@@ -494,7 +856,7 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(input)).not.to.emit(token, 'Transfer').and.not.to.emit(gateway, 'Executed');
+            await expect(gateway.execute(input, getGasOptions())).not.to.emit(token, 'Transfer').and.not.to.emit(gateway, 'Executed');
 
             expect(await token.balanceOf(owner.address).then(bigNumberToNumber)).to.eq(0);
         });
@@ -503,26 +865,30 @@ describe('AxelarGateway', () => {
     describe('command burnToken', () => {
         const name = 'An Awesome Token';
         const symbol = 'AAT';
-        const externalName = 'An External Token';
-        const externalSymbol = 'AET';
-        const decimals = 18;
-        const cap = 1e8;
-        const amount = 100;
+        const burnAmount = 100;
+        const amount = 10 * burnAmount;
 
+        let burnTestToken;
         let token;
-        let externalToken;
 
-        beforeEach(async () => {
-            externalToken = await mintableCappedERC20Factory.deploy(externalName, externalSymbol, decimals, cap).then((d) => d.deployed());
-            await externalToken.mint(owner.address, amount);
+        const burnTokenSetup = async (isStandardERC20) => {
+            if (!isStandardERC20) {
+                burnTestToken = await nonStandardERC20Factory
+                    .deploy(externalTokenName, externalSymbol, externalDecimals, externalCap)
+                    .then((d) => d.deployed());
+            } else {
+                burnTestToken = externalToken;
+            }
+
+            await burnTestToken.mint(owner.address, amount).then((tx) => tx.wait());
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID(), getRandomID(), getRandomID()],
                 ['deployToken', 'deployToken', 'mintToken'],
                 [
-                    getDeployCommand(externalName, externalSymbol, decimals, cap, externalToken.address, 0),
-                    getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0),
+                    getDeployCommand(externalTokenName, externalSymbol, externalDecimals, externalCap, burnTestToken.address, 0),
+                    getDeployCommand(name, symbol, externalDecimals, externalCap, ethers.constants.AddressZero, 0),
                     getMintCommand(symbol, owner.address, amount),
                 ],
             );
@@ -534,166 +900,345 @@ describe('AxelarGateway', () => {
                 threshold,
                 operators.slice(0, threshold),
             );
-            await gateway.execute(input);
+
+            await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
-            token = burnableMintableCappedERC20Factory.attach(tokenAddress);
-        });
+            token = await burnableMintableCappedERC20Factory.attach(tokenAddress);
+        };
 
-        it('should allow the operators to burn internal tokens', async () => {
-            const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
-            const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
-            const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+        describe('burn token positive tests', () => {
+            before(async () => {
+                await deployGateway();
+            });
 
-            const burnAmount = amount / 2;
-            await token.transfer(depositHandlerAddress, burnAmount);
+            before(async () => {
+                await burnTokenSetup(true);
+            });
 
-            const dataFirstBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            it('should allow the operators to burn internal tokens', async () => {
+                const destinationAddress = getRandomString(32);
+                const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
-            const firstInput = await getSignedWeightedExecuteInput(
-                dataFirstBurn,
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
-            );
+                const burnAmount = amount / 10;
+                await token.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
 
-            const tx = await gateway.execute(firstInput);
+                const dataFirstBurn = buildCommandBatch(await getChainId(), [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
-            await expect(tx).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+                const firstInput = await getSignedWeightedExecuteInput(
+                    dataFirstBurn,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
 
-            await token.transfer(depositHandlerAddress, burnAmount);
+                const tx = await gateway.execute(firstInput, getGasOptions());
 
-            const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+                await expect(tx).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ethers.constants.AddressZero, burnAmount);
 
-            const secondInput = await getSignedWeightedExecuteInput(
-                dataSecondBurn,
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
-            );
+                await token.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
 
-            await expect(await gateway.execute(secondInput))
-                .to.emit(token, 'Transfer')
-                .withArgs(depositHandlerAddress, ADDRESS_ZERO, burnAmount);
+                const dataSecondBurn = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(symbol, salt)],
+                );
 
-            expect(await token.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
+                const secondInput = await getSignedWeightedExecuteInput(
+                    dataSecondBurn,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
 
-            console.log('burnToken internal gas:', (await tx.wait()).gasUsed.toNumber());
-        });
+                await expect(await gateway.execute(secondInput, getGasOptions()))
+                    .to.emit(token, 'Transfer')
+                    .withArgs(depositHandlerAddress, ethers.constants.AddressZero, burnAmount);
 
-        it('should allow the operators to burn external tokens', async () => {
-            const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
-            const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
-            const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+                expect(await token.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
 
-            const burnAmount = amount / 2;
-            await externalToken.transfer(depositHandlerAddress, burnAmount);
+                console.log('burnToken internal gas:', (await tx.wait()).gasUsed.toNumber());
+            });
 
-            const dataFirstBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
+            it('should allow the operators to burn external tokens', async () => {
+                const destinationAddress = getRandomString(32);
+                const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
-            const firstInput = await getSignedWeightedExecuteInput(
-                dataFirstBurn,
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
-            );
+                const burnAmount = amount / 10;
+                await burnTestToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
 
-            const tx = await gateway.execute(firstInput);
+                const dataFirstBurn = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(externalSymbol, salt)],
+                );
 
-            await expect(tx).to.emit(externalToken, 'Transfer').withArgs(depositHandlerAddress, gateway.address, burnAmount);
+                const firstInput = await getSignedWeightedExecuteInput(
+                    dataFirstBurn,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
 
-            await externalToken.transfer(depositHandlerAddress, burnAmount);
+                const tx = await gateway.execute(firstInput, getGasOptions());
 
-            const dataSecondBurn = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
+                await expect(tx).to.emit(burnTestToken, 'Transfer').withArgs(depositHandlerAddress, gateway.address, burnAmount);
 
-            const secondInput = await getSignedWeightedExecuteInput(
-                dataSecondBurn,
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
-            );
+                await burnTestToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
 
-            await expect(await gateway.execute(secondInput))
-                .to.emit(externalToken, 'Transfer')
-                .withArgs(depositHandlerAddress, gateway.address, burnAmount);
+                const dataSecondBurn = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(externalSymbol, salt)],
+                );
 
-            expect(await externalToken.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
+                const secondInput = await getSignedWeightedExecuteInput(
+                    dataSecondBurn,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
 
-            console.log('burnToken external gas:', (await tx.wait()).gasUsed.toNumber());
-        });
+                await expect(await gateway.execute(secondInput, getGasOptions()))
+                    .to.emit(burnTestToken, 'Transfer')
+                    .withArgs(depositHandlerAddress, gateway.address, burnAmount);
 
-        it('should allow the operators to burn the external token multiple times from the same address', async () => {
-            const destinationBtcAddress = '1KDeqnsTRzFeXRaENA6XLN1EwdTujchr4L';
-            const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
-            const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
-            const commandIDs = [getRandomID(), getRandomID()];
-            const burnAmount = amount / 2;
+                expect(await burnTestToken.balanceOf(depositHandlerAddress).then(bigNumberToNumber)).to.eq(0);
 
-            await externalToken.transfer(depositHandlerAddress, burnAmount);
-            const command = getBurnCommand(externalSymbol, salt);
-            const input = await getSignedWeightedExecuteInput(
-                buildCommandBatch(CHAIN_ID, commandIDs, ['burnToken', 'burnToken'], [command, command]),
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
-            );
+                console.log('burnToken external gas:', (await tx.wait()).gasUsed.toNumber());
+            });
 
-            const tx = await gateway.execute(input);
-            await expect(tx)
-                .to.emit(gateway, 'Executed')
-                .withArgs(commandIDs[0])
-                .and.to.emit(gateway, 'Executed')
-                .withArgs(commandIDs[1])
-                .and.to.emit(externalToken, 'Transfer')
-                .withArgs(depositHandlerAddress, gateway.address, burnAmount);
+            it('should allow the operators to burn external tokens even if the deposit address has ether', async () => {
+                const destinationAddress = getRandomString(32);
+                const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
-            return externalToken
-                .balanceOf(depositHandlerAddress)
-                .then(bigNumberToNumber)
-                .then((balance) => {
-                    expect(balance).to.eq(0);
-                })
-                .then(() => externalToken.transfer(depositHandlerAddress, burnAmount))
-                .then(async () => {
-                    const commandID = getRandomID();
-                    const input = await getSignedWeightedExecuteInput(
-                        buildCommandBatch(CHAIN_ID, [commandID], ['burnToken'], [getBurnCommand(externalSymbol, salt)]),
-                        operators,
-                        getWeights(operators),
-                        threshold,
-                        operators.slice(0, threshold),
+                await owner.sendTransaction({ to: depositHandlerAddress, value: '1' }).then((tx) => tx.wait());
+
+                const burnAmount = amount / 10;
+                await burnTestToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
+
+                const dataFirstBurn = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(externalSymbol, salt)],
+                );
+
+                const firstInput = await getSignedWeightedExecuteInput(
+                    dataFirstBurn,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                const tx = await gateway.execute(firstInput, getGasOptions());
+
+                await expect(tx).to.emit(burnTestToken, 'Transfer').withArgs(depositHandlerAddress, gateway.address, burnAmount);
+
+                await burnTestToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
+
+                const dataSecondBurn = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(externalSymbol, salt)],
+                );
+
+                const secondInput = await getSignedWeightedExecuteInput(
+                    dataSecondBurn,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                await gateway
+                    .execute(secondInput, getGasOptions())
+                    .then((tx) =>
+                        expect(tx).to.emit(burnTestToken, 'Transfer').withArgs(depositHandlerAddress, gateway.address, burnAmount),
                     );
 
-                    const tx = await gateway.execute(input);
-                    await expect(tx)
-                        .to.emit(gateway, 'Executed')
-                        .withArgs(commandID)
-                        .and.to.emit(externalToken, 'Transfer')
-                        .withArgs(depositHandlerAddress, gateway.address, burnAmount);
+                await burnTestToken
+                    .balanceOf(depositHandlerAddress)
+                    .then(bigNumberToNumber)
+                    .then((balance) => expect(balance).to.eq(0));
+            });
 
-                    return externalToken.balanceOf(depositHandlerAddress);
-                })
-                .then(bigNumberToNumber)
-                .then((balance) => {
-                    expect(balance).to.eq(0);
-                });
+            it('should allow the operators to burn the external token multiple times from the same address', async () => {
+                const destinationAddress = getRandomString(32);
+                const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+                const commandIDs = [getRandomID(), getRandomID()];
+                const burnAmount = amount / 10;
+
+                await burnTestToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
+
+                const command = getBurnCommand(externalSymbol, salt);
+                const input = await getSignedWeightedExecuteInput(
+                    buildCommandBatch(await getChainId(), commandIDs, ['burnToken', 'burnToken'], [command, command]),
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                const tx = await gateway.execute(input, getGasOptions());
+
+                await expect(tx)
+                    .to.emit(gateway, 'Executed')
+                    .withArgs(commandIDs[0])
+                    .and.to.emit(gateway, 'Executed')
+                    .withArgs(commandIDs[1])
+                    .and.to.emit(burnTestToken, 'Transfer')
+                    .withArgs(depositHandlerAddress, gateway.address, burnAmount);
+
+                return burnTestToken
+                    .balanceOf(depositHandlerAddress)
+                    .then(bigNumberToNumber)
+                    .then((balance) => {
+                        expect(balance).to.eq(0);
+                    })
+                    .then(async () => await burnTestToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait()))
+                    .then(async () => {
+                        const commandID = getRandomID();
+                        const input = await getSignedWeightedExecuteInput(
+                            buildCommandBatch(await getChainId(), [commandID], ['burnToken'], [getBurnCommand(externalSymbol, salt)]),
+                            operators,
+                            getWeights(operators),
+                            threshold,
+                            operators.slice(0, threshold),
+                        );
+
+                        const tx = await gateway.execute(input, getGasOptions());
+                        await expect(tx)
+                            .to.emit(gateway, 'Executed')
+                            .withArgs(commandID)
+                            .and.to.emit(burnTestToken, 'Transfer')
+                            .withArgs(depositHandlerAddress, gateway.address, burnAmount);
+
+                        return await burnTestToken.balanceOf(depositHandlerAddress);
+                    })
+                    .then(bigNumberToNumber)
+                    .then((balance) => {
+                        expect(balance).to.eq(0);
+                    });
+            });
+        });
+
+        describe('burn token negative tests', () => {
+            before(async () => {
+                await deployGateway();
+            });
+
+            before(async () => {
+                await burnTokenSetup(false);
+            });
+
+            it('should fail if symbol does not correspond to internal token', async () => {
+                const destinationAddress = getRandomString(32);
+                const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
+                const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
+
+                const burnAmount = amount / 10;
+                await token.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
+
+                const invalidSymbol = 'NA';
+                const dataFirstBurn = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(invalidSymbol, salt)],
+                );
+
+                const firstInput = await getSignedWeightedExecuteInput(
+                    dataFirstBurn,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                const tx = await gateway.execute(firstInput, getGasOptions());
+
+                await expect(tx).to.not.emit(token, 'Transfer');
+            });
+
+            it('should fail to burn external tokens if deposit handler execute reverts', async () => {
+                const destinationAddress = getRandomString(32);
+                const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
+
+                const dataFirstBurn = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(externalSymbol, salt)],
+                );
+
+                const firstInput = await getSignedWeightedExecuteInput(
+                    dataFirstBurn,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                const tx = await gateway.execute(firstInput, getGasOptions());
+
+                await expect(tx).to.not.emit(burnTestToken, 'Transfer');
+            });
+
+            it('should fail to burn external tokens if deposit handler execute fails', async () => {
+                const destinationAddress = getRandomString(32);
+                const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
+
+                await burnTestToken.setFailTransfer(true).then((tx) => tx.wait());
+
+                const dataFirstBurn = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['burnToken'],
+                    [getBurnCommand(externalSymbol, salt)],
+                );
+
+                const firstInput = await getSignedWeightedExecuteInput(
+                    dataFirstBurn,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                const tx = await gateway.execute(firstInput, getGasOptions());
+
+                await expect(tx).to.not.emit(burnTestToken, 'Transfer');
+            });
         });
     });
 
     describe('command transferOperatorship', () => {
+        beforeEach(async () => {
+            await deployGateway();
+        });
+
         it('should allow operators to transfer operatorship', async () => {
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['transferOperatorship'],
-                [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2)],
+                [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), newOperators.length)],
             );
 
             const input = await getSignedWeightedExecuteInput(
@@ -704,7 +1249,7 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            const tx = await gateway.execute(input);
+            const tx = await gateway.execute(input, getGasOptions());
 
             await expect(tx)
                 .to.emit(gateway, 'OperatorshipTransferred')
@@ -714,10 +1259,10 @@ describe('AxelarGateway', () => {
         });
 
         it('should not allow transferring operatorship to address zero', async () => {
-            const newOperators = [ADDRESS_ZERO, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+            const newOperators = [ethers.constants.AddressZero, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['transferOperatorship'],
                 [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2)],
@@ -731,14 +1276,14 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(input)).not.to.emit(gateway, 'OperatorshipTransferred');
+            await expect(gateway.execute(input, getGasOptions())).not.to.emit(gateway, 'OperatorshipTransferred');
         });
 
         it('should allow the previous operators to mint and burn token', async () => {
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
             const transferOperatorshipData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['transferOperatorship'],
                 [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2)],
@@ -752,7 +1297,7 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(transferOperatorshipInput))
+            await expect(gateway.execute(transferOperatorshipInput, getGasOptions()))
                 .to.emit(gateway, 'OperatorshipTransferred')
                 .withArgs(getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2));
 
@@ -762,10 +1307,10 @@ describe('AxelarGateway', () => {
             const cap = 1e8;
 
             const deployData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0)],
+                [getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0)],
             );
 
             const deployAndMintInput = await getSignedWeightedExecuteInput(
@@ -775,14 +1320,20 @@ describe('AxelarGateway', () => {
                 threshold,
                 operators.slice(0, threshold),
             );
-            await expect(gateway.execute(deployAndMintInput)).to.emit(gateway, 'TokenDeployed');
+
+            await expect(gateway.execute(deployAndMintInput, getGasOptions())).to.emit(gateway, 'TokenDeployed');
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
             const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
 
             const amount = getRandomInt(cap);
 
-            const mintData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['mintToken'], [getMintCommand(symbol, owner.address, amount)]);
+            const mintData = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['mintToken'],
+                [getMintCommand(symbol, owner.address, amount)],
+            );
 
             const mintInput = await getSignedWeightedExecuteInput(
                 mintData,
@@ -792,9 +1343,9 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(mintInput))
+            await expect(gateway.execute(mintInput, getGasOptions()))
                 .to.emit(token, 'Transfer')
-                .withArgs(ADDRESS_ZERO, owner.address, amount)
+                .withArgs(ethers.constants.AddressZero, owner.address, amount)
                 .and.to.emit(gateway, 'Executed');
 
             expect(await token.balanceOf(owner.address).then(bigNumberToNumber)).to.eq(amount);
@@ -803,9 +1354,10 @@ describe('AxelarGateway', () => {
             const salt = id(`${destinationBtcAddress}-${owner.address}-${Date.now()}`);
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
-            const burnData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const burnData = buildCommandBatch(await getChainId(), [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
 
-            await token.transfer(depositHandlerAddress, amount);
+            await token.transfer(depositHandlerAddress, amount).then((tx) => tx.wait());
+
             const burnInput = await getSignedWeightedExecuteInput(
                 burnData,
                 operators,
@@ -814,82 +1366,87 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, ADDRESS_ZERO, amount);
+            await expect(gateway.execute(burnInput, getGasOptions()))
+                .to.emit(token, 'Transfer')
+                .withArgs(depositHandlerAddress, ethers.constants.AddressZero, amount);
         });
 
         it('should not allow the previous operators to transfer operatorship', async () => {
             let newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            const buildTransferData = () =>
+            const buildTransferData = async () =>
                 buildCommandBatch(
-                    CHAIN_ID,
+                    await getChainId(),
                     [getRandomID()],
                     ['transferOperatorship'],
                     [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), newOperators.length)],
                 );
 
             let input = await getSignedWeightedExecuteInput(
-                buildTransferData(),
+                await buildTransferData(),
                 operators,
                 getWeights(operators),
                 threshold,
                 operators.slice(0, threshold),
             );
-            await expect(gateway.execute(input)).to.emit(gateway, 'OperatorshipTransferred');
+
+            await expect(gateway.execute(input, getGasOptions())).to.emit(gateway, 'OperatorshipTransferred');
 
             newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
 
             input = await getSignedWeightedExecuteInput(
-                buildTransferData(),
+                await buildTransferData(),
                 operators,
                 getWeights(operators),
                 threshold,
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(input)).not.to.emit(gateway, 'OperatorshipTransferred');
+            await expect(gateway.execute(input, getGasOptions())).not.to.emit(gateway, 'OperatorshipTransferred');
         });
 
         it('should not allow operatorship transfer to the previous operators', async () => {
-            const updatedOperators = getAddresses(operators.slice(0, threshold));
+            const updatedOperators = getAddresses(operators.slice(0, threshold - 1));
 
-            const buildTransferData = (newOperators, newThreshold = newOperators.length) =>
+            const buildTransferData = async (newOperators, newThreshold = newOperators.length) =>
                 buildCommandBatch(
-                    CHAIN_ID,
+                    await getChainId(),
                     [getRandomID()],
                     ['transferOperatorship'],
                     [getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), newThreshold)],
                 );
 
             let input = await getSignedWeightedExecuteInput(
-                buildTransferData(updatedOperators),
+                await buildTransferData(updatedOperators),
                 operators,
                 getWeights(operators),
                 threshold,
                 operators.slice(0, threshold),
             );
-            await expect(gateway.execute(input)).to.emit(gateway, 'OperatorshipTransferred');
 
+            await expect(gateway.execute(input, getGasOptions())).to.emit(gateway, 'OperatorshipTransferred');
+
+            // now transfer operatorship back to the original operators
             const oldOperators = getAddresses(operators);
 
             input = await getSignedWeightedExecuteInput(
-                buildTransferData(oldOperators, threshold),
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
+                await buildTransferData(oldOperators, threshold),
+                operators.slice(0, threshold - 1),
+                getWeights(updatedOperators),
+                threshold - 1,
+                operators.slice(0, threshold - 1),
             );
 
-            await expect(gateway.execute(input)).not.to.emit(gateway, 'OperatorshipTransferred');
+            await expect(gateway.execute(input, getGasOptions())).not.to.emit(gateway, 'OperatorshipTransferred');
         });
 
         it('should not allow multiple operatorship transfers in one batch', async () => {
-            const updatedOperators = getAddresses(operators.slice(0, threshold));
-            const commandIds = Array(3).fill(null).map(getRandomID);
+            const updatedOperators = getAddresses(operators.slice(0, threshold - 1));
+            const commandIds = Array(threshold).fill(null).map(getRandomID);
 
-            const buildTransferData = (newOperators, newThreshold = newOperators.length) =>
+            const buildTransferData = async (newOperators, newThreshold = newOperators.length) =>
                 buildCommandBatch(
-                    CHAIN_ID,
+                    await getChainId(),
                     commandIds,
                     commandIds.map(() => 'transferOperatorship'),
                     commandIds.map((x, i) =>
@@ -898,118 +1455,161 @@ describe('AxelarGateway', () => {
                 );
 
             const input = await getSignedWeightedExecuteInput(
-                buildTransferData(updatedOperators),
+                await buildTransferData(updatedOperators),
                 operators,
                 getWeights(operators),
                 threshold,
                 operators.slice(0, threshold),
             );
 
-            const result = await gateway.execute(input);
+            const result = await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
 
-            await expect((await result.wait()).events.filter(({ event }) => event === 'Executed').length).to.be.equal(1);
+            expect(result.events.filter(({ event }) => event === 'Executed').length).to.be.equal(1);
         });
     });
 
     describe('sendToken', () => {
         const tokenName = 'Test Token';
-        const tokenSymbol = 'TEST';
         const decimals = 18;
         const cap = 1e9;
 
-        it('should burn internal token and emit an event', async () => {
-            const deployAndMintData = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID(), getRandomID()],
-                ['deployToken', 'mintToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(tokenSymbol, owner.address, 1e6)],
-            );
+        describe('send token negative tests', () => {
+            before(async () => {
+                await deployGateway(true);
+            });
 
-            const input = await getSignedWeightedExecuteInput(
-                deployAndMintData,
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
-            );
-            await gateway.execute(input);
+            it('should fail if token deployment fails', async () => {
+                const tokenSymbol = `TEST${getRandomString(10)}`;
 
-            const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
-            const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+                const deployAndMintData = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ethers.constants.AddressZero, 0)],
+                );
 
-            const issuer = owner.address;
-            const spender = gateway.address;
-            const amount = 1000;
-            const destination = operators[1].address;
+                const input = await getSignedWeightedExecuteInput(
+                    deployAndMintData,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
 
-            await expect(token.approve(spender, amount)).to.emit(token, 'Approval').withArgs(issuer, spender, amount);
+                await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
 
-            const tx = await gateway.sendToken('Polygon', destination, tokenSymbol, amount);
-
-            await expect(tx)
-                .to.emit(token, 'Transfer')
-                .withArgs(issuer, ADDRESS_ZERO, amount)
-                .to.emit(gateway, 'TokenSent')
-                .withArgs(issuer, 'Polygon', destination, tokenSymbol, amount);
-
-            console.log('sendToken internal gas:', (await tx.wait()).gasUsed.toNumber());
+                const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
+                expect(tokenAddress).to.equal(AddressZero);
+            });
         });
 
-        it('should lock external token and emit an event', async () => {
-            const token = await mintableCappedERC20Factory.deploy(tokenName, tokenSymbol, decimals, cap).then((d) => d.deployed());
+        describe('send token positive tests', () => {
+            before(async () => {
+                await deployGateway();
+            });
 
-            await token.mint(owner.address, 1000000);
+            it('should burn internal token and emit an event', async () => {
+                const tokenSymbol = `TEST${getRandomString(10)}`;
 
-            const deployData = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID()],
-                ['deployToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
-            );
+                const deployAndMintData = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID(), getRandomID()],
+                    ['deployToken', 'mintToken'],
+                    [
+                        getDeployCommand(tokenName, tokenSymbol, decimals, cap, ethers.constants.AddressZero, 0),
+                        getMintCommand(tokenSymbol, owner.address, 1e6),
+                    ],
+                );
 
-            const input = await getSignedWeightedExecuteInput(
-                deployData,
-                operators,
-                getWeights(operators),
-                threshold,
-                operators.slice(0, threshold),
-            );
-            await gateway.execute(input);
+                const input = await getSignedWeightedExecuteInput(
+                    deployAndMintData,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
 
-            const issuer = owner.address;
-            const locker = gateway.address;
-            const amount = 1000;
-            const destination = operators[1].address;
+                await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
 
-            await expect(token.approve(locker, amount)).to.emit(token, 'Approval').withArgs(issuer, locker, amount);
+                const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
+                const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
 
-            const tx = await gateway.sendToken('Polygon', destination, tokenSymbol, amount);
+                const issuer = owner.address;
+                const spender = gateway.address;
+                const amount = 1000;
+                const destination = operators[1].address;
 
-            await expect(tx)
-                .to.emit(token, 'Transfer')
-                .withArgs(issuer, locker, amount)
-                .to.emit(gateway, 'TokenSent')
-                .withArgs(issuer, 'Polygon', destination, tokenSymbol, amount);
+                const approveTx = await token.approve(spender, amount);
+                await expect(approveTx).to.emit(token, 'Approval').withArgs(issuer, spender, amount);
 
-            console.log('sendNative external gas:', (await tx.wait()).gasUsed.toNumber());
+                const tx = await gateway.sendToken('Polygon', destination, tokenSymbol, amount);
+                await expect(tx)
+                    .to.emit(token, 'Transfer')
+                    .withArgs(issuer, ethers.constants.AddressZero, amount)
+                    .to.emit(gateway, 'TokenSent')
+                    .withArgs(issuer, 'Polygon', destination, tokenSymbol, amount);
+
+                console.log('sendToken internal gas:', (await tx.wait()).gasUsed.toNumber());
+            });
+
+            it('should lock external token and emit an event', async () => {
+                const tokenSymbol = externalSymbol;
+                const token = externalToken;
+                const amount = 1000;
+
+                await token.mint(owner.address, amount).then((tx) => tx.wait());
+
+                const deployData = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
+                );
+
+                const input = await getSignedWeightedExecuteInput(
+                    deployData,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
+
+                const issuer = owner.address;
+                const locker = gateway.address;
+                const destination = operators[1].address;
+
+                await expect(token.approve(locker, amount)).to.emit(token, 'Approval').withArgs(issuer, locker, amount);
+
+                const tx = await gateway.sendToken('Polygon', destination, tokenSymbol, amount);
+
+                await expect(tx)
+                    .to.emit(token, 'Transfer')
+                    .withArgs(issuer, locker, amount)
+                    .to.emit(gateway, 'TokenSent')
+                    .withArgs(issuer, 'Polygon', destination, tokenSymbol, amount);
+
+                console.log('sendNative external gas:', (await tx.wait()).gasUsed.toNumber());
+            });
         });
     });
 
     describe('external tokens', () => {
-        it('should support external ERC20 token', async () => {
-            const name = 'test';
-            const symbol = 'test';
-            const decimals = 16;
-            const capacity = 0;
+        const name = 'test';
+        const symbol = getRandomString(10);
+        const decimals = 16;
+        const capacity = 0;
 
-            const token = await mintableCappedERC20Factory.deploy(name, symbol, decimals, capacity).then((d) => d.deployed());
+        before(async () => {
+            await deployGateway();
+        });
 
-            const amount = 10000;
-
-            await token.mint(owner.address, amount);
+        it('should fail if external ERC20 token address is invalid', async () => {
+            const token = owner;
 
             const deployData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
                 [getDeployCommand(name, symbol, decimals, capacity, token.address, 0)],
@@ -1023,13 +1623,41 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(deployInput)).to.emit(gateway, 'TokenDeployed').withArgs(symbol, token.address);
+            await expect(gateway.execute(deployInput, getGasOptions())).to.not.emit(gateway, 'TokenDeployed');
+
+            const tokenAddress = await gateway.tokenAddresses(symbol);
+            expect(tokenAddress).to.equal(AddressZero);
+        });
+
+        it('should support external ERC20 token', async () => {
+            const amount = 10000;
+
+            await externalToken.mint(owner.address, amount).then((tx) => tx.wait());
+
+            const deployData = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['deployToken'],
+                [getDeployCommand(externalTokenName, externalSymbol, externalDecimals, externalCap, externalToken.address, 0)],
+            );
+
+            const deployInput = await getSignedWeightedExecuteInput(
+                deployData,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
+
+            await expect(gateway.execute(deployInput, getGasOptions()))
+                .to.emit(gateway, 'TokenDeployed')
+                .withArgs(externalSymbol, externalToken.address);
 
             const salt = '0x2b3e73733ff31436169744c5808241dad2ff8921cf7e4cca6405a6e38d4f7b37';
             const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
-            await token.transfer(depositHandlerAddress, amount);
+            await externalToken.transfer(depositHandlerAddress, amount);
 
-            const burnData = buildCommandBatch(CHAIN_ID, [getRandomID()], ['burnToken'], [getBurnCommand(symbol, salt)]);
+            const burnData = buildCommandBatch(await getChainId(), [getRandomID()], ['burnToken'], [getBurnCommand(externalSymbol, salt)]);
 
             const burnInput = await getSignedWeightedExecuteInput(
                 burnData,
@@ -1039,13 +1667,15 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(burnInput)).to.emit(token, 'Transfer').withArgs(depositHandlerAddress, gateway.address, amount);
+            await expect(gateway.execute(burnInput, getGasOptions()))
+                .to.emit(externalToken, 'Transfer')
+                .withArgs(depositHandlerAddress, gateway.address, amount);
 
             const mintData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['mintToken'],
-                [getMintCommand(symbol, wallets[1].address, amount)],
+                [getMintCommand(externalSymbol, wallets[1].address, amount)],
             );
 
             const mintInput = await getSignedWeightedExecuteInput(
@@ -1056,29 +1686,68 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(mintInput)).to.emit(token, 'Transfer').withArgs(gateway.address, wallets[1].address, amount);
+            await expect(gateway.execute(mintInput, getGasOptions()))
+                .to.emit(externalToken, 'Transfer')
+                .withArgs(gateway.address, wallets[1].address, amount);
         });
     });
 
     describe('batch commands', () => {
-        it('should batch execute multiple commands', async () => {
-            const name = 'Bitcoin';
-            const symbol = 'BTC';
-            const decimals = 8;
-            const cap = 2100000000;
-            const amount1 = 10000;
-            const amount2 = 20000;
-            const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
+        const sourceChain = 'Polygon';
+        const sourceAddress = 'address0x123';
+        const sourceTxHash = keccak256('0x123abc123abc');
+        const sourceEventIndex = 17;
+
+        before(async () => {
+            await deployGateway();
+        });
+
+        it('should revert on mismatch between commandID and command/params length', async () => {
+            const payload = defaultAbiCoder.encode(['address'], [owner.address]);
+            const payloadHash = keccak256(payload);
+            let data = buildCommandBatch(
+                await getChainId(),
+                [getRandomID(), getRandomID()],
+                ['approveContractCall'],
+                [getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex)],
+            );
+
+            let input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
+
+            await expectRevert((gasOptions) => gateway.execute(input, gasOptions), gateway, 'InvalidCommands');
+
+            data = buildCommandBatch(
+                await getChainId(),
+                [getRandomID(), getRandomID()],
+                ['approveContractCall', 'approveContractCall'],
+                [getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex)],
+            );
+
+            input = await getSignedWeightedExecuteInput(data, operators, getWeights(operators), threshold, operators.slice(0, threshold));
+
+            await expectRevert((gasOptions) => gateway.execute(input, gasOptions), gateway, 'InvalidCommands');
+        });
+
+        it('should batch execute multiple commands and skip any unknown commands', async () => {
+            const payload = defaultAbiCoder.encode(['address'], [owner.address]);
+            const payloadHash = keccak256(payload);
+            const commandID1 = getRandomID();
+            const commandID2 = getRandomID();
 
             const data = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID(), getRandomID(), getRandomID(), getRandomID()],
-                ['deployToken', 'mintToken', 'mintToken', 'transferOperatorship'],
+                await getChainId(),
+                [commandID1, getRandomID(), commandID2],
+                ['approveContractCall', 'unknownCommand', 'approveContractCall'],
                 [
-                    getDeployCommand(name, symbol, decimals, cap, ADDRESS_ZERO, 0),
-                    getMintCommand(symbol, owner.address, amount1),
-                    getMintCommand(symbol, wallets[1].address, amount2),
-                    getTransferWeightedOperatorshipCommand(newOperators, getWeights(newOperators), 2),
+                    getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex),
+                    '0x',
+                    getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex),
                 ],
             );
 
@@ -1090,32 +1759,56 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(input)).to.emit(gateway, 'TokenDeployed').and.to.emit(gateway, 'OperatorshipTransferred');
+            await expect(gateway.execute(input, getGasOptions()))
+                .to.emit(gateway, 'ContractCallApproved')
+                .withArgs(commandID1, sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex)
+                .to.emit(gateway, 'ContractCallApproved')
+                .withArgs(commandID2, sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex);
+        });
 
-            const tokenAddress = await gateway.tokenAddresses(symbol);
+        it('should not execute the same commandID twice', async () => {
+            const name = 'Bitcoin';
+            const symbol = 'BTC';
+            const decimals = 8;
+            const cap = 2100000000;
+            const payload = defaultAbiCoder.encode(['address'], [owner.address]);
+            const payloadHash = keccak256(payload);
+            const duplicateCommandID = getRandomID();
 
-            expect(tokenAddress).to.be.properAddress;
+            const data = buildCommandBatch(
+                await getChainId(),
+                [duplicateCommandID, duplicateCommandID],
+                ['approveContractCall', 'deployToken'],
+                [
+                    getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex),
+                    getDeployCommand(name, symbol, decimals, cap, ethers.constants.AddressZero, 0),
+                ],
+            );
 
-            const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
 
-            const values = await Promise.all([
-                token.name(),
-                token.symbol(),
-                token.decimals(),
-                token.cap().then(bigNumberToNumber),
-                token.balanceOf(owner.address).then(bigNumberToNumber),
-                token.balanceOf(wallets[1].address).then(bigNumberToNumber),
-            ]);
-
-            expect(values).to.deep.eq([name, symbol, decimals, cap, amount1, amount2]);
+            await expect(gateway.execute(input, getGasOptions()))
+                .to.emit(gateway, 'ContractCallApproved')
+                .withArgs(duplicateCommandID, sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex)
+                .to.not.emit(gateway, 'TokenDeployed');
         });
     });
 
     describe('callContract', () => {
+        before(async () => {
+            await deployGateway();
+        });
+
         it('should burn internal token and emit an event', async () => {
             const chain = 'Polygon';
             const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
-            const payload = defaultAbiCoder.encode(['address', 'address'], [wallets[1].address, wallets[2].address]);
+            const payload = defaultAbiCoder.encode(['address', 'uint256'], [owner.address, 1000]);
 
             const tx = await gateway.connect(owner).callContract(chain, destination, payload);
 
@@ -1127,16 +1820,18 @@ describe('AxelarGateway', () => {
 
     describe('callContractWithToken', () => {
         const tokenName = 'Test Token';
-        const tokenSymbol = 'TEST';
         const decimals = 18;
         const cap = 1e9;
+        const tokenSymbol = getRandomString(10);
 
-        it('should burn internal token and emit an event', async () => {
+        before(async () => {
+            await deployGateway();
+
             const data = buildCommandBatch(
-                CHAIN_ID,
-                [getRandomID(), getRandomID()],
-                ['deployToken', 'mintToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ADDRESS_ZERO, 0), getMintCommand(tokenSymbol, owner.address, 1e6)],
+                await getChainId(),
+                [getRandomID()],
+                ['deployToken'],
+                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ethers.constants.AddressZero, 0)],
             );
 
             const input = await getSignedWeightedExecuteInput(
@@ -1146,7 +1841,55 @@ describe('AxelarGateway', () => {
                 threshold,
                 operators.slice(0, threshold),
             );
-            await gateway.execute(input);
+
+            await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
+        });
+
+        it('should revert if token does not exist', async () => {
+            const invalidTokenSymbol = getRandomString(10);
+
+            const amount = 1000;
+            const chain = 'Polygon';
+            const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+            const payload = defaultAbiCoder.encode(['address', 'address'], [owner.address, destination]);
+
+            await expectRevert(
+                (gasOptions) => gateway.callContractWithToken(chain, destination, payload, invalidTokenSymbol, amount, gasOptions),
+                gateway,
+                'TokenDoesNotExist',
+            );
+        });
+
+        it('should revert if token amount is invalid', async () => {
+            const amount = 0;
+            const chain = 'Polygon';
+            const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
+            const payload = defaultAbiCoder.encode(['address', 'address'], [owner.address, destination]);
+
+            await expectRevert(
+                (gasOptions) => gateway.callContractWithToken(chain, destination, payload, tokenSymbol, amount, gasOptions),
+                gateway,
+                'InvalidAmount',
+            );
+        });
+
+        it('should burn internal token and emit an event', async () => {
+            const data = buildCommandBatch(
+                await getChainId(),
+                [getRandomID()],
+                ['mintToken'],
+                [getMintCommand(tokenSymbol, owner.address, 1e6)],
+            );
+
+            const input = await getSignedWeightedExecuteInput(
+                data,
+                operators,
+                getWeights(operators),
+                threshold,
+                operators.slice(0, threshold),
+            );
+
+            await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
 
             const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
             const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
@@ -1164,7 +1907,7 @@ describe('AxelarGateway', () => {
 
             await expect(tx)
                 .to.emit(token, 'Transfer')
-                .withArgs(issuer, ADDRESS_ZERO, amount)
+                .withArgs(issuer, ethers.constants.AddressZero, amount)
                 .to.emit(gateway, 'ContractCallWithToken')
                 .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
 
@@ -1172,15 +1915,15 @@ describe('AxelarGateway', () => {
         });
 
         it('should lock external token and emit an event', async () => {
-            const token = await mintableCappedERC20Factory.deploy(tokenName, tokenSymbol, decimals, cap).then((d) => d.deployed());
+            const amount = 1000;
 
-            await token.mint(owner.address, 1000000);
+            await externalToken.mint(owner.address, amount).then((tx) => tx.wait());
 
             const data = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
+                [getDeployCommand(externalTokenName, externalSymbol, externalDecimals, externalCap, externalToken.address, 0)],
             );
 
             const input = await getSignedWeightedExecuteInput(
@@ -1191,30 +1934,33 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await gateway.execute(input);
+            await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
 
             const issuer = owner.address;
             const locker = gateway.address;
-            const amount = 1000;
             const chain = 'Polygon';
             const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
             const payload = defaultAbiCoder.encode(['address', 'address'], [owner.address, destination]);
 
-            await expect(token.approve(locker, amount)).to.emit(token, 'Approval').withArgs(issuer, locker, amount);
+            await expect(externalToken.approve(locker, amount)).to.emit(externalToken, 'Approval').withArgs(issuer, locker, amount);
 
-            const tx = await gateway.callContractWithToken(chain, destination, payload, tokenSymbol, amount);
+            const tx = await gateway.callContractWithToken(chain, destination, payload, externalSymbol, amount);
 
             await expect(tx)
-                .to.emit(token, 'Transfer')
+                .to.emit(externalToken, 'Transfer')
                 .withArgs(issuer, locker, amount)
                 .to.emit(gateway, 'ContractCallWithToken')
-                .withArgs(issuer, chain, destination, keccak256(payload), payload, tokenSymbol, amount);
+                .withArgs(issuer, chain, destination, keccak256(payload), payload, externalSymbol, amount);
 
             console.log('callContractWithToken external gas:', (await tx.wait()).gasUsed.toNumber());
         });
     });
 
     describe('external contract approval and execution', () => {
+        before(async () => {
+            await deployGateway();
+        });
+
         it('should approve and validate contract call', async () => {
             const payload = defaultAbiCoder.encode(['address'], [owner.address]);
             const payloadHash = keccak256(payload);
@@ -1224,8 +1970,25 @@ describe('AxelarGateway', () => {
             const sourceTxHash = keccak256('0x123abc123abc');
             const sourceEventIndex = 17;
 
+            const isApprovedInitially = await gateway.isContractCallApproved(
+                commandId,
+                sourceChain,
+                sourceAddress,
+                owner.address,
+                payloadHash,
+            );
+
+            expect(isApprovedInitially).to.be.false;
+
+            await gateway
+                .connect(owner)
+                .validateContractCall(commandId, sourceChain, sourceAddress, payloadHash)
+                .then((tx) => tx.wait());
+
+            expect(isApprovedInitially).to.be.false;
+
             const approveData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [commandId],
                 ['approveContractCall'],
                 [getApproveContractCall(sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex)],
@@ -1239,7 +2002,7 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(approveInput))
+            await expect(gateway.execute(approveInput, getGasOptions()))
                 .to.emit(gateway, 'ContractCallApproved')
                 .withArgs(commandId, sourceChain, sourceAddress, owner.address, payloadHash, sourceTxHash, sourceEventIndex);
 
@@ -1253,7 +2016,17 @@ describe('AxelarGateway', () => {
 
             expect(isApprovedBefore).to.be.true;
 
-            await gateway.connect(owner).validateContractCall(commandId, sourceChain, sourceAddress, payloadHash);
+            await gateway
+                .connect(owner)
+                .validateContractCall(commandId, sourceChain, sourceAddress, payloadHash)
+                .then((tx) => tx.wait());
+
+            expect(isApprovedBefore).to.be.true;
+
+            await gateway
+                .connect(owner)
+                .validateContractCall(commandId, sourceChain, sourceAddress, payloadHash)
+                .then((tx) => tx.wait());
 
             const isApprovedAfter = await gateway.isContractCallApproved(commandId, sourceChain, sourceAddress, owner.address, payloadHash);
 
@@ -1261,20 +2034,13 @@ describe('AxelarGateway', () => {
         });
 
         it('should approve and validate contract call with token', async () => {
-            const nameA = 'testA';
-            const symbolA = 'testA';
-            const decimals = 16;
-            const capacity = 0;
-
-            const tokenA = await mintableCappedERC20Factory.deploy(nameA, symbolA, decimals, capacity).then((d) => d.deployed());
-
-            await tokenA.mint(gateway.address, 1e6);
+            await externalToken.mint(gateway.address, 1e6).then((tx) => tx.wait());
 
             const deployTokenData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [getRandomID()],
                 ['deployToken'],
-                [getDeployCommand(nameA, symbolA, decimals, capacity, tokenA.address, 0)],
+                [getDeployCommand(externalTokenName, externalSymbol, externalDecimals, externalCap, externalToken.address, 0)],
             );
 
             const deployTokenInput = await getSignedWeightedExecuteInput(
@@ -1285,7 +2051,9 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(deployTokenInput)).to.emit(gateway, 'TokenDeployed').withArgs(symbolA, tokenA.address);
+            await expect(gateway.execute(deployTokenInput, getGasOptions()))
+                .to.emit(gateway, 'TokenDeployed')
+                .withArgs(externalSymbol, externalToken.address);
 
             const payload = defaultAbiCoder.encode(['address'], [owner.address]);
             const payloadHash = keccak256(payload);
@@ -1296,8 +2064,27 @@ describe('AxelarGateway', () => {
             const sourceTxHash = keccak256('0x123abc123abc');
             const sourceEventIndex = 17;
 
+            const isApprovedInitially = await gateway.isContractCallAndMintApproved(
+                commandId,
+                sourceChain,
+                sourceAddress,
+                owner.address,
+                payloadHash,
+                externalSymbol,
+                amount,
+            );
+
+            expect(isApprovedInitially).to.be.false;
+
+            await gateway
+                .connect(owner)
+                .validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, externalSymbol, amount)
+                .then((tx) => tx.wait());
+
+            expect(isApprovedInitially).to.be.false;
+
             const approveWithMintData = buildCommandBatch(
-                CHAIN_ID,
+                await getChainId(),
                 [commandId],
                 ['approveContractCallWithMint'],
                 [
@@ -1306,7 +2093,7 @@ describe('AxelarGateway', () => {
                         sourceAddress,
                         owner.address,
                         payloadHash,
-                        symbolA,
+                        externalSymbol,
                         amount,
                         sourceTxHash,
                         sourceEventIndex,
@@ -1322,7 +2109,7 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(approveWithMintInput))
+            await expect(gateway.execute(approveWithMintInput, getGasOptions()))
                 .to.emit(gateway, 'ContractCallApprovedWithMint')
                 .withArgs(
                     commandId,
@@ -1330,7 +2117,7 @@ describe('AxelarGateway', () => {
                     sourceAddress,
                     owner.address,
                     payloadHash,
-                    symbolA,
+                    externalSymbol,
                     amount,
                     sourceTxHash,
                     sourceEventIndex,
@@ -1342,13 +2129,16 @@ describe('AxelarGateway', () => {
                 sourceAddress,
                 owner.address,
                 payloadHash,
-                symbolA,
+                externalSymbol,
                 amount,
             );
 
             expect(isApprovedBefore).to.be.true;
 
-            await gateway.connect(owner).validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, symbolA, amount);
+            await gateway
+                .connect(owner)
+                .validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, externalSymbol, amount)
+                .then((tx) => tx.wait());
 
             const isApprovedAfter = await gateway.isContractCallAndMintApproved(
                 commandId,
@@ -1356,11 +2146,46 @@ describe('AxelarGateway', () => {
                 sourceAddress,
                 owner.address,
                 payloadHash,
-                symbolA,
+                externalSymbol,
                 amount,
             );
 
             expect(isApprovedAfter).to.be.false;
+        });
+    });
+
+    describe('deprecated functions', () => {
+        before(async () => {
+            await deployGateway();
+        });
+
+        it('should return correct value for allTokensFrozen', async () => {
+            expect(await gateway.allTokensFrozen()).to.be.false;
+        });
+
+        it('should return correct value for adminEpoch', async () => {
+            expect(await gateway.adminEpoch()).to.eq(0);
+        });
+
+        it('should return correct value for adminThreshold', async () => {
+            let epoch = 1;
+            expect(await gateway.adminThreshold(epoch)).to.eq(0);
+
+            epoch = getRandomInt(Number.MAX_SAFE_INTEGER);
+            expect(await gateway.adminThreshold(epoch)).to.eq(0);
+        });
+
+        it('should return correct value for admins', async () => {
+            let epoch = 1;
+            expect(await gateway.admins(epoch)).to.deep.equal([]);
+
+            epoch = getRandomInt(Number.MAX_SAFE_INTEGER);
+            expect(await gateway.admins(epoch)).to.deep.equal([]);
+        });
+
+        it('should return correct value for tokenFrozen', async () => {
+            const token = 'Token';
+            expect(await gateway.tokenFrozen(token)).to.be.false;
         });
     });
 });

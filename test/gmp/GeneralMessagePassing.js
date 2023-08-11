@@ -1,49 +1,52 @@
 'use strict';
 
 const chai = require('chai');
+const { ethers } = require('hardhat');
 const {
-    Contract,
     utils: { defaultAbiCoder, arrayify, keccak256 },
-} = require('ethers');
-const { deployContract, MockProvider, solidity } = require('ethereum-waffle');
-chai.use(solidity);
+} = ethers;
 const { expect } = chai;
-const { get } = require('lodash/fp');
-const { deployUpgradable } = require('../../scripts/upgradable');
+const { deployUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
+const ConstAddressDeployer = require('@axelar-network/axelar-gmp-sdk-solidity/dist/ConstAddressDeployer.json');
 
-const CHAIN_ID = 1;
-const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-
-const Auth = require('../../artifacts/contracts/auth/AxelarAuthWeighted.sol/AxelarAuthWeighted.json');
-const TokenDeployer = require('../../artifacts/contracts/TokenDeployer.sol/TokenDeployer.json');
-const AxelarGatewayProxy = require('../../artifacts/contracts/AxelarGatewayProxy.sol/AxelarGatewayProxy.json');
-const AxelarGateway = require('../../artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
-const MintableCappedERC20 = require('../../artifacts/contracts/MintableCappedERC20.sol/MintableCappedERC20.json');
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
-const SourceChainSwapCaller = require('../../artifacts/contracts/test/gmp/SourceChainSwapCaller.sol/SourceChainSwapCaller.json');
-const DestinationChainSwapExecutable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapExecutable.sol/DestinationChainSwapExecutable.json');
-const DestinationChainSwapForecallable = require('../../artifacts/contracts/test/gmp/DestinationChainSwapForecallable.sol/DestinationChainSwapForecallable.json');
-const DestinationChainTokenSwapper = require('../../artifacts/contracts/test/gmp/DestinationChainTokenSwapper.sol/DestinationChainTokenSwapper.json');
-const ConstAddressDeployer = require('axelar-utils-solidity/dist/ConstAddressDeployer.json');
 
-const { getWeightedAuthDeployParam, getSignedWeightedExecuteInput, getRandomID } = require('../utils');
+const {
+    getWeightedAuthDeployParam,
+    getSignedWeightedExecuteInput,
+    getRandomID,
+    getAddresses,
+    getChainId,
+    getWeightedProxyDeployParams,
+} = require('../utils');
 
 describe('GeneralMessagePassing', () => {
-    const [ownerWallet, operatorWallet, userWallet, adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6] =
-        new MockProvider().getWallets();
-    const adminWallets = [adminWallet1, adminWallet2, adminWallet3, adminWallet4, adminWallet5, adminWallet6];
-    const threshold = 3;
+    let ownerWallet;
+    let operatorWallet;
+    let userWallet;
 
     let sourceChainGateway;
     let destinationChainGateway;
     let sourceChainGasService;
     let sourceChainSwapCaller;
     let destinationChainSwapExecutable;
-    let destinationChainSwapForecallable;
     let destinationChainTokenSwapper;
     let tokenA;
     let tokenB;
+
+    let gatewayFactory;
+    let authFactory;
+    let tokenDeployerFactory;
+    let gatewayProxyFactory;
+    let mintableCappedERC20Factory;
+    let sourceChainSwapCallerFactory;
+    let destinationChainSwapExecutableFactory;
+    let destinationChainTokenSwapperFactory;
+
+    let auth;
+    let tokenDeployer;
+    let gateway;
 
     const sourceChain = 'chainA';
     const destinationChain = 'chainB';
@@ -54,12 +57,12 @@ describe('GeneralMessagePassing', () => {
     const decimals = 16;
     const capacity = 0;
 
-    const getMintData = (symbol, address, amount) =>
+    const getMintData = async (symbol, address, amount) =>
         arrayify(
             defaultAbiCoder.encode(
                 ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                 [
-                    CHAIN_ID,
+                    await getChainId(),
                     [getRandomID()],
                     ['mintToken'],
                     [defaultAbiCoder.encode(['string', 'address', 'uint256'], [symbol, address, amount])],
@@ -67,35 +70,56 @@ describe('GeneralMessagePassing', () => {
             ),
         );
 
+    before(async () => {
+        [ownerWallet, operatorWallet, userWallet] = await ethers.getSigners();
+
+        gatewayFactory = await ethers.getContractFactory('AxelarGateway', ownerWallet);
+        authFactory = await ethers.getContractFactory('AxelarAuthWeighted', ownerWallet);
+        tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', ownerWallet);
+        gatewayProxyFactory = await ethers.getContractFactory('AxelarGatewayProxy', ownerWallet);
+        mintableCappedERC20Factory = await ethers.getContractFactory('MintableCappedERC20', ownerWallet);
+        sourceChainSwapCallerFactory = await ethers.getContractFactory('SourceChainSwapCaller', ownerWallet);
+        destinationChainSwapExecutableFactory = await ethers.getContractFactory('DestinationChainSwapExecutable', ownerWallet);
+        destinationChainTokenSwapperFactory = await ethers.getContractFactory('DestinationChainTokenSwapper', ownerWallet);
+    });
+
     beforeEach(async () => {
         const deployGateway = async () => {
-            const params = arrayify(
-                defaultAbiCoder.encode(['address[]', 'uint8', 'bytes'], [adminWallets.map(get('address')), threshold, '0x']),
-            );
-            const auth = await deployContract(ownerWallet, Auth, [getWeightedAuthDeployParam([[operatorWallet.address]], [[1]], [1])]);
-            const tokenDeployer = await deployContract(ownerWallet, TokenDeployer);
-            const gateway = await deployContract(ownerWallet, AxelarGateway, [auth.address, tokenDeployer.address]);
-            const proxy = await deployContract(ownerWallet, AxelarGatewayProxy, [gateway.address, params]);
-            await auth.transferOwnership(proxy.address);
-            return new Contract(proxy.address, AxelarGateway.abi, ownerWallet);
+            const operatorAddresses = getAddresses([operatorWallet]);
+
+            auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [[1]], [1])).then((d) => d.deployed());
+
+            tokenDeployer = await tokenDeployerFactory.deploy().then((d) => d.deployed());
+
+            const gatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
+
+            const params = getWeightedProxyDeployParams(ownerWallet.address, ownerWallet.address, [], [], 1);
+
+            const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
+
+            await auth.transferOwnership(proxy.address).then((tx) => tx.wait());
+
+            gateway = gatewayFactory.attach(proxy.address);
+
+            return gateway;
         };
 
-        const getTokenDeployData = (withAddress) =>
+        const getTokenDeployData = async (withAddress) =>
             arrayify(
                 defaultAbiCoder.encode(
                     ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                     [
-                        CHAIN_ID,
+                        await getChainId(),
                         [getRandomID(), getRandomID()],
                         ['deployToken', 'deployToken'],
                         [
                             defaultAbiCoder.encode(
                                 ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
-                                [nameA, symbolA, decimals, capacity, withAddress ? tokenA.address : ADDRESS_ZERO, 0],
+                                [nameA, symbolA, decimals, capacity, withAddress ? tokenA.address : ethers.constants.AddressZero, 0],
                             ),
                             defaultAbiCoder.encode(
                                 ['string', 'string', 'uint8', 'uint256', 'address', 'uint256'],
-                                [nameB, symbolB, decimals, capacity, withAddress ? tokenB.address : ADDRESS_ZERO, 0],
+                                [nameB, symbolB, decimals, capacity, withAddress ? tokenB.address : ethers.constants.AddressZero, 0],
                             ),
                         ],
                     ],
@@ -104,46 +128,44 @@ describe('GeneralMessagePassing', () => {
 
         sourceChainGateway = await deployGateway();
         destinationChainGateway = await deployGateway();
-        const constAddressDeployer = await deployContract(ownerWallet, ConstAddressDeployer);
+        const constAddressDeployerFactory = await ethers.getContractFactory(
+            ConstAddressDeployer.abi,
+            ConstAddressDeployer.bytecode,
+            ownerWallet,
+        );
+        const constAddressDeployer = await constAddressDeployerFactory.deploy().then((d) => d.deployed());
 
         sourceChainGasService = await deployUpgradable(constAddressDeployer.address, ownerWallet, GasService, GasServiceProxy, [
             ownerWallet.address,
         ]);
-        tokenA = await deployContract(ownerWallet, MintableCappedERC20, [nameA, symbolA, decimals, capacity]);
 
-        tokenB = await deployContract(ownerWallet, MintableCappedERC20, [nameB, symbolB, decimals, capacity]);
+        tokenA = await mintableCappedERC20Factory.deploy(nameA, symbolA, decimals, capacity).then((d) => d.deployed());
+        tokenB = await mintableCappedERC20Factory.deploy(nameB, symbolB, decimals, capacity).then((d) => d.deployed());
 
         await sourceChainGateway.execute(
-            await getSignedWeightedExecuteInput(getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
+            await getSignedWeightedExecuteInput(await getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
         );
         await destinationChainGateway.execute(
-            await getSignedWeightedExecuteInput(getTokenDeployData(true), [operatorWallet], [1], 1, [operatorWallet]),
+            await getSignedWeightedExecuteInput(await getTokenDeployData(true), [operatorWallet], [1], 1, [operatorWallet]),
         );
 
-        destinationChainTokenSwapper = await deployContract(ownerWallet, DestinationChainTokenSwapper, [tokenA.address, tokenB.address]);
-
-        destinationChainSwapExecutable = await deployContract(ownerWallet, DestinationChainSwapExecutable, [
-            destinationChainGateway.address,
-            destinationChainTokenSwapper.address,
-        ]);
-
-        destinationChainSwapForecallable = await deployContract(ownerWallet, DestinationChainSwapForecallable, [
-            destinationChainGateway.address,
-            destinationChainTokenSwapper.address,
-        ]);
-
-        sourceChainSwapCaller = await deployContract(ownerWallet, SourceChainSwapCaller, [
-            sourceChainGateway.address,
-            sourceChainGasService.address,
-            destinationChain,
-            destinationChainSwapExecutable.address.toString(),
-        ]);
+        destinationChainTokenSwapper = await destinationChainTokenSwapperFactory
+            .deploy(tokenA.address, tokenB.address)
+            .then((d) => d.deployed());
+        destinationChainSwapExecutable = await destinationChainSwapExecutableFactory
+            .deploy(destinationChainGateway.address, destinationChainTokenSwapper.address)
+            .then((d) => d.deployed());
+        sourceChainSwapCaller = await sourceChainSwapCallerFactory
+            .deploy(sourceChainGateway.address, sourceChainGasService.address, destinationChain, destinationChainSwapExecutable.address)
+            .then((d) => d.deployed());
 
         await tokenA.mint(destinationChainGateway.address, 1e9);
         await tokenB.mint(destinationChainTokenSwapper.address, 1e9);
 
         await sourceChainGateway.execute(
-            await getSignedWeightedExecuteInput(getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [operatorWallet]),
+            await getSignedWeightedExecuteInput(await getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [
+                operatorWallet,
+            ]),
         );
         await tokenA.connect(ownerWallet).mint(userWallet.address, 1e9);
     });
@@ -156,15 +178,17 @@ describe('GeneralMessagePassing', () => {
             const payload = defaultAbiCoder.encode(['string', 'string'], [symbolB, userWallet.address.toString()]);
             const payloadHash = keccak256(payload);
 
-            const sourceChainTokenA = new Contract(await sourceChainGateway.tokenAddresses(symbolA), MintableCappedERC20.abi, userWallet);
+            const sourceChainTokenA = mintableCappedERC20Factory
+                .attach(await sourceChainGateway.tokenAddresses(symbolA))
+                .connect(userWallet);
             await sourceChainTokenA.approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount);
 
             await expect(
                 sourceChainSwapCaller
                     .connect(userWallet)
-                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), gasFeeAmount),
+                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), { value: gasFeeAmount }),
             )
-                .to.emit(sourceChainGasService, 'GasPaidForContractCallWithToken')
+                .to.emit(sourceChainGasService, 'NativeGasPaidForContractCallWithToken')
                 .withArgs(
                     sourceChainSwapCaller.address,
                     destinationChain,
@@ -172,7 +196,6 @@ describe('GeneralMessagePassing', () => {
                     payloadHash,
                     symbolA,
                     swapAmount,
-                    sourceChainTokenA.address,
                     gasFeeAmount,
                     userWallet.address,
                 )
@@ -195,7 +218,7 @@ describe('GeneralMessagePassing', () => {
                 defaultAbiCoder.encode(
                     ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
                     [
-                        CHAIN_ID,
+                        await getChainId(),
                         [approveCommandId],
                         ['approveContractCallWithMint'],
                         [
@@ -253,124 +276,6 @@ describe('GeneralMessagePassing', () => {
                 .withArgs(destinationChainSwapExecutable.address, destinationChainGateway.address, convertedAmount)
                 .and.to.emit(destinationChainGateway, 'TokenSent')
                 .withArgs(destinationChainSwapExecutable.address, sourceChain, userWallet.address.toString(), symbolB, convertedAmount);
-        });
-
-        it('should forecall a swap on remote chain', async () => {
-            const swapAmount = 1e6;
-            const gasFeeAmount = 1e3;
-            const convertedAmount = 2 * swapAmount;
-            const payload = defaultAbiCoder.encode(['string', 'string'], [symbolB, userWallet.address.toString()]);
-            const payloadHash = keccak256(payload);
-
-            const sourceChainTokenA = new Contract(await sourceChainGateway.tokenAddresses(symbolA), MintableCappedERC20.abi, userWallet);
-            await sourceChainTokenA.approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount);
-
-            await expect(
-                sourceChainSwapCaller
-                    .connect(userWallet)
-                    .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), gasFeeAmount),
-            )
-                .to.emit(sourceChainGasService, 'GasPaidForContractCallWithToken')
-                .withArgs(
-                    sourceChainSwapCaller.address,
-                    destinationChain,
-                    destinationChainSwapExecutable.address.toString(),
-                    payloadHash,
-                    symbolA,
-                    swapAmount,
-                    sourceChainTokenA.address,
-                    gasFeeAmount,
-                    userWallet.address,
-                )
-                .and.to.emit(sourceChainGateway, 'ContractCallWithToken')
-                .withArgs(
-                    sourceChainSwapCaller.address.toString(),
-                    destinationChain,
-                    destinationChainSwapExecutable.address.toString(),
-                    payloadHash,
-                    payload,
-                    symbolA,
-                    swapAmount,
-                );
-
-            await tokenA.connect(userWallet).approve(destinationChainSwapForecallable.address, swapAmount);
-
-            await expect(
-                destinationChainSwapForecallable
-                    .connect(userWallet)
-                    .forecallWithToken(sourceChain, sourceChainSwapCaller.address, payload, symbolA, swapAmount, userWallet.address),
-            )
-                .to.emit(tokenA, 'Transfer')
-                .withArgs(userWallet.address, destinationChainSwapForecallable.address, swapAmount)
-                .and.to.emit(tokenB, 'Transfer')
-                .withArgs(destinationChainTokenSwapper.address, destinationChainSwapForecallable.address, convertedAmount)
-                .and.to.emit(tokenB, 'Transfer')
-                .withArgs(destinationChainSwapForecallable.address, destinationChainGateway.address, convertedAmount)
-                .and.to.emit(destinationChainGateway, 'TokenSent')
-                .withArgs(destinationChainSwapForecallable.address, sourceChain, userWallet.address.toString(), symbolB, convertedAmount);
-
-            const approveCommandId = getRandomID();
-            const sourceTxHash = keccak256('0x123abc123abc');
-            const sourceEventIndex = 17;
-
-            const approveWithMintData = arrayify(
-                defaultAbiCoder.encode(
-                    ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
-                    [
-                        CHAIN_ID,
-                        [approveCommandId],
-                        ['approveContractCallWithMint'],
-                        [
-                            defaultAbiCoder.encode(
-                                ['string', 'string', 'address', 'bytes32', 'string', 'uint256', 'bytes32', 'uint256'],
-                                [
-                                    sourceChain,
-                                    sourceChainSwapCaller.address.toString(),
-                                    destinationChainSwapForecallable.address,
-                                    payloadHash,
-                                    symbolA,
-                                    swapAmount,
-                                    sourceTxHash,
-                                    sourceEventIndex,
-                                ],
-                            ),
-                        ],
-                    ],
-                ),
-            );
-
-            const approveExecute = await destinationChainGateway.execute(
-                await getSignedWeightedExecuteInput(approveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
-            );
-
-            await expect(approveExecute)
-                .to.emit(destinationChainGateway, 'ContractCallApprovedWithMint')
-                .withArgs(
-                    approveCommandId,
-                    sourceChain,
-                    sourceChainSwapCaller.address.toString(),
-                    destinationChainSwapForecallable.address,
-                    payloadHash,
-                    symbolA,
-                    swapAmount,
-                    sourceTxHash,
-                    sourceEventIndex,
-                );
-
-            const swap = await destinationChainSwapForecallable.executeWithToken(
-                approveCommandId,
-                sourceChain,
-                sourceChainSwapCaller.address.toString(),
-                payload,
-                symbolA,
-                swapAmount,
-            );
-
-            await expect(swap)
-                .to.emit(tokenA, 'Transfer')
-                .withArgs(destinationChainGateway.address, destinationChainSwapForecallable.address, swapAmount)
-                .and.to.emit(tokenA, 'Transfer')
-                .withArgs(destinationChainSwapForecallable.address, userWallet.address, swapAmount);
         });
     });
 });

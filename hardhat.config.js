@@ -1,6 +1,15 @@
-require('@nomiclabs/hardhat-waffle');
-require('hardhat-gas-reporter');
+require('@nomicfoundation/hardhat-toolbox');
 require('solidity-coverage');
+const { importNetworks, readJSON } = require('@axelar-network/axelar-contract-deployments/evm/utils');
+
+if (process.env.STORAGE_LAYOUT) {
+    require('hardhat-storage-layout');
+}
+
+const env = process.env.ENV || 'testnet';
+const chains = require(`@axelar-network/axelar-contract-deployments/info/${env}.json`);
+const keys = readJSON(`${__dirname}/info/keys.json`);
+const { networks, etherscan } = importNetworks(chains, keys);
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -14,12 +23,12 @@ module.exports = {
                 enabled: true,
                 runs: 1000,
                 details: {
-                    peephole: true,
-                    inliner: true,
+                    peephole: process.env.COVERAGE === undefined,
+                    inliner: process.env.COVERAGE === undefined,
                     jumpdestRemover: true,
                     orderLiterals: true,
                     deduplicate: true,
-                    cse: true,
+                    cse: process.env.COVERAGE === undefined,
                     constantOptimizer: true,
                     yul: true,
                     yulDetails: {
@@ -29,9 +38,13 @@ module.exports = {
             },
         },
     },
-    networks: {
-        hardhat: {
-            chainId: 1,
-        },
+    defaultNetwork: 'hardhat',
+    networks,
+    etherscan,
+    mocha: {
+        timeout: 1000000,
+    },
+    gasReporter: {
+        enabled: process.env.REPORT_GAS !== undefined,
     },
 };

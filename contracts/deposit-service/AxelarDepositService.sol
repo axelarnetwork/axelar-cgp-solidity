@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.9;
 
+import { SafeTokenTransfer, SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
+import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarDepositService } from '../interfaces/IAxelarDepositService.sol';
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IWETH9 } from '../interfaces/IWETH9.sol';
@@ -12,6 +14,9 @@ import { ReceiverImplementation } from './ReceiverImplementation.sol';
 
 // This should be owned by the microservice that is paying for gas.
 contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositService {
+    using SafeTokenTransfer for IERC20;
+    using SafeNativeTransfer for address;
+
     // This public storage for ERC20 token intended to be refunded.
     // It triggers the DepositReceiver/ReceiverImplementation to switch into a refund mode.
     // Address is stored and deleted withing the same refund transaction.
@@ -255,15 +260,12 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
     ) external {
         if (msg.sender != refundIssuer) revert NotRefundIssuer();
         if (receiver == address(0)) revert InvalidAddress();
+        if (amount == 0) revert InvalidAmount();
 
         if (token == address(0)) {
-            if (amount == 0) revert InvalidAmount();
-
-            (bool sent, ) = receiver.call{ value: amount }('');
-
-            if (!sent) revert NativeTransferFailed();
+            receiver.safeNativeTransfer(amount);
         } else {
-            _safeTransfer(token, receiver, amount);
+            IERC20(token).safeTransfer(receiver, amount);
         }
     }
 
@@ -280,7 +282,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
                     uint256(
                         keccak256(
                             abi.encodePacked(
-                                bytes1(0xff),
+                                hex'ff',
                                 address(this),
                                 salt,
                                 // Encoding delegateData and refundAddress as constructor params

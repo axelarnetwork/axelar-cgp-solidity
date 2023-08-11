@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.0;
 
 interface IDepositServiceBase {
     error InvalidAddress();
@@ -10,8 +10,6 @@ interface IDepositServiceBase {
     error WrapFailed();
     error UnwrapFailed();
     error TokenApproveFailed();
-    error TokenTransferFailed();
-    error NativeTransferFailed();
     error NotRefundIssuer();
     error WrappedTokenNotSupported();
 
