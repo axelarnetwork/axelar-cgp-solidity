@@ -22,7 +22,7 @@ contract TestNonStandardERC20 is MintableCappedERC20 {
         shouldFailTransfer = _shouldFailTransfer;
     }
 
-    function transfer(address recipient, uint256 amount) public view override returns (bool) {
+    function transfer(address, uint256) public view override returns (bool) {
         if (shouldFailTransfer) {
             return false;
         }

@@ -130,7 +130,7 @@ with more restrictive gas limits.
 #### DepositHandler.sol
 
 The contract deployed at the deposit addresses that allows burning/locking of the tokens
-sent by the user. It prevents re-entrancy, and while it's methods are permisionless,
+sent by the user. It prevents re-entrancy, and while its methods are permissionless,
 the gateway deploys the deposit handler and burns/locks in the same call (see `_burnToken`).
 
 #### Ownable.sol
@@ -162,7 +162,7 @@ Gas payment should happen with the same params right before calling `callContrac
   a `commandID` if the `command` failed to be processed; this is because commands are state dependent, and someone might submit command 2 before command 1 causing it to fail.
 - Axelar network supports sending any Cosmos/ERC-20 token to any other Cosmos/EVM chain.
 - Supported tokens have 3 different types:
-    - `External`: An external ERC-20 token on it's native chain is registered as external, e.g. `USDC` on Ethereum.
+    - `External`: An external ERC-20 token on its native chain is registered as external, e.g. `USDC` on Ethereum.
     - `InternalBurnableFrom`: Axelar wrapped tokens that are minted by the Axelar network when transferring over the original token, e.g. `axlATOM`, `axlUSDC` on Avalanche.
     - `InternalBurnable`: `v1.0.0` version of Axelar wrapped tokens that used a different deposit address contract, e.g. `UST` (native to Terra) on Avalanche.
       New tokens cannot be of this type, and this is only present for legacy support.

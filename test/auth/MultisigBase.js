@@ -182,5 +182,16 @@ describe('MultisigBase', () => {
             .withArgs(msgDataHash)
             .and.to.emit(multiSig, 'SignersRotated')
             .withArgs(rotatedAccounts, newThreshold);
+
+        expect(await multiSig.signerThreshold()).to.equal(newThreshold);
+        expect(await multiSig.signerAccounts()).to.deep.equal(rotatedAccounts);
+
+        for (const signer of rotatedAccounts) {
+            expect(await multiSig.isSigner(signer)).to.equal(true);
+        }
+
+        for (const signer of initAccounts) {
+            expect(await multiSig.isSigner(signer)).to.equal(false);
+        }
     });
 });

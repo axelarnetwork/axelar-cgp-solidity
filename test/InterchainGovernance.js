@@ -46,6 +46,20 @@ describe('InterchainGovernance', () => {
         calldata = targetInterface.encodeFunctionData('callTarget');
     });
 
+    it('should revert on invalid constructor args', async () => {
+        await expect(
+            interchainGovernanceFactory.deploy(AddressZero, governanceChain, governanceAddress.address, timeDelay),
+        ).to.be.revertedWithCustomError(interchainGovernance, 'InvalidAddress');
+
+        await expect(
+            interchainGovernanceFactory.deploy(gatewayAddress.address, '', governanceAddress.address, timeDelay),
+        ).to.be.revertedWithCustomError(interchainGovernance, 'InvalidAddress');
+
+        await expect(
+            interchainGovernanceFactory.deploy(gatewayAddress.address, governanceChain, '', timeDelay),
+        ).to.be.revertedWithCustomError(interchainGovernance, 'InvalidAddress');
+    });
+
     it('should revert on invalid command', async () => {
         const commandID = 2;
         const target = targetContract.address;
@@ -127,7 +141,7 @@ describe('InterchainGovernance', () => {
 
         await interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload).then((tx) => tx.wait());
 
-        waitFor(timeDelay);
+        await waitFor(timeDelay);
 
         const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue);
 
@@ -160,7 +174,7 @@ describe('InterchainGovernance', () => {
 
         await interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload).then((tx) => tx.wait());
 
-        waitFor(timeDelay);
+        await waitFor(timeDelay);
 
         const tx = await interchainGovernance.executeProposal(target, withdrawCalldata, 0);
 
@@ -196,7 +210,7 @@ describe('InterchainGovernance', () => {
 
         await interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload).then((tx) => tx.wait());
 
-        waitFor(timeDelay);
+        await waitFor(timeDelay);
 
         const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue, { value: nativeValue });
         const executionTimestamp = (await ethers.provider.getBlock(tx.blockNumber)).timestamp;
@@ -216,7 +230,7 @@ describe('InterchainGovernance', () => {
 
         await interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload).then((tx) => tx.wait());
 
-        waitFor(timeDelay);
+        await waitFor(timeDelay);
 
         await expect(
             interchainGovernance.executeProposal(target, calldata, nativeValue, { value: nativeValue }),
@@ -232,7 +246,7 @@ describe('InterchainGovernance', () => {
 
         await interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload).then((tx) => tx.wait());
 
-        waitFor(timeDelay);
+        await waitFor(timeDelay);
 
         await expect(interchainGovernance.executeProposal(target, calldata, nativeValue)).to.be.revertedWithCustomError(
             interchainGovernance,
@@ -253,7 +267,7 @@ describe('InterchainGovernance', () => {
 
         await interchainGovernance.executeProposalAction(governanceChain, governanceAddress.address, payload).then((tx) => tx.wait());
 
-        waitFor(timeDelay);
+        await waitFor(timeDelay);
 
         await expect(
             interchainGovernance.executeProposal(target, invalidCalldata, nativeValue, { value: nativeValue }),
