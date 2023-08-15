@@ -109,7 +109,7 @@ dist
 build/
 cache/
 artifacts/
-interfaces/
+/interfaces
 
 info/local.json
 keys.json
