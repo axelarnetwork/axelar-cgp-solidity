@@ -418,15 +418,12 @@
     "id": "filecoin-2",
     "chainId": 314159,
     "gateway": "0x999117D44220F33e0441fbAb2A5aDB8FF485c54D",
-    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
-    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
     "rpc": "https://api.calibration.node.glif.io/rpc/v1",
+    "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
     "tokenSymbol": "FIL",
     "tokenName": "Filecoin",
+    "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
     "contracts": {
-      "ConstAddressDeployer": {
-        "address": "0x98B2920D53612483F91F12Ed7754E51b4A77919e"
-      },
       "AxelarGateway": {
         "address": "0x999117D44220F33e0441fbAb2A5aDB8FF485c54D",
         "implementation": "0xD2ed9ACBd2Acba9CA3EA60b9Eb7652698598bC53",
