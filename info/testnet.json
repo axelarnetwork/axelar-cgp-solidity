@@ -420,37 +420,35 @@
     "gateway": "0x999117D44220F33e0441fbAb2A5aDB8FF485c54D",
     "rpc": "https://api.calibration.node.glif.io/rpc/v1",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
-    "tokenSymbol": "FIL",
     "tokenName": "Filecoin",
+    "tokenSymbol": "FIL",
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-    "contracts": {
-      "AxelarGateway": {
-        "address": "0x999117D44220F33e0441fbAb2A5aDB8FF485c54D",
-        "implementation": "0xD2ed9ACBd2Acba9CA3EA60b9Eb7652698598bC53",
-        "authModule": "0x57441fFa88C5F311aeC600bcaC15666198C82B52",
-        "tokenDeployer": "0x364a9f84cD5A0fB88E1953a2fB70F676c284D57C",
-        "deployer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
-      },
-      "AxelarGasService": {
-        "collector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
-        "address": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-        "implementation": "0xCD6b34FaF1FD1056C728A27426AB6807f84BAa1b",
-        "deployer": "0x5b593E7b1725dc6FcbbFe80b2415B19153F94A85"
-      },
-      "AxelarDepositService": {
-        "wrappedSymbol": "",
-        "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-        "salt": "AxelarDepositService",
-        "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-        "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-        "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
-      },
-      "explorer": {
-        "url": "https://calibration.filfox.info"
-      },
-      "gasOptions": {
-        "gasLimit": 300000000
-      }
+    "AxelarGateway": {
+      "address": "0x999117D44220F33e0441fbAb2A5aDB8FF485c54D",
+      "implementation": "0xD2ed9ACBd2Acba9CA3EA60b9Eb7652698598bC53",
+      "authModule": "0x57441fFa88C5F311aeC600bcaC15666198C82B52",
+      "tokenDeployer": "0x364a9f84cD5A0fB88E1953a2fB70F676c284D57C",
+      "deployer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+    },
+    "AxelarGasService": {
+      "collector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+      "address": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+      "implementation": "0xCD6b34FaF1FD1056C728A27426AB6807f84BAa1b",
+      "deployer": "0x5b593E7b1725dc6FcbbFe80b2415B19153F94A85"
+    },
+    "AxelarDepositService": {
+      "wrappedSymbol": "",
+      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
+      "salt": "AxelarDepositService",
+      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
+    },
+    "explorer": {
+      "url": "https://calibration.filfox.info"
+    },
+    "gasOptions": {
+      "gasLimit": 300000000
     }
   },
   {
