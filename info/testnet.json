@@ -415,41 +415,45 @@
   },
   {
     "name": "Filecoin",
-    "id": "filecoin",
-    "chainId": 3141,
-    "gateway": "0xe432150cce91c13a887f7D836923d5597adD8E31",
-    "rpc": "https://rpc.ankr.com/filecoin_testnet",
+    "id": "filecoin-2",
+    "chainId": 314159,
+    "gateway": "0x999117D44220F33e0441fbAb2A5aDB8FF485c54D",
     "constAddressDeployer": "0x98b2920d53612483f91f12ed7754e51b4a77919e",
-    "tokenName": "Filecoin",
-    "tokenSymbol": "FIL",
     "gasReceiver": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-    "AxelarGateway": {
-      "address": "0xe432150cce91c13a887f7D836923d5597adD8E31",
-      "implementation": "0x05823c334150a48ACD5D325fBA16147c21bA3653",
-      "authModule": "0x1a920B29eBD437074225cAeE44f78FC700B27a5d",
-      "tokenDeployer": "0x8A156bCA562FB75385c4d41ea6903E270A34B727",
-      "deployer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
-    },
-    "AxelarGasService": {
-      "salt": "AxelarGasService",
-      "collector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
-      "address": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
-      "implementation": "0xCD6b34FaF1FD1056C728A27426AB6807f84BAa1b",
-      "deployer": "0x5b593E7b1725dc6FcbbFe80b2415B19153F94A85"
-    },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "WFIL",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
-    },
-    "explorer": {
-      "url": "https://hyperspace.filfox.info"
-    },
-    "gasOptions": {
-      "gasLimit": 500000000
+    "rpc": "https://api.calibration.node.glif.io/rpc/v1",
+    "tokenSymbol": "FIL",
+    "tokenName": "Filecoin",
+    "contracts": {
+      "ConstAddressDeployer": {
+        "address": "0x98B2920D53612483F91F12Ed7754E51b4A77919e"
+      },
+      "AxelarGateway": {
+        "address": "0x999117D44220F33e0441fbAb2A5aDB8FF485c54D",
+        "implementation": "0xD2ed9ACBd2Acba9CA3EA60b9Eb7652698598bC53",
+        "authModule": "0x57441fFa88C5F311aeC600bcaC15666198C82B52",
+        "tokenDeployer": "0x364a9f84cD5A0fB88E1953a2fB70F676c284D57C",
+        "deployer": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC"
+      },
+      "AxelarGasService": {
+        "collector": "0xB8Cd93C83A974649D76B1c19f311f639e62272BC",
+        "address": "0xbE406F0189A0B4cf3A05C286473D23791Dd44Cc6",
+        "implementation": "0xCD6b34FaF1FD1056C728A27426AB6807f84BAa1b",
+        "deployer": "0x5b593E7b1725dc6FcbbFe80b2415B19153F94A85"
+      },
+      "AxelarDepositService": {
+        "wrappedSymbol": "",
+        "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
+        "salt": "AxelarDepositService",
+        "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
+        "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
+        "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
+      },
+      "explorer": {
+        "url": "https://calibration.filfox.info"
+      },
+      "gasOptions": {
+        "gasLimit": 300000000
+      }
     }
   },
   {
