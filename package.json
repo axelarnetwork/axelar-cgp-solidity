@@ -1,11 +1,11 @@
 {
   "name": "@axelar-network/axelar-cgp-solidity",
-  "version": "5.1.0",
+  "version": "6.0.0",
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
-    "build": "hardhat clean && hardhat compile",
-    "copy:interfaces": "rm -rf interfaces && mkdir interfaces && cp artifacts/contracts/interfaces/*/*.json interfaces/",
+    "build": "hardhat clean && hardhat compile && npm run copy:interfaces",
+    "copy:interfaces": "rm -rf interfaces/ && mkdir interfaces && cp artifacts/contracts/interfaces/*/*.json interfaces/ && rm interfaces/*.dbg.json",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
