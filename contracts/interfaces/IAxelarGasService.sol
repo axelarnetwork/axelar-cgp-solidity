@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import { IUpgradable } from './IUpgradable.sol';
-
-interface IAxelarGasService is IUpgradable {
+interface IAxelarGasService {
     error NothingReceived();
     error InvalidAddress();
     error NotCollector();

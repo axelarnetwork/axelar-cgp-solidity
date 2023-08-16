@@ -28,9 +28,6 @@
     "url": "https://github.com/axelarnetwork/axelar-cgp-solidity/issues"
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
-  "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "^4.0.2"
-  },
   "devDependencies": {
     "@axelar-network/axelar-contract-deployments": "git://github.com/axelarnetwork/axelar-contract-deployments.git#74b942fdf10875a27b532d9bd6dfe2bd6db8a094",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
@@ -61,5 +58,8 @@
     "scripts",
     "README.md",
     "hardhat.config.js"
-  ]
+  ],
+  "dependencies": {
+    "@axelar-network/axelar-gmp-sdk-solidity": "github:axelarnetwork/axelar-gmp-sdk-solidity#9c7828973e6448ce1f30860d94627b5ef0eb79d5"
+  }
 }
