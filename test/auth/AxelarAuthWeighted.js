@@ -57,7 +57,6 @@ describe('AxelarAuthWeighted', () => {
                     initialOperators.map(({ length }) => Array(length).fill(1)), // weights
                     initialOperators.map(() => threshold),
                 ),
-                owner.address,
             )
             .then((d) => d.deployed());
     });

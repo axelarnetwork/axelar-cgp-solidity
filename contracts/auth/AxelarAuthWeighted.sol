@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.0;
 
 import { IAxelarAuthWeighted } from '../interfaces/IAxelarAuthWeighted.sol';
 import { ECDSA } from '../ECDSA.sol';
@@ -13,7 +13,7 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
 
     uint256 internal constant OLD_KEY_RETENTION = 16;
 
-    constructor(bytes[] memory recentOperators, address owner) Ownable(owner) {
+    constructor(bytes[] memory recentOperators) Ownable(msg.sender) {
         uint256 length = recentOperators.length;
 
         for (uint256 i; i < length; ++i) {

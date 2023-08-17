@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.0;
 
+import { IUpgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IUpgradable.sol';
 import { IDepositServiceBase } from './IDepositServiceBase.sol';
 
-interface IAxelarDepositService is IDepositServiceBase {
+interface IAxelarDepositService is IUpgradable, IDepositServiceBase {
     function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable;
 
     function addressForTokenDeposit(

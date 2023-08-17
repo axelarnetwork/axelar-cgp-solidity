@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-interface IAxelarGasService {
+import { IUpgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IUpgradable.sol';
+
+interface IAxelarGasService is IUpgradable {
     error NothingReceived();
     error InvalidAddress();
     error NotCollector();
