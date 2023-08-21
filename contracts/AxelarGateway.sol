@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
-import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
+import { IERC20, IContractIdentifier } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { ContractAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/ContractAddress.sol';
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
@@ -24,7 +24,7 @@ import { EternalStorage } from './EternalStorage.sol';
  * The contract is managed via the decentralized governance mechanism on the Axelar network.
  * @dev EternalStorage is used to simplify storage for upgradability, and InterchainGovernance module is used for governance.
  */
-contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
+contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, EternalStorage {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
@@ -466,7 +466,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     ) external override onlyGovernance {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
-        if (AxelarGateway(newImplementation).contractId() != contractId()) revert InvalidImplementation();
+        if (newImlementation != contractId()) revert InvalidImplementation();
 
         emit Upgraded(newImplementation);
 
