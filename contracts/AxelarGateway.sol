@@ -16,11 +16,11 @@ import { EternalStorage } from './EternalStorage.sol';
 
 /**
  * @title AxelarGateway Contract
- * @notice This contract serves as the gateway for handling cross-chain transactions,
- * token transfers, contract calls, and validation within the Axelar network.
+ * @notice This contract serves as the gateway for cross-chain contract calls,
+ * and token transfers within the Axelar network.
  * It includes functions for sending tokens, calling contracts, and validating contract calls.
- * The contract integrates with Interchain Governance and includes modifiers for authorization checks.
- * @dev Inherits from IAxelarGateway, IGovernable, and EternalStorage.
+ * The contract is managed via the decentralized governance mechanism on the Axelar network.
+ * @dev EternalStorage is used to simplify storage for upgradability, and InterchainGovernance module is used for governance.
  */
 contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     using SafeTokenCall for IERC20;
@@ -35,7 +35,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         External
     }
 
-    /// @dev Removed slots; Should avoid re-using
+    /// @dev Removed slots. Should not be reused.
     // bytes32 internal constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
     // bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
 
@@ -48,7 +48,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     /// @dev Storage slot with the address of the current mint limiter. `keccak256('mint-limiter') - 1`.
     bytes32 internal constant KEY_MINT_LIMITER = bytes32(0x627f0c11732837b3240a2de89c0b6343512886dd50978b99c76a68c6416a4d92);
 
-    // AUDIT: slot names should be prefixed with some standard string
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
     bytes32 internal constant PREFIX_TOKEN_TYPE = keccak256('token-type');
@@ -73,7 +72,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
      * @notice Constructs the AxelarGateway contract.
      * @param authModule_ The address of the authentication module
      * @param tokenDeployerImplementation_ The address of the token deployer implementation
-     * @dev Reverts if either of the provided addresses is an EOA.
+     * @dev Reverts if either of the provided addresses is not a contract.
      */
     constructor(address authModule_, address tokenDeployerImplementation_) {
         if (authModule_.code.length == 0) revert InvalidAuthModule();
@@ -94,7 +93,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Ensures that the caller of the function is the governance address (InterchainGovernance).
+     * @notice Ensures that the caller of the function is the governance address.
      * @dev Reverts with the NotGovernance error if the caller is not the governance address.
      */
     modifier onlyGovernance() {
@@ -104,7 +103,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Ensures that the caller of the function is either the mint limiter (Multisig) or governance (InterchainGovernance).
+     * @notice Ensures that the caller of the function is either the mint limiter or governance.
      * @dev Reverts with the NotMintLimiter error if the caller is neither the mint limiter nor governance.
      */
     modifier onlyMintLimiter() {
@@ -118,8 +117,8 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     \******************/
 
     /**
-     * @notice Called on the source chain to send tokens to the specified destination chain and address.
-     * @param destinationChain The chain to send tokens to
+     * @notice Send the specified token to the destination chain and address.
+     * @param destinationChain The chain to send tokens to. A registered chain name on Axelar must be used here
      * @param destinationAddress The address on the destination chain to send tokens to
      * @param symbol The symbol of the token to send
      * @param amount The amount of tokens to send
@@ -138,7 +137,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     /**
      * @notice Calls a contract on the specified destination chain with a given payload.
      * This function is the entry point for general message passing between chains.
-     * @param destinationChain The chain where the destination contract exists
+     * @param destinationChain The chain where the destination contract exists. A registered chain name on Axelar must be used here
      * @param destinationContractAddress The address of the contract to call on the destination chain
      * @param payload The payload to be sent to the destination contract, usually representing an encoded function call with arguments
      * @dev Emits a ContractCall event upon successful execution.
@@ -152,9 +151,9 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Calls a contract on the specified destination chain with a given payload and token transfer amount.
+     * @notice Calls a contract on the specified destination chain with a given payload and token amount.
      * This function is the entry point for general message passing with token transfer between chains.
-     * @param destinationChain The chain where the destination contract exists
+     * @param destinationChain The chain where the destination contract exists. A registered chain name on Axelar must be used here
      * @param destinationContractAddress The address of the contract to call with tokens on the destination chain
      * @param payload The payload to be sent to the destination contract, usually representing an encoded function call with arguments
      * @param symbol The symbol of the token to be sent with the call
@@ -192,15 +191,15 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Checks whether a contract call and token mint has been approved by the gateway.
+     * @notice Checks whether a contract call with token has been approved by the gateway.
      * @param commandId The gateway command ID
      * @param sourceChain The source chain of the contract call
      * @param sourceAddress The source address of the contract call
      * @param contractAddress The contract address that will be called, and where tokens will be sent
      * @param payloadHash The hash of the payload for that will be sent with the call
-     * @param symbol The symbol of the token to mint
-     * @param amount The amount of tokens to mint
-     * @return bool A boolean value indicating whether the contract call and mint has been approved by the gateway.
+     * @param symbol The symbol of the token to be sent with the call
+     * @param amount The amount of tokens to be sent with the call
+     * @return bool A boolean value indicating whether the contract call with token has been approved by the gateway.
      */
     function isContractCallAndMintApproved(
         bytes32 commandId,
@@ -218,7 +217,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Called on the destination chain gateway to validate the approval of a contract call and only allow execution
+     * @notice Called on the destination chain gateway by the recipient of the cross-chain contract call to validate it and only allow execution
      * if this function returns true.
      * @dev Once validated, the gateway marks the message as executed so the contract call is not executed twice.
      * @param commandId The gateway command ID
@@ -261,7 +260,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         bytes32 key = _getIsContractCallApprovedWithMintKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash, symbol, amount);
         valid = getBool(key);
         if (valid) {
-            // Prevent re-entrance
+            // Prevent re-entrancy
             _setBool(key, false);
             _mintToken(symbol, msg.sender, amount);
         }
@@ -304,40 +303,48 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Gets the mint limit for a specific token symbol.
+     * @notice Gets the transfer limit for a specific token symbol within the configured epoch.
      * @param symbol The symbol of the token
-     * @return uint The mint limit for the given token.
+     * @return uint The transfer limit for the given token.
      */
     function tokenMintLimit(string memory symbol) public view override returns (uint256) {
         return getUint(_getTokenMintLimitKey(symbol));
     }
 
     /**
-     * @notice Gets the mint amount for a specific token symbol.
+     * @notice Gets the transfer amount for a specific token symbol within the configured epoch.
      * @param symbol The symbol of the token
-     * @return uint The mint amount for the given token.
+     * @return uint The transfer amount for the given token.
      */
     function tokenMintAmount(string memory symbol) public view override returns (uint256) {
         return getUint(_getTokenMintAmountKey(symbol, block.timestamp / 6 hours));
     }
 
-    /// @dev This function is kept around to keep things working for internal
-    /// tokens that were deployed before the token freeze functionality was removed
+    /**
+     * @dev This function is kept around to keep things working for internal
+     * tokens that were deployed before the token freeze functionality was removed
+     */
     function allTokensFrozen() external pure override returns (bool) {
         return false;
     }
 
-    /// @dev Deprecated.
+    /**
+     * @dev Deprecated.
+     */
     function adminEpoch() external pure override returns (uint256) {
         return 0;
     }
 
-    /// @dev Deprecated.
+    /**
+     * @dev Deprecated.
+     */
     function adminThreshold(uint256) external pure override returns (uint256) {
         return 0;
     }
 
-    /// @dev Deprecated.
+    /**
+     * @dev Deprecated.
+     */
     function admins(uint256) external pure override returns (address[] memory) {
         return new address[](0);
     }
@@ -359,8 +366,9 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         return getAddress(_getTokenAddressKey(symbol));
     }
 
-    /// @dev This function is kept around to keep things working for internal
-    /// tokens that were deployed before the token freeze functionality was removed
+    /**
+     * @dev Deprecated. This function is kept around to keep things working for internal tokens that were deployed before the token freeze functionality was removed
+     */
     function tokenFrozen(string memory) external pure override returns (bool) {
         return false;
     }
@@ -411,9 +419,9 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Sets the mint limits for an array of tokens.
-     * @param symbols The array of token symbols to set the mint limits for
-     * @param limits The array of mint limits corresponding to the symbols
+     * @notice Sets the transfer limits for an array of tokens.
+     * @param symbols The array of token symbols to set the transfer limits for
+     * @param limits The array of transfer limits corresponding to the symbols
      * @dev Only the mint limiter or the governance address can call this function.
      * @dev Reverts if the length of the symbols array does not match the length of the limits array, or if a token is not registered with the gateway.
      */
@@ -450,8 +458,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
 
         emit Upgraded(newImplementation);
 
-        // AUDIT: If `newImplementation.setup` performs `selfdestruct`, it will result in the loss of _this_ implementation (thereby losing the gateway)
-        //        if `upgrade` is entered within the context of _this_ implementation itself.
         if (setupParams.length != 0) {
             (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams));
 
@@ -469,7 +475,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
      * @notice Sets up the governance and mint limiter roles, and transfers operatorship if necessary.
      * This function is called by the proxy during initial deployment, and optionally called during gateway upgrades.
      * @param params The encoded parameters containing the governance and mint limiter addresses, as well as the new operator data.
-     * @dev Not publicly accessible as overshadowed in the proxy.
+     * @dev Not publicly accessible as it's overshadowed in the proxy.
      */
     function setup(bytes calldata params) external override {
         // Prevent setup from being called on a non-proxy (the implementation).
@@ -488,7 +494,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Executes a batch of commands provided by the Axelar network. There are a finite set of command types that can be executed.
+     * @notice Executes a batch of commands signed by the Axelar network. There are a finite set of command types that can be executed.
      * @param input The encoded input containing the data for the batch of commands, as well as the proof that verifies the integrity of the data.
      * @dev Each command has a corresponding commandID that is guaranteed to be unique from the Axelar network.
      * @dev This function allows retrying a commandID if the command initially failed to be processed.
@@ -520,7 +526,8 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         for (uint256 i; i < commandsLength; ++i) {
             bytes32 commandId = commandIds[i];
 
-            if (isCommandExecuted(commandId)) continue; /* Ignore if duplicate commandId received */
+            // Ignore if duplicate commandId received
+            if (isCommandExecuted(commandId)) continue;
 
             bytes4 commandSelector;
             bytes32 commandHash = keccak256(abi.encodePacked(commands[i]));
@@ -541,7 +548,8 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
                 allowOperatorshipTransfer = false;
                 commandSelector = AxelarGateway.transferOperatorship.selector;
             } else {
-                continue; /* Ignore if unknown command received */
+                // Ignore unknown commands
+                continue;
             }
 
             // Prevent a re-entrancy from executing this command before it can be marked as successful.
@@ -575,7 +583,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         if (tokenAddresses(symbol) != address(0)) revert TokenAlreadyExists(symbol);
 
         if (tokenAddress == address(0)) {
-            // If token address is no specified, it indicates a request to deploy one.
+            // If token address is not specified, it indicates a request to deploy one.
             bytes32 salt = keccak256(abi.encodePacked(symbol));
 
             (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
@@ -602,7 +610,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Mints a specific amount of tokens to an account, based on the provided symbol.
+     * @notice Transfers a specific amount of tokens to an account, based on the provided symbol.
      * @param params Encoded parameters including the token symbol, recipient address, and amount to mint.
      * @dev This function will revert if the token is not registered with the gatewaty.
      * @dev If the token type is External, a safe transfer is performed to the recipient account.
@@ -648,7 +656,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Approves a contract call with the provided parameters.
+     * @notice Approves a contract call.
      * @param params Encoded parameters including the source chain, source address, contract address, payload hash, transaction hash, and event index
      * @param commandId to associate with the approval
      * @dev Emits a ContractCallApproved event with the provided parameters.
@@ -748,13 +756,13 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     /**
-     * @notice Burns a specific amount of tokens from a sender's account based on the provided symbol.
+     * @notice Burns or locks a specific amount of tokens from a sender's account based on the provided symbol.
      * @param sender Address of the account from which to burn the tokens
      * @param symbol Symbol of the token to burn
      * @param amount Amount of tokens to burn
      * @dev This function will revert if the token is not registered with the gatewaty.
      * @dev Depending on the token type (External, InternalBurnableFrom, or InternalBurnable), the function either
-     * transfers the tokens to gateway contract itself or directly calls a burn function on the token contract.
+     * transfers the tokens to gateway contract itself or calls a burn function on the token contract.
      */
     function _burnTokenFrom(
         address sender,
