@@ -61,8 +61,5 @@
     "scripts",
     "README.md",
     "hardhat.config.js"
-  ],
-  "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "github:axelarnetwork/axelar-gmp-sdk-solidity#9c7828973e6448ce1f30860d94627b5ef0eb79d5"
-  }
+  ]
 }
