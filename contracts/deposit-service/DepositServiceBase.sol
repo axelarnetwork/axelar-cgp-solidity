@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.9;
 
-import { SafeTokenTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
-import { StringToBytes32, Bytes32ToString } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/Bytes32String.sol';
+import { SafeTokenTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
+import { StringToBytes32, Bytes32ToString } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/Bytes32String.sol';
 import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IDepositServiceBase } from '../interfaces/IDepositServiceBase.sol';
 
