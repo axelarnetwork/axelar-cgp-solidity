@@ -204,9 +204,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0x8b4a015a916042292aefbe90891aff1793c654b765bccf7b640ceab2a9c68c2b',
-                berlin: '0xc54d17033ce7f7a4b0d45f745365b40522013f9b8b775e3e1e58e606e9c89e9a',
-                london: '0x535c6e8706cc4c02f115eeb33e01086b91e5aaf2fad97ed36255f2bbafae501f',
+                istanbul: '0x87de6f338991b5539b2b84df7de8dd339789b6bc124775b77b9d489ac1de1f46',
+                berlin: '0x4f80dacb71478745a25e2c387b7b9c49a530cc889fcd0c1b3f33d2325f11199e',
+                london: '0xd810dccbe395393cac8f8aecd489008339fa893d8af8f23d036da5828fb68ca3',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -234,9 +234,9 @@ describe('AxelarGateway', () => {
             expect(keccak256(tokenFactory.bytecode)).to.be.equal(expectedToken);
 
             const expectedDeployer = {
-                istanbul: '0xc68014e297eb42dbde383254ef3129d59528159e6c51b4f9a38f995be1dd451f',
-                berlin: '0xd3a39792ca8d1ce8e5318135ca29d8a7f0b800837726997b132ebc04f88cf9aa',
-                london: '0x0698929742de660596af20d09d04eb91bfe532ef5e2927858e4c4952034967a5',
+                istanbul: '0x69ca30c837541c2c0b9ee44c255c860dc62a07a5936cc5b7155ac38b4031f9b2',
+                berlin: '0x2cf6c3a8fca17066e3b9e3d256fafef50b8befb10260cbbc7b75a649161498d5',
+                london: '0xe113ef8264c69cdd78ebc6e641ade15af175cd3dd0e339c4f64c327554870d02',
             }[getEVMVersion()];
 
             expect(keccak256(tokenDeployerFactory.bytecode)).to.be.equal(expectedDeployer);
