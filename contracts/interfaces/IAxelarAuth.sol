@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.0;
 
-import { IOwnable } from './IOwnable.sol';
+import { IOwnable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IOwnable.sol';
 
 interface IAxelarAuth is IOwnable {
     function validateProof(bytes32 messageHash, bytes calldata proof) external returns (bool currentOperators);

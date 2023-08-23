@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/SafeTransfer.sol';
-import { IERC20, IContractIdentifier } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
-import { ContractAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/ContractAddress.sol';
+import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
+import { IContractIdentifier } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IContractIdentifier.sol';
+import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
+import { ContractAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/ContractAddress.sol';
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IGovernable } from './interfaces/IGovernable.sol';
@@ -466,7 +467,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
     ) external override onlyGovernance {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
-        if (newImlementation != contractId()) revert InvalidImplementation();
+        if (contractId() != IContractIdentifier(newImplementation).contractId()) revert InvalidImplementation();
 
         emit Upgraded(newImplementation);
 
