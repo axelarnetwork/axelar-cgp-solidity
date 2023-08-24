@@ -52,13 +52,15 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
 
     /**
      * @dev Storage slot with the address of the current governance.
+     * bytes32(uint256(keccak256('governance')) - 1);
      */
-    bytes32 internal constant KEY_GOVERNANCE = bytes32(uint256(keccak256('governance')) - 1);
+    bytes32 internal constant KEY_GOVERNANCE = bytes32(0xabea6fd3db56a6e6d0242111b43ebb13d1c42709651c032c7894962023a1f909);
 
     /**
      * @dev Storage slot with the address of the current mint limiter.
+     * bytes32(uint256(keccak256('mint-limiter')) - 1);
      */
-    bytes32 internal constant KEY_MINT_LIMITER = bytes32(uint256(keccak256('mint-limiter')) - 1);
+    bytes32 internal constant KEY_MINT_LIMITER = bytes32(0x627f0c11732837b3240a2de89c0b6343512886dd50978b99c76a68c6416a4d92);
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
