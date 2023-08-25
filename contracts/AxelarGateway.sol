@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.0;
 
-import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
+import { IContractIdentifier } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IContractIdentifier.sol';
+import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
+import { ContractAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/ContractAddress.sol';
+
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IGovernable } from './interfaces/IGovernable.sol';
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
@@ -22,10 +25,11 @@ import { EternalStorage } from './EternalStorage.sol';
  * The contract is managed via the decentralized governance mechanism on the Axelar network.
  * @dev EternalStorage is used to simplify storage for upgradability, and InterchainGovernance module is used for governance.
  */
-contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
+contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, EternalStorage {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
+    using ContractAddress for address;
 
     error InvalidImplementation();
 
@@ -35,17 +39,27 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         External
     }
 
-    /// @dev Removed slots. Should not be reused.
+    /**
+     * @dev Deprecated slots. Should not be reused.
+     */
     // bytes32 internal constant KEY_ALL_TOKENS_FROZEN = keccak256('all-tokens-frozen');
     // bytes32 internal constant PREFIX_TOKEN_FROZEN = keccak256('token-frozen');
 
-    /// @dev Storage slot with the address of the current implementation. `keccak256('eip1967.proxy.implementation') - 1`.
+    /**
+     * @dev Storage slot with the address of the current implementation. `keccak256('eip1967.proxy.implementation') - 1`.
+     */
     bytes32 internal constant KEY_IMPLEMENTATION = bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
 
-    /// @dev Storage slot with the address of the current governance. `keccak256('governance') - 1`.
+    /**
+     * @dev Storage slot with the address of the current governance.
+     * bytes32(uint256(keccak256('governance')) - 1);
+     */
     bytes32 internal constant KEY_GOVERNANCE = bytes32(0xabea6fd3db56a6e6d0242111b43ebb13d1c42709651c032c7894962023a1f909);
 
-    /// @dev Storage slot with the address of the current mint limiter. `keccak256('mint-limiter') - 1`.
+    /**
+     * @dev Storage slot with the address of the current mint limiter.
+     * bytes32(uint256(keccak256('mint-limiter')) - 1);
+     */
     bytes32 internal constant KEY_MINT_LIMITER = bytes32(0x627f0c11732837b3240a2de89c0b6343512886dd50978b99c76a68c6416a4d92);
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
@@ -63,23 +77,31 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     bytes32 internal constant SELECTOR_APPROVE_CONTRACT_CALL_WITH_MINT = keccak256('approveContractCallWithMint');
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
 
-    // solhint-disable-next-line var-name-mixedcase
-    address internal immutable AUTH_MODULE;
-    // solhint-disable-next-line var-name-mixedcase
-    address internal immutable TOKEN_DEPLOYER_IMPLEMENTATION;
+    /**
+     * @notice The address of the authentication module.
+     */
+    address public immutable authModule;
+
+    /**
+     * @notice The address of the token deployer.
+     */
+    address public immutable tokenDeployer;
+
+    address internal immutable implementationAddress;
 
     /**
      * @notice Constructs the AxelarGateway contract.
      * @param authModule_ The address of the authentication module
-     * @param tokenDeployerImplementation_ The address of the token deployer implementation
+     * @param tokenDeployer_ The address of the token deployer
      * @dev Reverts if either of the provided addresses is not a contract.
      */
-    constructor(address authModule_, address tokenDeployerImplementation_) {
+    constructor(address authModule_, address tokenDeployer_) {
         if (authModule_.code.length == 0) revert InvalidAuthModule();
-        if (tokenDeployerImplementation_.code.length == 0) revert InvalidTokenDeployer();
+        if (tokenDeployer_.code.length == 0) revert InvalidTokenDeployer();
 
-        AUTH_MODULE = authModule_;
-        TOKEN_DEPLOYER_IMPLEMENTATION = tokenDeployerImplementation_;
+        authModule = authModule_;
+        tokenDeployer = tokenDeployer_;
+        implementationAddress = address(this);
     }
 
     /**
@@ -109,6 +131,15 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     modifier onlyMintLimiter() {
         if (msg.sender != getAddress(KEY_MINT_LIMITER) && msg.sender != getAddress(KEY_GOVERNANCE)) revert NotMintLimiter();
 
+        _;
+    }
+
+    /**
+     * @notice Modifier to ensure that a function can only be called by the proxy
+     */
+    modifier onlyProxy() {
+        // Prevent the method from being called on the implementation
+        if (address(this) == implementationAddress) revert NotProxy();
         _;
     }
 
@@ -271,14 +302,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     \***********/
 
     /**
-     * @notice Gets the address of the authentication module.
-     * @return address The address of the authentication module.
-     */
-    function authModule() public view override returns (address) {
-        return AUTH_MODULE;
-    }
-
-    /**
      * @notice Gets the address of governance, should be the address of InterchainGovernance.
      * @return address The address of governance.
      */
@@ -292,14 +315,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
      */
     function mintLimiter() public view override returns (address) {
         return getAddress(KEY_MINT_LIMITER);
-    }
-
-    /**
-     * @notice Gets the address of the token deployer.
-     * @return address The address of the token deployer.
-     */
-    function tokenDeployer() public view returns (address) {
-        return TOKEN_DEPLOYER_IMPLEMENTATION;
     }
 
     /**
@@ -454,7 +469,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     ) external override onlyGovernance {
         if (newImplementationCodeHash != newImplementation.codehash) revert InvalidCodeHash();
 
-        if (AxelarGateway(newImplementation).contractId() != contractId()) revert InvalidImplementation();
+        if (contractId() != IContractIdentifier(newImplementation).contractId()) revert InvalidImplementation();
 
         emit Upgraded(newImplementation);
 
@@ -477,17 +492,14 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
      * @param params The encoded parameters containing the governance and mint limiter addresses, as well as the new operator data.
      * @dev Not publicly accessible as it's overshadowed in the proxy.
      */
-    function setup(bytes calldata params) external override {
-        // Prevent setup from being called on a non-proxy (the implementation).
-        if (implementation() == address(0)) revert NotProxy();
-
+    function setup(bytes calldata params) external override onlyProxy {
         (address governance_, address mintLimiter_, bytes memory newOperatorsData) = abi.decode(params, (address, address, bytes));
 
         if (governance_ != address(0)) _transferGovernance(governance_);
         if (mintLimiter_ != address(0)) _transferMintLimiter(mintLimiter_);
 
         if (newOperatorsData.length != 0) {
-            IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
+            IAxelarAuth(authModule).transferOperatorship(newOperatorsData);
 
             emit OperatorshipTransferred(newOperatorsData);
         }
@@ -508,7 +520,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         bytes32 messageHash = ECDSA.toEthSignedMessageHash(keccak256(data));
 
         // returns true for current operators
-        bool allowOperatorshipTransfer = IAxelarAuth(AUTH_MODULE).validateProof(messageHash, proof);
+        bool allowOperatorshipTransfer = IAxelarAuth(authModule).validateProof(messageHash, proof);
 
         uint256 chainId;
         bytes32[] memory commandIds;
@@ -586,7 +598,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
             // If token address is not specified, it indicates a request to deploy one.
             bytes32 salt = keccak256(abi.encodePacked(symbol));
 
-            (bool success, bytes memory data) = TOKEN_DEPLOYER_IMPLEMENTATION.delegatecall(
+            (bool success, bytes memory data) = tokenDeployer.delegatecall(
                 abi.encodeWithSelector(ITokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
             );
 
@@ -637,7 +649,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
         if (_getTokenType(symbol) == TokenType.External) {
             address depositHandlerAddress = _getCreate2Address(salt, keccak256(abi.encodePacked(type(DepositHandler).creationCode)));
 
-            if (_hasCode(depositHandlerAddress)) return;
+            if (depositHandlerAddress.isContract()) return;
 
             DepositHandler depositHandler = new DepositHandler{ salt: salt }();
 
@@ -714,7 +726,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
      * @dev Emits an OperatorshipTransferred event with the new operators' data.
      */
     function transferOperatorship(bytes calldata newOperatorsData, bytes32) external onlySelf {
-        IAxelarAuth(AUTH_MODULE).transferOperatorship(newOperatorsData);
+        IAxelarAuth(authModule).transferOperatorship(newOperatorsData);
 
         emit OperatorshipTransferred(newOperatorsData);
     }
@@ -722,20 +734,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     /********************\
     |* Internal Methods *|
     \********************/
-
-    /**
-     * @notice Checks if an address has associated contract code.
-     * @param addr Address to check for associated contract code
-     * @return bool True if the address has contract code, false otherwise.
-     * @dev Utilizes the codehash of the address to perform the check.
-     * @dev Follows the specification in EIP-1052, compares the codehash with the hash of empty data.
-     */
-    function _hasCode(address addr) internal view returns (bool) {
-        bytes32 codehash = addr.codehash;
-
-        // https://eips.ethereum.org/EIPS/eip-1052
-        return codehash != bytes32(0) && codehash != 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
-    }
 
     function _mintToken(
         string memory symbol,
@@ -795,7 +793,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, EternalStorage {
     }
 
     function _getTokenMintAmountKey(string memory symbol, uint256 day) internal pure returns (bytes32) {
-        // abi.encode to securely hash dynamic-length symbol data followed by day
         return keccak256(abi.encode(PREFIX_TOKEN_MINT_AMOUNT, symbol, day));
     }
 

@@ -125,6 +125,12 @@ describe('AxelarGateway', () => {
                 'InvalidTokenDeployer',
             );
         });
+
+        it('check internal constants', async () => {
+            const testGatewayFactory = await ethers.getContractFactory('TestAxelarGateway', owner);
+
+            await testGatewayFactory.deploy(tokenDeployer.address, tokenDeployer.address).then((d) => d.deployed());
+        });
     });
 
     describe('deployment params', () => {
@@ -204,9 +210,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0x87de6f338991b5539b2b84df7de8dd339789b6bc124775b77b9d489ac1de1f46',
-                berlin: '0x4f80dacb71478745a25e2c387b7b9c49a530cc889fcd0c1b3f33d2325f11199e',
-                london: '0xd810dccbe395393cac8f8aecd489008339fa893d8af8f23d036da5828fb68ca3',
+                istanbul: '0xba3b510dd384f9de4ab69a26efcdf7557acb7446c4da4916f58db030f742d89c',
+                berlin: '0xc60d3aa439d3f10d6e3fcfc27e573e4923f476be80bdb7566d3cc5cba08fc330',
+                london: '0xf246dd1dfd48fb20ce6fb1e28f79b7bbd906d8abbdf056ac645503af91275592',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
