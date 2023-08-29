@@ -52,6 +52,16 @@ interface IAxelarGasService is IUpgradable {
         address refundAddress
     );
 
+    event GasPaidForExpressCall(
+        address indexed sourceAddress,
+        string destinationChain,
+        string destinationAddress,
+        bytes32 indexed payloadHash,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    );
+
     event GasPaidForExpressCallWithToken(
         address indexed sourceAddress,
         string destinationChain,
@@ -60,6 +70,15 @@ interface IAxelarGasService is IUpgradable {
         string symbol,
         uint256 amount,
         address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    );
+
+    event NativeGasPaidForExpressCall(
+        address indexed sourceAddress,
+        string destinationChain,
+        string destinationAddress,
+        bytes32 indexed payloadHash,
         uint256 gasFeeAmount,
         address refundAddress
     );
@@ -130,6 +149,17 @@ interface IAxelarGasService is IUpgradable {
     ) external payable;
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
+    function payGasForExpressCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external;
+
+    // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForExpressCallWithToken(
         address sender,
         string calldata destinationChain,
@@ -141,6 +171,15 @@ interface IAxelarGasService is IUpgradable {
         uint256 gasFeeAmount,
         address refundAddress
     ) external;
+
+    // This is called on the source chain before calling the gateway to execute a remote contract.
+    function payNativeGasForExpressCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address refundAddress
+    ) external payable;
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payNativeGasForExpressCallWithToken(
