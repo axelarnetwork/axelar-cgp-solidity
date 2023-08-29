@@ -5,7 +5,8 @@ set -eu
 echo "Flattening contracts..."
 
 OUTPUT="./artifacts/flattened"
-SOURCE=contracts
+SOURCE="contracts"
+EXCLUDE="contracts/test"
 
 if [ ! -d "$SOURCE" ]; then
     echo "$SOURCE is not a valid folder"
@@ -19,7 +20,11 @@ mkdir -p "$OUTPUT"
 version=$(grep 'version' ./hardhat.config.js | sed "s/version: '//" | sed "s/',$//g")
 
 # Flatten files
-for file in $(find "$SOURCE" -name '*.sol' -print); do
+find "$SOURCE" -name '*.sol' -print | while read -r file; do
+    if echo "$file" | grep -q "$EXCLUDE"; then
+        continue
+    fi
+
     path="${file#${SOURCE}/}"
     mkdir -p "$OUTPUT"/"$(dirname "${path}")"
 
@@ -29,10 +34,10 @@ for file in $(find "$SOURCE" -name '*.sol' -print); do
     # Remove duplicate SPDX identifiers and pragmas that the explorers don't like
     text=$(grep -vE "// SPDX.*" "$OUTPUT/$path" | grep -vE "pragma solidity .*")
 
-    echo "// Source: $SOURCE/$path\n\n" >"$OUTPUT/$path"
-    echo "// SPDX-License-Identifier: MIT\n\n" >>"$OUTPUT/$path"
-    echo "pragma solidity $version;\n\n" >>"$OUTPUT/$path"
-    printf "%s" "$text" >>"$OUTPUT/$path"
+    echo "// Source: $SOURCE/$path\n\n" > "$OUTPUT/$path"
+    echo "// SPDX-License-Identifier: MIT\n\n" >> "$OUTPUT/$path"
+    echo "pragma solidity $version;\n\n" >> "$OUTPUT/$path"
+    printf "%s" "$text" >> "$OUTPUT/$path"
 
     # Prettify source (in particular, remove extra newlines)
     prettier --write "$OUTPUT/$path"

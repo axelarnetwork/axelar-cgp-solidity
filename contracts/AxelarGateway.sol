@@ -473,13 +473,14 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
 
         emit Upgraded(newImplementation);
 
+        _setImplementation(newImplementation);
+
         if (setupParams.length != 0) {
+            // slither-disable-next-line controlled-delegatecall
             (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams));
 
             if (!success) revert SetupFailed();
         }
-
-        _setImplementation(newImplementation);
     }
 
     /**********************\
@@ -499,9 +500,9 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
         if (mintLimiter_ != address(0)) _transferMintLimiter(mintLimiter_);
 
         if (newOperatorsData.length != 0) {
-            IAxelarAuth(authModule).transferOperatorship(newOperatorsData);
-
             emit OperatorshipTransferred(newOperatorsData);
+
+            IAxelarAuth(authModule).transferOperatorship(newOperatorsData);
         }
     }
 
@@ -514,12 +515,14 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @dev Ignores unknown commands or duplicate commandIDs.
      * @dev Emits an Executed event for successfully executed commands.
      */
+    // slither-disable-next-line cyclomatic-complexity
     function execute(bytes calldata input) external override {
         (bytes memory data, bytes memory proof) = abi.decode(input, (bytes, bytes));
 
         bytes32 messageHash = ECDSA.toEthSignedMessageHash(keccak256(data));
 
         // returns true for current operators
+        // slither-disable-next-line reentrancy-no-eth
         bool allowOperatorshipTransfer = IAxelarAuth(authModule).validateProof(messageHash, proof);
 
         uint256 chainId;
@@ -567,8 +570,10 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
             // Prevent a re-entrancy from executing this command before it can be marked as successful.
             _setCommandExecuted(commandId, true);
 
+            // slither-disable-next-line calls-loop,reentrancy-no-eth
             (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i], commandId));
 
+            // slither-disable-next-line reentrancy-events
             if (success) emit Executed(commandId);
             else _setCommandExecuted(commandId, false);
         }
@@ -594,10 +599,17 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
         // Ensure that this symbol has not been taken.
         if (tokenAddresses(symbol) != address(0)) revert TokenAlreadyExists(symbol);
 
+        emit TokenDeployed(symbol, tokenAddress);
+
+        _setTokenMintLimit(symbol, mintLimit);
+
         if (tokenAddress == address(0)) {
             // If token address is not specified, it indicates a request to deploy one.
             bytes32 salt = keccak256(abi.encodePacked(symbol));
 
+            _setTokenType(symbol, TokenType.InternalBurnableFrom);
+
+            // slither-disable-next-line reentrancy-no-eth,controlled-delegatecall
             (bool success, bytes memory data) = tokenDeployer.delegatecall(
                 abi.encodeWithSelector(ITokenDeployer.deployToken.selector, name, symbol, decimals, cap, salt)
             );
@@ -605,8 +617,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
             if (!success) revert TokenDeployFailed(symbol);
 
             tokenAddress = abi.decode(data, (address));
-
-            _setTokenType(symbol, TokenType.InternalBurnableFrom);
         } else {
             // If token address is specified, ensure that there is a contact at the specified address.
             if (tokenAddress.code.length == uint256(0)) revert TokenContractDoesNotExist(tokenAddress);
@@ -616,9 +626,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
         }
 
         _setTokenAddress(symbol, tokenAddress);
-        _setTokenMintLimit(symbol, mintLimit);
-
-        emit TokenDeployed(symbol, tokenAddress);
     }
 
     /**
@@ -726,9 +733,9 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @dev Emits an OperatorshipTransferred event with the new operators' data.
      */
     function transferOperatorship(bytes calldata newOperatorsData, bytes32) external onlySelf {
-        IAxelarAuth(authModule).transferOperatorship(newOperatorsData);
-
         emit OperatorshipTransferred(newOperatorsData);
+
+        IAxelarAuth(authModule).transferOperatorship(newOperatorsData);
     }
 
     /********************\
@@ -859,9 +866,9 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
     \********************/
 
     function _setTokenMintLimit(string memory symbol, uint256 limit) internal {
-        _setUint(_getTokenMintLimitKey(symbol), limit);
-
         emit TokenMintLimitUpdated(symbol, limit);
+
+        _setUint(_getTokenMintLimitKey(symbol), limit);
     }
 
     function _setTokenMintAmount(string memory symbol, uint256 amount) internal {

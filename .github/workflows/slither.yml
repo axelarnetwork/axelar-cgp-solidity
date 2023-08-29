@@ -1,0 +1,16 @@
+name: Slither Static Analysis
+
+on:
+  - pull_request
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.0

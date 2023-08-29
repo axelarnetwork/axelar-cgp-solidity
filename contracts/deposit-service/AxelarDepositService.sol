@@ -38,7 +38,6 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
 
     // @dev This method is meant to be called directly by user to send native token cross-chain
     function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable {
-        address wrappedTokenAddress = wrappedToken();
         uint256 amount = msg.value;
 
         if (amount == 0) revert NothingDeposited();
@@ -47,6 +46,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         IWETH9(wrappedTokenAddress).deposit{ value: amount }();
         // Not doing safe approval as gateway will revert anyway if approval fails
         // We expect allowance to always be 0 at this point
+        // slither-disable-next-line unused-return
         IWETH9(wrappedTokenAddress).approve(gateway, amount);
         // Sending the token trough the gateway
         IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
@@ -147,8 +147,10 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
             if (refundTokens[i] == intendedToken && msg.sender != refundAddress) continue;
 
             // Saving to public storage to be accessed by the DepositReceiver
+            // slither-disable-next-line costly-loop
             refundToken = refundTokens[i];
             // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
+            // slither-disable-next-line reentrancy-benign
             new DepositReceiver{ salt: salt }(
                 abi.encodeWithSelector(
                     ReceiverImplementation.receiveAndSendToken.selector,
@@ -198,8 +200,10 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
 
         uint256 tokensLength = refundTokens.length;
         for (uint256 i; i < tokensLength; ++i) {
+            // slither-disable-next-line costly-loop
             refundToken = refundTokens[i];
             // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
+            // slither-disable-next-line reentrancy-benign
             new DepositReceiver{ salt: salt }(
                 abi.encodeWithSelector(
                     ReceiverImplementation.receiveAndSendNative.selector,
@@ -235,15 +239,15 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         address payable recipient,
         address[] calldata refundTokens
     ) external {
-        address wrappedTokenAddress = wrappedToken();
-
         uint256 tokensLength = refundTokens.length;
         for (uint256 i; i < tokensLength; ++i) {
             // Allowing only the refundAddress to refund the intended WETH-like token
             if (refundTokens[i] == wrappedTokenAddress && msg.sender != refundAddress) continue;
 
+            // slither-disable-next-line costly-loop
             refundToken = refundTokens[i];
             // NOTE: `DepositReceiver` is destroyed in the same runtime context that it is deployed.
+            // slither-disable-next-line reentrancy-benign
             new DepositReceiver{ salt: salt }(
                 abi.encodeWithSelector(ReceiverImplementation.receiveAndUnwrapNative.selector, refundAddress, recipient),
                 refundAddress
