@@ -80,6 +80,7 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
         if (epochForHash[newOperatorsHash] != 0) revert DuplicateOperators();
 
         uint256 epoch = currentEpoch + 1;
+        // slither-disable-next-line costly-loop
         currentEpoch = epoch;
         hashForEpoch[epoch] = newOperatorsHash;
         epochForHash[newOperatorsHash] = epoch;

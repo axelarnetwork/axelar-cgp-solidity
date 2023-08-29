@@ -570,7 +570,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
             // Prevent a re-entrancy from executing this command before it can be marked as successful.
             _setCommandExecuted(commandId, true);
 
-            // slither-disable-next-line calls-loop reentrancy-no-eth
+            // slither-disable-next-line calls-loop,reentrancy-no-eth
             (bool success, ) = address(this).call(abi.encodeWithSelector(commandSelector, params[i], commandId));
 
             // slither-disable-next-line reentrancy-events

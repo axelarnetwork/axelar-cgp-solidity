@@ -1,4 +1,4 @@
 {
     "detectors_to_exclude": "assembly,low-level-calls,solc-version,missing-zero-check,timestamp",
-    "filter_paths": "(contracts/(auth/AxelarAuthWeighted|test|util/Proxy|.*ERC20.*|.*Deposit(Handler|Receiver).*|EternalStorage.*)|node_modules/)"
+    "filter_paths": "(contracts/(test|util/Proxy|.*ERC20.*|.*Deposit(Handler|Receiver).*|EternalStorage.*)|node_modules/)"
 }
