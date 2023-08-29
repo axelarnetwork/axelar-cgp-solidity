@@ -35,8 +35,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
-
         emit GasPaidForContractCall(
             sender,
             destinationChain,
@@ -46,6 +44,8 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
             gasFeeAmount,
             refundAddress
         );
+
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
@@ -60,8 +60,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
-
         emit GasPaidForContractCallWithToken(
             sender,
             destinationChain,
@@ -73,6 +71,8 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
             gasFeeAmount,
             refundAddress
         );
+
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
@@ -124,8 +124,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
-
         emit GasPaidForExpressCallWithToken(
             sender,
             destinationChain,
@@ -137,6 +135,8 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
             gasFeeAmount,
             refundAddress
         );
+
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
@@ -171,9 +171,9 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
-
         emit GasAdded(txHash, logIndex, gasToken, gasFeeAmount, refundAddress);
+
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
     function addNativeGas(
@@ -194,9 +194,9 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
-
         emit ExpressGasAdded(txHash, logIndex, gasToken, gasFeeAmount, refundAddress);
+
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
     // This can be called on the source chain after calling the gateway to express execute a remote contract.
@@ -228,6 +228,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
             if (token == address(0)) {
                 if (amount <= address(this).balance) receiver.safeNativeTransfer(amount);
             } else {
+                // slither-disable-next-line calls-loop
                 if (amount <= IERC20(token).balanceOf(address(this))) IERC20(token).safeTransfer(receiver, amount);
             }
         }
@@ -261,13 +262,13 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     ) private {
         if (receiver == address(0)) revert InvalidAddress();
 
+        emit Refunded(txHash, logIndex, receiver, token, amount);
+
         if (token == address(0)) {
             receiver.safeNativeTransfer(amount);
         } else {
             IERC20(token).safeTransfer(receiver, amount);
         }
-
-        emit Refunded(txHash, logIndex, receiver, token, amount);
     }
 
     function contractId() external pure returns (bytes32) {
