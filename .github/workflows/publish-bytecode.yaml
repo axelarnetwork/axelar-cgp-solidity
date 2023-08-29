@@ -32,6 +32,9 @@ jobs:
       - name: Flatten contracts
         run: npm run flatten
 
+      - name: Clean artifacts
+        run: npm run clean:artifacts
+
       - name: Get the tag
         id: release_tag
         run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
