@@ -1,0 +1,4 @@
+{
+    "detectors_to_exclude": "assembly,low-level-calls,solc-version,missing-zero-check,timestamp",
+    "filter_paths": "(contracts/test/|node_modules/)"
+}

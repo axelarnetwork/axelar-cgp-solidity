@@ -37,10 +37,12 @@ contract ReceiverImplementation is DepositServiceBase {
         uint256 amount = IERC20(tokenAddress).balanceOf(address(this));
 
         if (tokenAddress == address(0)) revert InvalidSymbol();
+        // slither-disable-next-line incorrect-equality
         if (amount == 0) revert NothingDeposited();
 
         // Not doing safe approval as gateway will revert anyway if approval fails
         // We expect allowance to always be 0 at this point
+        // slither-disable-next-line unused-return
         IERC20(tokenAddress).approve(gateway, amount);
         // Sending the token trough the gateway
         IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, symbol, amount);
@@ -61,16 +63,17 @@ contract ReceiverImplementation is DepositServiceBase {
             return;
         }
 
-        address wrappedTokenAddress = wrappedToken();
         uint256 amount = address(this).balance;
 
         if (wrappedTokenAddress == address(0)) revert WrappedTokenNotSupported();
+        // slither-disable-next-line incorrect-equality
         if (amount == 0) revert NothingDeposited();
 
         // Wrapping the native currency and into WETH-like
         IWETH9(wrappedTokenAddress).deposit{ value: amount }();
         // Not doing safe approval as gateway will revert anyway if approval fails
         // We expect allowance to always be 0 at this point
+        // slither-disable-next-line unused-return
         IWETH9(wrappedTokenAddress).approve(gateway, amount);
         // Sending the token trough the gateway
         IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
@@ -79,7 +82,6 @@ contract ReceiverImplementation is DepositServiceBase {
     // @dev This function is used for delegate call by DepositReceiver
     // Context: msg.sender == AxelarDepositService, this == DepositReceiver
     function receiveAndUnwrapNative(address refundAddress, address recipient) external {
-        address wrappedTokenAddress = wrappedToken();
         address refund = IAxelarDepositService(msg.sender).refundToken();
 
         if (refund != address(0)) {
@@ -91,6 +93,7 @@ contract ReceiverImplementation is DepositServiceBase {
         uint256 amount = IERC20(wrappedTokenAddress).balanceOf(address(this));
 
         if (wrappedTokenAddress == address(0)) revert WrappedTokenNotSupported();
+        // slither-disable-next-line incorrect-equality
         if (amount == 0) revert NothingDeposited();
 
         // Unwrapping the token into native currency and sending it to the recipient
