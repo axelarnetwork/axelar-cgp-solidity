@@ -210,9 +210,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0xba3b510dd384f9de4ab69a26efcdf7557acb7446c4da4916f58db030f742d89c',
-                berlin: '0xc60d3aa439d3f10d6e3fcfc27e573e4923f476be80bdb7566d3cc5cba08fc330',
-                london: '0xf246dd1dfd48fb20ce6fb1e28f79b7bbd906d8abbdf056ac645503af91275592',
+                istanbul: '0x63eee354279141dcd822b77246163d226c18223547125852e9bc80538fb158e2',
+                berlin: '0xe7cd4fbc15cc77646b880b39ba8c9ed28a576e936449fcf27a39fe848d2f55eb',
+                london: '0xe5b9ad3cd2679ee9fdcfcd07ecd5275a9844272d38c994bc44b52de59962f7c7',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
