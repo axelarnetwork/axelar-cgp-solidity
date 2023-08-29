@@ -121,9 +121,9 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 gasFeeAmount,
         address refundAddress
     ) external override {
-        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
-
         emit GasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), gasToken, gasFeeAmount, refundAddress);
+
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.
