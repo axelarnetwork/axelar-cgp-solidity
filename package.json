@@ -6,6 +6,7 @@
   "scripts": {
     "build": "hardhat clean && hardhat compile && npm run copy:interfaces",
     "copy:interfaces": "rm -rf interfaces/ && mkdir interfaces && cp artifacts/contracts/interfaces/*/*.json interfaces/ && rm interfaces/*.dbg.json",
+    "clean:artifacts": "rm -rf artifacts/build-info artifacts/build-info artifacts/*/test artifacts/contracts/*/*.dbg.json artifacts/contracts/*/*/*.dbg.json",
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
