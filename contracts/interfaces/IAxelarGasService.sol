@@ -11,7 +11,6 @@ import { IUpgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/i
  * @dev This interface inherits IUpgradable
  */
 interface IAxelarGasService is IUpgradable {
-    error NothingReceived();
     error InvalidAddress();
     error NotCollector();
     error InvalidAmounts();

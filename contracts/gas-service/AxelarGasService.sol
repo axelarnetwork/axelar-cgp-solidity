@@ -126,8 +126,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         bytes calldata payload,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
@@ -151,8 +149,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 amount,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasPaidForContractCallWithToken(
             sender,
             destinationChain,
@@ -245,8 +241,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         bytes calldata payload,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
@@ -270,8 +264,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 amount,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasPaidForExpressCallWithToken(
             sender,
             destinationChain,
@@ -317,8 +309,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 logIndex,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
@@ -355,8 +345,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 logIndex,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeExpressGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
