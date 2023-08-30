@@ -106,10 +106,16 @@ dist
 # TernJS port file
 .tern-port
 
+# IDE
+.idea
+
+# Build
 build/
 cache/
 artifacts/
 /interfaces
 
+# Local env files
 info/local.json
+# Private keys
 keys.json
