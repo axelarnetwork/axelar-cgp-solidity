@@ -24,13 +24,13 @@
     "axelar"
   ],
   "author": "axelar-network",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/axelarnetwork/axelar-cgp-solidity/issues"
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "5.1.0"
+    "@axelar-network/axelar-gmp-sdk-solidity": "5.2.0"
   },
   "devDependencies": {
     "@axelar-network/axelar-contract-deployments": "git://github.com/axelarnetwork/axelar-contract-deployments.git#74b942fdf10875a27b532d9bd6dfe2bd6db8a094",
@@ -53,7 +53,7 @@
     "solidity-coverage": "^0.8.4"
   },
   "engines": {
-    "node": "^16.0.0 || ^18.0.0"
+    "node": ">=16"
   },
   "files": [
     "artifacts",

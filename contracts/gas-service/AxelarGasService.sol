@@ -112,6 +112,20 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         );
     }
 
+    function payGasForExpressCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external override {
+        emit GasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), gasToken, gasFeeAmount, refundAddress);
+
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
+    }
+
     // This is called on the source chain before calling the gateway to execute a remote contract.
     function payGasForExpressCallWithToken(
         address sender,
@@ -137,6 +151,18 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         );
 
         IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
+    }
+
+    function payNativeGasForExpressCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address refundAddress
+    ) external payable override {
+        if (msg.value == 0) revert NothingReceived();
+
+        emit NativeGasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
     // This is called on the source chain before calling the gateway to execute a remote contract.

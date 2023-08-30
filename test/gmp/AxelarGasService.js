@@ -159,6 +159,24 @@ describe('AxelarGasService', () => {
             await expect(
                 gasService
                     .connect(userWallet)
+                    .payGasForExpressCall(
+                        userWallet.address,
+                        destinationChain,
+                        destinationAddress,
+                        payload,
+                        gasToken,
+                        gasFeeAmount,
+                        userWallet.address,
+                    ),
+            )
+                .to.emit(gasService, 'GasPaidForExpressCall')
+                .withArgs(userWallet.address, destinationChain, destinationAddress, payloadHash, gasToken, gasFeeAmount, userWallet.address)
+                .and.to.emit(testToken, 'Transfer')
+                .withArgs(userWallet.address, gasService.address, gasFeeAmount);
+
+            await expect(
+                gasService
+                    .connect(userWallet)
                     .payGasForExpressCallWithToken(
                         userWallet.address,
                         destinationChain,
@@ -185,6 +203,17 @@ describe('AxelarGasService', () => {
                 )
                 .and.to.emit(testToken, 'Transfer')
                 .withArgs(userWallet.address, gasService.address, gasFeeAmount);
+
+            await expect(
+                await gasService
+                    .connect(userWallet)
+                    .payNativeGasForExpressCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address, {
+                        value: nativeGasFeeAmount,
+                    }),
+            )
+                .to.emit(gasService, 'NativeGasPaidForExpressCall')
+                .withArgs(userWallet.address, destinationChain, destinationAddress, payloadHash, nativeGasFeeAmount, userWallet.address)
+                .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
 
             await expect(
                 await gasService
@@ -244,6 +273,12 @@ describe('AxelarGasService', () => {
                         amount,
                         userWallet.address,
                     ),
+            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
+
+            await expect(
+                gasService
+                    .connect(userWallet)
+                    .payNativeGasForExpressCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address),
             ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
 
             await expect(
