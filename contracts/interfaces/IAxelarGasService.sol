@@ -58,6 +58,16 @@ interface IAxelarGasService is IUpgradable {
         address refundAddress
     );
 
+    event GasPaidForExpressCall(
+        address indexed sourceAddress,
+        string destinationChain,
+        string destinationAddress,
+        bytes32 indexed payloadHash,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    );
+
     event GasPaidForExpressCallWithToken(
         address indexed sourceAddress,
         string destinationChain,
@@ -66,6 +76,15 @@ interface IAxelarGasService is IUpgradable {
         string symbol,
         uint256 amount,
         address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    );
+
+    event NativeGasPaidForExpressCall(
+        address indexed sourceAddress,
+        string destinationChain,
+        string destinationAddress,
+        bytes32 indexed payloadHash,
         uint256 gasFeeAmount,
         address refundAddress
     );
@@ -176,6 +195,27 @@ interface IAxelarGasService is IUpgradable {
     ) external payable;
 
     /**
+     * @notice Pay for gas using ERC20 tokens for an express contract call on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to express execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call
+     * @param gasToken The address of the ERC20 token used to pay for gas
+     * @param gasFeeAmount The amount of tokens to pay for gas
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
+    function payGasForExpressCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external;
+
+    /**
      * @notice Pay for gas using ERC20 tokens for an express contract call with tokens on a destination chain.
      * @dev This function is called on the source chain before calling the gateway to express execute a remote contract.
      * @param sender The address making the payment
@@ -199,6 +239,23 @@ interface IAxelarGasService is IUpgradable {
         uint256 gasFeeAmount,
         address refundAddress
     ) external;
+
+    /**
+     * @notice Pay for gas using native currency for an express contract call on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
+    function payNativeGasForExpressCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address refundAddress
+    ) external payable;
 
     /**
      * @notice Pay for gas using native currency for an express contract call with tokens on a destination chain.

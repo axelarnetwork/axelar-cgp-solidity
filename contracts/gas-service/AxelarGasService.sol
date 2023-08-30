@@ -165,6 +165,31 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     }
 
     /**
+     * @notice Pay for gas using ERC20 tokens for an express contract call on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to express execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call
+     * @param gasToken The address of the ERC20 token used to pay for gas
+     * @param gasFeeAmount The amount of tokens to pay for gas
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
+    function payGasForExpressCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address gasToken,
+        uint256 gasFeeAmount,
+        address refundAddress
+    ) external override {
+        emit GasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), gasToken, gasFeeAmount, refundAddress);
+
+        IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
+    }
+
+    /**
      * @notice Pay for gas using ERC20 tokens for an express contract call with tokens on a destination chain.
      * @dev This function is called on the source chain before calling the gateway to express execute a remote contract.
      * @param sender The address making the payment
@@ -201,6 +226,27 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         );
 
         IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
+    }
+
+    /**
+     * @notice Pay for gas using native currency for an express contract call on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
+    function payNativeGasForExpressCall(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        address refundAddress
+    ) external payable override {
+        if (msg.value == 0) revert NothingReceived();
+
+        emit NativeGasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
     /**
