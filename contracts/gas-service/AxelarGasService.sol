@@ -3,7 +3,8 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
-import { SafeTokenTransfer, SafeTokenTransferFrom, SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
+import { SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
+import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeNativeTransfer.sol';
 import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
 import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 
@@ -125,8 +126,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         bytes calldata payload,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
@@ -150,8 +149,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 amount,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasPaidForContractCallWithToken(
             sender,
             destinationChain,
@@ -244,8 +241,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         bytes calldata payload,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
@@ -269,8 +264,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 amount,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasPaidForExpressCallWithToken(
             sender,
             destinationChain,
@@ -316,8 +309,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 logIndex,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
@@ -354,8 +345,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         uint256 logIndex,
         address refundAddress
     ) external payable override {
-        if (msg.value == 0) revert NothingReceived();
-
         emit NativeExpressGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 

@@ -243,59 +243,6 @@ describe('AxelarGasService', () => {
                 .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
         });
 
-        it('should revert when no ether is sent with native gas payment calls', async () => {
-            const destinationChain = 'ethereum';
-            const destinationAddress = ownerWallet.address;
-            const payload = defaultAbiCoder.encode(['address', 'address'], [ownerWallet.address, userWallet.address]);
-            const symbol = 'USDC';
-            const amount = 100000;
-
-            await testToken
-                .connect(userWallet)
-                .approve(gasService.address, 1e6)
-                .then((tx) => tx.wait());
-
-            await expect(
-                gasService
-                    .connect(userWallet)
-                    .payNativeGasForContractCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address),
-            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
-
-            await expect(
-                gasService
-                    .connect(userWallet)
-                    .payNativeGasForContractCallWithToken(
-                        userWallet.address,
-                        destinationChain,
-                        destinationAddress,
-                        payload,
-                        symbol,
-                        amount,
-                        userWallet.address,
-                    ),
-            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
-
-            await expect(
-                gasService
-                    .connect(userWallet)
-                    .payNativeGasForExpressCall(userWallet.address, destinationChain, destinationAddress, payload, userWallet.address),
-            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
-
-            await expect(
-                gasService
-                    .connect(userWallet)
-                    .payNativeGasForExpressCallWithToken(
-                        userWallet.address,
-                        destinationChain,
-                        destinationAddress,
-                        payload,
-                        symbol,
-                        amount,
-                        userWallet.address,
-                    ),
-            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
-        });
-
         it('should allow to collect accumulated payments and refund', async () => {
             const destinationChain = 'ethereum';
             const destinationAddress = ownerWallet.address;
@@ -597,20 +544,6 @@ describe('AxelarGasService', () => {
                 .to.emit(gasService, 'NativeExpressGasAdded')
                 .withArgs(txHash, logIndex, nativeGasFeeAmount, userWallet.address)
                 .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
-        });
-
-        it('should revert if no ether is sent with add native gas calls both normal and express', async () => {
-            const txHash = keccak256(defaultAbiCoder.encode(['string'], ['random tx hash']));
-            const logIndex = 13;
-
-            await expect(gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address)).to.be.revertedWithCustomError(
-                gasService,
-                'NothingReceived',
-            );
-
-            await expect(
-                gasService.connect(userWallet).addNativeExpressGas(txHash, logIndex, userWallet.address),
-            ).to.be.revertedWithCustomError(gasService, 'NothingReceived');
         });
 
         it('should preserve the bytecode [ @skip-on-coverage ]', async () => {
