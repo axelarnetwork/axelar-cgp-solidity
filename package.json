@@ -24,7 +24,7 @@
     "axelar"
   ],
   "author": "axelar-network",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/axelarnetwork/axelar-cgp-solidity/issues"
   },
@@ -53,7 +53,7 @@
     "solidity-coverage": "^0.8.4"
   },
   "engines": {
-    "node": "^16.0.0 || ^18.0.0"
+    "node": ">=16"
   },
   "files": [
     "artifacts",
