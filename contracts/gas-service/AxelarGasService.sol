@@ -7,7 +7,12 @@ import { SafeTokenTransfer, SafeTokenTransferFrom, SafeNativeTransfer } from '@a
 import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
 import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 
-// This should be owned by the microservice that is paying for gas.
+/**
+ * @title AxelarGasService
+ * @notice This contract manages gas payments and refunds for cross-chain communication on the Axelar network.
+ * @dev The owner address of this contract should be the microservice that pays for gas.
+ * @dev Users pay gas for cross-chain calls, and the gasCollector can collect accumulated fees and/or refund users if needed.
+ */
 contract AxelarGasService is Upgradable, IAxelarGasService {
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
@@ -15,17 +20,34 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
 
     address public immutable gasCollector;
 
+    /**
+     * @notice Constructs the AxelarGasService contract.
+     * @param gasCollector_ The address of the gas collector
+     */
     constructor(address gasCollector_) {
         gasCollector = gasCollector_;
     }
 
+    /**
+     * @notice Modifier that ensures the caller is the designated gas collector.
+     */
     modifier onlyCollector() {
         if (msg.sender != gasCollector) revert NotCollector();
 
         _;
     }
 
-    // This is called on the source chain before calling the gateway to execute a remote contract.
+    /**
+     * @notice Pay for gas using ERC20 tokens for a contract call on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call
+     * @param gasToken The address of the ERC20 token used to pay for gas
+     * @param gasFeeAmount The amount of tokens to pay for gas
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function payGasForContractCall(
         address sender,
         string calldata destinationChain,
@@ -48,7 +70,19 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
-    // This is called on the source chain before calling the gateway to execute a remote contract.
+    /**
+     * @notice Pay for gas using ERC20 tokens for a contract call with tokens on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call with tokens will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call with tokens
+     * @param symbol The symbol of the token to be sent with the call
+     * @param amount The amount of tokens to be sent with the call
+     * @param gasToken The address of the ERC20 token used to pay for gas
+     * @param gasFeeAmount The amount of tokens to pay for gas
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function payGasForContractCallWithToken(
         address sender,
         string calldata destinationChain,
@@ -75,7 +109,15 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
-    // This is called on the source chain before calling the gateway to execute a remote contract.
+    /**
+     * @notice Pay for gas using native currency for a contract call on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function payNativeGasForContractCall(
         address sender,
         string calldata destinationChain,
@@ -88,7 +130,17 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
-    // This is called on the source chain before calling the gateway to execute a remote contract.
+    /**
+     * @notice Pay for gas using native currency for a contract call with tokens on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call with tokens will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call with tokens
+     * @param symbol The symbol of the token to be sent with the call
+     * @param amount The amount of tokens to be sent with the call
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function payNativeGasForContractCallWithToken(
         address sender,
         string calldata destinationChain,
@@ -112,7 +164,19 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         );
     }
 
-    // This is called on the source chain before calling the gateway to execute a remote contract.
+    /**
+     * @notice Pay for gas using ERC20 tokens for an express contract call with tokens on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to express execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call with tokens will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call with tokens
+     * @param symbol The symbol of the token to be sent with the call
+     * @param amount The amount of tokens to be sent with the call
+     * @param gasToken The address of the ERC20 token used to pay for gas
+     * @param gasFeeAmount The amount of tokens to pay for gas
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function payGasForExpressCallWithToken(
         address sender,
         string calldata destinationChain,
@@ -139,7 +203,17 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
-    // This is called on the source chain before calling the gateway to execute a remote contract.
+    /**
+     * @notice Pay for gas using native currency for an express contract call with tokens on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call with tokens will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call with tokens
+     * @param symbol The symbol of the token to be sent with the call
+     * @param amount The amount of tokens to be sent with the call
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function payNativeGasForExpressCallWithToken(
         address sender,
         string calldata destinationChain,
@@ -163,7 +237,15 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         );
     }
 
-    // This can be called on the source chain after calling the gateway to execute a remote contract.
+    /**
+     * @notice Add additional gas payment using ERC20 tokens after initiating a cross-chain call.
+     * @dev This function can be called on the source chain after calling the gateway to execute a remote contract.
+     * @param txHash The transaction hash of the cross-chain call
+     * @param logIndex The log index for the cross-chain call
+     * @param gasToken The ERC20 token address used to add gas
+     * @param gasFeeAmount The amount of tokens to add as gas
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function addGas(
         bytes32 txHash,
         uint256 logIndex,
@@ -176,6 +258,13 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
+    /**
+     * @notice Add additional gas payment using native currency after initiating a cross-chain call.
+     * @dev This function can be called on the source chain after calling the gateway to execute a remote contract.
+     * @param txHash The transaction hash of the cross-chain call
+     * @param logIndex The log index for the cross-chain call
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function addNativeGas(
         bytes32 txHash,
         uint256 logIndex,
@@ -186,7 +275,15 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         emit NativeGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
-    // This can be called on the source chain after calling the gateway to express execute a remote contract.
+    /**
+     * @notice Add additional gas payment using ERC20 tokens after initiating an express cross-chain call.
+     * @dev This function can be called on the source chain after calling the gateway to express execute a remote contract.
+     * @param txHash The transaction hash of the cross-chain call
+     * @param logIndex The log index for the cross-chain call
+     * @param gasToken The ERC20 token address used to add gas
+     * @param gasFeeAmount The amount of tokens to add as gas
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function addExpressGas(
         bytes32 txHash,
         uint256 logIndex,
@@ -199,7 +296,13 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         IERC20(gasToken).safeTransferFrom(msg.sender, address(this), gasFeeAmount);
     }
 
-    // This can be called on the source chain after calling the gateway to express execute a remote contract.
+    /**
+     * @notice Add additional gas payment using native currency after initiating an express cross-chain call.
+     * @dev This function can be called on the source chain after calling the gateway to express execute a remote contract.
+     * @param txHash The transaction hash of the cross-chain call
+     * @param logIndex The log index for the cross-chain call
+     * @param refundAddress The address where refunds, if any, should be sent
+     */
     function addNativeExpressGas(
         bytes32 txHash,
         uint256 logIndex,
@@ -210,6 +313,13 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         emit NativeExpressGasAdded(txHash, logIndex, msg.value, refundAddress);
     }
 
+    /**
+     * @notice Allows the gasCollector to collect accumulated fees from the contract.
+     * @dev Use address(0) as the token address for native currency.
+     * @param receiver The address to receive the collected fees
+     * @param tokens Array of token addresses to be collected
+     * @param amounts Array of amounts to be collected for each respective token address
+     */
     function collectFees(
         address payable receiver,
         address[] calldata tokens,
@@ -234,7 +344,9 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         }
     }
 
-    // deprecated
+    /**
+     * @dev Deprecated refund function, kept for backward compatibility.
+     */
     function refund(
         address payable receiver,
         address token,
@@ -243,6 +355,16 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         _refund(bytes32(0), 0, receiver, token, amount);
     }
 
+    /**
+     * @notice Refunds gas payment to the receiver in relation to a specific cross-chain transaction.
+     * @dev Only callable by the gasCollector.
+     * @dev Use address(0) as the token address to refund native currency.
+     * @param txHash The transaction hash of the cross-chain call
+     * @param logIndex The log index for the cross-chain call
+     * @param receiver The address to receive the refund
+     * @param token The token address to be refunded
+     * @param amount The amount to refund
+     */
     function refund(
         bytes32 txHash,
         uint256 logIndex,
@@ -253,6 +375,9 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         _refund(txHash, logIndex, receiver, token, amount);
     }
 
+    /**
+     * @dev Internal function to implement gas refund logic.
+     */
     function _refund(
         bytes32 txHash,
         uint256 logIndex,
@@ -271,6 +396,10 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         }
     }
 
+    /**
+     * @notice Returns a unique identifier for the contract.
+     * @return bytes32 Hash of the contract identifier
+     */
     function contractId() external pure returns (bytes32) {
         return keccak256('axelar-gas-service');
     }
