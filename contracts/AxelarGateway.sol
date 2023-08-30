@@ -8,7 +8,7 @@ import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar
 import { ContractAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/ContractAddress.sol';
 
 import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
-import { IGovernable } from './interfaces/IGovernable.sol';
+import { IGovernable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IGovernable.sol';
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
