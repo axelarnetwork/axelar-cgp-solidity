@@ -210,9 +210,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0xc0cc57131eeecf869be49a4e161b6f47ca286af0589f3f8189c24247fa80128d',
-                berlin: '0x43807c843cdef82c632b27a8a6d61db9e2390ad03c5680db0a5fb374e053b3c2',
-                london: '0xb3779118fa0e629bda3f81d89b6a5bc95686c9104007a5acbc81a9d3c0d8c78a',
+                istanbul: '0x5f174465da130c177daad4bcfee8f3099014de415e5429dda2665f69e72c1fd5',
+                berlin: '0xdb2808a79b5e8a87c3b169869e3c033f6ef067bccb66fb8febdeb0892bf6c454',
+                london: '0xd0f4624a22fd88f2bbae0757c6e8bdd918dd3ca38204d2bdcb964900e3493f17',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -665,6 +665,7 @@ describe('AxelarGateway', () => {
 
             await expect(tx)
                 .to.emit(gateway, 'TokenDeployed')
+                .withArgs(symbol, expectedTokenAddress)
                 .and.to.emit(gateway, 'Executed')
                 .withArgs(commandID)
                 .and.to.emit(gateway, 'TokenMintLimitUpdated')
@@ -688,6 +689,9 @@ describe('AxelarGateway', () => {
             const firstCommandID = getRandomID();
             symbol = `AAT${getRandomInt(1e10)}`;
 
+            const { data: tokenInitCode } = burnableMintableCappedERC20Factory.getDeployTransaction(name, symbol, decimals, cap);
+            const expectedTokenAddress = getCreate2Address(gateway.address, id(symbol), keccak256(tokenInitCode));
+
             const firstData = buildCommandBatch(
                 await getChainId(),
                 [firstCommandID],
@@ -705,6 +709,7 @@ describe('AxelarGateway', () => {
 
             await expect(gateway.execute(firstInput, getGasOptions()))
                 .to.emit(gateway, 'TokenDeployed')
+                .withArgs(symbol, expectedTokenAddress)
                 .and.to.emit(gateway, 'Executed')
                 .withArgs(firstCommandID);
 
@@ -1312,6 +1317,9 @@ describe('AxelarGateway', () => {
             const decimals = 18;
             const cap = 1e8;
 
+            const { data: tokenInitCode } = burnableMintableCappedERC20Factory.getDeployTransaction(name, symbol, decimals, cap);
+            const expectedTokenAddress = getCreate2Address(gateway.address, id(symbol), keccak256(tokenInitCode));
+
             const deployData = buildCommandBatch(
                 await getChainId(),
                 [getRandomID()],
@@ -1327,7 +1335,9 @@ describe('AxelarGateway', () => {
                 operators.slice(0, threshold),
             );
 
-            await expect(gateway.execute(deployAndMintInput, getGasOptions())).to.emit(gateway, 'TokenDeployed');
+            await expect(gateway.execute(deployAndMintInput, getGasOptions()))
+                .to.emit(gateway, 'TokenDeployed')
+                .withArgs(symbol, expectedTokenAddress);
 
             const tokenAddress = await gateway.tokenAddresses(symbol);
             const token = burnableMintableCappedERC20Factory.attach(tokenAddress);

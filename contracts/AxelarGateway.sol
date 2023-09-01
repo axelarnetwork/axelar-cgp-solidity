@@ -599,8 +599,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
         // Ensure that this symbol has not been taken.
         if (tokenAddresses(symbol) != address(0)) revert TokenAlreadyExists(symbol);
 
-        emit TokenDeployed(symbol, tokenAddress);
-
         _setTokenMintLimit(symbol, mintLimit);
 
         if (tokenAddress == address(0)) {
@@ -624,6 +622,9 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
             // Mark that this symbol is an external token, which is needed to differentiate between operations on mint and burn.
             _setTokenType(symbol, TokenType.External);
         }
+
+        // slither-disable-next-line reentrancy-events
+        emit TokenDeployed(symbol, tokenAddress);
 
         _setTokenAddress(symbol, tokenAddress);
     }
