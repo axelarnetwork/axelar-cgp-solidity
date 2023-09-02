@@ -51,14 +51,12 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
     bytes32 internal constant KEY_IMPLEMENTATION = bytes32(0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc);
 
     /**
-     * @dev Storage slot with the address of the current governance.
-     * bytes32(uint256(keccak256('governance')) - 1);
+     * @dev Storage slot with the address of the current governance. keccak256('governance')) - 1
      */
     bytes32 internal constant KEY_GOVERNANCE = bytes32(0xabea6fd3db56a6e6d0242111b43ebb13d1c42709651c032c7894962023a1f909);
 
     /**
-     * @dev Storage slot with the address of the current mint limiter.
-     * bytes32(uint256(keccak256('mint-limiter')) - 1);
+     * @dev Storage slot with the address of the current mint limiter. keccak256('mint-limiter')) - 1
      */
     bytes32 internal constant KEY_MINT_LIMITER = bytes32(0x627f0c11732837b3240a2de89c0b6343512886dd50978b99c76a68c6416a4d92);
 
@@ -77,23 +75,14 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
     bytes32 internal constant SELECTOR_APPROVE_CONTRACT_CALL_WITH_MINT = keccak256('approveContractCallWithMint');
     bytes32 internal constant SELECTOR_TRANSFER_OPERATORSHIP = keccak256('transferOperatorship');
 
-    /**
-     * @notice The address of the authentication module.
-     */
     address public immutable authModule;
-
-    /**
-     * @notice The address of the token deployer.
-     */
     address public immutable tokenDeployer;
-
-    address internal immutable implementationAddress;
+    address internal immutable implementationAddress = address(this);
 
     /**
      * @notice Constructs the AxelarGateway contract.
      * @param authModule_ The address of the authentication module
      * @param tokenDeployer_ The address of the token deployer
-     * @dev Reverts if either of the provided addresses is not a contract.
      */
     constructor(address authModule_, address tokenDeployer_) {
         if (authModule_.code.length == 0) revert InvalidAuthModule();
@@ -101,12 +90,10 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
 
         authModule = authModule_;
         tokenDeployer = tokenDeployer_;
-        implementationAddress = address(this);
     }
 
     /**
      * @notice Ensures that the caller of the function is the gateway contract itself.
-     * @dev Reverts with the NotSelf error if the caller is not the gateway contract itself.
      */
     modifier onlySelf() {
         if (msg.sender != address(this)) revert NotSelf();
@@ -116,7 +103,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
 
     /**
      * @notice Ensures that the caller of the function is the governance address.
-     * @dev Reverts with the NotGovernance error if the caller is not the governance address.
      */
     modifier onlyGovernance() {
         if (msg.sender != getAddress(KEY_GOVERNANCE)) revert NotGovernance();
@@ -126,7 +112,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
 
     /**
      * @notice Ensures that the caller of the function is either the mint limiter or governance.
-     * @dev Reverts with the NotMintLimiter error if the caller is neither the mint limiter nor governance.
      */
     modifier onlyMintLimiter() {
         if (msg.sender != getAddress(KEY_MINT_LIMITER) && msg.sender != getAddress(KEY_GOVERNANCE)) revert NotMintLimiter();
@@ -138,7 +123,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @notice Modifier to ensure that a function can only be called by the proxy
      */
     modifier onlyProxy() {
-        // Prevent the method from being called on the implementation
         if (address(this) == implementationAddress) revert NotProxy();
         _;
     }
@@ -153,7 +137,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @param destinationAddress The address on the destination chain to send tokens to
      * @param symbol The symbol of the token to send
      * @param amount The amount of tokens to send
-     * @dev Emits a TokenSent event upon successful execution.
      */
     function sendToken(
         string calldata destinationChain,
@@ -171,7 +154,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @param destinationChain The chain where the destination contract exists. A registered chain name on Axelar must be used here
      * @param destinationContractAddress The address of the contract to call on the destination chain
      * @param payload The payload to be sent to the destination contract, usually representing an encoded function call with arguments
-     * @dev Emits a ContractCall event upon successful execution.
      */
     function callContract(
         string calldata destinationChain,
@@ -189,7 +171,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @param payload The payload to be sent to the destination contract, usually representing an encoded function call with arguments
      * @param symbol The symbol of the token to be sent with the call
      * @param amount The amount of tokens to be sent with the call
-     * @dev Emits a ContractCallWithToken event upon successful execution.
      */
     function callContractWithToken(
         string calldata destinationChain,
@@ -413,7 +394,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @notice Transfers the governance role to a new address.
      * @param newGovernance The address to transfer the governance role to.
      * @dev Only the current governance entity can call this function.
-     * @dev Reverts if the new governance address is the zero address.
      */
     function transferGovernance(address newGovernance) external override onlyGovernance {
         if (newGovernance == address(0)) revert InvalidGovernance();
@@ -425,7 +405,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @notice Transfers the mint limiter role to a new address.
      * @param newMintLimiter The address to transfer the mint limiter role to.
      * @dev Only the current mint limiter or the governance address can call this function.
-     * @dev Reverts if the new mint limiter address is the zero address.
      */
     function transferMintLimiter(address newMintLimiter) external override onlyMintLimiter {
         if (newMintLimiter == address(0)) revert InvalidMintLimiter();
@@ -438,7 +417,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @param symbols The array of token symbols to set the transfer limits for
      * @param limits The array of transfer limits corresponding to the symbols
      * @dev Only the mint limiter or the governance address can call this function.
-     * @dev Reverts if the length of the symbols array does not match the length of the limits array, or if a token is not registered with the gateway.
      */
     function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external override onlyMintLimiter {
         uint256 length = symbols.length;
@@ -460,7 +438,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @param newImplementationCodeHash The code hash of the new implementation
      * @param setupParams Optional setup params for the new implementation
      * @dev Only the governance address can call this function.
-     * @dev Reverts if the code hash does not match the new implementation's code hash, or if the new implementation's contract ID is invalid.
      */
     function upgrade(
         address newImplementation,
@@ -511,7 +488,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @param input The encoded input containing the data for the batch of commands, as well as the proof that verifies the integrity of the data.
      * @dev Each command has a corresponding commandID that is guaranteed to be unique from the Axelar network.
      * @dev This function allows retrying a commandID if the command initially failed to be processed.
-     * @dev Reverts if the provided chainId doesn't match the current chain.
      * @dev Ignores unknown commands or duplicate commandIDs.
      * @dev Emits an Executed event for successfully executed commands.
      */
@@ -645,7 +621,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
     /**
      * @notice Burns tokens of a given symbol, either through an external deposit handler or a token defined burn method.
      * @param params Encoded parameters including the token symbol and a salt value for the deposit handler
-     * @dev Reverts if the token does not exist or if the burn operation fails.
      */
     function burnToken(bytes calldata params, bytes32) external onlySelf {
         (string memory symbol, bytes32 salt) = abi.decode(params, (string, bytes32));
@@ -679,7 +654,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @notice Approves a contract call.
      * @param params Encoded parameters including the source chain, source address, contract address, payload hash, transaction hash, and event index
      * @param commandId to associate with the approval
-     * @dev Emits a ContractCallApproved event with the provided parameters.
      */
     function approveContractCall(bytes calldata params, bytes32 commandId) external onlySelf {
         (
@@ -700,7 +674,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @param params Encoded parameters including the source chain, source address, contract address, payload hash, token symbol,
      * token amount, transaction hash, and event index.
      * @param commandId to associate with the approval
-     * @dev Emits a ContractCallApprovedWithMint event with the provided parameters.
      */
     function approveContractCallWithMint(bytes calldata params, bytes32 commandId) external onlySelf {
         (
@@ -731,7 +704,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
     /**
      * @notice Transfers operatorship with the provided data by calling the transferOperatorship function on the auth module.
      * @param newOperatorsData Encoded data for the new operators
-     * @dev Emits an OperatorshipTransferred event with the new operators' data.
      */
     function transferOperatorship(bytes calldata newOperatorsData, bytes32) external onlySelf {
         emit OperatorshipTransferred(newOperatorsData);
@@ -766,7 +738,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @param sender Address of the account from which to burn the tokens
      * @param symbol Symbol of the token to burn
      * @param amount Amount of tokens to burn
-     * @dev This function will revert if the token is not registered with the gatewaty.
      * @dev Depending on the token type (External, InternalBurnableFrom, or InternalBurnable), the function either
      * transfers the tokens to gateway contract itself or calls a burn function on the token contract.
      */
