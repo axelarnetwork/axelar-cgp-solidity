@@ -85,8 +85,8 @@ describe('AxelarDepositService', () => {
             token = await tokenFactory.deploy(tokenName, tokenSymbol, decimals, capacity).then((d) => d.deployed());
             wrongToken = await tokenFactory.deploy(wrongTokenName, wrongTokenSymbol, decimals, capacity).then((d) => d.deployed());
 
-            await token.deposit({ value: 1e9 }).then((tx) => tx.wait());
-            await wrongToken.deposit({ value: 1e9 }).then((tx) => tx.wait());
+            await token.deposit({ value: 1e5 }).then((tx) => tx.wait());
+            await wrongToken.deposit({ value: 1e5 }).then((tx) => tx.wait());
 
             await gateway
                 .execute(
@@ -198,13 +198,13 @@ describe('AxelarDepositService', () => {
             await wrongToken.transfer(depositAddress, amount * 2).then((tx) => tx.wait());
 
             await expect(
-                depositService
+                await depositService
                     .connect(userWallet)
                     .refundTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [token.address]),
             ).not.to.emit(token, 'Transfer');
 
             await expect(
-                depositService
+                await depositService
                     .connect(ownerWallet)
                     .refundTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [token.address]),
             ).to.emit(token, 'Transfer');

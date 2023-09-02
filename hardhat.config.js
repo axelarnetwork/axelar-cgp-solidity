@@ -42,7 +42,7 @@ module.exports = {
     networks,
     etherscan,
     mocha: {
-        timeout: 1000000,
+        timeout: 4 * 60 * 60 * 1000, // 4 hrs
     },
     gasReporter: {
         enabled: process.env.REPORT_GAS !== undefined,

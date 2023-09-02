@@ -1821,7 +1821,7 @@ describe('AxelarGateway', () => {
             await deployGateway();
         });
 
-        it('should burn internal token and emit an event', async () => {
+        it('should emit an event', async () => {
             const chain = 'Polygon';
             const destination = '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88';
             const payload = defaultAbiCoder.encode(['address', 'uint256'], [owner.address, 1000]);
