@@ -31,37 +31,29 @@ npm run test
 2. In the root folder of this repository create a new file named `keys.json`
 3. Within `keys.json` provide your private key for the account you will be using for testing. For some tests, such as the Axelar gateway tests, you may need to provide more than one private key. Next, you may optionally provide an API key for the testnet you will be using.
 
-    At this point the `keys.json` file should resemble the example file below:
+At this point the `keys.json` file should resemble the example file below:
 
-    ```json
-    {
-        "chains": {
-            "CHAIN_NAME1": {
-                "api": "EXAMPLE_API_KEY"
-            },
-            "CHAIN_NAME2": {
-                "api": "EXAMPLE_API_KEY"
-            }
-        },
-        "accounts": ["PRIVATE_KEY1", "PRIVATE_KEY2", "PRIVATE_KEY3"]
-    }
-    ```
+```json
+{
+    "accounts": ["PRIVATE_KEY1", "PRIVATE_KEY2", "PRIVATE_KEY3"]
+}
+```
 
 4. Ensure that your accounts corresponding to the private keys provided have sufficient native value on the testnet you will be using.
 5. Run in your terminal
 
-    ```bash
-    npm ci
+```bash
+npm ci
 
-    npx hardhat test --network NETWORK_NAME
-    ```
+npx hardhat test --network NETWORK_NAME
+```
 
 6. To run specific tests you may modify the test scripts by adding `.only` to `describe` and/or `it` blocks as shown below:
 
-    ```javascript
-    describe.only();
-    it.only();
-    ```
+```javascript
+describe.only();
+it.only();
+```
 
 ## Example flows
 
