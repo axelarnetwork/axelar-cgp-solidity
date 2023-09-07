@@ -27,37 +27,36 @@ npm run test
 
 ## Live testnet testing
 
-1. Check if the contract deployments repository supports the testnet you will be using. Supported chains can be found [here](https://github.com/axelarnetwork/axelar-contract-deployments/blob/main/info/testnet.json). If the testnet is not already supported, you will need to clone the contract deployments repository locally and modify the `testnet.json` file in the `info` folder:
+1. Check if the contract deployments repository supports the testnet you will be using. Supported chains can be found [here](https://github.com/axelarnetwork/axelar-contract-deployments/blob/main/info/testnet.json). If the testnet is not already supported, proceed to steps 2-4, otherwise you may skip to step 5.
+2. Navigate to the contract deployments repo [here](https://github.com/axelarnetwork/axelar-contract-deployments/) and clone the repository locally.
+3. Within the info folder in the [testnet](https://github.com/axelarnetwork/axelar-contract-deployments/blob/main/info/testnet.json) file, add the configuration of the new testnet as shown in the example below with correct values:
 
-    - Navigate to the contract deployments repo [here](https://github.com/axelarnetwork/axelar-contract-deployments/) and clone the repository locally.
-    - Within the info folder in the [testnet](https://github.com/axelarnetwork/axelar-contract-deployments/blob/main/info/testnet.json) file, add the configuration of the new testnet as shown in the example below with correct values:
-
-    ```json
-    {
-        "chains": {
-            "example": {
-                "name": "Example",
-                "id": "example",
-                "chainId": 123,
-                "rpc": "PROVIDER_RPC",
-                "tokenSymbol": "EXM",
-                "gasOptions": {
-                    "gasLimit": 8000000
-                }
+```json
+{
+    "chains": {
+        "example": {
+            "name": "Example",
+            "id": "example",
+            "chainId": 123,
+            "rpc": "PROVIDER_RPC",
+            "tokenSymbol": "EXM",
+            "gasOptions": {
+                "gasLimit": 8000000
             }
         }
     }
-    ```
+}
+```
 
-    - In the root directory of this repository navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
+4. In the root directory of this repository navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
 
-    ```javascript
-    const chains = require(`@axelar-network/axelar-contract-deployments/info/${env}.json`);
-    const chains = require(`[LOCAL_PATH]/axelar-contract-deployments/info/${env}.json`);
-    ```
+```javascript
+const chains = require(`@axelar-network/axelar-contract-deployments/info/${env}.json`);
+const chains = require(`[LOCAL_PATH]/axelar-contract-deployments/info/${env}.json`);
+```
 
-2. In the root folder of this repository create a new file named `keys.json`
-3. Within `keys.json` provide your private key for the account you will be using for testing. For some tests, such as the Axelar gateway tests, you may need to provide more than one private key. Next, you may optionally provide an API key for the testnet you will be using.
+5. In the root folder of this repository create a new file named `keys.json`
+6. Within `keys.json` provide your private key for the account you will be using for testing. For some tests, such as the Axelar gateway tests, you may need to provide more than one private key. Next, you may optionally provide an API key for the testnet you will be using.
 
 At this point the `keys.json` file should resemble the example file below:
 
@@ -67,8 +66,8 @@ At this point the `keys.json` file should resemble the example file below:
 }
 ```
 
-4. Ensure that your accounts corresponding to the private keys provided have sufficient native value on the testnet you will be using.
-5. Run in your terminal
+7. Ensure that your accounts corresponding to the private keys provided have sufficient native value on the testnet you will be using.
+8. Run in your terminal
 
 ```bash
 npm ci
@@ -76,7 +75,7 @@ npm ci
 npx hardhat test --network NETWORK_NAME
 ```
 
-6. To run specific tests you may modify the test scripts by adding `.only` to `describe` and/or `it` blocks as shown below:
+9. To run specific tests you may modify the test scripts by adding `.only` to `describe` and/or `it` blocks as shown below:
 
 ```javascript
 describe.only();
