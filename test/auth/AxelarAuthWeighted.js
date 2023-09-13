@@ -78,7 +78,28 @@ describe('AxelarAuthWeighted', () => {
                 ),
             );
 
-            await expect(isCurrentOperators).to.be.equal(true);
+            expect(isCurrentOperators).to.be.equal(true);
+        });
+
+        it('reject the proof for a non-existant epoch hash', async () => {
+            const data = '0x123abc123abc';
+
+            const message = hashMessage(arrayify(keccak256(data)));
+
+            const invalidOperators = [owner, owner, owner];
+
+            await expect(
+                auth.validateProof(
+                    message,
+                    getWeightedSignaturesProof(
+                        data,
+                        invalidOperators,
+                        invalidOperators.map(() => 1),
+                        threshold,
+                        invalidOperators.slice(0, threshold - 1),
+                    ),
+                ),
+            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
         });
 
         it('reject the proof if weights are not matching the threshold', async () => {
@@ -229,6 +250,22 @@ describe('AxelarAuthWeighted', () => {
             await expect(auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)))
                 .to.emit(auth, 'OperatorshipTransferred')
                 .withArgs(newOperators, [1, 1], 2);
+        });
+
+        it('should not allow non-owner to transfer operatorship', async () => {
+            const newOperators = ['0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b', '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
+
+            await expect(
+                auth.connect(operators[0]).transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)),
+            ).to.be.revertedWithCustomError(auth, 'NotOwner');
+        });
+
+        it('should revert if new operators length is zero', async () => {
+            const newOperators = [];
+
+            await expect(
+                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)),
+            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
         });
 
         it('should not allow transferring operatorship to address zero', async () => {

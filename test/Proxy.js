@@ -1,0 +1,86 @@
+'use strict';
+
+const chai = require('chai');
+const {
+    utils: { defaultAbiCoder },
+} = require('ethers');
+const { expect } = chai;
+const { ethers } = require('hardhat');
+
+describe('Proxy', async () => {
+    let owner, user;
+
+    let proxyFactory;
+    let proxy;
+
+    let proxyImplementationFactory;
+    let proxyImplementation;
+
+    let invalidProxyImplementationFactory;
+    let invalidProxyImplementation;
+
+    before(async () => {
+        [owner, user] = await ethers.getSigners();
+
+        proxyFactory = await ethers.getContractFactory('TestProxy', owner);
+
+        proxyImplementationFactory = await ethers.getContractFactory('TestImplementation', owner);
+
+        invalidProxyImplementationFactory = await ethers.getContractFactory('InvalidTestImplementation', owner);
+    });
+
+    beforeEach(async () => {
+        proxy = await proxyFactory.deploy().then((d) => d.deployed());
+
+        proxyImplementation = await proxyImplementationFactory.deploy().then((d) => d.deployed());
+    });
+
+    it('should revert if non-owner calls init', async () => {
+        await expect(proxy.connect(user).init(proxyImplementation.address, user.address, '0x')).to.be.revertedWithCustomError(
+            proxy,
+            'NotOwner',
+        );
+    });
+
+    it('should revert if proxy is already initialized', async () => {
+        const val = 10;
+        const name = 'test';
+        const setupParams = defaultAbiCoder.encode(['uint256', 'string'], [val, name]);
+
+        await proxy.init(proxyImplementation.address, owner.address, setupParams).then((tx) => tx.wait());
+
+        await expect(proxy.init(proxyImplementation.address, owner.address, setupParams)).to.be.revertedWithCustomError(
+            proxy,
+            'AlreadyInitialized',
+        );
+    });
+
+    it('should revert if setup fails', async () => {
+        const setupParams = '0x00';
+
+        await expect(proxy.init(proxyImplementation.address, owner.address, setupParams)).to.be.revertedWithCustomError(
+            proxy,
+            'SetupFailed',
+        );
+    });
+
+    it('should revert with invalid contract ID', async () => {
+        invalidProxyImplementation = await invalidProxyImplementationFactory.deploy().then((d) => d.deployed());
+
+        await expect(proxy.init(invalidProxyImplementation.address, owner.address, '0x')).to.be.revertedWithCustomError(
+            proxy,
+            'InvalidImplementation',
+        );
+    });
+
+    it('should revert if native value is sent to the proxy', async () => {
+        const value = 10;
+
+        await expect(
+            owner.sendTransaction({
+                to: proxy.address,
+                value,
+            }),
+        ).to.be.revertedWithCustomError(proxy, 'EtherNotAccepted');
+    });
+});

@@ -5,6 +5,7 @@ const { expect } = chai;
 const { ethers, network } = require('hardhat');
 const {
     utils: { defaultAbiCoder, arrayify, solidityPack, formatBytes32String, keccak256, getCreate2Address },
+    constants: { AddressZero },
 } = ethers;
 const { getChainId, getEVMVersion, getGasOptions, getWeightedProxyDeployParams } = require('./utils');
 
@@ -22,6 +23,7 @@ describe('AxelarDepositService', () => {
     let gatewayProxyFactory;
     let tokenFactory;
     let receiverImplementationFactory;
+    let depositServiceFactory;
 
     let auth;
     let tokenDeployer;
@@ -116,7 +118,7 @@ describe('AxelarDepositService', () => {
                 )
                 .then((tx) => tx.wait());
 
-            const depositServiceFactory = await ethers.getContractFactory('AxelarDepositService', ownerWallet);
+            depositServiceFactory = await ethers.getContractFactory('AxelarDepositService', ownerWallet);
             const implementation = await depositServiceFactory.deploy(gateway.address, tokenSymbol, ownerWallet.address);
             await implementation.deployTransaction.wait(network.config.confirmations);
 
@@ -129,6 +131,42 @@ describe('AxelarDepositService', () => {
             depositService = depositServiceFactory.attach(depositService.address);
 
             receiverImplementation = receiverImplementationFactory.attach(await depositService.receiverImplementation());
+        });
+
+        it('should revert on deployment if gateway is invalid', async () => {
+            await expect(depositServiceFactory.deploy(AddressZero, tokenSymbol, ownerWallet.address)).to.be.revertedWithCustomError(
+                depositService,
+                'InvalidAddress',
+            );
+        });
+
+        it('should revert on deployment if token is invalid', async () => {
+            await expect(depositServiceFactory.deploy(gateway.address, 'abc', ownerWallet.address)).to.be.revertedWithCustomError(
+                depositService,
+                'InvalidSymbol',
+            );
+        });
+
+        it('should revert on deployment if refund issuer is invalid', async () => {
+            await expect(depositServiceFactory.deploy(gateway.address, tokenSymbol, AddressZero)).to.be.revertedWithCustomError(
+                depositService,
+                'InvalidAddress',
+            );
+        });
+
+        it('should return the correct token symbol', async () => {
+            const expectedTokenSymbol = await depositService.wrappedToken();
+            const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
+            expect(expectedTokenSymbol).to.eq(tokenAddress);
+        });
+
+        it('should revert on send native token if value is zero', async () => {
+            const destinationAddress = userWallet.address.toString();
+
+            await expect(depositService.sendNative(destinationChain, destinationAddress, { value: 0 })).to.be.revertedWithCustomError(
+                depositService,
+                'NothingDeposited',
+            );
         });
 
         it('should send native token', async () => {
@@ -169,6 +207,10 @@ describe('AxelarDepositService', () => {
             );
 
             expect(depositAddress).to.be.equal(expectedDepositAddress);
+
+            await expect(
+                depositService.sendTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol),
+            ).to.be.revertedWithCustomError(receiverImplementation, 'NothingDeposited');
 
             await token.transfer(depositAddress, amount).then((tx) => tx.wait());
 
@@ -226,6 +268,52 @@ describe('AxelarDepositService', () => {
                 .to.changeEtherBalance(ownerWallet, amount);
         });
 
+        it('should refund from transfer token address to msg.sender if refund address is the zero address', async () => {
+            const refundAddress = ownerWallet.address;
+            const destinationAddress = userWallet.address.toString();
+            const salt = formatBytes32String(1);
+            const amount = 1e3;
+
+            const depositAddress = await depositService.addressForTokenDeposit(
+                salt,
+                AddressZero,
+                destinationChain,
+                destinationAddress,
+                tokenSymbol,
+            );
+
+            await token.transfer(depositAddress, amount).then((tx) => tx.wait());
+            await wrongToken.transfer(depositAddress, amount * 2).then((tx) => tx.wait());
+
+            await expect(
+                await depositService
+                    .connect(userWallet)
+                    .refundTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [token.address]),
+            ).not.to.emit(token, 'Transfer');
+
+            await expect(
+                await depositService
+                    .connect(ownerWallet)
+                    .refundTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [token.address]),
+            ).to.emit(token, 'Transfer');
+
+            await ownerWallet
+                .sendTransaction({
+                    to: depositAddress,
+                    value: amount,
+                })
+                .then((tx) => tx.wait());
+
+            await expect(
+                await depositService.refundTokenDeposit(salt, AddressZero, destinationChain, destinationAddress, tokenSymbol, [
+                    wrongToken.address,
+                ]),
+            )
+                .to.emit(wrongToken, 'Transfer')
+                .withArgs(depositAddress, depositService.address, amount * 2)
+                .to.changeEtherBalance(depositService.address, amount);
+        });
+
         it('should wrap and transfer native currency', async () => {
             const refundAddress = ownerWallet.address;
             const destinationAddress = userWallet.address.toString();
@@ -245,6 +333,10 @@ describe('AxelarDepositService', () => {
             const depositAddress = await depositService.addressForNativeDeposit(salt, refundAddress, destinationChain, destinationAddress);
 
             expect(depositAddress).to.be.equal(expectedDepositAddress);
+
+            await expect(
+                depositService.sendNativeDeposit(salt, refundAddress, destinationChain, destinationAddress),
+            ).to.be.revertedWithCustomError(receiverImplementation, 'NothingDeposited');
 
             await ownerWallet
                 .sendTransaction({
@@ -301,6 +393,11 @@ describe('AxelarDepositService', () => {
 
             expect(depositAddress).to.be.equal(expectedDepositAddress);
 
+            await expect(depositService.nativeUnwrap(salt, refundAddress, recipient)).to.be.revertedWithCustomError(
+                receiverImplementation,
+                'NothingDeposited',
+            );
+
             await token.transfer(depositAddress, amount).then((tx) => tx.wait());
 
             const tx = await depositService.nativeUnwrap(salt, refundAddress, recipient);
@@ -344,7 +441,7 @@ describe('AxelarDepositService', () => {
         });
 
         it('should refund to the service when refundAddress is 0x0', async () => {
-            const refundAddress = ethers.constants.AddressZero;
+            const refundAddress = AddressZero;
             const recipient = userWallet.address;
             const salt = formatBytes32String(1);
             const amount = 1e3;
@@ -370,18 +467,31 @@ describe('AxelarDepositService', () => {
                 .withArgs(depositAddress, depositService.address, amount * 2)
                 .to.changeEtherBalance(depositService, amount);
 
-            await expect(depositService.connect(userWallet).refundLockedAsset(recipient, wrongToken.address, amount * 2)).to.be.reverted;
+            await expect(
+                depositService.connect(userWallet).refundLockedAsset(recipient, wrongToken.address, amount * 2),
+            ).to.be.revertedWithCustomError(depositService, 'NotRefundIssuer');
 
             await expect(depositService.connect(ownerWallet).refundLockedAsset(recipient, wrongToken.address, amount * 2))
                 .to.emit(wrongToken, 'Transfer')
                 .withArgs(depositService.address, recipient, amount * 2);
 
-            await expect(depositService.connect(userWallet).refundLockedAsset(recipient, ethers.constants.AddressZero, amount)).to.be
-                .reverted;
+            await expect(
+                depositService.connect(userWallet).refundLockedAsset(recipient, AddressZero, amount),
+            ).to.be.revertedWithCustomError(depositService, 'NotRefundIssuer');
 
             await expect(
-                await depositService.connect(ownerWallet).refundLockedAsset(recipient, ethers.constants.AddressZero, amount),
-            ).to.changeEtherBalance(userWallet, amount);
+                depositService.connect(ownerWallet).refundLockedAsset(AddressZero, AddressZero, amount),
+            ).to.be.revertedWithCustomError(depositService, 'InvalidAddress');
+
+            await expect(depositService.connect(ownerWallet).refundLockedAsset(recipient, AddressZero, 0)).to.be.revertedWithCustomError(
+                depositService,
+                'InvalidAmount',
+            );
+
+            await expect(await depositService.connect(ownerWallet).refundLockedAsset(recipient, AddressZero, amount)).to.changeEtherBalance(
+                userWallet,
+                amount,
+            );
         });
     });
 
