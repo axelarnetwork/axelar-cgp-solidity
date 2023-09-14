@@ -140,17 +140,19 @@ describe('AxelarGateway', () => {
 
         it('should fail on receiving native value', async () => {
             const value = 10;
-            const gasOptions = getGasOptions();
 
             await deployGateway();
 
-            await expect(
-                owner.sendTransaction({
-                    to: gateway.address,
-                    value,
-                    gasOptions,
-                }),
-            ).to.be.revertedWithCustomError(gatewayProxy, 'NativeCurrencyNotAccepted');
+            await expectRevert(
+                (gasOptions) =>
+                    owner.sendTransaction({
+                        to: gateway.address,
+                        value,
+                        ...gasOptions,
+                    }),
+                gatewayProxy,
+                'NativeCurrencyNotAccepted',
+            );
         });
     });
 

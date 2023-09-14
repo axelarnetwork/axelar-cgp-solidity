@@ -13,6 +13,7 @@ const {
     getWeightedAuthDeployParam,
     getWeightedSignaturesProof,
     getTransferWeightedOperatorshipCommand,
+    expectRevert,
 } = require('../utils');
 
 describe('AxelarAuthWeighted', () => {
@@ -88,18 +89,22 @@ describe('AxelarAuthWeighted', () => {
 
             const invalidOperators = [owner, owner, owner];
 
-            await expect(
-                auth.validateProof(
-                    message,
-                    getWeightedSignaturesProof(
-                        data,
-                        invalidOperators,
-                        invalidOperators.map(() => 1),
-                        threshold,
-                        invalidOperators.slice(0, threshold - 1),
+            await expectRevert(
+                (gasOptions) =>
+                    auth.validateProof(
+                        message,
+                        getWeightedSignaturesProof(
+                            data,
+                            invalidOperators,
+                            invalidOperators.map(() => 1),
+                            threshold,
+                            invalidOperators.slice(0, threshold - 1),
+                        ),
+                        gasOptions,
                     ),
-                ),
-            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
+                auth,
+                'InvalidOperators',
+            );
         });
 
         it('reject the proof if weights are not matching the threshold', async () => {
@@ -107,18 +112,22 @@ describe('AxelarAuthWeighted', () => {
 
             const message = hashMessage(arrayify(keccak256(data)));
 
-            await expect(
-                auth.validateProof(
-                    message,
-                    getWeightedSignaturesProof(
-                        data,
-                        operators,
-                        operators.map(() => 1),
-                        threshold,
-                        operators.slice(0, threshold - 1),
+            await expectRevert(
+                (gasOptions) =>
+                    auth.validateProof(
+                        message,
+                        getWeightedSignaturesProof(
+                            data,
+                            operators,
+                            operators.map(() => 1),
+                            threshold,
+                            operators.slice(0, threshold - 1),
+                        ),
+                        gasOptions,
                     ),
-                ),
-            ).to.be.revertedWithCustomError(auth, 'LowSignaturesWeight');
+                auth,
+                'LowSignaturesWeight',
+            );
         });
 
         it('reject the proof if signatures are invalid', async () => {
@@ -126,18 +135,22 @@ describe('AxelarAuthWeighted', () => {
 
             const message = hashMessage(arrayify(keccak256(data)));
 
-            await expect(
-                auth.validateProof(
-                    message,
-                    getWeightedSignaturesProof(
-                        data,
-                        operators,
-                        operators.map(() => 1),
-                        threshold,
-                        wallets.slice(0, threshold),
+            await expectRevert(
+                (gasOptions) =>
+                    auth.validateProof(
+                        message,
+                        getWeightedSignaturesProof(
+                            data,
+                            operators,
+                            operators.map(() => 1),
+                            threshold,
+                            wallets.slice(0, threshold),
+                        ),
+                        gasOptions,
                     ),
-                ),
-            ).to.be.revertedWithCustomError(auth, 'MalformedSigners');
+                auth,
+                'MalformedSigners',
+            );
         });
 
         it('validate the proof from the recent operators', async () => {
@@ -175,18 +188,22 @@ describe('AxelarAuthWeighted', () => {
 
             await Promise.all(
                 invalidPreviousOperators.map(async (operators) => {
-                    await expect(
-                        auth.validateProof(
-                            message,
-                            getWeightedSignaturesProof(
-                                data,
-                                operators,
-                                operators.map(() => 1),
-                                threshold,
-                                operators.slice(0, threshold),
+                    await expectRevert(
+                        (gasOptions) =>
+                            auth.validateProof(
+                                message,
+                                getWeightedSignaturesProof(
+                                    data,
+                                    operators,
+                                    operators.map(() => 1),
+                                    threshold,
+                                    operators.slice(0, threshold),
+                                ),
+                                gasOptions,
                             ),
-                        ),
-                    ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
+                        auth,
+                        'InvalidOperators',
+                    );
                 }),
             );
         });
@@ -255,41 +272,57 @@ describe('AxelarAuthWeighted', () => {
         it('should not allow non-owner to transfer operatorship', async () => {
             const newOperators = ['0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b', '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
 
-            await expect(
-                auth.connect(operators[0]).transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)),
-            ).to.be.revertedWithCustomError(auth, 'NotOwner');
+            await expectRevert(
+                (gasOptions) =>
+                    auth
+                        .connect(operators[0])
+                        .transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2, gasOptions)),
+                auth,
+                'NotOwner',
+            );
         });
 
         it('should revert if new operators length is zero', async () => {
             const newOperators = [];
 
-            await expect(
-                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)),
-            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
+            await expectRevert(
+                (gasOptions) => auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2, gasOptions)),
+                auth,
+                'InvalidOperators',
+            );
         });
 
         it('should not allow transferring operatorship to address zero', async () => {
             const newOperators = [ethers.constants.AddressZero, '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            await expect(
-                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)),
-            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
+            await expectRevert(
+                (gasOptions) => auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2, gasOptions)),
+                auth,
+                'InvalidOperators',
+            );
         });
 
         it('should not allow transferring operatorship to duplicated operators', async () => {
             const newOperators = ['0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            await expect(
-                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2)),
-            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
+            await expectRevert(
+                (gasOptions) => auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 2, gasOptions)),
+                auth,
+                'InvalidOperators',
+            );
         });
 
         it('should not allow transferring operatorship to unsorted operators', async () => {
             const newOperators = ['0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88', '0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b'];
 
-            await expect(
-                auth.transferOperatorship(defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [newOperators, [1, 1], 2])),
-            ).to.be.revertedWithCustomError(auth, 'InvalidOperators');
+            await expectRevert(
+                (gasOptions) =>
+                    auth.transferOperatorship(
+                        defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [newOperators, [1, 1], 2], gasOptions),
+                    ),
+                auth,
+                'InvalidOperators',
+            );
         });
 
         it('should not allow operatorship transfer to the previous operators ', async () => {
@@ -313,37 +346,49 @@ describe('AxelarAuthWeighted', () => {
 
             const oldOperators = getAddresses(operators);
 
-            await expect(
-                auth.transferOperatorship(
-                    getTransferWeightedOperatorshipCommand(
-                        oldOperators,
-                        oldOperators.map(() => 1),
-                        threshold,
+            await expectRevert(
+                (gasOptions) =>
+                    auth.transferOperatorship(
+                        getTransferWeightedOperatorshipCommand(
+                            oldOperators,
+                            oldOperators.map(() => 1),
+                            threshold,
+                        ),
+                        gasOptions,
                     ),
-                ),
-            ).to.be.revertedWithCustomError(auth, 'DuplicateOperators');
+                auth,
+                'DuplicateOperators',
+            );
         });
 
         it('should not allow transferring operatorship with invalid threshold', async () => {
             const newOperators = ['0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b', '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
 
-            await expect(
-                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 0)),
-            ).to.be.revertedWithCustomError(auth, 'InvalidThreshold');
-            await expect(
-                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 3)),
-            ).to.be.revertedWithCustomError(auth, 'InvalidThreshold');
+            await expectRevert(
+                (gasOptions) => auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 0, gasOptions)),
+                auth,
+                'InvalidThreshold',
+            );
+            await expectRevert(
+                (gasOptions) => auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1], 3, gasOptions)),
+                auth,
+                'InvalidThreshold',
+            );
         });
 
         it('should not allow transferring operatorship with invalid number of weights', async () => {
             const newOperators = ['0x6D4017D4b1DCd36e6EA88b7900e8eC64A1D1315b', '0xb7900E8Ec64A1D1315B6D4017d4b1dcd36E6Ea88'];
 
-            await expect(
-                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1], 0)),
-            ).to.be.revertedWithCustomError(auth, 'InvalidWeights');
-            await expect(
-                auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1, 1], 3)),
-            ).to.be.revertedWithCustomError(auth, 'InvalidWeights');
+            await expectRevert(
+                (gasOptions) => auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1], 0, gasOptions)),
+                auth,
+                'InvalidWeights',
+            );
+            await expectRevert(
+                (gasOptions) => auth.transferOperatorship(getTransferWeightedOperatorshipCommand(newOperators, [1, 1, 1], 3, gasOptions)),
+                auth,
+                'InvalidWeights',
+            );
         });
     });
 

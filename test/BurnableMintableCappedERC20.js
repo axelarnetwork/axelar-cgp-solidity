@@ -7,7 +7,7 @@ const {
     constants: { MaxUint256, AddressZero },
 } = ethers;
 const { expect } = chai;
-const { getChainId, isHardhat } = require('./utils');
+const { getChainId, isHardhat, expectRevert } = require('./utils');
 
 describe('BurnableMintableCappedERC20', () => {
     let owner;
@@ -30,11 +30,11 @@ describe('BurnableMintableCappedERC20', () => {
 
     describe('Owner operations', () => {
         it('should revert on transfer ownership if called by non-owner', async () => {
-            await expect(token.connect(user).transferOwnership(user.address)).to.be.revertedWithCustomError(token, 'NotOwner');
+            await expectRevert((gasOptions) => token.connect(user).transferOwnership(user.address, gasOptions), token, 'NotOwner');
         });
 
         it('should revert on transfer ownership if new owner is invalid', async () => {
-            await expect(token.connect(owner).transferOwnership(AddressZero)).to.be.revertedWithCustomError(token, 'InvalidOwner');
+            await expectRevert((gasOptions) => token.connect(owner).transferOwnership(AddressZero, gasOptions), token, 'InvalidOwner');
         });
 
         it('should transfer ownership', async () => {
@@ -71,12 +71,14 @@ describe('BurnableMintableCappedERC20', () => {
         });
 
         it('should revert on approve with invalid owner or sender', async () => {
-            await expect(token.connect(owner).transferFrom(AddressZero, owner.address, 0)).to.be.revertedWithCustomError(
+            await expectRevert(
+                (gasOptions) => token.connect(owner).transferFrom(AddressZero, owner.address, 0, gasOptions),
                 token,
                 'InvalidAccount',
             );
 
-            await expect(token.connect(user).increaseAllowance(AddressZero, MaxUint256)).to.be.revertedWithCustomError(
+            await expectRevert(
+                (gasOptions) => token.connect(user).increaseAllowance(AddressZero, MaxUint256, gasOptions),
                 token,
                 'InvalidAccount',
             );
@@ -116,7 +118,8 @@ describe('BurnableMintableCappedERC20', () => {
 
             const amount = 100;
 
-            await expect(token.connect(owner).transferFrom(user.address, AddressZero, amount)).to.be.revertedWithCustomError(
+            await expectRevert(
+                (gasOptions) => token.connect(owner).transferFrom(user.address, AddressZero, amount, gasOptions),
                 token,
                 'InvalidAccount',
             );
@@ -199,9 +202,14 @@ describe('BurnableMintableCappedERC20', () => {
                 ),
             );
 
-            await expect(
-                token.connect(owner).permit(user.address, owner.address, allowance, deadline, signature.v, signature.r, signature.s),
-            ).to.be.revertedWithCustomError(token, 'PermitExpired');
+            await expectRevert(
+                (gasOptions) =>
+                    token
+                        .connect(owner)
+                        .permit(user.address, owner.address, allowance, deadline, signature.v, signature.r, signature.s, gasOptions),
+                token,
+                'PermitExpired',
+            );
         });
 
         it('should revert if signature is incorrect', async () => {
@@ -235,17 +243,30 @@ describe('BurnableMintableCappedERC20', () => {
                 ),
             );
 
-            await expect(
-                token.connect(owner).permit(user.address, owner.address, allowance, deadline, signature.v, signature.r, MaxUint256),
-            ).to.be.revertedWithCustomError(token, 'InvalidS');
+            await expectRevert(
+                (gasOptions) =>
+                    token
+                        .connect(owner)
+                        .permit(user.address, owner.address, allowance, deadline, signature.v, signature.r, MaxUint256, gasOptions),
+                token,
+                'InvalidS',
+            );
 
-            await expect(
-                token.connect(owner).permit(user.address, owner.address, allowance, deadline, 0, signature.r, signature.s),
-            ).to.be.revertedWithCustomError(token, 'InvalidV');
+            await expectRevert(
+                (gasOptions) =>
+                    token.connect(owner).permit(user.address, owner.address, allowance, deadline, 0, signature.r, signature.s, gasOptions),
+                token,
+                'InvalidV',
+            );
 
-            await expect(
-                token.connect(owner).permit(owner.address, owner.address, allowance, deadline, signature.v, signature.r, signature.s),
-            ).to.be.revertedWithCustomError(token, 'InvalidSignature');
+            await expectRevert(
+                (gasOptions) =>
+                    token
+                        .connect(owner)
+                        .permit(owner.address, owner.address, allowance, deadline, signature.v, signature.r, signature.s, gasOptions),
+                token,
+                'InvalidSignature',
+            );
         });
     });
 
@@ -259,17 +280,20 @@ describe('BurnableMintableCappedERC20', () => {
 
         it('should revert if non-owner mints', async () => {
             const amount = 10000;
-            await expect(token.connect(user).mint(user.address, amount)).to.be.revertedWithCustomError(token, 'NotOwner');
+
+            await expectRevert((gasOptions) => token.connect(user).mint(user.address, amount, gasOptions), token, 'NotOwner');
         });
 
         it('should revert if total supply is greater than capacity', async () => {
             const amount = 1000000000;
-            await expect(token.connect(owner).mint(user.address, amount)).to.be.revertedWithCustomError(token, 'CapExceeded');
+
+            await expectRevert((gasOptions) => token.connect(owner).mint(user.address, amount, gasOptions), token, 'CapExceeded');
         });
 
         it('should revert if account is invalid', async () => {
             const amount = 10000;
-            await expect(token.connect(owner).mint(AddressZero, amount)).to.be.revertedWithCustomError(token, 'InvalidAccount');
+
+            await expectRevert((gasOptions) => token.connect(owner).mint(AddressZero, amount, gasOptions), token, 'InvalidAccount');
         });
     });
 
@@ -277,13 +301,15 @@ describe('BurnableMintableCappedERC20', () => {
         it('should revert when non-owner calls either burn function', async () => {
             const salt = keccak256(0);
 
-            await expect(token.connect(user).burn(salt)).to.be.revertedWithCustomError(token, 'NotOwner');
-            await expect(token.connect(user).burnFrom(owner.address, 10)).to.be.revertedWithCustomError(token, 'NotOwner');
+            await expectRevert((gasOptions) => token.connect(user).burn(salt, gasOptions), token, 'NotOwner');
+
+            await expectRevert((gasOptions) => token.connect(user).burnFrom(owner.address, 10, gasOptions), token, 'NotOwner');
         });
 
         it('should revert on burn with an invalid address', async () => {
             const amount = 0;
-            await expect(token.burnFrom(AddressZero, amount)).to.be.revertedWithCustomError(token, 'InvalidAccount');
+
+            await expectRevert((gasOptions) => token.burnFrom(AddressZero, amount, gasOptions), token, 'InvalidAccount');
         });
 
         it('should allow owner to burn', async () => {

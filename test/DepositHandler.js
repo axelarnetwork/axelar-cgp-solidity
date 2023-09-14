@@ -3,6 +3,7 @@
 const chai = require('chai');
 const { ethers } = require('hardhat');
 const { expect } = chai;
+const { expectRevert } = require('./utils');
 
 describe('DepositHandler', function () {
     let depositHandlerFactory;
@@ -32,7 +33,7 @@ describe('DepositHandler', function () {
         });
 
         it('should revert if callee is not a contract', async function () {
-            await expect(depositHandler.execute(user.address, '0x')).to.be.revertedWithCustomError(depositHandler, 'NotContract');
+            await expectRevert((gasOptions) => depositHandler.execute(user.address, '0x', gasOptions), depositHandler, 'NotContract');
         });
 
         it('should revert if locked (no reentrancy)', async function () {

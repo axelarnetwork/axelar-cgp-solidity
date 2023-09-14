@@ -1,11 +1,10 @@
 'use strict';
 
-const chai = require('chai');
 const {
     utils: { defaultAbiCoder },
 } = require('ethers');
-const { expect } = chai;
 const { ethers } = require('hardhat');
+const { expectRevert } = require('./utils');
 
 describe('Proxy', async () => {
     let owner, user;
@@ -36,7 +35,8 @@ describe('Proxy', async () => {
     });
 
     it('should revert if non-owner calls init', async () => {
-        await expect(proxy.connect(user).init(proxyImplementation.address, user.address, '0x')).to.be.revertedWithCustomError(
+        await expectRevert(
+            (gasOptions) => proxy.connect(user).init(proxyImplementation.address, user.address, '0x', gasOptions),
             proxy,
             'NotOwner',
         );
@@ -49,7 +49,8 @@ describe('Proxy', async () => {
 
         await proxy.init(proxyImplementation.address, owner.address, setupParams).then((tx) => tx.wait());
 
-        await expect(proxy.init(proxyImplementation.address, owner.address, setupParams)).to.be.revertedWithCustomError(
+        await expectRevert(
+            (gasOptions) => proxy.init(proxyImplementation.address, owner.address, setupParams, gasOptions),
             proxy,
             'AlreadyInitialized',
         );
@@ -58,7 +59,8 @@ describe('Proxy', async () => {
     it('should revert if setup fails', async () => {
         const setupParams = '0x00';
 
-        await expect(proxy.init(proxyImplementation.address, owner.address, setupParams)).to.be.revertedWithCustomError(
+        await expectRevert(
+            (gasOptions) => proxy.init(proxyImplementation.address, owner.address, setupParams, gasOptions),
             proxy,
             'SetupFailed',
         );
@@ -67,7 +69,8 @@ describe('Proxy', async () => {
     it('should revert with invalid contract ID', async () => {
         invalidProxyImplementation = await invalidProxyImplementationFactory.deploy().then((d) => d.deployed());
 
-        await expect(proxy.init(invalidProxyImplementation.address, owner.address, '0x')).to.be.revertedWithCustomError(
+        await expectRevert(
+            (gasOptions) => proxy.init(invalidProxyImplementation.address, owner.address, '0x', gasOptions),
             proxy,
             'InvalidImplementation',
         );
@@ -76,11 +79,15 @@ describe('Proxy', async () => {
     it('should revert if native value is sent to the proxy', async () => {
         const value = 10;
 
-        await expect(
-            owner.sendTransaction({
-                to: proxy.address,
-                value,
-            }),
-        ).to.be.revertedWithCustomError(proxy, 'EtherNotAccepted');
+        await expectRevert(
+            (gasOptions) =>
+                owner.sendTransaction({
+                    to: proxy.address,
+                    value,
+                    ...gasOptions,
+                }),
+            proxy,
+            'EtherNotAccepted',
+        );
     });
 });

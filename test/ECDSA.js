@@ -6,7 +6,7 @@ const {
     utils: { toUtf8Bytes, keccak256, arrayify, splitSignature, recoverAddress },
 } = ethers;
 const { expect } = chai;
-const { toEthSignedMessageHash } = require('./utils');
+const { toEthSignedMessageHash, expectRevert } = require('./utils');
 
 const TEST_MESSAGE = keccak256(toUtf8Bytes('OpenZeppelin'));
 const WRONG_MESSAGE = keccak256(toUtf8Bytes('Nope'));
@@ -25,16 +25,20 @@ describe('ECDSA', () => {
 
     describe('recover with invalid signature', () => {
         it('with short signature', async () => {
-            await expect(ecdsa.recover(TEST_MESSAGE, '0x1234')).to.be.revertedWithCustomError(ecdsa, 'InvalidSignatureLength');
+            await expectRevert((gasOptions) => ecdsa.recover(TEST_MESSAGE, '0x1234', gasOptions), ecdsa, 'InvalidSignatureLength');
         });
 
         it('with long signature', async () => {
-            await expect(
-                ecdsa.recover(
-                    TEST_MESSAGE,
-                    '0x01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789',
-                ),
-            ).to.be.revertedWithCustomError(ecdsa, 'InvalidSignatureLength');
+            await expectRevert(
+                (gasOptions) =>
+                    ecdsa.recover(
+                        TEST_MESSAGE,
+                        '0x01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789',
+                        gasOptions,
+                    ),
+                ecdsa,
+                'InvalidSignatureLength',
+            );
         });
     });
 
@@ -60,7 +64,8 @@ describe('ECDSA', () => {
         it('reverts with invalid signature', async () => {
             const signature =
                 '0x332ce75a821c982f9127538858900d87d3ec1f9f737338ad67cad133fa48feff48e6fa0c18abc62e42820f05943e47af3e9fbe306ce74d64094bdf1691ee53e01c';
-            await expect(ecdsa.recover(TEST_MESSAGE, signature)).to.be.revertedWithCustomError(ecdsa, 'InvalidSignature');
+
+            await expectRevert((gasOptions) => ecdsa.recover(TEST_MESSAGE, signature, gasOptions), ecdsa, 'InvalidSignature');
         });
     });
 
@@ -94,9 +99,10 @@ describe('ECDSA', () => {
         it('reverts wrong v values', async () => {
             for (const v of ['00', '01']) {
                 const signature = signatureWithoutV + v;
-                await expect(ecdsa.recover(TEST_MESSAGE, signature)).to.be.revertedWithCustomError(ecdsa, 'InvalidV');
 
-                await expect(ecdsa.recover(TEST_MESSAGE, signature)).to.be.revertedWithCustomError(ecdsa, 'InvalidV');
+                await expectRevert((gasOptions) => ecdsa.recover(TEST_MESSAGE, signature, gasOptions), ecdsa, 'InvalidV');
+
+                await expectRevert((gasOptions) => ecdsa.recover(TEST_MESSAGE, signature, gasOptions), ecdsa, 'InvalidV');
             }
         });
     });
@@ -131,7 +137,8 @@ describe('ECDSA', () => {
         it('reverts invalid v values', async () => {
             for (const v of ['00', '01']) {
                 const signature = signatureWithoutV + v;
-                await expect(ecdsa.recover(TEST_MESSAGE, signature)).to.be.revertedWithCustomError(ecdsa, 'InvalidV');
+
+                await expectRevert((gasOptions) => ecdsa.recover(TEST_MESSAGE, signature, gasOptions), ecdsa, 'InvalidV');
             }
         });
 
@@ -140,7 +147,7 @@ describe('ECDSA', () => {
             const highSSignature =
                 '0xe742ff452d41413616a5bf43fe15dd88294e983d3d36206c2712f39083d638bde0a0fc89be718fbc1033e1d30d78be1c68081562ed2e97af876f286f3453231d1b';
 
-            await expect(ecdsa.recover(message, highSSignature)).to.be.revertedWithCustomError(ecdsa, 'InvalidS');
+            await expectRevert((gasOptions) => ecdsa.recover(message, highSSignature, gasOptions), ecdsa, 'InvalidS');
         });
     });
 
