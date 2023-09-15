@@ -7,11 +7,10 @@ const {
     constants: { AddressZero, HashZero },
 } = ethers;
 const { expect } = chai;
-
+const { expectRevert } = require('../utils');
 const EVM_VERSION = config.solidity.compilers[0].settings.evmVersion;
 const GasService = require('../../artifacts/contracts/gas-service/AxelarGasService.sol/AxelarGasService.json');
 const GasServiceProxy = require('../../artifacts/contracts/gas-service/AxelarGasServiceProxy.sol/AxelarGasServiceProxy.json');
-
 const { upgradeUpgradable } = require('@axelar-network/axelar-gmp-sdk-solidity');
 
 describe('AxelarGasService', () => {
@@ -299,11 +298,14 @@ describe('AxelarGasService', () => {
                 })
                 .then((tx) => tx.wait());
 
-            await expect(
-                gasService
-                    .connect(userWallet)
-                    .functions['refund(address,address,uint256)'](userWallet.address, AddressZero, nativeGasFeeAmount),
-            ).to.be.reverted;
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(userWallet)
+                        .functions['refund(address,address,uint256)'](userWallet.address, AddressZero, nativeGasFeeAmount, gasOptions),
+                gasService,
+                'NotCollector',
+            );
 
             await expect(
                 gasService
@@ -314,11 +316,14 @@ describe('AxelarGasService', () => {
                 .and.to.emit(gasService, 'Refunded')
                 .withArgs(HashZero, 0, userWallet.address, AddressZero, nativeGasFeeAmount);
 
-            await expect(
-                gasService
-                    .connect(userWallet)
-                    .functions['refund(address,address,uint256)'](userWallet.address, testToken.address, gasFeeAmount),
-            ).to.be.reverted;
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(userWallet)
+                        .functions['refund(address,address,uint256)'](userWallet.address, testToken.address, gasFeeAmount, gasOptions),
+                gasService,
+                'NotCollector',
+            );
 
             await expect(
                 gasService
@@ -330,11 +335,14 @@ describe('AxelarGasService', () => {
                 .and.to.emit(gasService, 'Refunded')
                 .withArgs(HashZero, 0, userWallet.address, testToken.address, gasFeeAmount);
 
-            await expect(
-                gasService
-                    .connect(userWallet)
-                    .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount]),
-            ).to.be.reverted;
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(userWallet)
+                        .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount], gasOptions),
+                gasService,
+                'NotCollector',
+            );
 
             await expect(
                 gasService
@@ -405,17 +413,37 @@ describe('AxelarGasService', () => {
             const txHash = id('txHash');
             const logIndex = 256;
 
-            await expect(
-                gasService
-                    .connect(userWallet)
-                    .functions['refund(bytes32,uint256,address,address,uint256)'](
-                        txHash,
-                        logIndex,
-                        userWallet.address,
-                        AddressZero,
-                        nativeGasFeeAmount,
-                    ),
-            ).to.be.reverted;
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(userWallet)
+                        .functions['refund(bytes32,uint256,address,address,uint256)'](
+                            txHash,
+                            logIndex,
+                            userWallet.address,
+                            AddressZero,
+                            nativeGasFeeAmount,
+                            gasOptions,
+                        ),
+                gasService,
+                'NotCollector',
+            );
+
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(ownerWallet)
+                        .functions['refund(bytes32,uint256,address,address,uint256)'](
+                            txHash,
+                            logIndex,
+                            AddressZero,
+                            AddressZero,
+                            nativeGasFeeAmount,
+                            gasOptions,
+                        ),
+                gasService,
+                'InvalidAddress',
+            );
 
             await expect(
                 gasService
@@ -432,17 +460,21 @@ describe('AxelarGasService', () => {
                 .and.to.emit(gasService, 'Refunded')
                 .withArgs(txHash, logIndex, userWallet.address, AddressZero, nativeGasFeeAmount);
 
-            await expect(
-                gasService
-                    .connect(userWallet)
-                    .functions['refund(bytes32,uint256,address,address,uint256)'](
-                        txHash,
-                        logIndex,
-                        userWallet.address,
-                        testToken.address,
-                        gasFeeAmount,
-                    ),
-            ).to.be.reverted;
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(userWallet)
+                        .functions['refund(bytes32,uint256,address,address,uint256)'](
+                            txHash,
+                            logIndex,
+                            userWallet.address,
+                            testToken.address,
+                            gasFeeAmount,
+                            gasOptions,
+                        ),
+                gasService,
+                'NotCollector',
+            );
 
             await expect(
                 gasService
@@ -460,11 +492,51 @@ describe('AxelarGasService', () => {
                 .and.to.emit(gasService, 'Refunded')
                 .withArgs(txHash, logIndex, userWallet.address, testToken.address, gasFeeAmount);
 
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(userWallet)
+                        .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount], gasOptions),
+                gasService,
+                'NotCollector',
+            );
+
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(ownerWallet)
+                        .collectFees(AddressZero, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount], gasOptions),
+                gasService,
+                'InvalidAddress',
+            );
+
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(ownerWallet)
+                        .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount], gasOptions),
+                gasService,
+                'InvalidAmounts',
+            );
+
+            await expectRevert(
+                (gasOptions) =>
+                    gasService
+                        .connect(ownerWallet)
+                        .collectFees(ownerWallet.address, [AddressZero, testToken.address], [0, gasFeeAmount], gasOptions),
+                gasService,
+                'InvalidAmounts',
+            );
+
+            const balance = await testToken.balanceOf(gasService.address);
+
             await expect(
                 gasService
-                    .connect(userWallet)
-                    .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount]),
-            ).to.be.reverted;
+                    .connect(ownerWallet)
+                    .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount + 1, balance + 1]),
+            )
+                .not.to.changeEtherBalance(ownerWallet, nativeGasFeeAmount)
+                .and.not.to.emit(testToken, 'Transfer');
 
             await expect(
                 gasService
