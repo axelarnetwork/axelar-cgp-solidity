@@ -116,6 +116,6 @@ artifacts/
 /interfaces
 
 # Local env files
-info/local.json
+local.json
 # Private keys
 keys.json

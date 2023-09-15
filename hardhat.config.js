@@ -8,7 +8,7 @@ if (process.env.STORAGE_LAYOUT) {
 
 const env = process.env.ENV || 'testnet';
 const chains = require(`@axelar-network/axelar-chains-config/info/${env}.json`);
-const keys = readJSON(`${__dirname}/info/keys.json`);
+const keys = readJSON(`${__dirname}/keys.json`);
 const { networks, etherscan } = importNetworks(chains, keys);
 
 /**
