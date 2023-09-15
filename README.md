@@ -55,7 +55,7 @@ const chains = require(`@axelar-network/axelar-contract-deployments/info/${env}.
 const chains = require(`[LOCAL_PATH]/axelar-contract-deployments/info/${env}.json`);
 ```
 
-5. In the root folder of this repository create a new file named `keys.json`
+5. In the info folder of this repository create a new file named `keys.json`
 6. Within `keys.json` provide your private key for the account you will be using for testing. For some tests, such as the Axelar gateway tests, you may need to provide more than one private key. Next, you may optionally provide an API key for the testnet you will be using.
 
 At this point the `keys.json` file should resemble the example file below:
