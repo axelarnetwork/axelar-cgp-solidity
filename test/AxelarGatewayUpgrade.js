@@ -21,7 +21,7 @@ const {
     getSignedWeightedExecuteInput,
     getPayloadAndProposalHash,
 } = require('./utils');
-const { getBytecodeHash } = require('@axelar-network/axelar-contract-deployments');
+const { getBytecodeHash } = require('@axelar-network/axelar-chains-config');
 const InterchainGovernance = require('@axelar-network/axelar-gmp-sdk-solidity/artifacts/contracts/governance/InterchainGovernance.sol/InterchainGovernance.json');
 
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
