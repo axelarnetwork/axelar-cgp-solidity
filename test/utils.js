@@ -2,7 +2,7 @@
 
 const { config, ethers } = require('hardhat');
 const {
-    utils: { defaultAbiCoder, id, arrayify, keccak256 },
+    utils: { defaultAbiCoder, id, arrayify, keccak256, toUtf8Bytes, concat },
 } = ethers;
 const { network } = require('hardhat');
 const { sortBy } = require('lodash');
@@ -78,12 +78,20 @@ const getEVMVersion = () => {
 };
 
 const expectRevert = async (txFunc, contract, error) => {
-    if (network.config.contracts?.skipRevertTests) {
+    if (network.config.skipRevertTests) {
         await expect(txFunc(getGasOptions())).to.be.reverted;
     } else {
         await expect(txFunc(null)).to.be.revertedWithCustomError(contract, error);
     }
 };
+
+function toEthSignedMessageHash(messageHex) {
+    const messageArray = arrayify(messageHex);
+    const prefix = `\u0019Ethereum Signed Message:\n${messageArray.length}`;
+    const prefixArray = toUtf8Bytes(prefix);
+    const combined = concat([prefixArray, messageArray]);
+    return keccak256(combined);
+}
 
 module.exports = {
     getChainId: async () => await network.provider.send('eth_chainId'),
@@ -185,4 +193,6 @@ module.exports = {
         ),
 
     getAddresses,
+
+    toEthSignedMessageHash,
 };

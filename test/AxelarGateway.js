@@ -7,7 +7,7 @@ const {
 } = ethers;
 const { expect } = chai;
 const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString, expectRevert } = require('./utils');
-const { getBytecodeHash } = require('@axelar-network/axelar-contract-deployments');
+const { getBytecodeHash } = require('@axelar-network/axelar-chains-config');
 
 const {
     bigNumberToNumber,
@@ -50,6 +50,7 @@ describe('AxelarGateway', () => {
 
     let auth;
     let tokenDeployer;
+    let gatewayProxy;
     let gateway;
 
     let externalToken;
@@ -101,13 +102,59 @@ describe('AxelarGateway', () => {
 
         const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, [], [], threshold);
 
-        const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
-        await proxy.deployTransaction.wait(network.config.confirmations);
+        gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
+        await gatewayProxy.deployTransaction.wait(network.config.confirmations);
 
-        await auth.transferOwnership(proxy.address).then((tx) => tx.wait(network.config.confirmations));
+        await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait(network.config.confirmations));
 
-        gateway = gatewayFactory.attach(proxy.address);
+        gateway = gatewayFactory.attach(gatewayProxy.address);
     };
+
+    describe('axelar gateway proxy', () => {
+        it('should revert on invalid gateway implementation address', async () => {
+            const params = '0x';
+
+            await expectRevert(
+                (gasOptions) => gatewayProxyFactory.deploy(AddressZero, params, gasOptions),
+                gatewayProxyFactory,
+                'InvalidImplementation',
+            );
+        });
+
+        it('should revert if gateway setup fails', async () => {
+            const params = '0x00';
+            const operatorAddresses = getAddresses(operators);
+
+            auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
+            await auth.deployTransaction.wait(network.config.confirmations);
+
+            const gatewayImplementation = await gatewayFactory.deploy(auth.address, auth.address);
+            await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
+
+            await expectRevert(
+                (gasOptions) => gatewayProxyFactory.deploy(gatewayImplementation.address, params, gasOptions),
+                gatewayProxyFactory,
+                'SetupFailed',
+            );
+        });
+
+        it('should fail on receiving native value', async () => {
+            const value = 10;
+
+            await deployGateway();
+
+            await expectRevert(
+                (gasOptions) =>
+                    owner.sendTransaction({
+                        to: gateway.address,
+                        value,
+                        ...gasOptions,
+                    }),
+                gatewayProxy,
+                'NativeCurrencyNotAccepted',
+            );
+        });
+    });
 
     describe('constructor checks', () => {
         it('should revert if auth module is not a contract', async () => {
