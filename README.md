@@ -13,15 +13,80 @@ See [this doc](./DESIGN.md) for more design info.
 
 ## Build
 
-We recommend using the current Node.js [LTS version](https://nodejs.org/en/about/releases/) for satisfying the hardhat compiler 
+We recommend using the latest Node.js [LTS version](https://nodejs.org/en/about/releases/).
 
-Run in your terminal
 ```bash
 npm ci
 
 npm run build
 
 npm run test
+```
+
+Pre-compiled bytecodes can be found under [Releases](https://github.com/axelarnetwork/axelar-cgp-solidity/releases).
+Furthermore, pre-compiled bytecodes and ABI are shipped in the [npm package](https://www.npmjs.com/package/@axelar-network/axelar-cgp-solidity) and can be imported via:
+```bash
+npm i @axelar-network/axelar-cgp-solidity
+```
+
+```javascript
+const IAxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/interfaces/IAxelarGateway.json');
+
+const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
+```
+
+## Live network testing
+
+1. Check if the contract deployments repository supports the chain you will be using. Supported chains can be found [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config). If the chain is not already supported, proceed to steps 2-4, otherwise you may skip to step 5.
+2. Navigate to the contract deployments repo [here](https://github.com/axelarnetwork/axelar-contract-deployments/) and clone the repository locally.
+3. Within the info folder, edit the environment specific file to add the chain you'll be testing. The following values need to be provided:
+```json
+{
+  "chains": {
+    "example": {
+      "name": "Example",
+      "id": "example",
+      "chainId": 123,
+      "rpc": "PROVIDER_RPC",
+      "tokenSymbol": "EXM",
+      "gasOptions": {
+         "gasLimit": 8000000
+      }
+    }
+  }
+}
+```
+
+4. In the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
+```javascript
+const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
+```
+
+5. Create a `keys.json` file in this repo that contains the private keys for your accounts that will be used for testing. For some tests, such as the Axelar gateway tests, you may need to provide at least two private keys (you can refer the [test](https://github.com/axelarnetwork/axelar-cgp-solidity/blob/d0c040330d7498d52dee7eedbebf2aefeb5c87fb/test/BurnableMintableCappedERC20.js#L22) to find the number of accounts needed). At this point the `keys.json` file should resemble the example file below (`chains` can be left empty):
+```json
+{
+  "chains": {},
+  "accounts": ["PRIVATE_KEY1", "PRIVATE_KEY2"]
+}
+```
+
+6. Ensure that your accounts corresponding to the private keys provided have sufficient gas tokens on the chain.
+7. Run
+```bash
+npm ci
+
+npx hardhat test --network example
+```
+
+8. To run specific tests you may modify the test scripts by adding `.only` to `describe` and/or `it` blocks as shown below or grep the specific test names:
+
+```javascript
+describe.only();
+it.only();
+```
+
+```bash
+npx hardhat test --network example --grep 'AxelarGateway'
 ```
 
 ## Example flows
