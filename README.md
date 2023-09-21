@@ -25,61 +25,58 @@ npm run build
 npm run test
 ```
 
-## Live testnet testing
+## Live network testing
 
-1. Check if the contract deployments repository supports the testnet you will be using. Supported chains can be found [here](https://github.com/axelarnetwork/axelar-contract-deployments/blob/main/info/testnet.json). If the testnet is not already supported, proceed to steps 2-4, otherwise you may skip to step 5.
+1. Check if the contract deployments repository supports the chain you will be using. Supported chains can be found [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config). If the chain is not already supported, proceed to steps 2-4, otherwise you may skip to step 5.
 2. Navigate to the contract deployments repo [here](https://github.com/axelarnetwork/axelar-contract-deployments/) and clone the repository locally.
-3. Within the info folder in the [testnet](https://github.com/axelarnetwork/axelar-contract-deployments/blob/main/info/testnet.json) file, add the configuration of the new testnet as shown in the example below with correct values:
-
+3. Within the info folder, edit the environment specific file to add the chain you'll be testing. The following values need to be provided:
 ```json
 {
-    "chains": {
-        "example": {
-            "name": "Example",
-            "id": "example",
-            "chainId": 123,
-            "rpc": "PROVIDER_RPC",
-            "tokenSymbol": "EXM",
-            "gasOptions": {
-                "gasLimit": 8000000
-            }
-        }
+  "chains": {
+    "example": {
+      "name": "Example",
+      "id": "example",
+      "chainId": 123,
+      "rpc": "PROVIDER_RPC",
+      "tokenSymbol": "EXM",
+      "gasOptions": {
+         "gasLimit": 8000000
+      }
     }
+  }
 }
 ```
 
-4. In the root directory of this repository navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
-
+4. In the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
 ```javascript
-const chains = require(`@axelar-network/axelar-contract-deployments/info/${env}.json`);
-const chains = require(`[LOCAL_PATH]/axelar-contract-deployments/info/${env}.json`);
+const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
 ```
 
-5. In the info folder of this repository create a new file named `keys.json`
-6. Within `keys.json` provide your private key for the account you will be using for testing. For some tests, such as the Axelar gateway tests, you may need to provide more than one private key. Next, you may optionally provide an API key for the testnet you will be using.
-
-At this point the `keys.json` file should resemble the example file below:
-
+1. Create a file named `keys.json` in this repo that contains your private key for the accounts you will be using for testing. For some tests, such as the Axelar gateway tests, you may need to provide at least two private keys (you can refer the [test](https://github.com/axelarnetwork/axelar-cgp-solidity/blob/d0c040330d7498d52dee7eedbebf2aefeb5c87fb/test/BurnableMintableCappedERC20.js#L22) to find the number of accounts needed). At this point the `keys.json` file should resemble the example file below (`chains` can be left empty):
 ```json
 {
-    "accounts": ["PRIVATE_KEY1", "PRIVATE_KEY2", "PRIVATE_KEY3"]
+  "chains": {},
+  "accounts": ["PRIVATE_KEY1", "PRIVATE_KEY2"]
 }
 ```
 
-7. Ensure that your accounts corresponding to the private keys provided have sufficient native value on the testnet you will be using.
-8. Run in your terminal
-
+7. Ensure that your accounts corresponding to the private keys provided have sufficient gas tokens on the chain.
+8. Run
 ```bash
 npm ci
 
-npx hardhat test --network NETWORK_NAME
+npx hardhat test --network example
 ```
 
-9. To run specific tests you may modify the test scripts by adding `.only` to `describe` and/or `it` blocks as shown below:
+9. To run specific tests you may modify the test scripts by adding `.only` to `describe` and/or `it` blocks as shown below or grep the specific test names:
 
 ```javascript
 describe.only();
 it.only();
+```
+
+```bash
+npx hardhat test --network example --grep 'AxelarGateway'
 ```
 
 ## Example flows
