@@ -25,6 +25,10 @@ npm run test
 
 Pre-compiled bytecodes can be found under [Releases](https://github.com/axelarnetwork/axelar-cgp-solidity/releases).
 Furthermore, pre-compiled bytecodes and ABI are shipped in the [npm package](https://www.npmjs.com/package/@axelar-network/axelar-cgp-solidity) and can be imported via:
+```bash
+npm i @axelar-network/axelar-cgp-solidity
+```
+
 ```javascript
 const IAxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/interfaces/IAxelarGateway.json');
 
