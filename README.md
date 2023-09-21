@@ -13,9 +13,7 @@ See [this doc](./DESIGN.md) for more design info.
 
 ## Build
 
-We recommend using the current Node.js [LTS version](https://nodejs.org/en/about/releases/) for satisfying the hardhat compiler
-
-Run in your terminal
+We recommend using the latest Node.js [LTS version](https://nodejs.org/en/about/releases/).
 
 ```bash
 npm ci
@@ -23,6 +21,14 @@ npm ci
 npm run build
 
 npm run test
+```
+
+Pre-compiled bytecodes can be found under [Releases](https://github.com/axelarnetwork/axelar-cgp-solidity/releases).
+Furthermore, pre-compiled bytecodes and ABI are shipped in the [npm package](https://www.npmjs.com/package/@axelar-network/axelar-cgp-solidity) and can be imported via:
+```javascript
+const IAxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/interfaces/IAxelarGateway.json');
+
+const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
 ```
 
 ## Live network testing
@@ -52,7 +58,7 @@ npm run test
 const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
 ```
 
-1. Create a file named `keys.json` in this repo that contains your private key for the accounts you will be using for testing. For some tests, such as the Axelar gateway tests, you may need to provide at least two private keys (you can refer the [test](https://github.com/axelarnetwork/axelar-cgp-solidity/blob/d0c040330d7498d52dee7eedbebf2aefeb5c87fb/test/BurnableMintableCappedERC20.js#L22) to find the number of accounts needed). At this point the `keys.json` file should resemble the example file below (`chains` can be left empty):
+5. Create a `keys.json` file in this repo that contains the private keys for your accounts that will be used for testing. For some tests, such as the Axelar gateway tests, you may need to provide at least two private keys (you can refer the [test](https://github.com/axelarnetwork/axelar-cgp-solidity/blob/d0c040330d7498d52dee7eedbebf2aefeb5c87fb/test/BurnableMintableCappedERC20.js#L22) to find the number of accounts needed). At this point the `keys.json` file should resemble the example file below (`chains` can be left empty):
 ```json
 {
   "chains": {},
@@ -60,15 +66,15 @@ const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-confi
 }
 ```
 
-7. Ensure that your accounts corresponding to the private keys provided have sufficient gas tokens on the chain.
-8. Run
+6. Ensure that your accounts corresponding to the private keys provided have sufficient gas tokens on the chain.
+7. Run
 ```bash
 npm ci
 
 npx hardhat test --network example
 ```
 
-9. To run specific tests you may modify the test scripts by adding `.only` to `describe` and/or `it` blocks as shown below or grep the specific test names:
+8. To run specific tests you may modify the test scripts by adding `.only` to `describe` and/or `it` blocks as shown below or grep the specific test names:
 
 ```javascript
 describe.only();
