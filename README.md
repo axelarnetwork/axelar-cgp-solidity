@@ -39,7 +39,7 @@ const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/con
 
 1. Check if the contract deployments repository supports the chain you will be using. Supported chains can be found [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config). If the chain is not already supported, proceed to steps 2-4, otherwise you may skip to step 5.
 2. Navigate to the contract deployments repo [here](https://github.com/axelarnetwork/axelar-contract-deployments/) and clone the repository locally.
-3. Within the info folder, edit the environment specific file to add the chain you'll be testing. The following values need to be provided:
+3. Within contract deployments repo, edit the environment specific file inside the axelar-chains-config/info folder to add the chain you'll be testing. The following values need to be provided:
 ```json
 {
   "chains": {
@@ -57,7 +57,7 @@ const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/con
 }
 ```
 
-4. In the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
+4. Return to the axelr-cgp-solidity repository. Once there, in the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
 ```javascript
 const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
 ```
