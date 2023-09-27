@@ -31,6 +31,7 @@ describe('AxelarGatewayUpgrade', () => {
 
     let ownerWallet;
     let governanceAddress;
+    let buffer;
 
     let interchainGovernanceFactory;
     let interchainGovernance;
@@ -70,7 +71,7 @@ describe('AxelarGatewayUpgrade', () => {
     });
 
     const deployGateway = async () => {
-        const buffer = isHardhat ? 10 * 60 * 60 : 10;
+        buffer = isHardhat ? 10 * 60 * 60 : 10;
 
         const operatorAddresses = getAddresses(operators);
 
@@ -163,9 +164,20 @@ describe('AxelarGatewayUpgrade', () => {
                 sourceEventIndex,
             );
 
-        await expect(interchainGovernance.execute(commandIdGateway, governanceChain, governanceAddress, payload, getGasOptions()))
+        const txExecute = await interchainGovernance.execute(
+            commandIdGateway,
+            governanceChain,
+            governanceAddress,
+            payload,
+            getGasOptions(),
+        );
+        const receiptExecute = await txExecute.wait();
+        const minimumEta = (await ethers.provider.getBlock(receiptExecute.blockNumber)).timestamp + buffer;
+        const finalEta = minimumEta > eta ? minimumEta : eta;
+
+        await expect(txExecute)
             .to.emit(interchainGovernance, 'ProposalScheduled')
-            .withArgs(proposalHash, target, calldata, nativeValue, eta);
+            .withArgs(proposalHash, target, calldata, nativeValue, finalEta);
 
         await waitFor(timeDelay);
 
