@@ -57,7 +57,7 @@ const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/con
 }
 ```
 
-4. Return to the axelr-cgp-solidity repository. Once there, in the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
+4. Return to the `axelar-cgp-solidity` repository. Once there, in the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
 ```javascript
 const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
 ```
