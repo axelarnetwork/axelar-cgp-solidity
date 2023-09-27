@@ -144,10 +144,15 @@ describe('GeneralMessagePassing', () => {
 
         await sourceChainGateway.execute(
             await getSignedWeightedExecuteInput(await getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
-        );
+        ).then(tx => tx.wait());
         await destinationChainGateway.execute(
             await getSignedWeightedExecuteInput(await getTokenDeployData(true), [operatorWallet], [1], 1, [operatorWallet]),
-        );
+        ).then(tx => tx.wait());;
+
+        const sourceChainTokenA = mintableCappedERC20Factory
+            .attach(await sourceChainGateway.tokenAddresses(symbolA))
+            .connect(userWallet);
+        console.log("balance before 1", await sourceChainTokenA.balanceOf(userWallet.address));
 
         destinationChainTokenSwapper = await destinationChainTokenSwapperFactory
             .deploy(tokenA.address, tokenB.address)
@@ -159,30 +164,40 @@ describe('GeneralMessagePassing', () => {
             .deploy(sourceChainGateway.address, sourceChainGasService.address, destinationChain, destinationChainSwapExecutable.address)
             .then((d) => d.deployed());
 
-        await tokenA.mint(destinationChainGateway.address, 1e9);
-        await tokenB.mint(destinationChainTokenSwapper.address, 1e9);
+        await tokenA.mint(destinationChainGateway.address, 1e9).then(tx => tx.wait());
+        console.log("balance before 2", await sourceChainTokenA.balanceOf(userWallet.address));
+        await tokenB.mint(destinationChainTokenSwapper.address, 1e9).then(tx => tx.wait());
+        console.log("balance before 3", await sourceChainTokenA.balanceOf(userWallet.address));
 
-        await sourceChainGateway.execute(
+        const txExecute = await sourceChainGateway.execute(
             await getSignedWeightedExecuteInput(await getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [
                 operatorWallet,
             ]),
         );
-        await tokenA.connect(ownerWallet).mint(userWallet.address, 1e9);
+        await txExecute.wait();
+
+
+        console.log("balance before 4", await sourceChainTokenA.balanceOf(userWallet.address));
+
+
+        await tokenA.connect(ownerWallet).mint(userWallet.address, 1e9).then(tx => tx.wait());;
     });
 
     describe('general message passing', () => {
-        it('should swap tokens on remote chain', async () => {
+        it.only('should swap tokens on remote chain', async () => {
             const swapAmount = 1e6;
             const gasFeeAmount = 1e3;
             const convertedAmount = 2 * swapAmount;
             const payload = defaultAbiCoder.encode(['string', 'string'], [symbolB, userWallet.address.toString()]);
             const payloadHash = keccak256(payload);
-
+            
             const sourceChainTokenA = mintableCappedERC20Factory
-                .attach(await sourceChainGateway.tokenAddresses(symbolA))
-                .connect(userWallet);
-            await sourceChainTokenA.approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount);
+            .attach(await sourceChainGateway.tokenAddresses(symbolA))
+            .connect(userWallet);
+            console.log("balance", await sourceChainTokenA.balanceOf(userWallet.address));
+            await sourceChainTokenA.approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount).then(tx => tx.wait());;
 
+            console.log("Approval done: ");
             await expect(
                 sourceChainSwapCaller
                     .connect(userWallet)
@@ -209,6 +224,7 @@ describe('GeneralMessagePassing', () => {
                     symbolA,
                     swapAmount,
                 );
+            console.log(1)
 
             const approveCommandId = getRandomID();
             const sourceTxHash = keccak256('0x123abc123abc');
@@ -243,6 +259,7 @@ describe('GeneralMessagePassing', () => {
             const approveExecute = await destinationChainGateway.execute(
                 await getSignedWeightedExecuteInput(approveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
             );
+            console.log(2)
 
             await expect(approveExecute)
                 .to.emit(destinationChainGateway, 'ContractCallApprovedWithMint')
@@ -257,6 +274,7 @@ describe('GeneralMessagePassing', () => {
                     sourceTxHash,
                     sourceEventIndex,
                 );
+                console.log(3)
 
             const swap = await destinationChainSwapExecutable.executeWithToken(
                 approveCommandId,
@@ -266,6 +284,7 @@ describe('GeneralMessagePassing', () => {
                 symbolA,
                 swapAmount,
             );
+            console.log(4)
 
             await expect(swap)
                 .to.emit(tokenA, 'Transfer')
