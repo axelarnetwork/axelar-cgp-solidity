@@ -183,7 +183,7 @@ describe('GeneralMessagePassing', () => {
             .then((tx) => tx.wait(network.config.confirmations));
     });
 
-    describe.only('general message passing', () => {
+    describe('general message passing', () => {
         it('should swap tokens on remote chain', async () => {
             const swapAmount = 1e6;
             const gasFeeAmount = 1e3;
