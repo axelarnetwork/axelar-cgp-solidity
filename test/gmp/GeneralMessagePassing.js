@@ -198,7 +198,6 @@ describe('GeneralMessagePassing', () => {
                 .approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount)
                 .then((tx) => tx.wait(network.config.confirmations));
 
-            console.log('Approval done: ');
             await expect(
                 sourceChainSwapCaller
                     .connect(userWallet)
