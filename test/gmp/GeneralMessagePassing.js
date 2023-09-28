@@ -149,6 +149,7 @@ describe('GeneralMessagePassing', () => {
                 getGasOptions(),
             )
             .then((tx) => tx.wait(network.config.confirmations));
+
         await destinationChainGateway
             .execute(
                 await getSignedWeightedExecuteInput(await getTokenDeployData(true), [operatorWallet], [1], 1, [operatorWallet]),
