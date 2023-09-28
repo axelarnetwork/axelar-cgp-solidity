@@ -9,6 +9,8 @@ const {
 } = ethers;
 const { expect } = chai;
 
+const { isHardhat } = require('./utils');
+
 describe('EVM Compatibility Test', () => {
     let rpcUrl;
     let provider;
@@ -285,14 +287,16 @@ describe('EVM Compatibility Test', () => {
         expect(newBlockHeader).to.have.property('hash');
     });
 
-    it('should get the max priority fee per gas', async () => {
-        // Make the eth_maxPriorityFeePerGas call
-        const maxPriorityFeePerGas = await provider.send('eth_maxPriorityFeePerGas', []);
+    if (!isHardhat) {
+        it('should get the max priority fee per gas', async () => {
+            // Make the eth_maxPriorityFeePerGas call
+            const maxPriorityFeePerGas = await provider.send('eth_maxPriorityFeePerGas', []);
 
-        // Verify the max priority fee per gas
-        expect(maxPriorityFeePerGas).to.be.a('string');
-        expect(ethers.BigNumber.from(maxPriorityFeePerGas).toNumber()).to.be.at.least(0); // Should be a non-negative number
-    });
+            // Verify the max priority fee per gas
+            expect(maxPriorityFeePerGas).to.be.a('string');
+            expect(ethers.BigNumber.from(maxPriorityFeePerGas).toNumber()).to.be.at.least(0); // Should be a non-negative number
+        });
+    }
 
     it('should retrieve fee history', async () => {
         // Make the call to eth_feeHistory
