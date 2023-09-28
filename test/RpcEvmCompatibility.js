@@ -3,7 +3,10 @@
 const chai = require('chai');
 const { Wallet } = require('ethers');
 const { ethers, network } = require('hardhat');
-const { getDefaultProvider, utils: {hexValue, parseUnits, parseEther, serializeTransaction} } = ethers;
+const {
+    getDefaultProvider,
+    utils: { hexValue },
+} = ethers;
 const { expect } = chai;
 
 describe('EVM Compatibility Test', () => {
@@ -20,7 +23,8 @@ describe('EVM Compatibility Test', () => {
     before(async () => {
         rpcUrl = network.config.rpc;
         provider = rpcUrl ? getDefaultProvider(rpcUrl) : ethers.provider;
-        wallets = await ethers.getSigners();
+        wallets = await ethers.getSigners(); // Will use accounts from keys.json if provided
+        accounts = network.config.accounts;
         wallet = wallets[0];
     });
 
@@ -162,11 +166,12 @@ describe('EVM Compatibility Test', () => {
     });
 
     it('should estimate gas for a transaction', async () => {
-        let gasLimit = network.config.gasOptions?.gasLimit || 50000;
+        const gasLimit = network.config.gasOptions?.gasLimit || 50000;
+        const newValue = 100;
         const transactionParams = {
-        to: rpcCompatibilityContract.address,
-        data: rpcCompatibilityContract.interface.encodeFunctionData('getValue'),
-        gasLimit,
+            to: rpcCompatibilityContract.address,
+            data: rpcCompatibilityContract.interface.encodeFunctionData('updateValue', [newValue]),
+            gasLimit,
         };
 
         // Make the eth_estimateGas call
@@ -205,9 +210,8 @@ describe('EVM Compatibility Test', () => {
     });
 
     it('should send a raw transaction', async () => {
-        wallet = new Wallet(network.config.accounts[0], provider)
+        const wallet = new Wallet(accounts[0], provider);
         const nonce = await provider.getTransactionCount(wallet.address, 'latest');
-        const amount = '0.001';
         const tx = {
             chainId: network.config.chainId,
             nonce: hexValue(nonce),
@@ -230,7 +234,7 @@ describe('EVM Compatibility Test', () => {
         expect(receipt).to.not.be.null;
         expect(receipt.from).to.equal(wallet.address); // Check if the sender address is correct
         expect(receipt.to).to.equal(rpcCompatibilityContract.address); // Check if the recipient is correct
-        expect(receipt.status).to.equal(1);    
+        expect(receipt.status).to.equal(1);
     });
 
     it('should retrieve the balance of an address at a specific block', async () => {
@@ -245,22 +249,23 @@ describe('EVM Compatibility Test', () => {
     it('should check if the node is syncing', async () => {
         // Make the eth_syncing call
         const syncingStatus = await provider.send('eth_syncing', []);
+
         if (syncingStatus) {
             expect(syncingStatus).to.be.an('object');
             expect(syncingStatus.startingBlock).to.be.a('string');
             expect(syncingStatus.currentBlock).to.be.a('string');
             expect(syncingStatus.highestBlock).to.be.a('string');
         } else {
-            expect(syncingStatus).to.be.false;
+            expect(syncingStatus).to.be.false; // currently on live testnet the syncingStatus is always coming as false.
         }
     });
 
     it('should subscribe to new block headers and trigger a new block', async () => {
-        const webSocketProvider = new ethers.providers.WebSocketProvider("wss://polygon-mumbai.g.alchemy.com/v2/dd6iqemnBvw1En8qBotF25qrCtC7LXES");
+        const webSocketProvider = new ethers.providers.WebSocketProvider(rpcUrl); // Need wss rpc for this
         // Create a wallet to send transactions
-        const wallet = new Wallet(network.config.accounts[0], provider);
+        const wallet = new Wallet(accounts[0], provider);
         // Subscribe to new block headers
-        const subscriptionId = await webSocketProvider.send('eth_subscribe', ['newHeads']);
+        const subscriptionId = await webSocketProvider.send('eth_subscribe', ['alchemy_pendingTransactions']);
 
         expect(subscriptionId).to.be.a('string');
 
@@ -269,12 +274,11 @@ describe('EVM Compatibility Test', () => {
             to: ADDRESS_1.address,
             value: ethers.utils.parseEther('0.001'), // 0.001 ETH
         };
-        console.log("11111111")
         const txResponse = await wallet.sendTransaction(tx);
         await txResponse.wait(); // Wait for transaction to be mined
 
         // Wait for a new block header to be received
-        const newBlockHeader = await provider.waitFor('eth', subscriptionId);
+        const newBlockHeader = await provider.waitFor('eth', subscriptionId); // TODO: this call fails waitFor does not exist
 
         // Verify the new block header
         expect(newBlockHeader).to.be.an('object');
@@ -293,7 +297,7 @@ describe('EVM Compatibility Test', () => {
 
     it('should retrieve fee history', async () => {
         // Make the call to eth_feeHistory
-        const feeHistory = await provider.send('eth_feeHistory', [1, 'latest', [25, 75]]);
+        const feeHistory = await provider.send('eth_feeHistory', [1, 'latest', [25, 75]]); // referecne: https://docs.alchemy.com/reference/eth-feehistory
 
         // If the fee history is retrieved successfully, the test passes
         expect(feeHistory).to.be.an('object');
