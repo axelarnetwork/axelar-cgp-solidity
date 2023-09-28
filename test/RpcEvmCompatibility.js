@@ -94,7 +94,6 @@ describe('EVM Compatibility Test', () => {
 
     it('should retrieve a block by hash', async () => {
         // Send a simple eth transfer transaction
-        const wallet = wallets[0];
         const transaction = await wallet.sendTransaction({
             to: ADDRESS_1, // Replace with the recipient's address
             value: ethers.utils.parseEther('0.001'), // Send 0.001 Ether
@@ -210,7 +209,7 @@ describe('EVM Compatibility Test', () => {
     });
 
     it('should send a raw transaction', async () => {
-        const wallet = new Wallet(accounts[0], provider);
+        wallet = accounts[0] ? new Wallet(accounts[0], provider) : wallet;
         const nonce = await provider.getTransactionCount(wallet.address, 'latest');
         const tx = {
             chainId: network.config.chainId,
