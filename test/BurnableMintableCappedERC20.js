@@ -318,8 +318,7 @@ describe('BurnableMintableCappedERC20', () => {
                 .to.emit(token, 'Transfer')
                 .withArgs(ethers.constants.AddressZero, user.address, amount);
 
-            const txApproval = await token.connect(user).approve(owner.address, MaxUint256);
-            await txApproval.wait();
+            await token.connect(user).approve(owner.address, MaxUint256).then((tx) => tx.wait());
 
             await token.burnFrom(user.address, amount);
 
