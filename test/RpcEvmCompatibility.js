@@ -1,15 +1,15 @@
 'use strict';
 
 const chai = require('chai');
+const { Wallet } = require('ethers');
 const { ethers, network } = require('hardhat');
-const { getDefaultProvider } = ethers;
+const { getDefaultProvider, utils: {hexValue, parseUnits, parseEther, serializeTransaction} } = ethers;
 const { expect } = chai;
-
-const { hexValue, parseUnits } = require('ethers/lib/utils');
 
 describe('EVM Compatibility Test', () => {
     let rpcUrl;
     let provider;
+    let accounts;
     let wallets;
     let wallet;
     let rpcCompatibilityFactory;
@@ -19,9 +19,12 @@ describe('EVM Compatibility Test', () => {
 
     before(async () => {
         rpcUrl = network.config.rpc;
-        provider = getDefaultProvider(rpcUrl);
+        provider = rpcUrl ? getDefaultProvider(rpcUrl) : ethers.provider;
         wallets = await ethers.getSigners();
         wallet = wallets[0];
+    });
+
+    beforeEach(async () => {
         rpcCompatibilityFactory = await ethers.getContractFactory('RpcCompatibility', wallets[0]);
         rpcCompatibilityContract = await rpcCompatibilityFactory.deploy(INITIAL_VALUE);
         await rpcCompatibilityContract.deployTransaction.wait(network.config.confirmations);
@@ -150,23 +153,20 @@ describe('EVM Compatibility Test', () => {
 
     it('should retrieve the code of a contract', async () => {
         // Make the eth_getCode call for the deployed contract
-        const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address, 'latest']);
-        const compiledBytecode = rpcCompatibilityFactory.bytecode;
+        const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address]);
 
         // Verify the code
-        expect(code).to.not.equal('0x'); // Ensure it's not an empty code
         expect(code).to.be.a('string');
-        expect(code).to.equal(compiledBytecode);
+        expect(/^0x[0-9a-fA-F]*$/.test(code)).to.be.true; // Ensure it's a valid hexadecimal string
+        expect(code).to.not.equal('0x'); // Ensure it's not an empty code
     });
 
     it('should estimate gas for a transaction', async () => {
-        const gasPrice = network.config.gasOptions?.gasPrice
-            ? parseUnits(network.config.gasOptions.gasPrice, 'wei')
-            : parseUnits('50', 'gwei');
+        let gasLimit = network.config.gasOptions?.gasLimit || 50000;
         const transactionParams = {
-            to: rpcCompatibilityContract.address,
-            data: rpcCompatibilityContract.interface.encodeFunctionData('getValue'),
-            gasPrice,
+        to: rpcCompatibilityContract.address,
+        data: rpcCompatibilityContract.interface.encodeFunctionData('getValue'),
+        gasLimit,
         };
 
         // Make the eth_estimateGas call
@@ -174,7 +174,7 @@ describe('EVM Compatibility Test', () => {
 
         // Verify the estimated gas
         expect(estimatedGas).to.be.a('string');
-        expect(ethers.BigNumber.from(estimatedGas).toNumber()).to.be.above(0); // Gas should be a positive integer
+        expect(ethers.BigNumber.from(estimatedGas).gt(0)).to.be.true;
     });
 
     it('should retrieve the current gas price', async () => {
@@ -205,68 +205,62 @@ describe('EVM Compatibility Test', () => {
     });
 
     it('should send a raw transaction', async () => {
-        const nonce = await provider.getTransactionCount(wallets[0].address, 'latest');
+        wallet = new Wallet(network.config.accounts[0], provider)
+        const nonce = await provider.getTransactionCount(wallet.address, 'latest');
         const amount = '0.001';
         const tx = {
-            nonce: ethers.utils.hexlify(nonce),
-            to: ADDRESS_1.address,
-            value: ethers.utils.parseEther(amount),
+            chainId: network.config.chainId,
+            nonce: hexValue(nonce),
+            to: rpcCompatibilityContract.address,
+            data: rpcCompatibilityContract.interface.encodeFunctionData('getValue'),
             gasPrice: network.config.gasOptions?.gasPrice || ethers.utils.parseUnits('50', 'gwei'),
-            gasLimit: network.config.gasOptions?.gasPrice || 50000, // Use an appropriate gas limit
+            gasLimit: network.config.gasOptions?.gasLimit || 50000, // Use an appropriate gas limit
         };
         const rawTransaction = await wallet.signTransaction(tx);
 
         // Make the eth_sendRawTransaction call
         const transactionHash = await provider.send('eth_sendRawTransaction', [rawTransaction]);
         // Get the receipt for the transaction
-        const receipt = await provider.getTransactionReceipt(transactionHash);
+        const receipt = await provider.waitForTransaction(transactionHash);
 
         // Verify the transaction hash
         expect(transactionHash).to.be.a('string');
         expect(transactionHash).to.match(/0x[0-9a-fA-F]{64}/); // Check if it's a valid transaction hash
         // Verify the receipt
         expect(receipt).to.not.be.null;
-        expect(receipt.from).to.equal(wallets[0].address); // Check if the sender address is correct
-        expect(receipt.to).to.equal(ADDRESS_1); // Check if the recipient is correct
-        expect(receipt.value).to.equal(ethers.utils.parseEther(amount)); // Check if the value is 0.001 ETH
+        expect(receipt.from).to.equal(wallet.address); // Check if the sender address is correct
+        expect(receipt.to).to.equal(rpcCompatibilityContract.address); // Check if the recipient is correct
+        expect(receipt.status).to.equal(1);    
     });
 
     it('should retrieve the balance of an address at a specific block', async () => {
         // Make the eth_balanceAt call
-        const balance = await provider.send('eth_balanceAt', [wallets[0].address, 'latest']);
+        const balance = await provider.send('eth_getBalance', [wallets[0].address, 'latest']);
 
         // Verify the balance
         expect(balance).to.be.a('string');
-        expect(ethers.BigNumber.from(balance).toNumber()).to.be.at.least(0); // Balance should be non-negative
+        expect(ethers.BigNumber.from(balance)).to.be.gte(0);
     });
 
     it('should check if the node is syncing', async () => {
         // Make the eth_syncing call
         const syncingStatus = await provider.send('eth_syncing', []);
-
-        // Verify the syncing status
-        expect(syncingStatus).to.be.an('object');
-        expect(syncingStatus).to.have.property('startingBlock');
-        expect(syncingStatus).to.have.property('currentBlock');
-        expect(syncingStatus).to.have.property('highestBlock');
-
-        if (syncingStatus.syncing) {
+        if (syncingStatus) {
+            expect(syncingStatus).to.be.an('object');
             expect(syncingStatus.startingBlock).to.be.a('string');
             expect(syncingStatus.currentBlock).to.be.a('string');
             expect(syncingStatus.highestBlock).to.be.a('string');
         } else {
-            expect(syncingStatus.startingBlock).to.be.a('number');
-            expect(syncingStatus.currentBlock).to.be.a('number');
-            expect(syncingStatus.highestBlock).to.be.a('number');
+            expect(syncingStatus).to.be.false;
         }
     });
 
     it('should subscribe to new block headers and trigger a new block', async () => {
-        const webSocketProvider = new ethers.providers.WebSocketProvider(rpcUrl);
+        const webSocketProvider = new ethers.providers.WebSocketProvider("wss://polygon-mumbai.g.alchemy.com/v2/dd6iqemnBvw1En8qBotF25qrCtC7LXES");
         // Create a wallet to send transactions
-        const wallet = wallets[0].connect(webSocketProvider);
+        const wallet = new Wallet(network.config.accounts[0], provider);
         // Subscribe to new block headers
-        const subscriptionId = await provider.send('eth_subscribe', ['newHeads']);
+        const subscriptionId = await webSocketProvider.send('eth_subscribe', ['newHeads']);
 
         expect(subscriptionId).to.be.a('string');
 
@@ -275,6 +269,7 @@ describe('EVM Compatibility Test', () => {
             to: ADDRESS_1.address,
             value: ethers.utils.parseEther('0.001'), // 0.001 ETH
         };
+        console.log("11111111")
         const txResponse = await wallet.sendTransaction(tx);
         await txResponse.wait(); // Wait for transaction to be mined
 
@@ -297,14 +292,12 @@ describe('EVM Compatibility Test', () => {
     });
 
     it('should retrieve fee history', async () => {
-        const blockNumber = 'latest'; // Replace with a specific block number if needed
-        // Make the eth_maxPriorityFeePerGas call
-        const maxPriorityFeePerGas = await provider.send('eth_maxPriorityFeePerGas', []);
-
         // Make the call to eth_feeHistory
-        const feeHistory = await provider.send('eth_feeHistory', [blockNumber, maxPriorityFeePerGas]);
+        const feeHistory = await provider.send('eth_feeHistory', [1, 'latest', [25, 75]]);
 
         // If the fee history is retrieved successfully, the test passes
-        expect(feeHistory).to.be.an('array');
+        expect(feeHistory).to.be.an('object');
+        expect(parseInt(feeHistory.oldestBlock, 16)).to.be.an('number');
+        expect(feeHistory.reward).to.be.an('array');
     });
 });
