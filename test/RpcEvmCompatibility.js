@@ -159,7 +159,7 @@ describe('EVM Compatibility Test', () => {
         expect(result).to.equal(INITIAL_VALUE);
     });
 
-    it.only('should retrieve the code of a contract', async () => {
+    it('should retrieve the code of a contract', async () => {
         // Make the eth_getCode call for the deployed contract
         const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address, 'latest']);
 
