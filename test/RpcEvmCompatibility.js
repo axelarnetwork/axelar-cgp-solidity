@@ -158,7 +158,7 @@ describe('EVM Compatibility Test', () => {
 
     it('should retrieve the code of a contract', async () => {
         // Make the eth_getCode call for the deployed contract
-        const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address]);
+        const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address, 'latest']);
 
         // Verify the code
         expect(code).to.be.a('string');
@@ -278,7 +278,7 @@ describe('EVM Compatibility Test', () => {
         const tx = await rpcCompatibilityContract.updateValue(100);
         await tx.wait(); // Wait for transaction to be mined
 
-        await new Promise(res => setTimeout(() => res(null), 20000));
+        await new Promise((res) => setTimeout(() => res(null), 20000));
 
         // Verify the new block header
         expect(newBlockHeader).to.be.an('object');
