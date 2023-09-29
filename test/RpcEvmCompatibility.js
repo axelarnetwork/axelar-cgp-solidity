@@ -264,22 +264,21 @@ describe('EVM Compatibility Test', () => {
     it('should subscribe to new block headers and trigger a new block', async () => {
         const webSocketProvider = new ethers.providers.WebSocketProvider(rpcUrl); // Need wss rpc for this
         // Create a wallet to send transactions
-        const wallet = new Wallet(accounts[0], provider);
+        wallet = accounts[0] ? new Wallet(accounts[0], provider) : wallet;
         // Subscribe to new block headers
-        const subscriptionId = await webSocketProvider.send('eth_subscribe', ['alchemy_pendingTransactions']);
+        const subscriptionId = await webSocketProvider.send('eth_subscribe', ['newHeads']);
 
         expect(subscriptionId).to.be.a('string');
 
-        // Send a transaction to trigger a new block
-        const tx = {
-            to: ADDRESS_1.address,
-            value: ethers.utils.parseEther('0.001'), // 0.001 ETH
-        };
-        const txResponse = await wallet.sendTransaction(tx);
-        await txResponse.wait(); // Wait for transaction to be mined
+        // Listen for events
+        webSocketProvider.on(subscriptionId, (event) => {
+            console.log('Received event:', event);
+        });
 
-        // Wait for a new block header to be received
-        const newBlockHeader = await provider.waitFor('eth', subscriptionId); // TODO: this call fails waitFor does not exist
+        const tx = await rpcCompatibilityContract.updateValue(100);
+        await tx.wait(); // Wait for transaction to be mined
+
+        await new Promise(res => setTimeout(() => res(null), 20000));
 
         // Verify the new block header
         expect(newBlockHeader).to.be.an('object');
@@ -300,7 +299,7 @@ describe('EVM Compatibility Test', () => {
 
     it('should retrieve fee history', async () => {
         // Make the call to eth_feeHistory
-        const feeHistory = await provider.send('eth_feeHistory', [1, 'latest', [25, 75]]); // referecne: https://docs.alchemy.com/reference/eth-feehistory
+        const feeHistory = await provider.send('eth_feeHistory', ['0x1', 'latest', [25, 75]]); // referecne: https://docs.alchemy.com/reference/eth-feehistory
 
         // If the fee history is retrieved successfully, the test passes
         expect(feeHistory).to.be.an('object');
