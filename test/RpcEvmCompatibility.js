@@ -212,7 +212,7 @@ describe('EVM Compatibility Test', () => {
     });
 
     it('should send a raw transaction', async () => {
-        const privateKeys = keys?.accounts || keys.chains[network.name]?.accounts || KnownAccount0PrivateKeyHardhat;
+        const privateKeys = isHardhat ? KnownAccount0PrivateKeyHardhat : keys?.accounts || keys.chains[network.name]?.accounts;
         const wallet = new Wallet(privateKeys[0], provider);
 
         let tx = {
