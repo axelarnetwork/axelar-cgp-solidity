@@ -170,13 +170,14 @@ describe('GeneralMessagePassing', () => {
         await tokenA.mint(destinationChainGateway.address, 1e9).then((tx) => tx.wait(network.config.confirmations));
         await tokenB.mint(destinationChainTokenSwapper.address, 1e9).then((tx) => tx.wait(network.config.confirmations));
 
-        const txExecute = await sourceChainGateway.execute(
-            await getSignedWeightedExecuteInput(await getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [
-                operatorWallet,
-            ]),
-            getGasOptions(),
-        );
-        await txExecute.wait();
+        await sourceChainGateway
+            .execute(
+                await getSignedWeightedExecuteInput(await getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [
+                    operatorWallet,
+                ]),
+                getGasOptions(),
+            )
+            .then((tx) => tx.wait(network.config.confirmations));
 
         await tokenA
             .connect(ownerWallet)
@@ -256,9 +257,12 @@ describe('GeneralMessagePassing', () => {
                 ),
             );
 
-            const approveExecute = await destinationChainGateway.execute(
-                await getSignedWeightedExecuteInput(approveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
-            );
+            const approveExecute = await destinationChainGateway
+                .execute(
+                    await getSignedWeightedExecuteInput(approveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
+                    getGasOptions(),
+                )
+                .then((tx) => tx.wait(network.config.confirmations));
 
             await expect(approveExecute)
                 .to.emit(destinationChainGateway, 'ContractCallApprovedWithMint')
@@ -274,14 +278,17 @@ describe('GeneralMessagePassing', () => {
                     sourceEventIndex,
                 );
 
-            const swap = await destinationChainSwapExecutable.executeWithToken(
-                approveCommandId,
-                sourceChain,
-                sourceChainSwapCaller.address.toString(),
-                payload,
-                symbolA,
-                swapAmount,
-            );
+            const swap = await destinationChainSwapExecutable
+                .executeWithToken(
+                    approveCommandId,
+                    sourceChain,
+                    sourceChainSwapCaller.address.toString(),
+                    payload,
+                    symbolA,
+                    swapAmount,
+                    getGasOptions(),
+                )
+                .then((tx) => tx.wait(network.config.confirmations));
 
             await expect(swap)
                 .to.emit(tokenA, 'Transfer')
