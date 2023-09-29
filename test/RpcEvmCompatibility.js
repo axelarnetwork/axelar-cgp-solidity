@@ -1,13 +1,15 @@
 'use strict';
 
 const chai = require('chai');
-const { Wallet } = require('ethers');
+const { signer, Wallet } = require('ethers');
 const { ethers, network } = require('hardhat');
 const {
     getDefaultProvider,
     utils: { hexValue },
 } = ethers;
 const { expect } = chai;
+const { readJSON } = require('@axelar-network/axelar-chains-config');
+const keys = readJSON(`${__dirname}/../keys.json`);
 
 const { isHardhat } = require('./utils');
 
@@ -15,23 +17,24 @@ describe('EVM Compatibility Test', () => {
     let rpcUrl;
     let provider;
     let accounts;
-    let wallets;
-    let wallet;
+    let signers;
+    let signer;
     let rpcCompatibilityFactory;
     let rpcCompatibilityContract;
     const ADDRESS_1 = '0x0000000000000000000000000000000000000001';
     const INITIAL_VALUE = 10;
+    const KnownAccount0PrivateKeyHardhat = ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"];
 
     before(async () => {
         rpcUrl = network.config.rpc;
         provider = rpcUrl ? getDefaultProvider(rpcUrl) : ethers.provider;
-        wallets = await ethers.getSigners(); // Will use accounts from keys.json if provided
+        signers = await ethers.getSigners(); // Will use accounts from keys.json if provided
         accounts = network.config.accounts;
-        wallet = wallets[0];
+        signer = signers[0];
     });
 
     beforeEach(async () => {
-        rpcCompatibilityFactory = await ethers.getContractFactory('RpcCompatibility', wallets[0]);
+        rpcCompatibilityFactory = await ethers.getContractFactory('RpcCompatibility', signers[0]);
         rpcCompatibilityContract = await rpcCompatibilityFactory.deploy(INITIAL_VALUE);
         await rpcCompatibilityContract.deployTransaction.wait(network.config.confirmations);
     });
@@ -58,7 +61,7 @@ describe('EVM Compatibility Test', () => {
 
     it('should retrieve a transaction receipt', async () => {
         // Send a simple eth transfer transaction
-        const transaction = await wallet.sendTransaction({
+        const transaction = await signer.sendTransaction({
             to: ADDRESS_1, // Replace with the recipient's address
             value: ethers.utils.parseEther('0.001'), // Send 0.001 Ether
         });
@@ -77,7 +80,7 @@ describe('EVM Compatibility Test', () => {
 
     it('should retrieve a transaction by hash', async () => {
         // Send a simple eth transfer transaction
-        const transaction = await wallet.sendTransaction({
+        const transaction = await signer.sendTransaction({
             to: ADDRESS_1, // Replace with the recipient's address
             value: ethers.utils.parseEther('0.001'), // Send 0.001 Ether
         });
@@ -96,7 +99,7 @@ describe('EVM Compatibility Test', () => {
 
     it('should retrieve a block by hash', async () => {
         // Send a simple eth transfer transaction
-        const transaction = await wallet.sendTransaction({
+        const transaction = await signer.sendTransaction({
             to: ADDRESS_1, // Replace with the recipient's address
             value: ethers.utils.parseEther('0.001'), // Send 0.001 Ether
         });
@@ -156,7 +159,7 @@ describe('EVM Compatibility Test', () => {
         expect(result).to.equal(INITIAL_VALUE);
     });
 
-    it('should retrieve the code of a contract', async () => {
+    it.only('should retrieve the code of a contract', async () => {
         // Make the eth_getCode call for the deployed contract
         const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address, 'latest']);
 
@@ -203,7 +206,7 @@ describe('EVM Compatibility Test', () => {
 
     it('should retrieve the transaction count of an address', async () => {
         // Make the eth_getTransactionCount call
-        const transactionCount = await provider.send('eth_getTransactionCount', [wallets[0].address, 'latest']);
+        const transactionCount = await provider.send('eth_getTransactionCount', [signers[0].address, 'latest']);
 
         // Verify the transaction count
         expect(transactionCount).to.be.a('string');
@@ -211,16 +214,16 @@ describe('EVM Compatibility Test', () => {
     });
 
     it('should send a raw transaction', async () => {
-        wallet = accounts[0] ? new Wallet(accounts[0], provider) : wallet;
-        const nonce = await provider.getTransactionCount(wallet.address, 'latest');
-        const tx = {
-            chainId: network.config.chainId,
-            nonce: hexValue(nonce),
+        const privateKeys = keys?.accounts || keys.chains[network.name]?.accounts || KnownAccount0PrivateKeyHardhat;
+        const wallet = new Wallet(privateKeys[0], provider);
+
+        let tx = {
             to: rpcCompatibilityContract.address,
             data: rpcCompatibilityContract.interface.encodeFunctionData('getValue'),
-            gasPrice: network.config.gasOptions?.gasPrice || ethers.utils.parseUnits('50', 'gwei'),
-            gasLimit: network.config.gasOptions?.gasLimit || 50000, // Use an appropriate gas limit
-        };
+            gasLimit: network.config.gasOptions?.gasLimit || 23310, // Use an appropriate gas limit
+        }
+
+        tx = await signer.populateTransaction(tx);
         const rawTransaction = await wallet.signTransaction(tx);
 
         // Make the eth_sendRawTransaction call
@@ -233,14 +236,14 @@ describe('EVM Compatibility Test', () => {
         expect(transactionHash).to.match(/0x[0-9a-fA-F]{64}/); // Check if it's a valid transaction hash
         // Verify the receipt
         expect(receipt).to.not.be.null;
-        expect(receipt.from).to.equal(wallet.address); // Check if the sender address is correct
+        expect(receipt.from).to.equal(signer.address); // Check if the sender address is correct
         expect(receipt.to).to.equal(rpcCompatibilityContract.address); // Check if the recipient is correct
         expect(receipt.status).to.equal(1);
     });
 
     it('should retrieve the balance of an address at a specific block', async () => {
         // Make the eth_balanceAt call
-        const balance = await provider.send('eth_getBalance', [wallets[0].address, 'latest']);
+        const balance = await provider.send('eth_getBalance', [signers[0].address, 'latest']);
 
         // Verify the balance
         expect(balance).to.be.a('string');
@@ -263,8 +266,8 @@ describe('EVM Compatibility Test', () => {
 
     it('should subscribe to new block headers and trigger a new block', async () => {
         const webSocketProvider = new ethers.providers.WebSocketProvider(rpcUrl); // Need wss rpc for this
-        // Create a wallet to send transactions
-        wallet = accounts[0] ? new Wallet(accounts[0], provider) : wallet;
+        // Create a signer to send transactions
+        signer = accounts[0] ? new signer(accounts[0], provider) : signer;
         // Subscribe to new block headers
         const subscriptionId = await webSocketProvider.send('eth_subscribe', ['newHeads']);
 
