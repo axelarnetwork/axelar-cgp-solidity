@@ -1,7 +1,7 @@
 'use strict';
 
 const chai = require('chai');
-const { signer, Wallet } = require('ethers');
+const { Wallet } = require('ethers');
 const { ethers, network } = require('hardhat');
 const {
     getDefaultProvider,
@@ -16,20 +16,18 @@ const { isHardhat } = require('./utils');
 describe('EVM Compatibility Test', () => {
     let rpcUrl;
     let provider;
-    let accounts;
     let signers;
     let signer;
     let rpcCompatibilityFactory;
     let rpcCompatibilityContract;
     const ADDRESS_1 = '0x0000000000000000000000000000000000000001';
     const INITIAL_VALUE = 10;
-    const KnownAccount0PrivateKeyHardhat = ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"];
+    const KnownAccount0PrivateKeyHardhat = ['0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'];
 
     before(async () => {
         rpcUrl = network.config.rpc;
         provider = rpcUrl ? getDefaultProvider(rpcUrl) : ethers.provider;
         signers = await ethers.getSigners(); // Will use accounts from keys.json if provided
-        accounts = network.config.accounts;
         signer = signers[0];
     });
 
@@ -221,7 +219,7 @@ describe('EVM Compatibility Test', () => {
             to: rpcCompatibilityContract.address,
             data: rpcCompatibilityContract.interface.encodeFunctionData('getValue'),
             gasLimit: network.config.gasOptions?.gasLimit || 23310, // Use an appropriate gas limit
-        }
+        };
 
         tx = await signer.populateTransaction(tx);
         const rawTransaction = await wallet.signTransaction(tx);
@@ -264,16 +262,17 @@ describe('EVM Compatibility Test', () => {
         }
     });
 
-    it("should subscribe to the event", async function () {
+    it('should subscribe to the event', async function () {
         // This uses eth_subscribe
         // Setting up manually via wss rpc is tricky
         rpcCompatibilityContract.on('ValueUpdated', (value) => {
-            console.log('Subscription successful')
+            console.log('Subscription successful');
             expect(value.toNumber()).to.equal(123);
-        })
+        });
 
-        await rpcCompatibilityContract.updateValue(123).then(tx => tx.wait());
-        await new Promise(res => setTimeout(() => res(null), 5000));
+        await rpcCompatibilityContract.updateValue(123).then((tx) => tx.wait());
+        const resolve = (res) => setTimeout(() => res(null), 5000);
+        await new Promise(resolve);
     });
 
     if (!isHardhat) {
