@@ -40,9 +40,7 @@ describe('EVM Compatibility Test', () => {
     it('should execute eth_getLogs on the RPC URL', async () => {
         // Execute updateValue function (assuming newValue is a BigNumber)
         const newValue = ethers.BigNumber.from(100);
-        const tx = await rpcCompatibilityContract.updateValue(newValue);
-        // Wait for the transaction to be mined
-        const receipt = await tx.wait();
+        const receipt = await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
         const blockNo = hexValue(receipt.blockNumber);
 
         // Attempt to retrieve logs using eth_getLogs
