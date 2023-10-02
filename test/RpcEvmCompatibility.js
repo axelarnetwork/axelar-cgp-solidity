@@ -264,7 +264,6 @@ describe('EVM Compatibility Test', () => {
         // This uses eth_subscribe
         // Setting up manually via wss rpc is tricky
         rpcCompatibilityContract.on('ValueUpdated', (value) => {
-            console.log('Subscription successful');
             expect(value.toNumber()).to.equal(123);
         });
 
