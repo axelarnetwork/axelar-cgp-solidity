@@ -27,7 +27,7 @@ describe('EVM Compatibility Test', () => {
     before(async () => {
         rpcUrl = network.config.rpc;
         provider = rpcUrl ? getDefaultProvider(rpcUrl) : ethers.provider;
-        signers = await ethers.getSigners(); // Will use accounts from keys.json if provided
+        signers = await ethers.getSigners();
         signer = signers[0];
     });
 
