@@ -257,12 +257,10 @@ describe('GeneralMessagePassing', () => {
                 ),
             );
 
-            const approveExecute = await destinationChainGateway
-                .execute(
-                    await getSignedWeightedExecuteInput(approveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
-                    getGasOptions(),
-                )
-                .then((tx) => tx.wait(network.config.confirmations));
+            const approveExecute = await destinationChainGateway.execute(
+                await getSignedWeightedExecuteInput(approveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
+                getGasOptions(),
+            );
 
             await expect(approveExecute)
                 .to.emit(destinationChainGateway, 'ContractCallApprovedWithMint')
@@ -278,17 +276,15 @@ describe('GeneralMessagePassing', () => {
                     sourceEventIndex,
                 );
 
-            const swap = await destinationChainSwapExecutable
-                .executeWithToken(
-                    approveCommandId,
-                    sourceChain,
-                    sourceChainSwapCaller.address.toString(),
-                    payload,
-                    symbolA,
-                    swapAmount,
-                    getGasOptions(),
-                )
-                .then((tx) => tx.wait(network.config.confirmations));
+            const swap = await destinationChainSwapExecutable.executeWithToken(
+                approveCommandId,
+                sourceChain,
+                sourceChainSwapCaller.address.toString(),
+                payload,
+                symbolA,
+                swapAmount,
+                getGasOptions(),
+            );
 
             await expect(swap)
                 .to.emit(tokenA, 'Transfer')
