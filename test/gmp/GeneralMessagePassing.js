@@ -1,7 +1,7 @@
 'use strict';
 
 const chai = require('chai');
-const { ethers } = require('hardhat');
+const { ethers, network } = require('hardhat');
 const {
     utils: { defaultAbiCoder, arrayify, keccak256 },
 } = ethers;
@@ -19,6 +19,7 @@ const {
     getAddresses,
     getChainId,
     getWeightedProxyDeployParams,
+    getGasOptions,
 } = require('../utils');
 
 describe('GeneralMessagePassing', () => {
@@ -97,7 +98,7 @@ describe('GeneralMessagePassing', () => {
 
             const proxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params).then((d) => d.deployed());
 
-            await auth.transferOwnership(proxy.address).then((tx) => tx.wait());
+            await auth.transferOwnership(proxy.address).then((tx) => tx.wait(network.config.confirmations));
 
             gateway = gatewayFactory.attach(proxy.address);
 
@@ -142,12 +143,19 @@ describe('GeneralMessagePassing', () => {
         tokenA = await mintableCappedERC20Factory.deploy(nameA, symbolA, decimals, capacity).then((d) => d.deployed());
         tokenB = await mintableCappedERC20Factory.deploy(nameB, symbolB, decimals, capacity).then((d) => d.deployed());
 
-        await sourceChainGateway.execute(
-            await getSignedWeightedExecuteInput(await getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
-        );
-        await destinationChainGateway.execute(
-            await getSignedWeightedExecuteInput(await getTokenDeployData(true), [operatorWallet], [1], 1, [operatorWallet]),
-        );
+        await sourceChainGateway
+            .execute(
+                await getSignedWeightedExecuteInput(await getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
+                getGasOptions(),
+            )
+            .then((tx) => tx.wait(network.config.confirmations));
+
+        await destinationChainGateway
+            .execute(
+                await getSignedWeightedExecuteInput(await getTokenDeployData(true), [operatorWallet], [1], 1, [operatorWallet]),
+                getGasOptions(),
+            )
+            .then((tx) => tx.wait(network.config.confirmations));
 
         destinationChainTokenSwapper = await destinationChainTokenSwapperFactory
             .deploy(tokenA.address, tokenB.address)
@@ -159,15 +167,22 @@ describe('GeneralMessagePassing', () => {
             .deploy(sourceChainGateway.address, sourceChainGasService.address, destinationChain, destinationChainSwapExecutable.address)
             .then((d) => d.deployed());
 
-        await tokenA.mint(destinationChainGateway.address, 1e9);
-        await tokenB.mint(destinationChainTokenSwapper.address, 1e9);
+        await tokenA.mint(destinationChainGateway.address, 1e9).then((tx) => tx.wait(network.config.confirmations));
+        await tokenB.mint(destinationChainTokenSwapper.address, 1e9).then((tx) => tx.wait(network.config.confirmations));
 
-        await sourceChainGateway.execute(
-            await getSignedWeightedExecuteInput(await getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [
-                operatorWallet,
-            ]),
-        );
-        await tokenA.connect(ownerWallet).mint(userWallet.address, 1e9);
+        await sourceChainGateway
+            .execute(
+                await getSignedWeightedExecuteInput(await getMintData(symbolA, userWallet.address, 1e9), [operatorWallet], [1], 1, [
+                    operatorWallet,
+                ]),
+                getGasOptions(),
+            )
+            .then((tx) => tx.wait(network.config.confirmations));
+
+        await tokenA
+            .connect(ownerWallet)
+            .mint(userWallet.address, 1e9)
+            .then((tx) => tx.wait(network.config.confirmations));
     });
 
     describe('general message passing', () => {
@@ -181,7 +196,9 @@ describe('GeneralMessagePassing', () => {
             const sourceChainTokenA = mintableCappedERC20Factory
                 .attach(await sourceChainGateway.tokenAddresses(symbolA))
                 .connect(userWallet);
-            await sourceChainTokenA.approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount);
+            await sourceChainTokenA
+                .approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount)
+                .then((tx) => tx.wait(network.config.confirmations));
 
             await expect(
                 sourceChainSwapCaller
@@ -242,6 +259,7 @@ describe('GeneralMessagePassing', () => {
 
             const approveExecute = await destinationChainGateway.execute(
                 await getSignedWeightedExecuteInput(approveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
+                getGasOptions(),
             );
 
             await expect(approveExecute)
@@ -265,6 +283,7 @@ describe('GeneralMessagePassing', () => {
                 payload,
                 symbolA,
                 swapAmount,
+                getGasOptions(),
             );
 
             await expect(swap)
