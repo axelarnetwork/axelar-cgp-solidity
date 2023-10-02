@@ -243,7 +243,7 @@ describe('EVM Compatibility Test', () => {
 
         // Verify the balance
         expect(balance).to.be.a('string');
-        expect(ethers.BigNumber.from(balance)).to.be.gte(0);
+        expect(ethers.BigNumber.from(balance)).to.be.gt(0);
     });
 
     it('should check if the node is syncing', async () => {
