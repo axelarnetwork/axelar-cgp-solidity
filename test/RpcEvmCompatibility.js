@@ -1,17 +1,24 @@
 'use strict';
 
 const chai = require('chai');
-const { Wallet } = require('ethers');
 const { ethers, network } = require('hardhat');
 const {
     getDefaultProvider,
-    utils: { hexValue },
+    utils: { hexValue, getAddress, keccak256 },
+    Wallet,
+    BigNumber,
 } = ethers;
 const { expect } = chai;
 const { readJSON } = require('@axelar-network/axelar-chains-config');
 const keys = readJSON(`${__dirname}/../keys.json`);
 
-const { isHardhat } = require('./utils');
+const { isHardhat, getRandomInt } = require('./utils');
+
+function checkBlockTimeStamp(timeStamp) {
+    const currentTime = Math.floor(Date.now() / 1000);
+    const timeDifference = Math.abs(currentTime - timeStamp);
+    expect(timeDifference).to.be.lessThan(100);
+}
 
 describe('EVM Compatibility Test', () => {
     let rpcUrl;
@@ -20,127 +27,104 @@ describe('EVM Compatibility Test', () => {
     let signer;
     let rpcCompatibilityFactory;
     let rpcCompatibilityContract;
-    const ADDRESS_1 = '0x0000000000000000000000000000000000000001';
+    let fundsReceiver;
     const INITIAL_VALUE = 10;
+    const MAX_TRANSFER = 100; // 100 wei
     const KnownAccount0PrivateKeyHardhat = ['0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'];
+    const DEPLOYED_BYTECODE =
+        '0x6080604052348015600f57600080fd5b506004361060325760003560e01c806320965255146037578063573c0bd314604c575b600080fd5b60005460405190815260200160405180910390f35b605b6057366004608d565b605d565b005b600081815560405182917f4273d0736f60e0dedfe745e86718093d8ec8646ebd2a60cd60643eeced56581191a250565b600060208284031215609e57600080fd5b503591905056fea26469706673582212202c6c668b71cd7ea307469bbf128d323df9f5cba23a7b8d923e7e7b1e8483898e64736f6c63430008090033';
 
     before(async () => {
         rpcUrl = network.config.rpc;
-        provider = rpcUrl ? getDefaultProvider(rpcUrl) : ethers.provider;
+        provider = network.provider;
         signers = await ethers.getSigners();
         signer = signers[0];
-    });
-
-    beforeEach(async () => {
-        rpcCompatibilityFactory = await ethers.getContractFactory('RpcCompatibility', signers[0]);
+        fundsReceiver = signers[1].address;
+        rpcCompatibilityFactory = await ethers.getContractFactory('RpcCompatibility', signer);
         rpcCompatibilityContract = await rpcCompatibilityFactory.deploy(INITIAL_VALUE);
         await rpcCompatibilityContract.deployTransaction.wait(network.config.confirmations);
     });
 
-    it('should execute eth_getLogs on the RPC URL', async () => {
-        // Execute updateValue function (assuming newValue is a BigNumber)
-        const newValue = ethers.BigNumber.from(100);
+    it('should support RPC method eth_getLogs', async () => {
+        const newValue = 100;
         const receipt = await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
-        const blockNo = hexValue(receipt.blockNumber);
+        const blockNumber = hexValue(receipt.blockNumber);
 
-        // Attempt to retrieve logs using eth_getLogs
         const filter = {
-            fromBlock: blockNo,
-            toBlock: blockNo,
+            fromBlock: blockNumber,
+            toBlock: blockNumber,
         };
-        // Make the call to eth_getLogs
         const logs = await provider.send('eth_getLogs', [filter]);
-        // If the logs are retrieved successfully, the test passes
         expect(logs).to.be.an('array');
         expect(logs.length).to.be.greaterThan(0);
     });
 
-    it('should retrieve a transaction receipt', async () => {
-        // Send a simple eth transfer transaction
-        const transaction = await signer.sendTransaction({
-            to: ADDRESS_1, // Replace with the recipient's address
-            value: ethers.utils.parseEther('0.001'), // Send 0.001 Ether
+    describe('rpc get transaction and blockByHash methods', () => {
+        let tx;
+        let amount;
+
+        before(async () => {
+            amount = getRandomInt(MAX_TRANSFER);
+            tx = await signer.sendTransaction({
+                to: fundsReceiver,
+                value: amount,
+            });
+            await tx.wait();
         });
 
-        // Wait for the transaction to be mined
-        await transaction.wait();
+        it('should support RPC method eth_getTransactionReceipt', async () => {
+            const receipt = await provider.send('eth_getTransactionReceipt', [tx.hash]);
 
-        // Retrieve the transaction receipt
-        const receipt = await provider.send('eth_getTransactionReceipt', [transaction.hash]);
-
-        // If the receipt is retrieved successfully, the test passes
-        expect(receipt).to.be.an('object');
-        expect(parseInt(receipt.blockNumber, 16)).to.be.a('number');
-        expect(receipt.to).to.equal(ADDRESS_1);
-    });
-
-    it('should retrieve a transaction by hash', async () => {
-        // Send a simple eth transfer transaction
-        const transaction = await signer.sendTransaction({
-            to: ADDRESS_1, // Replace with the recipient's address
-            value: ethers.utils.parseEther('0.001'), // Send 0.001 Ether
+            expect(receipt).to.be.an('object');
+            expect(parseInt(receipt.blockNumber, 16)).to.be.a('number');
+            expect(getAddress(receipt.to)).to.equal(fundsReceiver);
         });
 
-        // Wait for the transaction to be mined
-        await transaction.wait();
+        it('should support RPC method eth_getTransactionByHash', async () => {
+            const txInfo = await provider.send('eth_getTransactionByHash', [tx.hash]);
 
-        // Retrieve the transaction by hash
-        const transactionInfo = await provider.send('eth_getTransactionByHash', [transaction.hash]);
-
-        // If the receipt is retrieved successfully, the test passes
-        expect(transactionInfo).to.be.an('object');
-        expect(transactionInfo.to).to.equal(ADDRESS_1); // Verify the recipient address
-        expect(parseInt(transactionInfo.value, 16).toString()).to.equal(ethers.utils.parseEther('0.001').toString()); // Verify the sent value
-    });
-
-    it('should retrieve a block by hash', async () => {
-        // Send a simple eth transfer transaction
-        const transaction = await signer.sendTransaction({
-            to: ADDRESS_1, // Replace with the recipient's address
-            value: ethers.utils.parseEther('0.001'), // Send 0.001 Ether
+            expect(txInfo).to.be.an('object');
+            expect(getAddress(txInfo.to)).to.equal(fundsReceiver);
+            expect(parseInt(txInfo.value, 16).toString()).to.equal(amount.toString());
         });
 
-        // Wait for the transaction to be mined
-        await transaction.wait();
-        const receipt = await provider.getTransactionReceipt(transaction.hash);
-        const blockHash = receipt.blockHash;
+        it('should support RPC method eth_getBlockByHash', async () => {
+            const receipt = await provider.send('eth_getTransactionReceipt', [tx.hash]);
+            const blockHash = receipt.blockHash;
+            const block = await provider.send('eth_getBlockByHash', [blockHash, true]);
 
-        // Make the eth_getBlockByHash call
-        const block = await provider.send('eth_getBlockByHash', [blockHash, true]);
-
-        // Verify properties of the block
-        expect(block).to.be.an('object');
-        expect(block.hash).to.equal(blockHash);
-        expect(parseInt(block.number, 16)).to.be.a('number');
-        expect(parseInt(block.timestamp, 16)).to.be.a('number');
-        expect(block.transactions).to.be.an('array');
+            expect(block).to.be.an('object');
+            expect(block.hash).to.equal(blockHash);
+            expect(parseInt(block.number, 16)).to.be.a('number');
+            expect(parseInt(block.timestamp, 16)).to.be.a('number');
+            checkBlockTimeStamp(parseInt(block.timestamp, 16));
+            expect(block.transactions).to.be.an('array');
+        });
     });
 
-    it('should retrieve the latest block', async () => {
-        // Make the eth_getBlockByNumber call for the latest block
+    it('should support RPC method eth_getBlockByNumber', async () => {
         const block = await provider.send('eth_getBlockByNumber', ['latest', true]);
 
-        // Verify properties of the block
         expect(block).to.be.an('object');
         expect(block.hash).to.be.a('string');
-        expect(parseInt(block.number), 16).to.be.a('number');
-        expect(parseInt(block.timestamp), 16).to.be.a('number');
+        expect(parseInt(block.number, 16)).to.be.a('number');
+        expect(parseInt(block.timestamp, 16)).to.be.a('number');
+        checkBlockTimeStamp(parseInt(block.timestamp, 16));
         expect(block.transactions).to.be.an('array');
     });
 
-    it('should retrieve the current block number', async () => {
-        // Make the eth_blockNumber call
+    it('should support RPC method eth_blockNumber', async () => {
         const blockNumber = await provider.send('eth_blockNumber', []);
+        const blockNumberDecimal = BigNumber.from(blockNumber).toNumber();
 
-        // Verify the block number
         expect(blockNumber).to.be.a('string');
-        const blockNumberDecimal = ethers.BigNumber.from(blockNumber).toNumber();
         expect(blockNumberDecimal).to.be.a('number');
         expect(blockNumberDecimal).to.be.gte(0);
     });
 
-    it('should make an eth_call', async () => {
-        // Make the eth_call to getValue in rpcCompatibilityContract
+    it('should support RPC method eth_call', async () => {
+        const newValue = 200;
+        await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
         const callResult = await provider.send('eth_call', [
             {
                 to: rpcCompatibilityContract.address,
@@ -149,147 +133,158 @@ describe('EVM Compatibility Test', () => {
             'latest',
         ]);
 
-        // Parse the result
-        const result = ethers.BigNumber.from(callResult).toNumber();
-        // Verify the result
-        expect(result).to.equal(INITIAL_VALUE);
+        const result = BigNumber.from(callResult).toNumber();
+        expect(result).to.equal(newValue);
     });
 
-    it('should retrieve the code of a contract', async () => {
-        // Make the eth_getCode call for the deployed contract
+    it('should support RPC method eth_getCode', async () => {
         const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address, 'latest']);
-
-        // Verify the code
         expect(code).to.be.a('string');
-        expect(/^0x[0-9a-fA-F]*$/.test(code)).to.be.true; // Ensure it's a valid hexadecimal string
-        expect(code).to.not.equal('0x'); // Ensure it's not an empty code
+        expect(/^0x[0-9a-fA-F]*$/.test(code)).to.be.true;
+        expect(code).to.equal(DEPLOYED_BYTECODE);
     });
 
-    it('should estimate gas for a transaction', async () => {
+    it('should support RPC method eth_estimateGas', async () => {
+        const newValue = 300;
         const gasLimit = network.config.gasOptions?.gasLimit || 50000;
-        const newValue = 100;
-        const transactionParams = {
+        const txParams = {
             to: rpcCompatibilityContract.address,
             data: rpcCompatibilityContract.interface.encodeFunctionData('updateValue', [newValue]),
             gasLimit,
         };
 
-        // Make the eth_estimateGas call
-        const estimatedGas = await provider.send('eth_estimateGas', [transactionParams]);
+        const estimatedGas = await provider.send('eth_estimateGas', [txParams]);
 
-        // Verify the estimated gas
         expect(estimatedGas).to.be.a('string');
-        expect(ethers.BigNumber.from(estimatedGas).gt(0)).to.be.true;
+        expect(BigNumber.from(estimatedGas).gt(0)).to.be.true;
     });
 
-    it('should retrieve the current gas price', async () => {
-        // Make the eth_gasPrice call
+    it('should support RPC method eth_gasPrice', async () => {
         const gasPrice = await provider.send('eth_gasPrice', []);
 
-        // Verify the gas price
         expect(gasPrice).to.be.a('string');
-        expect(ethers.BigNumber.from(gasPrice).toNumber()).to.be.above(0); // Gas price should be a positive integer
+        expect(BigNumber.from(gasPrice).toNumber()).to.be.above(0);
     });
 
-    it('should retrieve the chain ID', async () => {
-        // Make the eth_chainId call
+    it('should support RPC method eth_chainId', async () => {
         const chainId = await provider.send('eth_chainId', []);
 
-        // Verify the chain ID
         expect(chainId).to.be.a('string');
-        expect(ethers.BigNumber.from(chainId).toNumber()).to.be.above(0); // Chain ID should be a positive integer
+        expect(BigNumber.from(chainId).toNumber()).to.be.above(0);
     });
 
-    it('should retrieve the transaction count of an address', async () => {
-        // Make the eth_getTransactionCount call
-        const transactionCount = await provider.send('eth_getTransactionCount', [signers[0].address, 'latest']);
+    it('should support RPC method eth_getTransactionCount', async () => {
+        const txCount = await provider.send('eth_getTransactionCount', [signers[0].address, 'latest']);
 
-        // Verify the transaction count
-        expect(transactionCount).to.be.a('string');
-        expect(ethers.BigNumber.from(transactionCount).toNumber()).to.be.at.least(0); // Transaction count should be a non-negative integer
+        expect(txCount).to.be.a('string');
+        expect(BigNumber.from(txCount).toNumber()).to.be.at.least(0);
+
+        const amount = getRandomInt(MAX_TRANSFER);
+        const tx = await signer.sendTransaction({
+            to: fundsReceiver,
+            value: amount,
+        });
+        await tx.wait();
+        const newTxCount = await provider.send('eth_getTransactionCount', [signers[0].address, 'latest']);
+
+        expect(parseInt(txCount, 16) + 1).to.eq(parseInt(newTxCount, 16));
     });
 
-    it('should send a raw transaction', async () => {
+    it('should support RPC method eth_sendRawTransaction', async () => {
         const privateKeys = isHardhat ? KnownAccount0PrivateKeyHardhat : keys?.accounts || keys.chains[network.name]?.accounts;
+        provider = rpcUrl ? getDefaultProvider(rpcUrl) : ethers.provider;
         const wallet = new Wallet(privateKeys[0], provider);
+        const newValue = 400;
+        const tx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue));
+        const rawTx = await wallet.signTransaction(tx);
 
-        let tx = {
-            to: rpcCompatibilityContract.address,
-            data: rpcCompatibilityContract.interface.encodeFunctionData('getValue'),
-            gasLimit: network.config.gasOptions?.gasLimit || 23310, // Use an appropriate gas limit
-        };
-
-        tx = await signer.populateTransaction(tx);
-        const rawTransaction = await wallet.signTransaction(tx);
-
-        // Make the eth_sendRawTransaction call
-        const transactionHash = await provider.send('eth_sendRawTransaction', [rawTransaction]);
-        // Get the receipt for the transaction
-        const receipt = await provider.waitForTransaction(transactionHash);
-
-        // Verify the transaction hash
-        expect(transactionHash).to.be.a('string');
-        expect(transactionHash).to.match(/0x[0-9a-fA-F]{64}/); // Check if it's a valid transaction hash
-        // Verify the receipt
+        const txHash = await provider.send('eth_sendRawTransaction', [rawTx]);
+        const receipt = await provider.waitForTransaction(txHash);
+        const topic0 = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
+        expect(txHash).to.be.a('string');
+        expect(txHash).to.match(/0x[0-9a-fA-F]{64}/);
         expect(receipt).to.not.be.null;
-        expect(receipt.from).to.equal(signer.address); // Check if the sender address is correct
-        expect(receipt.to).to.equal(rpcCompatibilityContract.address); // Check if the recipient is correct
+        expect(receipt.from).to.equal(signer.address);
+        expect(receipt.to).to.equal(rpcCompatibilityContract.address);
         expect(receipt.status).to.equal(1);
+        expect(receipt.logs[0].topics[0]).to.equal(topic0);
+        expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(newValue);
     });
 
-    it('should retrieve the balance of an address at a specific block', async () => {
-        // Make the eth_balanceAt call
+    it('should support RPC method eth_getBalance', async () => {
         const balance = await provider.send('eth_getBalance', [signers[0].address, 'latest']);
 
-        // Verify the balance
         expect(balance).to.be.a('string');
-        expect(ethers.BigNumber.from(balance)).to.be.gt(0);
+        expect(BigNumber.from(balance)).to.be.gt(0);
     });
 
-    it('should check if the node is syncing', async () => {
-        // Make the eth_syncing call
+    it('should support RPC method eth_syncing', async () => {
         const syncingStatus = await provider.send('eth_syncing', []);
 
         if (syncingStatus) {
-            expect(syncingStatus).to.be.an('object');
-            expect(syncingStatus.startingBlock).to.be.a('string');
-            expect(syncingStatus.currentBlock).to.be.a('string');
-            expect(syncingStatus.highestBlock).to.be.a('string');
+            throw new Error('The provided rpc node is not synced');
         } else {
-            expect(syncingStatus).to.be.false; // currently on live testnet the syncingStatus is always coming as false.
+            expect(syncingStatus).to.be.false;
         }
     });
 
-    it('should subscribe to the event', async function () {
+    it('should support RPC method eth_subscribe', async function () {
         // This uses eth_subscribe
         // Setting up manually via wss rpc is tricky
+        // To ensure we don't subscribe to a transaction done in another test
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const newValue = 500;
         rpcCompatibilityContract.on('ValueUpdated', (value) => {
-            expect(value.toNumber()).to.equal(123);
+            expect(value.toNumber()).to.equal(newValue);
         });
 
-        await rpcCompatibilityContract.updateValue(123).then((tx) => tx.wait());
+        await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
         const resolve = (res) => setTimeout(() => res(null), 5000);
         await new Promise(resolve);
     });
 
-    if (!isHardhat) {
-        it('should get the max priority fee per gas', async () => {
-            // Make the eth_maxPriorityFeePerGas call
-            const maxPriorityFeePerGas = await provider.send('eth_maxPriorityFeePerGas', []);
+    describe('eip-1559 supported rpc methods', () => {
+        if (!isHardhat) {
+            it('should support RPC method eth_maxPriorityFeePerGas', async () => {
+                const maxPriorityFeePerGas = await provider.send('eth_maxPriorityFeePerGas', []);
 
-            // Verify the max priority fee per gas
-            expect(maxPriorityFeePerGas).to.be.a('string');
-            expect(ethers.BigNumber.from(maxPriorityFeePerGas).toNumber()).to.be.at.least(0); // Should be a non-negative number
+                expect(maxPriorityFeePerGas).to.be.a('string');
+                expect(BigNumber.from(maxPriorityFeePerGas).toNumber()).to.be.at.least(0);
+
+                const gasLimit = network.config.gasOptions?.gasLimit || 50000;
+                const gasOptions = { maxPriorityFeePerGas, gasLimit };
+                const newValue = 600;
+                const receipt = await rpcCompatibilityContract.updateValue(newValue, gasOptions).then((tx) => tx.wait());
+                const topic0 = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
+
+                expect(receipt.from).to.equal(signer.address);
+                expect(receipt.to).to.equal(rpcCompatibilityContract.address);
+                expect(receipt.status).to.equal(1);
+                expect(receipt.logs[0].topics[0]).to.equal(topic0);
+                expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(newValue);
+            });
+        }
+
+        it('should support RPC method eth_feeHistory', async () => {
+            const feeHistory = await provider.send('eth_feeHistory', ['0x1', 'latest', [25, 75]]); // reference: https://docs.alchemy.com/reference/eth-feehistory
+
+            expect(feeHistory).to.be.an('object');
+            expect(parseInt(feeHistory.oldestBlock, 16)).to.be.an('number');
+            expect(feeHistory.reward).to.be.an('array');
+
+            const gasOptions = {};
+            const baseFeePerGas = feeHistory.baseFeePerGas[0];
+            gasOptions.gasPrice = BigNumber.from(baseFeePerGas);
+            gasOptions.gasLimit = network.config.gasOptions?.gasLimit || 50000;
+            const newValue = 700;
+            const receipt = await rpcCompatibilityContract.updateValue(newValue, gasOptions).then((tx) => tx.wait());
+            const topic0 = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
+
+            expect(receipt.from).to.equal(signer.address);
+            expect(receipt.to).to.equal(rpcCompatibilityContract.address);
+            expect(receipt.status).to.equal(1);
+            expect(receipt.logs[0].topics[0]).to.equal(topic0);
+            expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(newValue);
         });
-    }
-
-    it('should retrieve fee history', async () => {
-        // Make the call to eth_feeHistory
-        const feeHistory = await provider.send('eth_feeHistory', ['0x1', 'latest', [25, 75]]); // referecne: https://docs.alchemy.com/reference/eth-feehistory
-
-        // If the fee history is retrieved successfully, the test passes
-        expect(feeHistory).to.be.an('object');
-        expect(parseInt(feeHistory.oldestBlock, 16)).to.be.an('number');
-        expect(feeHistory.reward).to.be.an('array');
     });
 });
