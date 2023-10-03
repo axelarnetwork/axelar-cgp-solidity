@@ -231,15 +231,19 @@ describe('EVM Compatibility Test', () => {
     it('should support RPC method eth_subscribe', async function () {
         // This uses eth_subscribe
         // Setting up manually via wss rpc is tricky
-        // To ensure we don't subscribe to a transaction done in another test
-        await new Promise((resolve) => setTimeout(resolve, 5000));
         const newValue = 500;
-        rpcCompatibilityContract.on('ValueUpdated', (value) => {
+        let isSubscribe = false;
+        rpcCompatibilityContract.on('ValueUpdatedForSubscribe', (value) => {
             expect(value.toNumber()).to.equal(newValue);
+            isSubscribe = true;
         });
 
-        await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
-        const resolve = (res) => setTimeout(() => res(null), 5000);
+        await rpcCompatibilityContract.updateValueForSubscribe(newValue).then((tx) => tx.wait());
+        const resolve = (res) =>
+            setTimeout(() => {
+                expect(isSubscribe).to.be.equal(true);
+                res(null);
+            }, 5000);
         await new Promise(resolve);
     });
 
