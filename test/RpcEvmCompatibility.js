@@ -31,8 +31,6 @@ describe('EVM Compatibility Test', () => {
     const INITIAL_VALUE = 10;
     const MAX_TRANSFER = 100; // 100 wei
     const KnownAccount0PrivateKeyHardhat = ['0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'];
-    const DEPLOYED_BYTECODE =
-        '0x6080604052348015600f57600080fd5b506004361060325760003560e01c806320965255146037578063573c0bd314604c575b600080fd5b60005460405190815260200160405180910390f35b605b6057366004608d565b605d565b005b600081815560405182917f4273d0736f60e0dedfe745e86718093d8ec8646ebd2a60cd60643eeced56581191a250565b600060208284031215609e57600080fd5b503591905056fea26469706673582212202c6c668b71cd7ea307469bbf128d323df9f5cba23a7b8d923e7e7b1e8483898e64736f6c63430008090033';
 
     before(async () => {
         rpcUrl = network.config.rpc;
@@ -141,7 +139,7 @@ describe('EVM Compatibility Test', () => {
         const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address, 'latest']);
         expect(code).to.be.a('string');
         expect(/^0x[0-9a-fA-F]*$/.test(code)).to.be.true;
-        expect(code).to.equal(DEPLOYED_BYTECODE);
+        expect(code).to.equal(await rpcCompatibilityContract.getRuntimeCode());
     });
 
     it('should support RPC method eth_estimateGas', async () => {

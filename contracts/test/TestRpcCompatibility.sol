@@ -25,4 +25,8 @@ contract RpcCompatibility {
         subscribeValue = newValue;
         emit ValueUpdatedForSubscribe(newValue);
     }
+
+    function getRuntimeCode() external view returns (bytes memory) {
+        return address(this).code;
+    }
 }
