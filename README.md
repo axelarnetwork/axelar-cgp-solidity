@@ -89,6 +89,45 @@ it.only();
 npx hardhat test --network example --grep 'AxelarGateway'
 ```
 
+## Debugging Steps
+
+- Explicitly pass `getGasOptions()` using utils.js file for some spceific transactions. See the code below for example
+```javascript
+await sourceChainGateway
+         .execute(
+               await getSignedWeightedExecuteInput(await getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
+               getGasOptions(),
+         )
+         .then((tx) => tx.wait(network.config.confirmations));
+```
+
+- Using the most up to date and fast rpc can help in tests execution runtime. Make sure the rate limit for the rpc is not exceeded.
+
+- Make sure that the account being used to broadcast transactions has enough native balance. The maximum `gasLimit` for a chain should be fetched from an explorer and set it in config file. Should also update the `confirmations` required for a transaction to be successfully included in a block in the config [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config/info) depending on the network.
+
+- For `AxelarAuthWeighted.js` tests to pass provide 16 different accounts in `keys.json` as value of `OLD_KEY_RETENTION` is 16.
+
+- Transactions can fail if previous transactions are not mined and picked up by the provide, therefore wait for a transaction to be mined after broadcasting. See the code below for example
+```javascript
+await testToken.mint(userWallet.address, 1e9).then((tx) => tx.wait(network.config.confirmations));
+
+// Or
+
+const txExecute = await interchainGovernance.execute(
+            commandIdGateway,
+            governanceChain,
+            governanceAddress,
+            payload,
+            getGasOptions(),
+        );
+const receiptExecute = await txExecute.wait(network.config.confirmations);
+ ```
+
+- The `changeEtherBalance` check expects one tx in a block so change in balances might need to be tested explicitly for unit tests using `changeEtherBalance`.
+
+
+
+
 ## Example flows
 
 See Axelar [examples](https://github.com/axelarnetwork/axelar-examples) for concrete examples.
