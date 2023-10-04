@@ -7,6 +7,7 @@ const {
 const { network } = require('hardhat');
 const { sortBy } = require('lodash');
 const { expect } = require('chai');
+const zkevm = require('@0xpolygonhermez/zkevm-commonjs');
 
 const getRandomInt = (max) => {
     return Math.floor(Math.random() * max);
@@ -60,12 +61,17 @@ const getPayloadAndProposalHash = async (commandID, target, nativeValue, calldat
     return [payload, proposalHash, eta];
 };
 
-const waitFor = async (timeDelay) => {
+const waitFor = async (timeDelay, callback) => {
     if (isHardhat) {
         await network.provider.send('evm_increaseTime', [timeDelay]);
         await network.provider.send('evm_mine');
     } else {
-        await new Promise((resolve) => setTimeout(resolve, timeDelay * 1000));
+        await new Promise((resolve) =>
+            setTimeout(async () => {
+                await callback();
+                resolve();
+            }, timeDelay * 1000),
+        );
     }
 };
 
@@ -92,6 +98,42 @@ function toEthSignedMessageHash(messageHex) {
     const combined = concat([prefixArray, messageArray]);
     return keccak256(combined);
 }
+
+async function getBytecodeHash(contractObject, chain = '', provider = null) {
+    let bytecode;
+
+    if (isString(contractObject)) {
+        if (provider === null) {
+            throw new Error('Provider must be provided for chain');
+        }
+
+        bytecode = await provider.getCode(contractObject);
+    } else if (contractObject.address) {
+        // Contract instance
+        provider = contractObject.provider;
+        bytecode = await provider.getCode(contractObject.address);
+    } else if (contractObject.deployedBytecode) {
+        // Contract factory
+        bytecode = contractObject.deployedBytecode;
+    } else {
+        throw new Error('Invalid contract object. Expected ethers.js Contract or ContractFactory.');
+    }
+
+    if (bytecode === '0x') {
+        throw new Error('Contract bytecode is empty');
+    }
+
+    if (chain.toLowerCase() === 'polygon-zkevm') {
+        const codehash = zkevm.smtUtils.hashContractBytecode(bytecode);
+        return codehash;
+    }
+
+    return keccak256(bytecode);
+}
+
+const isString = (arg) => {
+    return typeof arg === 'string' && arg !== '';
+};
 
 module.exports = {
     getChainId: async () => await network.provider.send('eth_chainId'),
@@ -195,4 +237,6 @@ module.exports = {
     getAddresses,
 
     toEthSignedMessageHash,
+
+    getBytecodeHash,
 };

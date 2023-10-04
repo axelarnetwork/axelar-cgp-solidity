@@ -12,7 +12,7 @@ const { expect } = chai;
 const { readJSON } = require('@axelar-network/axelar-chains-config');
 const keys = readJSON(`${__dirname}/../keys.json`);
 
-const { isHardhat, getRandomInt } = require('./utils');
+const { isHardhat, getRandomInt, getBytecodeHash, waitFor } = require('./utils');
 
 function checkBlockTimeStamp(timeStamp) {
     const currentTime = Math.floor(Date.now() / 1000);
@@ -31,6 +31,7 @@ describe('EVM Compatibility Test', () => {
     const INITIAL_VALUE = 10;
     const MAX_TRANSFER = 100; // 100 wei
     const KnownAccount0PrivateKeyHardhat = ['0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'];
+    const contractJson = require('../artifacts/contracts/test/TestRpcCompatibility.sol/RpcCompatibility.json');
 
     before(async () => {
         rpcUrl = network.config.rpc;
@@ -139,7 +140,7 @@ describe('EVM Compatibility Test', () => {
         const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address, 'latest']);
         expect(code).to.be.a('string');
         expect(/^0x[0-9a-fA-F]*$/.test(code)).to.be.true;
-        expect(code).to.equal(await rpcCompatibilityContract.getRuntimeCode());
+        expect(keccak256(code)).to.equal(await getBytecodeHash(contractJson));
     });
 
     it('should support RPC method eth_estimateGas', async () => {
@@ -237,12 +238,9 @@ describe('EVM Compatibility Test', () => {
         });
 
         await rpcCompatibilityContract.updateValueForSubscribe(newValue).then((tx) => tx.wait());
-        const resolve = (res) =>
-            setTimeout(() => {
-                expect(isSubscribe).to.be.equal(true);
-                res(null);
-            }, 5000);
-        await new Promise(resolve);
+        await waitFor(5, () => {
+            expect(isSubscribe).to.be.equal(true);
+        });
     });
 
     describe('eip-1559 supported rpc methods', () => {
