@@ -39,7 +39,7 @@ const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/con
 
 1. Check if the contract deployments repository supports the chain you will be using. Supported chains can be found [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config). If the chain is not already supported, proceed to steps 2-4, otherwise you may skip to step 5.
 2. Navigate to the contract deployments repo [here](https://github.com/axelarnetwork/axelar-contract-deployments/) and clone the repository locally.
-3. Within the info folder, edit the environment specific file to add the chain you'll be testing. The following values need to be provided:
+3. Within the contract deployments repo, edit the environment specific file inside the `axelar-chains-config/info` folder to add the chain you'll be testing. The following values need to be provided:
 ```json
 {
   "chains": {
@@ -57,7 +57,7 @@ const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/con
 }
 ```
 
-4. In the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
+4. Return to the `axelar-cgp-solidity` repository. Once there, in the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
 ```javascript
 const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
 ```
@@ -88,6 +88,42 @@ it.only();
 ```bash
 npx hardhat test --network example --grep 'AxelarGateway'
 ```
+
+## Debugging Steps
+
+- Explicitly pass `getGasOptions()` using utils.js file for some spceific transactions. See the code below for example
+```javascript
+await sourceChainGateway
+         .execute(
+               await getSignedWeightedExecuteInput(await getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
+               getGasOptions(),
+         )
+         .then((tx) => tx.wait(network.config.confirmations));
+```
+
+- Using the most up to date and fast rpc can help in tests execution runtime. Make sure the rate limit for the rpc is not exceeded.
+
+- Make sure that the account being used to broadcast transactions has enough native balance. The maximum `gasLimit` for a chain should be fetched from an explorer and set it in config file. You may also need to update the `confirmations` required for a transaction to be successfully included in a block in the config [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config/info) depending on the network.
+
+- For `AxelarAuthWeighted.js` tests to pass provide 16 different accounts in `keys.json` as value of `OLD_KEY_RETENTION` is 16.
+
+- Transactions can fail if previous transactions are not mined and picked up by the provide, therefore wait for a transaction to be mined after broadcasting. See the code below for example
+```javascript
+await testToken.mint(userWallet.address, 1e9).then((tx) => tx.wait(network.config.confirmations));
+
+// Or
+
+const txExecute = await interchainGovernance.execute(
+            commandIdGateway,
+            governanceChain,
+            governanceAddress,
+            payload,
+            getGasOptions(),
+        );
+const receiptExecute = await txExecute.wait(network.config.confirmations);
+ ```
+
+- The `changeEtherBalance` check expects one tx in a block so change in balances might need to be tested explicitly for unit tests using `changeEtherBalance`.
 
 ## Example flows
 
