@@ -103,7 +103,7 @@ await sourceChainGateway
 
 - Using the most up to date and fast rpc can help in tests execution runtime. Make sure the rate limit for the rpc is not exceeded.
 
-- Make sure that the account being used to broadcast transactions has enough native balance. The maximum `gasLimit` for a chain should be fetched from an explorer and set it in config file. Should also update the `confirmations` required for a transaction to be successfully included in a block in the config [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config/info) depending on the network.
+- Make sure that the account being used to broadcast transactions has enough native balance. The maximum `gasLimit` for a chain should be fetched from an explorer and set it in config file. You may also need to update the `confirmations` required for a transaction to be successfully included in a block in the config [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config/info) depending on the network.
 
 - For `AxelarAuthWeighted.js` tests to pass provide 16 different accounts in `keys.json` as value of `OLD_KEY_RETENTION` is 16.
 
@@ -124,9 +124,6 @@ const receiptExecute = await txExecute.wait(network.config.confirmations);
  ```
 
 - The `changeEtherBalance` check expects one tx in a block so change in balances might need to be tested explicitly for unit tests using `changeEtherBalance`.
-
-
-
 
 ## Example flows
 
