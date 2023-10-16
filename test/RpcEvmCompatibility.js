@@ -9,7 +9,7 @@ const {
 } = ethers;
 const { expect } = chai;
 
-const { isHardhat, getRandomInt, waitFor, getBytecodeHash } = require('./utils');
+const { isHardhat, getRandomInt, waitFor } = require('./utils');
 
 const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
@@ -19,7 +19,7 @@ function checkBlockTimeStamp(timeStamp) {
     expect(timeDifference).to.be.lessThan(100);
 }
 
-describe.only('EVM RPC Compatibility Test', () => {
+describe('EVM RPC Compatibility Test', () => {
     const maxTransferAmount = 100;
 
     let provider;
@@ -183,10 +183,12 @@ describe.only('EVM RPC Compatibility Test', () => {
         const count = parseInt(txCount, 16);
         expect(count).to.be.at.least(0);
 
-        await signer.sendTransaction({
-            to: signer.address,
-            value: transferAmount,
-        }).then((tx) => tx.wait());
+        await signer
+            .sendTransaction({
+                to: signer.address,
+                value: transferAmount,
+            })
+            .then((tx) => tx.wait());
 
         const newTxCount = await provider.send('eth_getTransactionCount', [signer.address, 'latest']);
 
@@ -194,7 +196,7 @@ describe.only('EVM RPC Compatibility Test', () => {
     });
 
     it('should support RPC method eth_sendRawTransaction', async () => {
-        const wallet = isHardhat ? new Wallet.fromMnemonic(network.config.accounts.mnemonic) : new Wallet(network.config.accounts[0]);
+        const wallet = isHardhat ? Wallet.fromMnemonic(network.config.accounts.mnemonic) : new Wallet(network.config.accounts[0]);
 
         const newValue = 400;
         const tx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue));
