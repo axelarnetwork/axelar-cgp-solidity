@@ -54,14 +54,46 @@ describe('EVM RPC Compatibility Test', () => {
         const newValue = 100;
         const receipt = await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
         const blockNumber = hexValue(receipt.blockNumber);
+        const logs = [];
 
-        const filter = {
+        let filter = {
             fromBlock: blockNumber,
             toBlock: blockNumber,
         };
-        const logs = await provider.send('eth_getLogs', [filter]);
-        expect(logs).to.be.an('array');
-        expect(logs.length).to.be.greaterThan(0);
+        let log = await provider.send('eth_getLogs', [filter]);
+        logs.push(log);
+        filter = {
+            fromBlock: blockNumber,
+            toBlock: 'latest',
+        };
+        log = await provider.send('eth_getLogs', [filter]);
+        logs.push(log);
+        filter = {
+            fromBlock: blockNumber,
+            toBlock: 'pending',
+        };
+        log = await provider.send('eth_getLogs', [filter]);
+        logs.push(log);
+
+        if (network.name.toLowerCase() === 'ethereum') {
+            filter = {
+                fromBlock: blockNumber,
+                toBlock: 'safe',
+            };
+            log = await provider.send('eth_getLogs', [filter]);
+            logs.push(log);
+            filter = {
+                fromBlock: blockNumber,
+                toBlock: 'finalized',
+            };
+            log = await provider.send('eth_getLogs', [filter]);
+            logs.push(log);
+        }
+
+        logs.forEach((log) => {
+            expect(log).to.be.an('array');
+            expect(log.length).to.be.greaterThan(0);
+        });
     });
 
     describe('rpc get transaction and blockByHash methods', () => {
@@ -106,14 +138,38 @@ describe('EVM RPC Compatibility Test', () => {
     });
 
     it('should support RPC method eth_getBlockByNumber', async () => {
-        const block = await provider.send('eth_getBlockByNumber', ['latest', true]);
-
-        expect(block).to.be.an('object');
+        const blocks = [];
+        let block = await provider.send('eth_getBlockByNumber', ['latest', true]);
         expect(block.hash).to.be.a('string');
-        expect(parseInt(block.number, 16)).to.be.a('number');
-        expect(parseInt(block.timestamp, 16)).to.be.a('number');
         checkBlockTimeStamp(parseInt(block.timestamp, 16));
-        expect(block.transactions).to.be.an('array');
+        blocks.push(block);
+
+        block = await provider.send('eth_getBlockByNumber', ['earliest', true]);
+        expect(block.hash).to.be.a('string');
+        blocks.push(block);
+
+        block = await provider.send('eth_getBlockByNumber', ['pending', true]);
+        checkBlockTimeStamp(parseInt(block.timestamp, 16));
+        blocks.push(block);
+
+        block = await provider.send('eth_getBlockByNumber', ['safe', true]);
+        checkBlockTimeStamp(parseInt(block.timestamp, 16));
+        blocks.push(block);
+
+        block = await provider.send('eth_getBlockByNumber', ['finalized', true]);
+        checkBlockTimeStamp(parseInt(block.timestamp, 16));
+        blocks.push(block);
+
+        block = await provider.send('eth_getBlockByNumber', ['0x1', true]);
+        expect(block.hash).to.be.a('string');
+        blocks.push(block);
+
+        blocks.forEach((block) => {
+            expect(block).to.be.an('object');
+            expect(parseInt(block.number, 16)).to.be.a('number');
+            expect(parseInt(block.timestamp, 16)).to.be.a('number');
+            expect(block.transactions).to.be.an('array');
+        });
     });
 
     it('should support RPC method eth_blockNumber', async () => {
@@ -259,16 +315,20 @@ describe('EVM RPC Compatibility Test', () => {
             });
         }
 
-        it('should support RPC method eth_feeHistory', async () => {
-            const feeHistory = await provider.send('eth_feeHistory', ['0x1', 'latest', [25, 75]]); // reference: https://docs.alchemy.com/reference/eth-feehistory
+        it('should send transaction based on RPC method eth_feeHistory pricing', async () => {
+            const feeHistory = await provider.send('eth_feeHistory', ['0x1', 'latest', [25]]); // reference: https://docs.alchemy.com/reference/eth-feehistory
 
             expect(feeHistory).to.be.an('object');
             expect(parseInt(feeHistory.oldestBlock, 16)).to.be.an('number');
+            feeHistory.baseFeePerGas.forEach((baseFee) => {
+                expect(parseInt(baseFee, 16)).to.be.greaterThan(0);
+            });
             expect(feeHistory.reward).to.be.an('array');
 
             const gasOptions = {};
             const baseFeePerGas = feeHistory.baseFeePerGas[0];
-            gasOptions.gasPrice = BigNumber.from(baseFeePerGas);
+            gasOptions.maxFeePerGas = BigNumber.from(baseFeePerGas) * 3;
+            gasOptions.maxPriorityFeePerGas = feeHistory.reward[0][0];
             const newValue = 700;
             const receipt = await rpcCompatibilityContract.updateValue(newValue, gasOptions).then((tx) => tx.wait());
             await checkReceipt(receipt, newValue);
