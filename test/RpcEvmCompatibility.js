@@ -3,16 +3,15 @@
 const chai = require('chai');
 const { ethers, network } = require('hardhat');
 const {
-    getDefaultProvider,
     utils: { hexValue, getAddress, keccak256 },
     Wallet,
     BigNumber,
 } = ethers;
 const { expect } = chai;
-const { readJSON } = require('@axelar-network/axelar-chains-config');
-const keys = readJSON(`${__dirname}/../keys.json`);
 
-const { isHardhat, getRandomInt, getBytecodeHash, waitFor } = require('./utils');
+const { isHardhat, getRandomInt, waitFor, getBytecodeHash } = require('./utils');
+
+const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
 function checkBlockTimeStamp(timeStamp) {
     const currentTime = Math.floor(Date.now() / 1000);
@@ -20,28 +19,35 @@ function checkBlockTimeStamp(timeStamp) {
     expect(timeDifference).to.be.lessThan(100);
 }
 
-describe('EVM Compatibility Test', () => {
-    let rpcUrl;
+describe.only('EVM RPC Compatibility Test', () => {
+    const maxTransferAmount = 100;
+
     let provider;
-    let signers;
     let signer;
+    let transferAmount;
     let rpcCompatibilityFactory;
     let rpcCompatibilityContract;
-    let fundsReceiver;
-    const INITIAL_VALUE = 10;
-    const MAX_TRANSFER = 100; // 100 wei
-    const KnownAccount0PrivateKeyHardhat = ['0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'];
-    const contractJson = require('../artifacts/contracts/test/TestRpcCompatibility.sol/RpcCompatibility.json');
+
+    async function checkReceipt(receipt, value) {
+        const topic = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
+
+        expect(receipt).to.not.be.null;
+        expect(receipt.from).to.equal(signer.address);
+        expect(receipt.to).to.equal(rpcCompatibilityContract.address);
+        expect(receipt.status).to.equal(1);
+        expect(receipt.logs[0].topics[0]).to.equal(topic);
+        expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(value);
+    }
 
     before(async () => {
-        rpcUrl = network.config.rpc;
-        provider = network.provider;
-        signers = await ethers.getSigners();
-        signer = signers[0];
-        fundsReceiver = signers[1].address;
-        rpcCompatibilityFactory = await ethers.getContractFactory('RpcCompatibility', signer);
-        rpcCompatibilityContract = await rpcCompatibilityFactory.deploy(INITIAL_VALUE);
+        provider = ethers.provider;
+        [signer] = await ethers.getSigners();
+
+        rpcCompatibilityFactory = await ethers.getContractFactory('TestRpcCompatibility', signer);
+        rpcCompatibilityContract = await rpcCompatibilityFactory.deploy();
         await rpcCompatibilityContract.deployTransaction.wait(network.config.confirmations);
+
+        transferAmount = getRandomInt(maxTransferAmount);
     });
 
     it('should support RPC method eth_getLogs', async () => {
@@ -60,13 +66,11 @@ describe('EVM Compatibility Test', () => {
 
     describe('rpc get transaction and blockByHash methods', () => {
         let tx;
-        let amount;
 
         before(async () => {
-            amount = getRandomInt(MAX_TRANSFER);
             tx = await signer.sendTransaction({
-                to: fundsReceiver,
-                value: amount,
+                to: signer.address,
+                value: transferAmount,
             });
             await tx.wait();
         });
@@ -76,15 +80,15 @@ describe('EVM Compatibility Test', () => {
 
             expect(receipt).to.be.an('object');
             expect(parseInt(receipt.blockNumber, 16)).to.be.a('number');
-            expect(getAddress(receipt.to)).to.equal(fundsReceiver);
+            expect(getAddress(receipt.to)).to.equal(signer.address);
         });
 
         it('should support RPC method eth_getTransactionByHash', async () => {
             const txInfo = await provider.send('eth_getTransactionByHash', [tx.hash]);
 
             expect(txInfo).to.be.an('object');
-            expect(getAddress(txInfo.to)).to.equal(fundsReceiver);
-            expect(parseInt(txInfo.value, 16).toString()).to.equal(amount.toString());
+            expect(getAddress(txInfo.to)).to.equal(signer.address);
+            expect(parseInt(txInfo.value, 16).toString()).to.equal(transferAmount.toString());
         });
 
         it('should support RPC method eth_getBlockByHash', async () => {
@@ -140,22 +144,22 @@ describe('EVM Compatibility Test', () => {
         const code = await provider.send('eth_getCode', [rpcCompatibilityContract.address, 'latest']);
         expect(code).to.be.a('string');
         expect(/^0x[0-9a-fA-F]*$/.test(code)).to.be.true;
-        expect(keccak256(code)).to.equal(await getBytecodeHash(contractJson));
+        expect(code).to.equal(TestRpcCompatibility.deployedBytecode);
     });
 
     it('should support RPC method eth_estimateGas', async () => {
         const newValue = 300;
-        const gasLimit = network.config.gasOptions?.gasLimit || 50000;
         const txParams = {
             to: rpcCompatibilityContract.address,
             data: rpcCompatibilityContract.interface.encodeFunctionData('updateValue', [newValue]),
-            gasLimit,
         };
 
         const estimatedGas = await provider.send('eth_estimateGas', [txParams]);
+        const gas = BigNumber.from(estimatedGas);
 
         expect(estimatedGas).to.be.a('string');
-        expect(BigNumber.from(estimatedGas).gt(0)).to.be.true;
+        expect(gas.gt(0)).to.be.true;
+        expect(gas.lt(30000)).to.be.true; // report if gas estimation is different than ethereum
     });
 
     it('should support RPC method eth_gasPrice', async () => {
@@ -169,49 +173,43 @@ describe('EVM Compatibility Test', () => {
         const chainId = await provider.send('eth_chainId', []);
 
         expect(chainId).to.be.a('string');
-        expect(BigNumber.from(chainId).toNumber()).to.be.above(0);
+        expect(BigNumber.from(chainId).toNumber()).to.equal(network.config.chainId);
     });
 
     it('should support RPC method eth_getTransactionCount', async () => {
-        const txCount = await provider.send('eth_getTransactionCount', [signers[0].address, 'latest']);
+        const txCount = await provider.send('eth_getTransactionCount', [signer.address, 'latest']);
 
         expect(txCount).to.be.a('string');
-        expect(BigNumber.from(txCount).toNumber()).to.be.at.least(0);
+        const count = parseInt(txCount, 16);
+        expect(count).to.be.at.least(0);
 
-        const amount = getRandomInt(MAX_TRANSFER);
-        const tx = await signer.sendTransaction({
-            to: fundsReceiver,
-            value: amount,
-        });
-        await tx.wait();
-        const newTxCount = await provider.send('eth_getTransactionCount', [signers[0].address, 'latest']);
+        await signer.sendTransaction({
+            to: signer.address,
+            value: transferAmount,
+        }).then((tx) => tx.wait());
 
-        expect(parseInt(txCount, 16) + 1).to.eq(parseInt(newTxCount, 16));
+        const newTxCount = await provider.send('eth_getTransactionCount', [signer.address, 'latest']);
+
+        expect(count + 1).to.eq(parseInt(newTxCount, 16));
     });
 
     it('should support RPC method eth_sendRawTransaction', async () => {
-        const privateKeys = isHardhat ? KnownAccount0PrivateKeyHardhat : keys?.accounts || keys.chains[network.name]?.accounts;
-        provider = rpcUrl ? getDefaultProvider(rpcUrl) : ethers.provider;
-        const wallet = new Wallet(privateKeys[0], provider);
+        const wallet = isHardhat ? new Wallet.fromMnemonic(network.config.accounts.mnemonic) : new Wallet(network.config.accounts[0]);
+
         const newValue = 400;
         const tx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue));
         const rawTx = await wallet.signTransaction(tx);
 
         const txHash = await provider.send('eth_sendRawTransaction', [rawTx]);
         const receipt = await provider.waitForTransaction(txHash);
-        const topic0 = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
+
         expect(txHash).to.be.a('string');
         expect(txHash).to.match(/0x[0-9a-fA-F]{64}/);
-        expect(receipt).to.not.be.null;
-        expect(receipt.from).to.equal(signer.address);
-        expect(receipt.to).to.equal(rpcCompatibilityContract.address);
-        expect(receipt.status).to.equal(1);
-        expect(receipt.logs[0].topics[0]).to.equal(topic0);
-        expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(newValue);
+        await checkReceipt(receipt, newValue);
     });
 
     it('should support RPC method eth_getBalance', async () => {
-        const balance = await provider.send('eth_getBalance', [signers[0].address, 'latest']);
+        const balance = await provider.send('eth_getBalance', [signer.address, 'latest']);
 
         expect(balance).to.be.a('string');
         expect(BigNumber.from(balance)).to.be.gt(0);
@@ -239,7 +237,7 @@ describe('EVM Compatibility Test', () => {
 
         await rpcCompatibilityContract.updateValueForSubscribe(newValue).then((tx) => tx.wait());
         await waitFor(5, () => {
-            expect(isSubscribe).to.be.equal(true);
+            expect(isSubscribe).to.equal(true);
         });
     });
 
@@ -255,13 +253,7 @@ describe('EVM Compatibility Test', () => {
                 const gasOptions = { maxPriorityFeePerGas, gasLimit };
                 const newValue = 600;
                 const receipt = await rpcCompatibilityContract.updateValue(newValue, gasOptions).then((tx) => tx.wait());
-                const topic0 = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
-
-                expect(receipt.from).to.equal(signer.address);
-                expect(receipt.to).to.equal(rpcCompatibilityContract.address);
-                expect(receipt.status).to.equal(1);
-                expect(receipt.logs[0].topics[0]).to.equal(topic0);
-                expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(newValue);
+                await checkReceipt(receipt, newValue);
             });
         }
 
@@ -275,16 +267,9 @@ describe('EVM Compatibility Test', () => {
             const gasOptions = {};
             const baseFeePerGas = feeHistory.baseFeePerGas[0];
             gasOptions.gasPrice = BigNumber.from(baseFeePerGas);
-            gasOptions.gasLimit = network.config.gasOptions?.gasLimit || 50000;
             const newValue = 700;
             const receipt = await rpcCompatibilityContract.updateValue(newValue, gasOptions).then((tx) => tx.wait());
-            const topic0 = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
-
-            expect(receipt.from).to.equal(signer.address);
-            expect(receipt.to).to.equal(rpcCompatibilityContract.address);
-            expect(receipt.status).to.equal(1);
-            expect(receipt.logs[0].topics[0]).to.equal(topic0);
-            expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(newValue);
+            await checkReceipt(receipt, newValue);
         });
     });
 });
