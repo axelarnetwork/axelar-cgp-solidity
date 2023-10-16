@@ -327,8 +327,8 @@ describe('EVM RPC Compatibility Test', () => {
 
             const gasOptions = {};
             const baseFeePerGas = feeHistory.baseFeePerGas[0];
-            gasOptions.maxFeePerGas = BigNumber.from(baseFeePerGas) * 3;
-            gasOptions.maxPriorityFeePerGas = feeHistory.reward[0][0];
+            gasOptions.maxFeePerGas = BigNumber.from(baseFeePerGas) * 1.5;
+            gasOptions.maxPriorityFeePerGas = isHardhat ? feeHistory.reward[0][0] / 100000 : feeHistory.reward[0][0];
             const newValue = 700;
             const receipt = await rpcCompatibilityContract.updateValue(newValue, gasOptions).then((tx) => tx.wait());
             await checkReceipt(receipt, newValue);
