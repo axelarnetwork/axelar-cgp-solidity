@@ -257,9 +257,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0x4b4f072414e4e903ef7046f4735d71f306065d772400893a903cbdccce303c5f',
-                berlin: '0xbce9203ae09d633b0211a6ede7b08b863bc31f415061949bf00995004d6275da',
-                london: '0x03f2e00c494c4f17144aac4514bf9aab5cb9d8b590c093e115b22bd254e8ef31',
+                istanbul: '0xc3c80d3edf4cf7d0d94f6b0b2fa75f4f670ef96031438185f63d55da2c86cdea',
+                berlin: '0x0b693fc1a0da717457cfd5169bc869348da3e81f246246ae53dd073ff23fa9cd',
+                london: '0x695238dc27d58213d8bd8bc8afaac66debd26076f8ef2846e31fbd5d664e4e11',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -2048,8 +2048,6 @@ describe('AxelarGateway', () => {
                 .validateContractCall(commandId, sourceChain, sourceAddress, payloadHash)
                 .then((tx) => tx.wait());
 
-            expect(isApprovedInitially).to.be.false;
-
             const approveData = buildCommandBatch(
                 await getChainId(),
                 [commandId],
@@ -2079,17 +2077,9 @@ describe('AxelarGateway', () => {
 
             expect(isApprovedBefore).to.be.true;
 
-            await gateway
-                .connect(owner)
-                .validateContractCall(commandId, sourceChain, sourceAddress, payloadHash)
-                .then((tx) => tx.wait());
-
-            expect(isApprovedBefore).to.be.true;
-
-            await gateway
-                .connect(owner)
-                .validateContractCall(commandId, sourceChain, sourceAddress, payloadHash)
-                .then((tx) => tx.wait());
+            await expect(gateway.connect(owner).validateContractCall(commandId, sourceChain, sourceAddress, payloadHash))
+                .to.emit(gateway, 'ContractCallExecuted')
+                .withArgs(commandId);
 
             const isApprovedAfter = await gateway.isContractCallApproved(commandId, sourceChain, sourceAddress, owner.address, payloadHash);
 
@@ -2144,8 +2134,6 @@ describe('AxelarGateway', () => {
                 .validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, externalSymbol, amount)
                 .then((tx) => tx.wait());
 
-            expect(isApprovedInitially).to.be.false;
-
             const approveWithMintData = buildCommandBatch(
                 await getChainId(),
                 [commandId],
@@ -2198,10 +2186,13 @@ describe('AxelarGateway', () => {
 
             expect(isApprovedBefore).to.be.true;
 
-            await gateway
-                .connect(owner)
-                .validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, externalSymbol, amount)
-                .then((tx) => tx.wait());
+            await expect(
+                gateway
+                    .connect(owner)
+                    .validateContractCallAndMint(commandId, sourceChain, sourceAddress, payloadHash, externalSymbol, amount),
+            )
+                .to.emit(gateway, 'ContractCallExecuted')
+                .withArgs(commandId);
 
             const isApprovedAfter = await gateway.isContractCallAndMintApproved(
                 commandId,

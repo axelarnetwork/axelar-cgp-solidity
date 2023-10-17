@@ -1,6 +1,6 @@
 {
   "name": "@axelar-network/axelar-cgp-solidity",
-  "version": "6.1.1",
+  "version": "6.1.3",
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
@@ -30,7 +30,7 @@
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "^5.3.3"
+    "@axelar-network/axelar-gmp-sdk-solidity": "^5.4.0"
   },
   "devDependencies": {
     "@axelar-network/axelar-chains-config": "^0.1.2",
