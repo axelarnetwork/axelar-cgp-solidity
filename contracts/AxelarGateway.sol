@@ -33,6 +33,8 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
 
     error InvalidImplementation();
 
+    event ContractCallExecuted(bytes32 indexed commandId);
+
     enum TokenType {
         InternalBurnable,
         InternalBurnableFrom,
@@ -246,7 +248,11 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
     ) external override returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash);
         valid = getBool(key);
-        if (valid) _setBool(key, false);
+        if (valid) {
+            _setBool(key, false);
+
+            emit ContractCallExecuted(commandId);
+        }
     }
 
     /**
@@ -274,6 +280,9 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
         if (valid) {
             // Prevent re-entrancy
             _setBool(key, false);
+
+            emit ContractCallExecuted(commandId);
+
             _mintToken(symbol, msg.sender, amount);
         }
     }
