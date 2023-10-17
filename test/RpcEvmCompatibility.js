@@ -157,8 +157,9 @@ describe('EVM RPC Compatibility Test', () => {
         });
     });
 
-    it('should support RPC method eth_getBlockByNumber', async () => {
+    it.only('should support RPC method eth_getBlockByNumber', async () => {
         const blocks = [];
+        const blockWithTxHash = []
         let block = await provider.send('eth_getBlockByNumber', ['latest', true]);
         expect(block.hash).to.be.a('string');
         checkBlockTimeStamp(parseInt(block.timestamp, 16), 100);
@@ -166,21 +167,21 @@ describe('EVM RPC Compatibility Test', () => {
         block = await provider.send('eth_getBlockByNumber', ['latest', false]);
         expect(block.hash).to.be.a('string');
         checkBlockTimeStamp(parseInt(block.timestamp, 16), 100);
-        blocks.push(block);
+        blockWithTxHash.push(block);
 
         block = await provider.send('eth_getBlockByNumber', ['earliest', true]);
         expect(block.hash).to.be.a('string');
         blocks.push(block);
         block = await provider.send('eth_getBlockByNumber', ['earliest', false]);
         expect(block.hash).to.be.a('string');
-        blocks.push(block);
+        blockWithTxHash.push(block);
 
         block = await provider.send('eth_getBlockByNumber', ['pending', true]);
         checkBlockTimeStamp(parseInt(block.timestamp, 16), 100);
         blocks.push(block);
         block = await provider.send('eth_getBlockByNumber', ['pending', false]);
         checkBlockTimeStamp(parseInt(block.timestamp, 16), 100);
-        blocks.push(block);
+        blockWithTxHash.push(block);
 
         block = await provider.send('eth_getBlockByNumber', ['safe', true]);
         expect(block.hash).to.be.a('string');
@@ -189,27 +190,41 @@ describe('EVM RPC Compatibility Test', () => {
         block = await provider.send('eth_getBlockByNumber', ['safe', false]);
         expect(block.hash).to.be.a('string');
         checkBlockTimeStamp(parseInt(block.timestamp, 16), 1000);
-        blocks.push(block);
+        blockWithTxHash.push(block);
 
         block = await provider.send('eth_getBlockByNumber', ['finalized', true]);
         expect(block.hash).to.be.a('string');
         blocks.push(block);
         block = await provider.send('eth_getBlockByNumber', ['finalized', false]);
         expect(block.hash).to.be.a('string');
-        blocks.push(block);
+        blockWithTxHash.push(block);
 
         block = await provider.send('eth_getBlockByNumber', ['0x1', true]);
         expect(block.hash).to.be.a('string');
         blocks.push(block);
         block = await provider.send('eth_getBlockByNumber', ['0x1', false]);
         expect(block.hash).to.be.a('string');
-        blocks.push(block);
+        blockWithTxHash.push(block);
 
         blocks.forEach((block) => {
             expect(block).to.be.an('object');
             expect(parseInt(block.number, 16)).to.be.a('number');
             expect(parseInt(block.timestamp, 16)).to.be.a('number');
             expect(block.transactions).to.be.an('array');
+            block.transactions.forEach((transaction) => {
+                expect(transaction).to.be.an('object');
+            })
+        });
+
+        blockWithTxHash.forEach((block) => {
+            expect(block).to.be.an('object');
+            expect(parseInt(block.number, 16)).to.be.a('number');
+            expect(parseInt(block.timestamp, 16)).to.be.a('number');
+            expect(block.transactions).to.be.an('array');
+            block.transactions.forEach((txHash) => {
+                expect(txHash).to.be.a('string');
+                expect(txHash).to.match(/0x[0-9a-fA-F]{64}/);
+            })
         });
     });
 
