@@ -54,24 +54,37 @@ describe('EVM RPC Compatibility Test', () => {
         const newValue = 100;
         const receipt = await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
         const blockNumber = hexValue(receipt.blockNumber);
-        const expectedTopic = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
+        const expectedTopic0 = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
+        const expectedTopic1 = '0x0000000000000000000000000000000000000000000000000000000000000064'; // 100 as 32 bytes hex
         const logs = [];
         let found = true;
 
         let filter = {
             fromBlock: blockNumber,
             toBlock: blockNumber,
+            address: [rpcCompatibilityContract.address],
+            topics: [expectedTopic0, expectedTopic1],
         };
         let log = await provider.send('eth_getLogs', [filter]);
+
+        for (let i = 0; i < log.length; i++) {
+            if (log[i].topics && log[i].topics[0] === expectedTopic0) {
+                found = true;
+                break;
+            }
+        }
+
         logs.push(log);
         filter = {
             fromBlock: blockNumber,
             toBlock: 'latest',
+            address: [rpcCompatibilityContract.address],
+            topics: [expectedTopic0, expectedTopic1],
         };
         log = await provider.send('eth_getLogs', [filter]);
 
         for (let i = 0; i < log.length; i++) {
-            if (log[i].topics && log[i].topics[0] === expectedTopic) {
+            if (log[i].topics && log[i].topics[0] === expectedTopic0) {
                 found = true;
                 break;
             }
@@ -83,11 +96,13 @@ describe('EVM RPC Compatibility Test', () => {
         filter = {
             fromBlock: blockNumber,
             toBlock: 'pending',
+            address: [rpcCompatibilityContract.address],
+            topics: [expectedTopic0, expectedTopic1],
         };
         log = await provider.send('eth_getLogs', [filter]);
 
         for (let i = 0; i < log.length; i++) {
-            if (log[i].topics && log[i].topics[0] === expectedTopic) {
+            if (log[i].topics && log[i].topics[0] === expectedTopic0) {
                 found = true;
                 break;
             }
@@ -157,9 +172,9 @@ describe('EVM RPC Compatibility Test', () => {
         });
     });
 
-    it.only('should support RPC method eth_getBlockByNumber', async () => {
+    it('should support RPC method eth_getBlockByNumber', async () => {
         const blocks = [];
-        const blockWithTxHash = []
+        const blockWithTxHash = [];
         let block = await provider.send('eth_getBlockByNumber', ['latest', true]);
         expect(block.hash).to.be.a('string');
         checkBlockTimeStamp(parseInt(block.timestamp, 16), 100);
@@ -213,7 +228,7 @@ describe('EVM RPC Compatibility Test', () => {
             expect(block.transactions).to.be.an('array');
             block.transactions.forEach((transaction) => {
                 expect(transaction).to.be.an('object');
-            })
+            });
         });
 
         blockWithTxHash.forEach((block) => {
@@ -224,7 +239,7 @@ describe('EVM RPC Compatibility Test', () => {
             block.transactions.forEach((txHash) => {
                 expect(txHash).to.be.a('string');
                 expect(txHash).to.match(/0x[0-9a-fA-F]{64}/);
-            })
+            });
         });
     });
 
