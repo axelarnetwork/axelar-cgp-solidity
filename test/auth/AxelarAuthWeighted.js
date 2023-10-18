@@ -6,8 +6,6 @@ const {
 } = ethers;
 const { expect } = chai;
 
-const OLD_KEY_RETENTION = 3;
-
 const {
     getAddresses,
     getWeightedAuthDeployParam,
@@ -33,10 +31,7 @@ describe('AxelarAuthWeighted', () => {
 
         owner = wallets[0];
         operators = sortBy(wallets.slice(1, 3), (wallet) => wallet.address.toLowerCase());
-        let previousOperatorsLimit = OLD_KEY_RETENTION;
-
         previousOperators.push(sortBy(wallets.slice(0, 2), (wallet) => wallet.address.toLowerCase()));
-        --previousOperatorsLimit;
 
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
     });
