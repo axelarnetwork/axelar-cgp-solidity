@@ -6,8 +6,7 @@ const {
     constants: { AddressZero, HashZero },
 } = ethers;
 const { expect } = chai;
-const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString, expectRevert } = require('./utils');
-const { getBytecodeHash } = require('@axelar-network/axelar-chains-config');
+const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString, expectRevert, getBytecodeHash } = require('./utils');
 
 const {
     bigNumberToNumber,
