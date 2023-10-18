@@ -50,7 +50,8 @@
     "prettier-plugin-solidity": "1.0.0-beta.19",
     "readline-sync": "^1.4.10",
     "solhint": "^3.4.1",
-    "solidity-coverage": "^0.8.4"
+    "solidity-coverage": "^0.8.4",
+    "@0xpolygonhermez/zkevm-commonjs": "github:0xpolygonhermez/zkevm-commonjs#v1.0.0"
   },
   "engines": {
     "node": ">=16"
