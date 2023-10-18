@@ -13,7 +13,7 @@ const { isHardhat, getRandomInt, waitFor, getGasOptions } = require('./utils');
 
 const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
-describe.only('EVM RPC Compatibility Test', () => {
+describe('EVM RPC Compatibility Test', () => {
     const maxTransferAmount = 100;
 
     let provider;
