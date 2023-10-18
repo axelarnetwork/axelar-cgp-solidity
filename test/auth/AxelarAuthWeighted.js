@@ -1,12 +1,10 @@
 const { sortBy } = require('lodash');
 const chai = require('chai');
-const { ethers } = require('hardhat');
+const { ethers, network } = require('hardhat');
 const {
     utils: { arrayify, defaultAbiCoder, keccak256, hashMessage },
 } = ethers;
 const { expect } = chai;
-
-const OLD_KEY_RETENTION = 16;
 
 const {
     getAddresses,
@@ -17,7 +15,7 @@ const {
 } = require('../utils');
 
 describe('AxelarAuthWeighted', () => {
-    const threshold = 3;
+    const threshold = 2;
 
     let wallets;
     let owner;
@@ -32,18 +30,8 @@ describe('AxelarAuthWeighted', () => {
         wallets = await ethers.getSigners();
 
         owner = wallets[0];
-        operators = sortBy(wallets.slice(3, 9), (wallet) => wallet.address.toLowerCase());
-
-        let previousOperatorsLimit = OLD_KEY_RETENTION;
-
-        for (let i = 0; i < wallets.length - 3; i++) {
-            for (let j = i; j < wallets.length - 3; j++) {
-                previousOperators.push(sortBy(wallets.slice(i, j + 3), (wallet) => wallet.address.toLowerCase()));
-                --previousOperatorsLimit;
-            }
-
-            if (previousOperatorsLimit <= 0) break;
-        }
+        operators = sortBy(wallets.slice(1, 3), (wallet) => wallet.address.toLowerCase());
+        previousOperators.push(sortBy(wallets.slice(0, 2), (wallet) => wallet.address.toLowerCase()));
 
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
     });
@@ -51,15 +39,14 @@ describe('AxelarAuthWeighted', () => {
     beforeEach(async () => {
         const initialOperators = [...previousOperators, operators];
 
-        auth = await authFactory
-            .deploy(
-                getWeightedAuthDeployParam(
-                    initialOperators.map(getAddresses),
-                    initialOperators.map(({ length }) => Array(length).fill(1)), // weights
-                    initialOperators.map(() => threshold),
-                ),
-            )
-            .then((d) => d.deployed());
+        auth = await authFactory.deploy(
+            getWeightedAuthDeployParam(
+                initialOperators.map(getAddresses),
+                initialOperators.map(({ length }) => Array(length).fill(1)), // weights
+                initialOperators.map(() => threshold),
+            ),
+        );
+        await auth.deployTransaction.wait(network.config.confirmations);
     });
 
     describe('validateProof', () => {
@@ -153,61 +140,6 @@ describe('AxelarAuthWeighted', () => {
             );
         });
 
-        it('validate the proof from the recent operators', async () => {
-            const data = '0x123abc123abc';
-
-            const message = hashMessage(arrayify(keccak256(data)));
-
-            const validPreviousOperators = previousOperators.slice(-(OLD_KEY_RETENTION - 1));
-
-            await expect(validPreviousOperators.length).to.be.equal(OLD_KEY_RETENTION - 1);
-
-            await Promise.all(
-                validPreviousOperators.map(async (operators) => {
-                    const isCurrentOperators = await auth.validateProof(
-                        message,
-                        getWeightedSignaturesProof(
-                            data,
-                            operators,
-                            operators.map(() => 1),
-                            threshold,
-                            operators.slice(0, threshold),
-                        ),
-                    );
-                    await expect(isCurrentOperators).to.be.equal(false);
-                }),
-            );
-        });
-
-        it('reject the proof from the operators older than key retention', async () => {
-            const data = '0x123abc123abc';
-
-            const message = hashMessage(arrayify(keccak256(data)));
-
-            const invalidPreviousOperators = previousOperators.slice(0, -(OLD_KEY_RETENTION - 1));
-
-            await Promise.all(
-                invalidPreviousOperators.map(async (operators) => {
-                    await expectRevert(
-                        (gasOptions) =>
-                            auth.validateProof(
-                                message,
-                                getWeightedSignaturesProof(
-                                    data,
-                                    operators,
-                                    operators.map(() => 1),
-                                    threshold,
-                                    operators.slice(0, threshold),
-                                ),
-                                gasOptions,
-                            ),
-                        auth,
-                        'InvalidOperators',
-                    );
-                }),
-            );
-        });
-
         it('validate the proof for a single operator', async () => {
             const signleOperator = getAddresses([owner]);
 
@@ -257,6 +189,80 @@ describe('AxelarAuthWeighted', () => {
             );
 
             await expect(isCurrentOperators).to.be.equal(true);
+        });
+    });
+
+    describe('validateProof with OLD_KEY_RETENTION as 16', () => {
+        const OLD_KEY_RETENTION = 16;
+        let newAuth;
+        const previousOperators = [];
+        before(async () => {
+            for (let i = 0; i < OLD_KEY_RETENTION; i++) {
+                previousOperators.push(sortBy(wallets.slice(0, 2), (wallet) => wallet.address.toLowerCase()));
+            }
+
+            const initialOperators = [...previousOperators, operators];
+            newAuth = await authFactory.deploy(
+                getWeightedAuthDeployParam(
+                    initialOperators.map(getAddresses),
+                    initialOperators.map(({ length }, index) => Array(length).fill(index + 1)), // weights
+                    initialOperators.map(() => threshold),
+                ),
+            );
+            await newAuth.deployTransaction.wait(network.config.confirmations);
+        });
+
+        it('validate the proof from the recent operators', async () => {
+            const data = '0x123abc123abc';
+
+            const message = hashMessage(arrayify(keccak256(data)));
+
+            const validPreviousOperators = previousOperators.slice(-(OLD_KEY_RETENTION - 1));
+
+            expect(validPreviousOperators.length).to.be.equal(OLD_KEY_RETENTION - 1);
+
+            await Promise.all(
+                validPreviousOperators.map(async (operators, index) => {
+                    const isCurrentOperators = await newAuth.validateProof(
+                        message,
+                        getWeightedSignaturesProof(
+                            data,
+                            operators,
+                            operators.map(() => index + 2),
+                            threshold,
+                            operators.slice(0, threshold),
+                        ),
+                    );
+                    expect(isCurrentOperators).to.be.equal(false);
+                }),
+            );
+        });
+
+        it('reject the proof from the operators older than key retention', async () => {
+            const data = '0x123abc123abc';
+            const message = hashMessage(arrayify(keccak256(data)));
+            const invalidPreviousOperators = previousOperators.slice(0, -(OLD_KEY_RETENTION - 1));
+
+            await Promise.all(
+                invalidPreviousOperators.map(async (operators) => {
+                    await expectRevert(
+                        (gasOptions) =>
+                            newAuth.validateProof(
+                                message,
+                                getWeightedSignaturesProof(
+                                    data,
+                                    operators,
+                                    operators.map(() => 1),
+                                    threshold,
+                                    operators.slice(0, threshold),
+                                ),
+                                gasOptions,
+                            ),
+                        auth,
+                        'InvalidOperators',
+                    );
+                }),
+            );
         });
     });
 
@@ -332,7 +338,7 @@ describe('AxelarAuthWeighted', () => {
                 auth.transferOperatorship(
                     getTransferWeightedOperatorshipCommand(
                         updatedOperators,
-                        updatedOperators.map(() => 1),
+                        updatedOperators.map(() => 2),
                         threshold,
                     ),
                 ),
@@ -340,7 +346,7 @@ describe('AxelarAuthWeighted', () => {
                 .to.emit(auth, 'OperatorshipTransferred')
                 .withArgs(
                     updatedOperators,
-                    updatedOperators.map(() => 1),
+                    updatedOperators.map(() => 2),
                     threshold,
                 );
 
