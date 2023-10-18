@@ -1,6 +1,6 @@
 const { sortBy } = require('lodash');
 const chai = require('chai');
-const { ethers } = require('hardhat');
+const { ethers, network } = require('hardhat');
 const {
     utils: { arrayify, defaultAbiCoder, keccak256, hashMessage },
 } = ethers;
@@ -50,15 +50,14 @@ describe('AxelarAuthWeighted', () => {
     beforeEach(async () => {
         const initialOperators = [...previousOperators, operators];
 
-        auth = await authFactory
-            .deploy(
-                getWeightedAuthDeployParam(
-                    initialOperators.map(getAddresses),
-                    initialOperators.map(({ length }) => Array(length).fill(1)), // weights
-                    initialOperators.map(() => threshold),
-                ),
-            )
-            .then((d) => d.deployed());
+        auth = await authFactory.deploy(
+            getWeightedAuthDeployParam(
+                initialOperators.map(getAddresses),
+                initialOperators.map(({ length }) => Array(length).fill(1)), // weights
+                initialOperators.map(() => threshold),
+            ),
+        );
+        await auth.deployTransaction.wait(network.config.confirmations);
     });
 
     describe('validateProof', () => {
@@ -214,15 +213,14 @@ describe('AxelarAuthWeighted', () => {
             }
 
             const initialOperators = [...previousOperators, operators];
-            newAuth = await authFactory
-                .deploy(
-                    getWeightedAuthDeployParam(
-                        initialOperators.map(getAddresses),
-                        initialOperators.map(({ length }, index) => Array(length).fill(index + 1)), // weights
-                        initialOperators.map(() => threshold),
-                    ),
-                )
-                .then((d) => d.deployed());
+            newAuth = await authFactory.deploy(
+                getWeightedAuthDeployParam(
+                    initialOperators.map(getAddresses),
+                    initialOperators.map(({ length }, index) => Array(length).fill(index + 1)), // weights
+                    initialOperators.map(() => threshold),
+                ),
+            );
+            await newAuth.deployTransaction.wait(network.config.confirmations);
         });
 
         it('validate the proof from the recent operators', async () => {
