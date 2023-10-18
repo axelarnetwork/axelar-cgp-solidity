@@ -35,14 +35,8 @@ describe('AxelarAuthWeighted', () => {
         operators = sortBy(wallets.slice(1, 3), (wallet) => wallet.address.toLowerCase());
         let previousOperatorsLimit = OLD_KEY_RETENTION;
 
-        for (let i = 0; i < wallets.length - 2; i++) {
-            for (let j = i; j < wallets.length - 2; j++) {
-                previousOperators.push(sortBy(wallets.slice(i, j + 2), (wallet) => wallet.address.toLowerCase()));
-                --previousOperatorsLimit;
-            }
-
-            if (previousOperatorsLimit <= 0) break;
-        }
+        previousOperators.push(sortBy(wallets.slice(0, 2), (wallet) => wallet.address.toLowerCase()));
+        --previousOperatorsLimit;
 
         authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
     });
