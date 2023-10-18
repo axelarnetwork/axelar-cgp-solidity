@@ -105,7 +105,7 @@ await sourceChainGateway
 
 - Make sure that the account being used to broadcast transactions has enough native balance. The maximum `gasLimit` for a chain should be fetched from an explorer and set it in config file. You may also need to update the `confirmations` required for a transaction to be successfully included in a block in the config [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config/info) depending on the network.
 
-- For `AxelarAuthWeighted.js` tests to pass provide 16 different accounts in `keys.json` as value of `OLD_KEY_RETENTION` is 16.
+- Note that certain tests can require upto 3 accounts.
 
 - Transactions can fail if previous transactions are not mined and picked up by the provide, therefore wait for a transaction to be mined after broadcasting. See the code below for example
 ```javascript
