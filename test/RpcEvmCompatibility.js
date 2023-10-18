@@ -13,32 +13,7 @@ const { isHardhat, getRandomInt, waitFor, getGasOptions } = require('./utils');
 
 const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
-function checkBlockTimeStamp(timeStamp, maxDifference) {
-    const currentTime = Math.floor(Date.now() / 1000);
-    const timeDifference = Math.abs(currentTime - timeStamp);
-    expect(timeDifference).to.be.lessThan(maxDifference);
-}
-
-function checkBlock(block, hydratedTransactions) {
-    expect(block.hash).to.be.a('string');
-    expect(block).to.be.an('object');
-    expect(parseInt(block.number, 16)).to.be.a('number');
-    expect(parseInt(block.timestamp, 16)).to.be.a('number');
-    expect(block.transactions).to.be.an('array');
-
-    if (hydratedTransactions) {
-        block.transactions.forEach((transaction) => {
-            expect(transaction).to.be.an('object');
-        });
-    } else {
-        block.transactions.forEach((txHash) => {
-            expect(txHash).to.be.a('string');
-            expect(txHash).to.match(/0x[0-9a-fA-F]{64}/);
-        });
-    }
-}
-
-describe('EVM RPC Compatibility Test', () => {
+describe.only('EVM RPC Compatibility Test', () => {
     const maxTransferAmount = 100;
 
     let provider;
@@ -58,6 +33,12 @@ describe('EVM RPC Compatibility Test', () => {
         expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(value);
     }
 
+    function checkBlockTimeStamp(timeStamp, maxDifference) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        const timeDifference = Math.abs(currentTime - timeStamp);
+        expect(timeDifference).to.be.lessThan(maxDifference);
+    }
+
     before(async () => {
         provider = ethers.provider;
         [signer] = await ethers.getSigners();
@@ -73,14 +54,25 @@ describe('EVM RPC Compatibility Test', () => {
         const newValue = 100;
         let blockNumber;
 
+        async function checkLog(filter) {
+            const log = await provider.send('eth_getLogs', [filter]);
+
+            expect(log).to.be.an('array');
+            expect(log.length).to.be.at.least(0);
+
+            if (filter.topics) {
+                const found = log.some((item) => item.topics && item.topics[0] === filter.topics[0]);
+                expect(found).to.equal(true);
+            }
+        }
+
         before(async () => {
             const receipt = await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
             blockNumber = hexValue(receipt.blockNumber);
         });
+
         it('should support RPC method eth_getLogs', async () => {
             const expectedTopic = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
-            const logs = [];
-            let found = false;
 
             let filter = {
                 fromBlock: blockNumber,
@@ -88,30 +80,15 @@ describe('EVM RPC Compatibility Test', () => {
                 address: [rpcCompatibilityContract.address],
                 topics: [expectedTopic],
             };
-            let log = await provider.send('eth_getLogs', [filter]);
+            await checkLog(filter);
 
-            found = log.some((item) => item.topics && item.topics[0] === expectedTopic);
-            logs.push(log);
             filter = {
                 fromBlock: blockNumber,
                 toBlock: 'latest',
                 address: [rpcCompatibilityContract.address],
                 topics: [expectedTopic],
             };
-            log = await provider.send('eth_getLogs', [filter]);
-
-            found = log.some((item) => item.topics && item.topics[0] === expectedTopic);
-            expect(found).to.equal(true);
-            logs.push(log);
-
-            found = log.some((item) => item.topics && item.topics[0] === expectedTopic);
-            expect(found).to.equal(true);
-            logs.push(log);
-
-            logs.forEach((log) => {
-                expect(log).to.be.an('array');
-                expect(log.length).to.be.at.least(0);
-            });
+            await checkLog(filter);
         });
 
         it('supports safe tag', async () => {
@@ -119,10 +96,7 @@ describe('EVM RPC Compatibility Test', () => {
                 fromBlock: blockNumber,
                 toBlock: 'safe',
             };
-            const log = await provider.send('eth_getLogs', [filter]);
-
-            expect(log).to.be.an('array');
-            expect(log.length).to.be.at.least(0);
+            await checkLog(filter);
         });
 
         it('supports finalized tag', async () => {
@@ -130,10 +104,7 @@ describe('EVM RPC Compatibility Test', () => {
                 fromBlock: isHardhat ? hexValue(0) : hexValue(parseInt(blockNumber, 16) - 100),
                 toBlock: 'finalized',
             };
-            const log = await provider.send('eth_getLogs', [filter]);
-
-            expect(log).to.be.an('array');
-            expect(log.length).to.be.at.least(0);
+            await checkLog(filter);
         });
     });
 
@@ -179,6 +150,25 @@ describe('EVM RPC Compatibility Test', () => {
     });
 
     describe('eth_getBlockByNumber', () => {
+        function checkBlock(block, hydratedTransactions) {
+            expect(block.hash).to.be.a('string');
+            expect(block).to.be.an('object');
+            expect(parseInt(block.number, 16)).to.be.a('number');
+            expect(parseInt(block.timestamp, 16)).to.be.a('number');
+            expect(block.transactions).to.be.an('array');
+
+            if (hydratedTransactions) {
+                block.transactions.forEach((transaction) => {
+                    expect(transaction).to.be.an('object');
+                });
+            } else {
+                block.transactions.forEach((txHash) => {
+                    expect(txHash).to.be.a('string');
+                    expect(txHash).to.match(/0x[0-9a-fA-F]{64}/);
+                });
+            }
+        }
+
         it('should support RPC method eth_getBlockByNumber', async () => {
             let block = await provider.send('eth_getBlockByNumber', ['latest', true]);
             checkBlock(block, true);
@@ -261,8 +251,8 @@ describe('EVM RPC Compatibility Test', () => {
         const gas = BigNumber.from(estimatedGas);
 
         expect(estimatedGas).to.be.a('string');
-        expect(gas.gt(0)).to.be.true;
-        expect(gas.lt(30000)).to.be.true; // report if gas estimation is different than ethereum
+        expect(gas).to.be.gt(0);
+        expect(gas).to.be.lt(30000); // report if gas estimation is different than ethereum
     });
 
     it('should support RPC method eth_gasPrice', async () => {
