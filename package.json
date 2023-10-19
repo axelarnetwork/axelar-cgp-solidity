@@ -30,7 +30,7 @@
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "^5.4.0"
+    "@axelar-network/axelar-gmp-sdk-solidity": "5.5.2"
   },
   "devDependencies": {
     "@axelar-network/axelar-chains-config": "^0.1.2",

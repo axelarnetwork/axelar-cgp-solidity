@@ -4,6 +4,7 @@
   "tabWidth": 4,
   "useTabs": false,
   "bracketSpacing": true,
+  "plugins": ["prettier-plugin-solidity"],
   "overrides": [
     {
       "files": "*.sol",

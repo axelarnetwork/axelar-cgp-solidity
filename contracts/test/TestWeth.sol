@@ -6,6 +6,8 @@ import { MintableCappedERC20 } from '../MintableCappedERC20.sol';
 import { IWETH9 } from '../interfaces/IWETH9.sol';
 
 contract TestWeth is MintableCappedERC20, IWETH9 {
+    error Invalid();
+
     constructor(
         string memory name,
         string memory symbol,
@@ -18,7 +20,7 @@ contract TestWeth is MintableCappedERC20, IWETH9 {
     }
 
     function withdraw(uint256 amount) external {
-        require(balanceOf[msg.sender] >= amount, 'Insufficient balance');
+        if (balanceOf[msg.sender] < amount) revert Invalid();
         balanceOf[msg.sender] -= amount;
         payable(msg.sender).transfer(amount);
     }

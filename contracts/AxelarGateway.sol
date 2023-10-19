@@ -3,12 +3,13 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
+import { IImplementation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IImplementation.sol';
 import { IContractIdentifier } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IContractIdentifier.sol';
-import { IGovernable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IGovernable.sol';
+import { IAxelarGateway } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGateway.sol';
 import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { ContractAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/ContractAddress.sol';
+import { Implementation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Implementation.sol';
 
-import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
@@ -25,15 +26,13 @@ import { EternalStorage } from './EternalStorage.sol';
  * The contract is managed via the decentralized governance mechanism on the Axelar network.
  * @dev EternalStorage is used to simplify storage for upgradability, and InterchainGovernance module is used for governance.
  */
-contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, EternalStorage {
+contract AxelarGateway is IAxelarGateway, Implementation, EternalStorage {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
     using ContractAddress for address;
 
     error InvalidImplementation();
-
-    event ContractCallExecuted(bytes32 indexed commandId);
 
     enum TokenType {
         InternalBurnable,
@@ -79,7 +78,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
 
     address public immutable authModule;
     address public immutable tokenDeployer;
-    address internal immutable implementationAddress = address(this);
 
     /**
      * @notice Constructs the AxelarGateway contract.
@@ -118,14 +116,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
     modifier onlyMintLimiter() {
         if (msg.sender != getAddress(KEY_MINT_LIMITER) && msg.sender != getAddress(KEY_GOVERNANCE)) revert NotMintLimiter();
 
-        _;
-    }
-
-    /**
-     * @notice Modifier to ensure that a function can only be called by the proxy
-     */
-    modifier onlyProxy() {
-        if (address(this) == implementationAddress) revert NotProxy();
         _;
     }
 
@@ -334,27 +324,6 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
     }
 
     /**
-     * @dev Deprecated.
-     */
-    function adminEpoch() external pure override returns (uint256) {
-        return 0;
-    }
-
-    /**
-     * @dev Deprecated.
-     */
-    function adminThreshold(uint256) external pure override returns (uint256) {
-        return 0;
-    }
-
-    /**
-     * @dev Deprecated.
-     */
-    function admins(uint256) external pure override returns (address[] memory) {
-        return new address[](0);
-    }
-
-    /**
      * @notice Gets the address of the gateway implementation contract.
      * @return address The address of the gateway implementation.
      */
@@ -463,7 +432,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
 
         if (setupParams.length != 0) {
             // slither-disable-next-line controlled-delegatecall
-            (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(IAxelarGateway.setup.selector, setupParams));
+            (bool success, ) = newImplementation.delegatecall(abi.encodeWithSelector(IImplementation.setup.selector, setupParams));
 
             if (!success) revert SetupFailed();
         }
@@ -479,7 +448,7 @@ contract AxelarGateway is IAxelarGateway, IGovernable, IContractIdentifier, Eter
      * @param params The encoded parameters containing the governance and mint limiter addresses, as well as the new operator data.
      * @dev Not publicly accessible as it's overshadowed in the proxy.
      */
-    function setup(bytes calldata params) external override onlyProxy {
+    function setup(bytes calldata params) external override(IImplementation, Implementation) onlyProxy {
         (address governance_, address mintLimiter_, bytes memory newOperatorsData) = abi.decode(params, (address, address, bytes));
 
         if (governance_ != address(0)) _transferGovernance(governance_);
