@@ -147,7 +147,11 @@ contract AxelarGateway is IAxelarGateway, Implementation, EternalStorage {
      * @param destinationContractAddress The address of the contract to call on the destination chain
      * @param payload The payload to be sent to the destination contract, usually representing an encoded function call with arguments
      */
-    function callContract(string calldata destinationChain, string calldata destinationContractAddress, bytes calldata payload) external {
+    function callContract(
+        string calldata destinationChain,
+        string calldata destinationContractAddress,
+        bytes calldata payload
+    ) external {
         emit ContractCall(msg.sender, destinationChain, destinationContractAddress, keccak256(payload), payload);
     }
 
@@ -689,7 +693,11 @@ contract AxelarGateway is IAxelarGateway, Implementation, EternalStorage {
     |* Internal Methods *|
     \********************/
 
-    function _mintToken(string memory symbol, address account, uint256 amount) internal {
+    function _mintToken(
+        string memory symbol,
+        address account,
+        uint256 amount
+    ) internal {
         address tokenAddress = tokenAddresses(symbol);
 
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);
@@ -711,7 +719,11 @@ contract AxelarGateway is IAxelarGateway, Implementation, EternalStorage {
      * @dev Depending on the token type (External, InternalBurnableFrom, or InternalBurnable), the function either
      * transfers the tokens to gateway contract itself or calls a burn function on the token contract.
      */
-    function _burnTokenFrom(address sender, string memory symbol, uint256 amount) internal {
+    function _burnTokenFrom(
+        address sender,
+        string memory symbol,
+        uint256 amount
+    ) internal {
         address tokenAddress = tokenAddresses(symbol);
 
         if (tokenAddress == address(0)) revert TokenDoesNotExist(symbol);

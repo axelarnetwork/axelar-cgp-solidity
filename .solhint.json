@@ -10,6 +10,7 @@
     "no-inline-assembly": "off",
     "no-empty-blocks": "off",
     "avoid-low-level-calls": "off",
-    "not-rely-on-time": "off"
+    "not-rely-on-time": "off",
+    "immutable-vars-naming": "off"
   }
 }

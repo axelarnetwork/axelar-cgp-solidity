@@ -1,3 +1,5 @@
 node_modules
 contracts/ERC20Permit.sol
 contracts/interfaces/IERC20Permit.sol
+contracts/BurnableMintableCappedERC20.sol
+contracts/gas-service/AxelarGasServiceProxy.sol

@@ -9,6 +9,8 @@ import { MintableCappedERC20 } from '../MintableCappedERC20.sol';
 contract TestNonStandardERC20 is MintableCappedERC20 {
     bool public shouldFailTransfer;
 
+    error Invalid();
+
     constructor(
         string memory name,
         string memory symbol,
@@ -26,6 +28,6 @@ contract TestNonStandardERC20 is MintableCappedERC20 {
         if (shouldFailTransfer) {
             return false;
         }
-        revert('Transfer not supported');
+        revert Invalid();
     }
 }
