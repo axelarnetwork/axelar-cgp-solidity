@@ -256,9 +256,9 @@ describe('AxelarGateway', () => {
             const implementationBytecodeHash = keccak256(implementationBytecode);
 
             const expected = {
-                istanbul: '0xc3c80d3edf4cf7d0d94f6b0b2fa75f4f670ef96031438185f63d55da2c86cdea',
-                berlin: '0x0b693fc1a0da717457cfd5169bc869348da3e81f246246ae53dd073ff23fa9cd',
-                london: '0x695238dc27d58213d8bd8bc8afaac66debd26076f8ef2846e31fbd5d664e4e11',
+                istanbul: '0x7c1e55b76dee08d6b355ba2425b1e0680b04e89ead4f8f37280c6a59d28bfa80',
+                berlin: '0xa4a12675ad5a12bd77ec732011456d4dc7f6843ed748d290fb1d4aeb1798d27b',
+                london: '0x6e4e7b5a87af0d0dfd69c01a188fdd498fbe51c38416a1e82518bd5b3bd908c0',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -2214,26 +2214,6 @@ describe('AxelarGateway', () => {
 
         it('should return correct value for allTokensFrozen', async () => {
             expect(await gateway.allTokensFrozen()).to.be.false;
-        });
-
-        it('should return correct value for adminEpoch', async () => {
-            expect(await gateway.adminEpoch()).to.eq(0);
-        });
-
-        it('should return correct value for adminThreshold', async () => {
-            let epoch = 1;
-            expect(await gateway.adminThreshold(epoch)).to.eq(0);
-
-            epoch = getRandomInt(Number.MAX_SAFE_INTEGER);
-            expect(await gateway.adminThreshold(epoch)).to.eq(0);
-        });
-
-        it('should return correct value for admins', async () => {
-            let epoch = 1;
-            expect(await gateway.admins(epoch)).to.deep.equal([]);
-
-            epoch = getRandomInt(Number.MAX_SAFE_INTEGER);
-            expect(await gateway.admins(epoch)).to.deep.equal([]);
         });
 
         it('should return correct value for tokenFrozen', async () => {
