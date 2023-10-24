@@ -45,7 +45,6 @@ describe('AxelarGatewayUpgrade', () => {
     let gateway;
 
     let wallets;
-    let owner;
     let operators;
     let mintLimiter;
 
@@ -60,10 +59,10 @@ describe('AxelarGatewayUpgrade', () => {
 
         interchainGovernanceFactory = await ethers.getContractFactory(InterchainGovernance.abi, InterchainGovernance.bytecode, ownerWallet);
 
-        gatewayFactory = await ethers.getContractFactory('AxelarGateway', owner);
-        authFactory = await ethers.getContractFactory('AxelarAuthWeighted', owner);
-        gatewayProxyFactory = await ethers.getContractFactory('AxelarGatewayProxy', owner);
-        tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', owner);
+        gatewayFactory = await ethers.getContractFactory('AxelarGateway', ownerWallet);
+        authFactory = await ethers.getContractFactory('AxelarAuthWeighted', ownerWallet);
+        gatewayProxyFactory = await ethers.getContractFactory('AxelarGatewayProxy', ownerWallet);
+        tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', ownerWallet);
         tokenDeployer = await tokenDeployerFactory.deploy();
         await tokenDeployer.deployTransaction.wait(network.config.confirmations);
 
