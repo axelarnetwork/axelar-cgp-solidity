@@ -178,7 +178,7 @@ describe('AxelarGatewayUpgrade', () => {
             .to.emit(interchainGovernance, 'ProposalScheduled')
             .withArgs(proposalHash, target, calldata, nativeValue, finalEta);
 
-        await waitFor(timeDelay);
+        await waitFor(timeDelay, () => {});
 
         const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue);
         const receipt = await tx.wait();
