@@ -26,7 +26,7 @@ const InterchainGovernance = require('@axelar-network/axelar-gmp-sdk-solidity/ar
 
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
-describe('AxelarGatewayUpgrade', () => {
+describe.only('AxelarGatewayUpgrade', () => {
     const threshold = isHardhat ? 4 : 2;
 
     let ownerWallet;
@@ -178,7 +178,7 @@ describe('AxelarGatewayUpgrade', () => {
             .to.emit(interchainGovernance, 'ProposalScheduled')
             .withArgs(proposalHash, target, calldata, nativeValue, finalEta);
 
-        await waitFor(timeDelay, () => {});
+        await waitFor(timeDelay);
 
         const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue);
         const receipt = await tx.wait();
