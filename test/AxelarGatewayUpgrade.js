@@ -26,7 +26,7 @@ const InterchainGovernance = require('@axelar-network/axelar-gmp-sdk-solidity/ar
 
 const getWeights = ({ length }, weight = 1) => Array(length).fill(weight);
 
-describe.only('AxelarGatewayUpgrade', () => {
+describe('AxelarGatewayUpgrade', () => {
     const threshold = isHardhat ? 4 : 2;
 
     let ownerWallet;
