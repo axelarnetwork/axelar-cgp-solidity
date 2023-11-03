@@ -13,7 +13,7 @@ const { isHardhat, getRandomInt, waitFor, getGasOptions } = require('./utils');
 
 const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
-describe('EVM RPC Compatibility Test', () => {
+describe('RpcCompatibility', () => {
     const maxTransferAmount = 100;
 
     let provider;
@@ -322,17 +322,16 @@ describe('EVM RPC Compatibility Test', () => {
 
     it('should support RPC method eth_subscribe', async function () {
         // This uses eth_subscribe
-        // Setting up manually via wss rpc is tricky
         const newValue = 1000;
-        let isSubscribe = false;
+        let found = false;
         rpcCompatibilityContract.on('ValueUpdatedForSubscribe', (value) => {
             expect(value.toNumber()).to.equal(newValue);
-            isSubscribe = true;
+            found = true;
         });
 
         await rpcCompatibilityContract.updateValueForSubscribe(newValue).then((tx) => tx.wait());
         await waitFor(5, () => {
-            expect(isSubscribe).to.equal(true);
+            expect(found).to.be.true;
         });
     });
 
