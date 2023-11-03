@@ -115,7 +115,8 @@ describe('RpcCompatibility', () => {
             tx = await signer.sendTransaction({
                 to: signer.address,
                 value: transferAmount,
-            }, getGasOptions());
+                ...getGasOptions(),
+            });
             await tx.wait();
         });
 
@@ -280,7 +281,8 @@ describe('RpcCompatibility', () => {
             .sendTransaction({
                 to: signer.address,
                 value: transferAmount,
-            }, getGasOptions())
+                ...getGasOptions(),
+            })
             .then((tx) => tx.wait());
 
         const newTxCount = await provider.send('eth_getTransactionCount', [signer.address, 'latest']);
