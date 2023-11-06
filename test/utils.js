@@ -79,7 +79,9 @@ const waitFor = async (timeDelay, callback = undefined) => {
 };
 
 const getGasOptions = () => {
-    return network.config.blockGasLimit ? { gasLimit: network.config.blockGasLimit.toString() } : {};
+    const gasOptions = network.config.gasOptions || null;
+
+    return gasOptions;
 };
 
 const getEVMVersion = () => {
