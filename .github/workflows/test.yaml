@@ -23,8 +23,5 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Set environment variable
-        run: export CHECK_CONTRACT_SIZE=true
-
       - name: Test
-        run: npm run test-evm-versions
+        run: CHECK_CONTRACT_SIZE=true npm run test-evm-versions
