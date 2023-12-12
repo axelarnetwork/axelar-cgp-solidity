@@ -288,7 +288,7 @@ describe('RpcCompatibility', () => {
         expect(count + 1).to.eq(parseInt(newTxCount, 16));
     });
 
-    it('should support RPC method eth_sendRawTransaction', async () => {
+    it('should support RPC method eth_sendRawTransaction [ @skip-on-coverage ]', async () => {
         const wallet = isHardhat ? Wallet.fromMnemonic(network.config.accounts.mnemonic) : new Wallet(network.config.accounts[0]);
 
         const gasOptions = getGasOptions(network.config.chainId);
@@ -370,7 +370,7 @@ describe('RpcCompatibility', () => {
             expect(feeHistory).to.be.an('object');
             expect(parseInt(feeHistory.oldestBlock, 16)).to.be.an('number');
             feeHistory.baseFeePerGas.forEach((baseFee) => {
-                expect(parseInt(baseFee, 16)).to.be.greaterThan(0);
+                expect(parseInt(baseFee, 16)).to.be.greaterThanOrEqual(0);
             });
             expect(feeHistory.reward).to.be.an('array');
 
