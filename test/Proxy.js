@@ -94,5 +94,5 @@ describe('Proxy', async () => {
 
     it('should be a no-op if setup is called', async () => {
         await expect(proxy.setup('0x')).to.not.be.reverted;
-    })
+    });
 });
