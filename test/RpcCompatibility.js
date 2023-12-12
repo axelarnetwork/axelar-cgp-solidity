@@ -9,7 +9,7 @@ const {
 } = ethers;
 const { expect } = chai;
 
-const { isHardhat, getRandomInt, waitFor } = require('./utils');
+const { isHardhat, getRandomInt, waitFor, getGasOptions } = require('./utils');
 
 const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
@@ -291,8 +291,9 @@ describe('RpcCompatibility', () => {
     it('should support RPC method eth_sendRawTransaction', async () => {
         const wallet = isHardhat ? Wallet.fromMnemonic(network.config.accounts.mnemonic) : new Wallet(network.config.accounts[0]);
 
+        const gasOptions = getGasOptions(network.config.chainId);
         const newValue = 400;
-        const tx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue));
+        const tx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue, gasOptions));
         const rawTx = await wallet.signTransaction(tx);
 
         const txHash = await provider.send('eth_sendRawTransaction', [rawTx]);
