@@ -5,6 +5,7 @@ const {
 } = require('ethers');
 const { ethers } = require('hardhat');
 const { expectRevert } = require('./utils');
+const { expect } = require('chai');
 
 describe('Proxy', async () => {
     let owner, user;
@@ -90,4 +91,8 @@ describe('Proxy', async () => {
             'EtherNotAccepted',
         );
     });
+
+    it('should be a no-op if setup is called', async () => {
+        await expect(proxy.setup('0x')).to.not.be.reverted;
+    })
 });
