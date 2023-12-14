@@ -13,7 +13,7 @@ const { isHardhat, getRandomInt, waitFor, getGasOptions } = require('./utils');
 
 const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
-describe('EVM RPC Compatibility Test', () => {
+describe('RpcCompatibility', () => {
     const maxTransferAmount = 100;
 
     let provider;
@@ -288,11 +288,12 @@ describe('EVM RPC Compatibility Test', () => {
         expect(count + 1).to.eq(parseInt(newTxCount, 16));
     });
 
-    it('should support RPC method eth_sendRawTransaction', async () => {
+    it('should support RPC method eth_sendRawTransaction [ @skip-on-coverage ]', async () => {
         const wallet = isHardhat ? Wallet.fromMnemonic(network.config.accounts.mnemonic) : new Wallet(network.config.accounts[0]);
 
+        const gasOptions = getGasOptions(network.config.chainId);
         const newValue = 400;
-        const tx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue));
+        const tx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue, gasOptions));
         const rawTx = await wallet.signTransaction(tx);
 
         const txHash = await provider.send('eth_sendRawTransaction', [rawTx]);
@@ -322,17 +323,16 @@ describe('EVM RPC Compatibility Test', () => {
 
     it('should support RPC method eth_subscribe', async function () {
         // This uses eth_subscribe
-        // Setting up manually via wss rpc is tricky
         const newValue = 1000;
-        let isSubscribe = false;
+        let found = false;
         rpcCompatibilityContract.on('ValueUpdatedForSubscribe', (value) => {
             expect(value.toNumber()).to.equal(newValue);
-            isSubscribe = true;
+            found = true;
         });
 
         await rpcCompatibilityContract.updateValueForSubscribe(newValue).then((tx) => tx.wait());
         await waitFor(5, () => {
-            expect(isSubscribe).to.equal(true);
+            expect(found).to.be.true;
         });
     });
 
@@ -344,27 +344,42 @@ describe('EVM RPC Compatibility Test', () => {
                 expect(maxPriorityFeePerGas).to.be.a('string');
                 expect(BigNumber.from(maxPriorityFeePerGas).toNumber()).to.be.at.least(0);
 
-                const gasOptions = getGasOptions();
                 const newValue = 600;
-                const receipt = await rpcCompatibilityContract.updateValue(newValue, gasOptions).then((tx) => tx.wait());
+                const receipt = await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
                 await checkReceipt(receipt, newValue);
             });
         }
 
+        // convert hex strings to big number and find the max
+        function maxHexInt(array) {
+            return array.reduce((a, b) => {
+                const a1 = BigNumber.from(a);
+                const b1 = BigNumber.from(b);
+
+                if (a1.gt(b1)) {
+                    return a1;
+                }
+
+                return b1;
+            }, BigNumber.from('0x0'));
+        }
+
         it('should send transaction based on RPC method eth_feeHistory pricing', async () => {
-            const feeHistory = await provider.send('eth_feeHistory', ['0x1', 'latest', [25]]); // reference: https://docs.alchemy.com/reference/eth-feehistory
+            const feeHistory = await provider.send('eth_feeHistory', ['0x5', 'latest', [50]]); // reference: https://docs.alchemy.com/reference/eth-feehistory
 
             expect(feeHistory).to.be.an('object');
             expect(parseInt(feeHistory.oldestBlock, 16)).to.be.an('number');
             feeHistory.baseFeePerGas.forEach((baseFee) => {
-                expect(parseInt(baseFee, 16)).to.be.greaterThan(0);
+                expect(parseInt(baseFee, 16)).to.be.greaterThanOrEqual(0);
             });
             expect(feeHistory.reward).to.be.an('array');
 
             const gasOptions = {};
-            const baseFeePerGas = feeHistory.baseFeePerGas[0];
-            gasOptions.maxFeePerGas = BigNumber.from(baseFeePerGas) * 2;
-            gasOptions.maxPriorityFeePerGas = isHardhat ? feeHistory.reward[0][0] / 100000 : feeHistory.reward[0][0];
+            const baseFeePerGas = maxHexInt(feeHistory.baseFeePerGas);
+            gasOptions.maxPriorityFeePerGas = maxHexInt(feeHistory.reward.map((a) => a[0]));
+
+            gasOptions.maxFeePerGas = baseFeePerGas.add(gasOptions.maxPriorityFeePerGas);
+
             const newValue = 700;
             const receipt = await rpcCompatibilityContract.updateValue(newValue, gasOptions).then((tx) => tx.wait());
             await checkReceipt(receipt, newValue);

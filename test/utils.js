@@ -61,14 +61,17 @@ const getPayloadAndProposalHash = async (commandID, target, nativeValue, calldat
     return [payload, proposalHash, eta];
 };
 
-const waitFor = async (timeDelay, callback) => {
+const waitFor = async (timeDelay, callback = undefined) => {
     if (isHardhat) {
         await network.provider.send('evm_increaseTime', [timeDelay]);
         await network.provider.send('evm_mine');
     } else {
         await new Promise((resolve) =>
             setTimeout(async () => {
-                await callback();
+                if (callback) {
+                    await callback();
+                }
+
                 resolve();
             }, timeDelay * 1000),
         );
@@ -76,7 +79,9 @@ const waitFor = async (timeDelay, callback) => {
 };
 
 const getGasOptions = () => {
-    return network.config.blockGasLimit ? { gasLimit: network.config.blockGasLimit.toString() } : {};
+    const gasOptions = network.config.gasOptions || null;
+
+    return gasOptions;
 };
 
 const getEVMVersion = () => {
