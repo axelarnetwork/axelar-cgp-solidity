@@ -10,7 +10,7 @@
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
-    "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'",
+    "prettier": "prettier --write 'contracts/**/*.sol' 'scripts/**/*.js' 'test/**/*.js' '*.js' 'package.json' '.solhint.json' '.prettierrc' 'slither.config.json' '.github/**/*.yaml'",
     "flatten": "sh scripts/flatten-contracts.sh",
     "coverage": "cross-env COVERAGE=true hardhat coverage",
     "storage-layout": "cross-env STORAGE_LAYOUT=true npm run build && cross-env STORAGE_LAYOUT=true hardhat check"
