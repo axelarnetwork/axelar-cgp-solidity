@@ -1,28 +1,34 @@
 {
-  "printWidth": 140,
-  "singleQuote": true,
-  "tabWidth": 4,
-  "useTabs": false,
-  "bracketSpacing": true,
-  "plugins": ["prettier-plugin-solidity"],
-  "overrides": [
-    {
-      "files": "*.sol",
-      "options": {
-        "explicitTypes": "always"
-      }
-    },
-    {
-      "files": "*.js",
-      "options": {
-        "trailingComma": "all"
-      }
-    },
-    {
-      "files": "*.json",
-      "options": {
-        "tabWidth": 2
-      }
-    }
-  ]
+    "printWidth": 140,
+    "singleQuote": true,
+    "tabWidth": 4,
+    "useTabs": false,
+    "bracketSpacing": true,
+    "plugins": ["prettier-plugin-solidity"],
+    "overrides": [
+        {
+            "files": "*.sol",
+            "options": {
+                "explicitTypes": "always"
+            }
+        },
+        {
+            "files": "*.js",
+            "options": {
+                "trailingComma": "all"
+            }
+        },
+        {
+            "files": "*.json",
+            "options": {
+                "tabWidth": 2
+            }
+        },
+        {
+            "files": "*.yaml",
+            "options": {
+                "tabWidth": 2
+            }
+        }
+    ]
 }

@@ -1,6 +1,6 @@
 {
   "name": "@axelar-network/axelar-cgp-solidity",
-  "version": "6.2.0",
+  "version": "6.2.1",
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "hardhat test",
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
-    "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' 'scripts/**/*.js' '*.js'",
+    "prettier": "prettier --write 'contracts/**/*.sol' 'scripts/**/*.js' 'test/**/*.js' '*.js' 'package.json' '.solhint.json' '.prettierrc' 'slither.config.json' '.github/**/*.yaml'",
     "flatten": "sh scripts/flatten-contracts.sh",
     "coverage": "cross-env COVERAGE=true hardhat coverage",
     "storage-layout": "cross-env STORAGE_LAYOUT=true npm run build && cross-env STORAGE_LAYOUT=true hardhat check"
@@ -30,10 +30,10 @@
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "5.5.2"
+    "@axelar-network/axelar-gmp-sdk-solidity": "5.6.4"
   },
   "devDependencies": {
-    "@axelar-network/axelar-chains-config": "^0.1.2",
+    "@axelar-network/axelar-chains-config": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "chai": "^4.3.7",
     "cross-env": "^7.0.3",
