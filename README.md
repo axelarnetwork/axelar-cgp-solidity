@@ -45,17 +45,19 @@ const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/con
   "chains": {
     "example": {
       "name": "Example",
-      "id": "example",
+      "axelarId": "example",
       "chainId": 123,
       "rpc": "PROVIDER_RPC",
       "tokenSymbol": "EXM",
       "gasOptions": {
          "gasLimit": 8000000
-      }
+      },
+      "confirmations": 1
     }
   }
 }
 ```
+`gasLimit` override will skip auto gas estimation (which might be unreliable on certain chains for certain txs). `confirmations` indicates the number of block confirmations to wait for. `axelarId` is the unique id used to reference the chain on Axelar.
 
 4. Return to the `axelar-cgp-solidity` repository. Once there, in the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
 ```javascript
