@@ -252,7 +252,7 @@ describe('RpcCompatibility', () => {
 
         expect(estimatedGas).to.be.a('string');
         expect(gas).to.be.gt(0);
-        expect(gas).to.be.lt(30000); // report if gas estimation is different than ethereum
+        expect(gas).to.be.lt(30000); // report if gas estimation matches Ethereum's behavior to adjust core configuration if necessary.
     });
 
     it('should support RPC method eth_gasPrice', async () => {
