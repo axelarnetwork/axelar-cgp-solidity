@@ -255,6 +255,18 @@ describe('RpcCompatibility', () => {
         expect(gas).to.be.lt(30000); // report if gas estimation does not matches Ethereum's behavior to adjust core configuration if necessary.
     });
 
+    it('should send tx with estimated gas', async () => {
+        const newValue = 300;
+        const txParams = {
+            to: rpcCompatibilityContract.address,
+            data: rpcCompatibilityContract.interface.encodeFunctionData('updateValue', [newValue]),
+        };
+
+        const estimatedGas = await provider.estimateGas(txParams);
+        const receipt = await rpcCompatibilityContract.updateValue(newValue, { gasLimit: estimatedGas }).then((tx) => tx.wait());
+        await checkReceipt(receipt, newValue);
+    });
+
     it('should support RPC method eth_gasPrice', async () => {
         const gasPrice = await provider.send('eth_gasPrice', []);
 
