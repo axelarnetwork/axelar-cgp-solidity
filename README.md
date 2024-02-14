@@ -36,6 +36,14 @@ const IAxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/in
 const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
 ```
 
+## Deploying contracts
+
+See the Axelar contract deployments [repository](https://github.com/axelarnetwork/axelar-contract-deployments) for relevant deployment/upgrade scripts:
+
+1. [Gateway deployment](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#axelargateway)
+2. [Gateway upgrade](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#gateway-upgrade)
+3. [Gas service and deposit service deployment and upgrades](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#axelargasservice-and-axelardepositservice)
+
 ## Live network testing
 
 1. Check if the contract deployments repository supports the chain you will be using. Supported chains can be found [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config). If the chain is not already supported, proceed to steps 2-4, otherwise you may skip to step 5.
@@ -128,14 +136,6 @@ const receiptExecute = await txExecute.wait(network.config.confirmations);
 ```
 
 -   The `changeEtherBalance` check expects one tx in a block so change in balances might need to be tested explicitly for unit tests using `changeEtherBalance`.
-
-## Deploying contracts
-
-See the Axelar contract deployments [repository](https://github.com/axelarnetwork/axelar-contract-deployments) for relevant deployment/upgrade scripts:
-
-1. [Gateway deployment](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#axelargateway)
-2. [Gateway upgrade](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#gateway-upgrade)
-3. [Gas service and deposit service deployment and upgrades](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#axelargasservice-and-axelardepositservice)
 
 ## Example flows
 
