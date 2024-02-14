@@ -240,19 +240,31 @@ describe('RpcCompatibility', () => {
         expect(code).to.equal(TestRpcCompatibility.deployedBytecode);
     });
 
-    it('should support RPC method eth_estimateGas', async () => {
-        const newValue = 300;
-        const txParams = {
-            to: rpcCompatibilityContract.address,
-            data: rpcCompatibilityContract.interface.encodeFunctionData('updateValue', [newValue]),
-        };
+    describe('eth_estimateGas', () => {
+        it('should support RPC method eth_estimateGas like ethereum mainnet', async () => {
+            const newValue = 300;
+            const txParams = {
+                to: rpcCompatibilityContract.address,
+                data: rpcCompatibilityContract.interface.encodeFunctionData('updateValue', [newValue]),
+            };
 
-        const estimatedGas = await provider.send('eth_estimateGas', [txParams]);
-        const gas = BigNumber.from(estimatedGas);
+            const estimatedGas = await provider.send('eth_estimateGas', [txParams]);
+            const gas = BigNumber.from(estimatedGas);
 
-        expect(estimatedGas).to.be.a('string');
-        expect(gas).to.be.gt(0);
-        expect(gas).to.be.lt(30000); // report if gas estimation is different than ethereum
+            expect(estimatedGas).to.be.a('string');
+            expect(gas).to.be.gt(0);
+            expect(gas).to.be.lt(30000); // report if gas estimation does not matches Ethereum's behavior to adjust core configuration if necessary.
+        });
+
+        it('should send tx with estimated gas', async () => {
+            const newValue = 300;
+            const tx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue));
+
+            const estimatedGas = await provider.estimateGas(tx);
+            const receipt = await rpcCompatibilityContract.updateValue(newValue, { gasLimit: estimatedGas }).then((tx) => tx.wait());
+
+            await checkReceipt(receipt, newValue);
+        });
     });
 
     it('should support RPC method eth_gasPrice', async () => {
