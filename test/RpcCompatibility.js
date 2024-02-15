@@ -10,6 +10,7 @@ const {
 const { expect } = chai;
 
 const { isHardhat, getRandomInt, waitFor, getGasOptions } = require('./utils');
+const { printInfo } = require('../scripts/utils');
 
 const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
@@ -92,17 +93,53 @@ describe('RpcCompatibility', () => {
         });
 
         it('supports safe tag', async () => {
+            let isLarger = false;
+
+            try {
+                const safeBlockNumber = await provider.send('eth_getBlockByNumber', ['safe', false]);
+
+                if (safeBlockNumber && safeBlockNumber.number !== null) {
+                    isLarger = safeBlockNumber.number >= blockNumber;
+
+                    if (isLarger) {
+                        printInfo(`${blockNumber} `, 'Achieved safety for the block instantly');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to retrieve safe block number:', error);
+            }
+
+            const fromBlock = isLarger ? blockNumber : 'safe';
+            const toBlock = fromBlock === 'safe' ? blockNumber : 'safe';
             const filter = {
-                fromBlock: blockNumber,
-                toBlock: 'safe',
+                fromBlock,
+                toBlock,
             };
             await checkLog(filter);
         });
 
         it('supports finalized tag', async () => {
+            let isLarger = false;
+
+            try {
+                const finalizedBlockNumber = await provider.send('eth_getBlockByNumber', ['finalized', false]);
+
+                if (finalizedBlockNumber && finalizedBlockNumber.number !== null) {
+                    isLarger = finalizedBlockNumber.number >= blockNumber;
+
+                    if (isLarger) {
+                        printInfo(`${blockNumber} `, 'Achieved finality for the block instantly');
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to retrieve finalized block number:', error);
+            }
+
+            const fromBlock = isLarger ? blockNumber : 'finalized';
+            const toBlock = fromBlock === 'finalized' ? blockNumber : 'finalized';
             const filter = {
-                fromBlock: isHardhat ? hexValue(0) : hexValue(parseInt(blockNumber, 16) - 100),
-                toBlock: 'finalized',
+                fromBlock: isHardhat ? hexValue(0) : fromBlock,
+                toBlock,
             };
             await checkLog(filter);
         });
