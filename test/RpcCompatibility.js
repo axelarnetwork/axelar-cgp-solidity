@@ -10,7 +10,6 @@ const {
 const { expect } = chai;
 
 const { isHardhat, getRandomInt, waitFor, getGasOptions } = require('./utils');
-const { printInfo } = require('../scripts/utils');
 
 const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
@@ -102,7 +101,7 @@ describe('RpcCompatibility', () => {
                     isLarger = safeBlockNumber.number >= blockNumber;
 
                     if (isLarger) {
-                        printInfo(`${blockNumber} `, 'Achieved safety for the block instantly');
+                        console.log('Achieved safety for the block instantly');
                     }
                 }
             } catch (error) {
@@ -128,7 +127,7 @@ describe('RpcCompatibility', () => {
                     isLarger = finalizedBlockNumber.number >= blockNumber;
 
                     if (isLarger) {
-                        printInfo(`${blockNumber} `, 'Achieved finality for the block instantly');
+                        console.log('Achieved finality for the block instantly');
                     }
                 }
             } catch (error) {

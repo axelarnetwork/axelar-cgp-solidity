@@ -25,6 +25,7 @@ npm run test
 
 Pre-compiled bytecodes can be found under [Releases](https://github.com/axelarnetwork/axelar-cgp-solidity/releases).
 Furthermore, pre-compiled bytecodes and ABI are shipped in the [npm package](https://www.npmjs.com/package/@axelar-network/axelar-cgp-solidity) and can be imported via:
+
 ```bash
 npm i @axelar-network/axelar-cgp-solidity
 ```
@@ -35,45 +36,58 @@ const IAxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/in
 const AxelarGateway = require('@axelar-network/axelar-cgp-solidity/artifacts/contracts/AxelarGateway.sol/AxelarGateway.json');
 ```
 
+## Deploying contracts
+
+See the Axelar contract deployments [repository](https://github.com/axelarnetwork/axelar-contract-deployments) for relevant deployment/upgrade scripts:
+
+1. [Gateway deployment](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#axelargateway)
+2. [Gateway upgrade](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#gateway-upgrade)
+3. [Gas service and deposit service deployment and upgrades](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#axelargasservice-and-axelardepositservice)
+
 ## Live network testing
 
 1. Check if the contract deployments repository supports the chain you will be using. Supported chains can be found [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config). If the chain is not already supported, proceed to steps 2-4, otherwise you may skip to step 5.
 2. Navigate to the contract deployments repo [here](https://github.com/axelarnetwork/axelar-contract-deployments/) and clone the repository locally.
 3. Within the contract deployments repo, edit the environment specific file inside the `axelar-chains-config/info` folder to add the chain you'll be testing. The following values need to be provided:
+
 ```json
 {
-  "chains": {
-    "example": {
-      "name": "Example",
-      "axelarId": "example",
-      "chainId": 123,
-      "rpc": "PROVIDER_RPC",
-      "tokenSymbol": "EXM",
-      "gasOptions": {
-         "gasLimit": 8000000
-      },
-      "confirmations": 1
+    "chains": {
+        "example": {
+            "name": "Example",
+            "axelarId": "example",
+            "chainId": 123,
+            "rpc": "PROVIDER_RPC",
+            "tokenSymbol": "EXM",
+            "gasOptions": {
+                "gasLimit": 8000000
+            },
+            "confirmations": 1
+        }
     }
-  }
 }
 ```
+
 `gasLimit` override will skip auto gas estimation (which might be unreliable on certain chains for certain txs). `confirmations` indicates the number of block confirmations to wait for. `axelarId` is the unique id used to reference the chain on Axelar.
 
 4. Return to the `axelar-cgp-solidity` repository. Once there, in the root directory of this repository, navigate to the `hardhat.config.js` file and modify the chains import line as shown below:
+
 ```javascript
 const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
 ```
 
 5. Create a `keys.json` file in this repo that contains the private keys for your accounts that will be used for testing. For some tests, such as the Axelar gateway tests, you may need to provide at least two private keys (you can refer the [test](https://github.com/axelarnetwork/axelar-cgp-solidity/blob/d0c040330d7498d52dee7eedbebf2aefeb5c87fb/test/BurnableMintableCappedERC20.js#L22) to find the number of accounts needed). At this point the `keys.json` file should resemble the example file below (`chains` can be left empty):
+
 ```json
 {
-  "chains": {},
-  "accounts": ["PRIVATE_KEY1", "PRIVATE_KEY2"]
+    "chains": {},
+    "accounts": ["PRIVATE_KEY1", "PRIVATE_KEY2"]
 }
 ```
 
 6. Ensure that your accounts corresponding to the private keys provided have sufficient gas tokens on the chain.
 7. Run
+
 ```bash
 npm ci
 
@@ -93,39 +107,35 @@ npx hardhat test --network example --grep 'AxelarGateway'
 
 ## Debugging Steps
 
-- Explicitly pass `getGasOptions()` using utils.js file for some spceific transactions. See the code below for example
+-   Explicitly pass `getGasOptions()` using utils.js file for some spceific transactions. See the code below for example
+
 ```javascript
 await sourceChainGateway
-         .execute(
-               await getSignedWeightedExecuteInput(await getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
-               getGasOptions(),
-         )
-         .then((tx) => tx.wait(network.config.confirmations));
+    .execute(
+        await getSignedWeightedExecuteInput(await getTokenDeployData(false), [operatorWallet], [1], 1, [operatorWallet]),
+        getGasOptions()
+    )
+    .then((tx) => tx.wait(network.config.confirmations));
 ```
 
-- Using the most up to date and fast rpc can help in tests execution runtime. Make sure the rate limit for the rpc is not exceeded.
+-   Using the most up to date and fast rpc can help in tests execution runtime. Make sure the rate limit for the rpc is not exceeded.
 
-- Make sure that the account being used to broadcast transactions has enough native balance. The maximum `gasLimit` for a chain should be fetched from an explorer and set it in config file. You may also need to update the `confirmations` required for a transaction to be successfully included in a block in the config [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config/info) depending on the network.
+-   Make sure that the account being used to broadcast transactions has enough native balance. The maximum `gasLimit` for a chain should be fetched from an explorer and set it in config file. You may also need to update the `confirmations` required for a transaction to be successfully included in a block in the config [here](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/axelar-chains-config/info) depending on the network.
 
-- Note that certain tests can require upto 3 accounts.
+-   Note that certain tests can require upto 3 accounts.
 
-- Transactions can fail if previous transactions are not mined and picked up by the provide, therefore wait for a transaction to be mined after broadcasting. See the code below for example
+-   Transactions can fail if previous transactions are not mined and picked up by the provide, therefore wait for a transaction to be mined after broadcasting. See the code below for example
+
 ```javascript
 await testToken.mint(userWallet.address, 1e9).then((tx) => tx.wait(network.config.confirmations));
 
 // Or
 
-const txExecute = await interchainGovernance.execute(
-            commandIdGateway,
-            governanceChain,
-            governanceAddress,
-            payload,
-            getGasOptions(),
-        );
+const txExecute = await interchainGovernance.execute(commandIdGateway, governanceChain, governanceAddress, payload, getGasOptions());
 const receiptExecute = await txExecute.wait(network.config.confirmations);
- ```
+```
 
-- The `changeEtherBalance` check expects one tx in a block so change in balances might need to be tested explicitly for unit tests using `changeEtherBalance`.
+-   The `changeEtherBalance` check expects one tx in a block so change in balances might need to be tested explicitly for unit tests using `changeEtherBalance`.
 
 ## Example flows
 
