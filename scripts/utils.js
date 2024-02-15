@@ -2,6 +2,7 @@
 
 const reader = require('readline-sync');
 const { execSync } = require('child_process');
+const chalk = require('chalk');
 const { sortBy } = require('lodash');
 const fs = require('fs');
 const { outputJsonSync } = require('fs-extra');
@@ -16,6 +17,14 @@ function printLog(log) {
 function printObj(obj) {
     console.log(JSON.stringify(obj, null, 2));
 }
+
+const printInfo = (msg, info = '', colour = chalk.green) => {
+    if (info) {
+        console.log(`${msg}: ${colour(info)}\n`);
+    } else {
+        console.log(`${msg}\n`);
+    }
+};
 
 const getAddresses = (prefix, chain, role) => {
     const keyID = execSync(`${prefix} "axelard q tss key-id ${chain} ${role}"`, {
@@ -45,6 +54,8 @@ const writeJSON = (data, name) => {
 
 module.exports = {
     printLog,
+
+    printInfo,
 
     printObj,
 
