@@ -408,7 +408,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         }
 
         uint256 txDataGas = zeroBytesCount * 4 + nonZeroBytesCount * 16;
-        uint256 txTotalGas = block.basefee * ((txDataGas + fixedOverhead) * dynamicOverheadMultiplier) / dynamicOverheadDivisor;
+        uint256 txTotalGas = ((txDataGas + fixedOverhead) * block.basefee * dynamicOverheadMultiplier) / dynamicOverheadDivisor;
 
         l1DataFee = txTotalGas * l1GasPrice;
     }
