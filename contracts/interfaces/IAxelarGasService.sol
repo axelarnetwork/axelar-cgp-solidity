@@ -349,7 +349,7 @@ interface IAxelarGasService is IUpgradable {
      * @param chain The name of the chain
      * @param gasInfo The gas info for the chain
      */
-    function updateGasPrice(string calldata chain, GasInfo calldata gasInfo) external;
+    function updateGasInfo(string calldata chain, GasInfo calldata gasInfo) external;
 
     /**
      * @notice Estimates the gas fee for a cross-chain contract call.

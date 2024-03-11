@@ -361,7 +361,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
      * @param chain The name of the chain
      * @param gasInfo The gas info for the chain
      */
-    function updateGasPrice(string calldata chain, GasInfo calldata gasInfo) external onlyCollector {
+    function updateGasInfo(string calldata chain, GasInfo calldata gasInfo) external onlyCollector {
         _gasServiceStorage().gasPrices[chain] = gasInfo;
     }
 
