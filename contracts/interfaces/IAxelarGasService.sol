@@ -109,6 +109,12 @@ interface IAxelarGasService is IUpgradable {
 
     event Refunded(bytes32 indexed txHash, uint256 indexed logIndex, address payable receiver, address token, uint256 amount);
 
+    struct GasInfo {
+        uint256 baseFee; // destination base_fee (in terms of src native gas token)
+        uint256 relativeGasPrice; // dest_gas_price * dest_token_market_price / src_token_market_price
+        bool hasL1ToL2Fee; // whether the chain requires an L1 to L2 fee, (L1 is assumed to be ethereum)
+    }
+
     /**
      * @notice Pay for gas using ERC20 tokens for a contract call on a destination chain.
      * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
@@ -336,6 +342,29 @@ interface IAxelarGasService is IUpgradable {
         uint256 logIndex,
         address refundAddress
     ) external payable;
+
+    /**
+     * @notice Updates the gas price for a specific chain.
+     * @dev This function is called by the gas oracle to update the gas price for a specific chain.
+     * @param chain The name of the chain
+     * @param gasInfo The gas info for the chain
+     */
+    function updateGasPrice(string calldata chain, GasInfo calldata gasInfo) external;
+
+    /**
+     * @notice Estimates the gas fee for a cross-chain contract call.
+     * @param destinationChain Axelar registered name of the destination chain
+     * @param destinationAddress Destination contract address being called
+     * @param executionGasLimit The gas limit to be used for the destination contract execution,
+     *        e.g. pass in 200k if your app consumes needs upto 200k for this contract call
+     * @return gasEstimate The cross-chain gas estimate, in terms of source chain's native gas token that should be forwarded to the gas service.
+     */
+    function estimateGasFee(
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        uint256 executionGasLimit
+    ) external view returns (uint256 gasEstimate);
 
     /**
      * @notice Allows the gasCollector to collect accumulated fees from the contract.

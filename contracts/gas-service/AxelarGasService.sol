@@ -19,7 +19,15 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     using SafeTokenTransferFrom for IERC20;
     using SafeNativeTransfer for address payable;
 
+    // keccak256('AxelarGasService.Slot')
+    bytes32 internal constant GAS_SERVICE_SLOT =
+        0xd459c0b7e6061d4aec439527195755f10037071779c06d41e3859330a05b6aef;
+
     address public immutable gasCollector;
+
+    struct GasServiceStorage {
+        mapping(string => GasInfo) gasPrices;
+    }
 
     /**
      * @notice Constructs the AxelarGasService contract.
@@ -349,6 +357,64 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     }
 
     /**
+     * @notice Updates the gas price for a specific chain.
+     * @dev This function is called by the gas oracle to update the gas price for a specific chain.
+     * @param chain The name of the chain
+     * @param gasInfo The gas info for the chain
+     */
+    function updateGasPrice(string calldata chain, GasInfo calldata gasInfo) external onlyCollector {
+        _gasServiceStorage().gasPrices[chain] = gasInfo;
+    }
+
+    /**
+     * @notice Estimates the gas fee for a contract call on a destination chain.
+     * @param destinationChain Axelar registered name of the destination chain
+     * param destinationAddress Destination contract address being called
+     * @param executionGasLimit The gas limit to be used for the destination contract execution,
+     *        e.g. pass in 200k if your app consumes needs upto 200k for this contract call
+     * @return gasEstimate The cross-chain gas estimate, in terms of source chain's native gas token that should be forwarded to the gas service.
+     */
+    function estimateGasFee(
+        string calldata destinationChain,
+        string calldata, /* destinationAddress */
+        bytes calldata payload,
+        uint256 executionGasLimit
+    ) external view returns (uint256 gasEstimate) {
+        GasServiceStorage storage slot = _gasServiceStorage();
+        GasInfo storage gasInfo = slot.gasPrices[destinationChain];
+
+        gasEstimate = gasInfo.baseFee + (executionGasLimit * gasInfo.relativeGasPrice);
+
+        // if chain is L2, compute L1 data fee using ethereum gas price info
+        if (gasInfo.hasL1ToL2Fee) {
+            gasEstimate += computeL1ToL2Fee(payload, slot.gasPrices['ethereum'].relativeGasPrice);
+        }
+    }
+
+    // use optimism-like approx L1 gas estimate
+    function computeL1ToL2Fee(bytes calldata payload, uint256 l1GasPrice) internal view returns (uint256) {
+        // upper bounds for gas estimate
+        uint256 fixedOverhead = 200;
+        uint256 dynamicOverheadMultiplier = 7; // 0.7
+        uint256 dynamicOverheadDivisor = 10;
+
+        uint256 zeroBytesCount;
+        uint256 nonZeroBytesCount;
+        for (uint256 i = 0; i < payload.length; i++) {
+            if (payload[i] == 0) {
+                zeroBytesCount += 1;
+            } else {
+                nonZeroBytesCount += 1;
+            }
+        }
+
+        uint256 txDataGas = zeroBytesCount * 4 + nonZeroBytesCount * 16;
+        uint256 txTotalGas = (txDataGas + fixedOverhead) * dynamicOverheadMultiplier / dynamicOverheadDivisor;
+        uint256 l1DataFee = txTotalGas * block.basefee;
+        return l1DataFee * l1GasPrice;
+    }
+
+    /**
      * @notice Allows the gasCollector to collect accumulated fees from the contract.
      * @dev Use address(0) as the token address for native currency.
      * @param receiver The address to receive the collected fees
@@ -437,5 +503,15 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
      */
     function contractId() external pure returns (bytes32) {
         return keccak256('axelar-gas-service');
+    }
+
+
+    /**
+     * @notice Get the storage slot for the GasServiceStorage struct
+     */
+    function _gasServiceStorage() private pure returns (GasServiceStorage storage slot) {
+        assembly {
+            slot.slot := GAS_SERVICE_SLOT
+        }
     }
 }
