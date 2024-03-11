@@ -391,7 +391,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     }
 
     // use optimism-like approx L1 gas estimate
-    function computeL1ToL2Fee(bytes calldata payload, uint256 l1GasPrice) internal view returns (uint256) {
+    function computeL1ToL2Fee(bytes calldata payload, uint256 l1GasPrice) internal view returns (uint256 l1DataFee) {
         // upper bounds for gas estimate
         uint256 fixedOverhead = 200;
         uint256 dynamicOverheadMultiplier = 7; // 0.7
@@ -408,9 +408,9 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         }
 
         uint256 txDataGas = zeroBytesCount * 4 + nonZeroBytesCount * 16;
-        uint256 txTotalGas = ((txDataGas + fixedOverhead) * dynamicOverheadMultiplier) / dynamicOverheadDivisor;
-        uint256 l1DataFee = txTotalGas * block.basefee;
-        return l1DataFee * l1GasPrice;
+        uint256 txTotalGas = block.basefee * ((txDataGas + fixedOverhead) * dynamicOverheadMultiplier) / dynamicOverheadDivisor;
+
+        l1DataFee = txTotalGas * l1GasPrice;
     }
 
     /**
