@@ -20,8 +20,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     using SafeNativeTransfer for address payable;
 
     // keccak256('AxelarGasService.Slot')
-    bytes32 internal constant GAS_SERVICE_SLOT =
-        0xd459c0b7e6061d4aec439527195755f10037071779c06d41e3859330a05b6aef;
+    bytes32 internal constant GAS_SERVICE_SLOT = 0xd459c0b7e6061d4aec439527195755f10037071779c06d41e3859330a05b6aef;
 
     address public immutable gasCollector;
 
@@ -409,7 +408,7 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         }
 
         uint256 txDataGas = zeroBytesCount * 4 + nonZeroBytesCount * 16;
-        uint256 txTotalGas = (txDataGas + fixedOverhead) * dynamicOverheadMultiplier / dynamicOverheadDivisor;
+        uint256 txTotalGas = ((txDataGas + fixedOverhead) * dynamicOverheadMultiplier) / dynamicOverheadDivisor;
         uint256 l1DataFee = txTotalGas * block.basefee;
         return l1DataFee * l1GasPrice;
     }
@@ -504,7 +503,6 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
     function contractId() external pure returns (bytes32) {
         return keccak256('axelar-gas-service');
     }
-
 
     /**
      * @notice Get the storage slot for the GasServiceStorage struct
