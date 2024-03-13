@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import { IGasEstimate } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IGasEstimate.sol';
 import { IUpgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IUpgradable.sol';
 
 /**
@@ -10,7 +11,7 @@ import { IUpgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/i
  * and refunds for cross-chain communication on the Axelar network.
  * @dev This interface inherits IUpgradable
  */
-interface IAxelarGasService is IUpgradable {
+interface IAxelarGasService is IGasEstimate, IUpgradable {
     error InvalidAddress();
     error NotCollector();
     error InvalidAmounts();
@@ -350,21 +351,6 @@ interface IAxelarGasService is IUpgradable {
      * @param gasInfo The gas info for the chain
      */
     function updateGasInfo(string calldata chain, GasInfo calldata gasInfo) external;
-
-    /**
-     * @notice Estimates the gas fee for a cross-chain contract call.
-     * @param destinationChain Axelar registered name of the destination chain
-     * @param destinationAddress Destination contract address being called
-     * @param executionGasLimit The gas limit to be used for the destination contract execution,
-     *        e.g. pass in 200k if your app consumes needs upto 200k for this contract call
-     * @return gasEstimate The cross-chain gas estimate, in terms of source chain's native gas token that should be forwarded to the gas service.
-     */
-    function estimateGasFee(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        bytes calldata payload,
-        uint256 executionGasLimit
-    ) external view returns (uint256 gasEstimate);
 
     /**
      * @notice Allows the gasCollector to collect accumulated fees from the contract.
