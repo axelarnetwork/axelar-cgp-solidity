@@ -8,4 +8,5 @@ pragma solidity ^0.8.0;
  * and refunds for cross-chain communication on the Axelar network.
  * @dev This interface inherits IUpgradable
  */
+// solhint-disable-next-line no-unused-import
 import { IAxelarGasService } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol';
