@@ -3,11 +3,11 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
+import { IAxelarGasService } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol';
 import { GasEstimate } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/gas/GasEstimate.sol';
 import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 import { SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeNativeTransfer.sol';
-import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
 
 /**
  * @title AxelarGasService
@@ -355,8 +355,17 @@ contract AxelarGasService is GasEstimate, Upgradable, IAxelarGasService {
      * @param chain The name of the chain
      * @param gasInfo The gas info for the chain
      */
-    function updateGasInfo(string calldata chain, GasInfo calldata gasInfo) external onlyCollector {
-        _setGasInfo(chain, gasInfo);
+    function updateGasInfo(string[] calldata chains, GasInfo[] calldata gasUpdates) external onlyCollector {
+        uint256 chainsLength = chains.length;
+
+        if (chainsLength != gasUpdates.length) revert InvalidGasUpdates();
+
+        for (uint256 i; i < chainsLength; i++) {
+            string calldata chain = chains[i];
+            GasInfo calldata gasUpdate = gasUpdates[i];
+
+            _setGasInfo(chain, gasUpdate);
+        }
     }
 
     /**
