@@ -1,0 +1,55 @@
+name: Coverage
+
+on:
+  - pull_request
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Code Coverage
+    strategy:
+      matrix:
+        node-version:
+          - 18.x
+        os:
+          - ubuntu-latest
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build > build.log 2>&1
+
+      - name: Check for build warnings
+        run: |
+          if grep -q -i "error" build.log || grep -q -i "warning" build.log; then
+            echo "Build contains following errors or warnings..."
+
+            cat build.log
+
+            exit 1
+          else
+            exit 0;
+          fi
+
+      - name: Generate code coverage
+        run: npm run coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: true
