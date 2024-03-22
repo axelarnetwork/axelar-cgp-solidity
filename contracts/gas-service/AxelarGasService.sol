@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarGasService } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol';
-import { GasEstimate } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/gas/GasEstimate.sol';
+import { InterchainGasEstimation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/gas-estimation/InterchainGasEstimation.sol';
 import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 import { SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeNativeTransfer.sol';
@@ -15,7 +15,7 @@ import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/cont
  * @dev The owner address of this contract should be the microservice that pays for gas.
  * @dev Users pay gas for cross-chain calls, and the gasCollector can collect accumulated fees and/or refund users if needed.
  */
-contract AxelarGasService is GasEstimate, Upgradable, IAxelarGasService {
+contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasService {
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
     using SafeNativeTransfer for address payable;
