@@ -22,6 +22,17 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
 
     address public immutable gasCollector;
 
+    enum GasPaymentType {
+        NativeForContractCall,
+        NativeForContractCallWithToken,
+        TokenForContractCall,
+        TokenForContractCallWithToken,
+        NativeForExpressCall,
+        NativeForExpressCallWithToken,
+        TokenForExpressCall,
+        TokenForExpressCallWithToken
+    }
+
     /**
      * @notice Constructs the AxelarGasService contract.
      * @param gasCollector_ The address of the gas collector
@@ -37,6 +48,62 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
         if (msg.sender != gasCollector) revert NotCollector();
 
         _;
+    }
+
+    /**
+     * @notice Pay for gas for any type of contract execution on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
+     * @dev If estimateOnChain is true, the function will estimate the gas cost and revert if the payment is insufficient.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call
+     * @param executionGasLimit The gas limit for the contract call
+     * @param estimateOnChain Flag to enable on-chain gas estimation
+     * @param refundAddress The address where refunds, if any, should be sent
+     * @param params Additional parameters for gas payment
+     */
+    function payGas(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        uint256 executionGasLimit,
+        bool estimateOnChain,
+        address refundAddress,
+        bytes calldata params
+    ) external payable override {
+        uint256 value = msg.value;
+        GasPaymentType gasPaymentType = GasPaymentType.NativeForContractCall;
+
+        if (params.length >= 32) {
+            (gasPaymentType) = abi.decode(params, (GasPaymentType));
+        }
+
+        if (estimateOnChain) {
+            uint256 gasEstimate = estimateGasFee(
+                destinationChain,
+                destinationAddress,
+                payload,
+                executionGasLimit,
+                gasPaymentType >= GasPaymentType.NativeForExpressCall
+            );
+
+            if (gasEstimate > value) {
+                revert InsufficientGasPayment(gasEstimate, value);
+            } else if (value - gasEstimate > 3000 * tx.gasprice) {
+                payable(refundAddress).safeNativeTransfer(value - gasEstimate);
+                value = gasEstimate;
+            }
+        }
+
+        if (gasPaymentType == GasPaymentType.NativeForContractCall) {
+            emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
+            return;
+        } else if (gasPaymentType == GasPaymentType.NativeForExpressCall) {
+            emit NativeGasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
+            return;
+        }
     }
 
     /**
