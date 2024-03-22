@@ -85,7 +85,7 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
                 destinationAddress,
                 payload,
                 executionGasLimit,
-                gasPaymentType >= GasPaymentType.NativeForExpressCall
+                gasPaymentType >= GasPaymentType.NativeForExpressCall && gasPaymentType <= GasPaymentType.TokenForExpressCallWithToken
             );
 
             if (gasEstimate > msg.value) {
