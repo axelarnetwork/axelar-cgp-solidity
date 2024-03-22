@@ -73,7 +73,6 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
         address refundAddress,
         bytes calldata params
     ) external payable override {
-        uint256 value = msg.value;
         GasPaymentType gasPaymentType = GasPaymentType.NativeForContractCall;
 
         if (params.length >= 32) {
@@ -89,11 +88,8 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
                 gasPaymentType >= GasPaymentType.NativeForExpressCall
             );
 
-            if (gasEstimate > value) {
-                revert InsufficientGasPayment(gasEstimate, value);
-            } else if (value - gasEstimate > 3000 * tx.gasprice) {
-                payable(refundAddress).safeNativeTransfer(value - gasEstimate);
-                value = gasEstimate;
+            if (gasEstimate > msg.value) {
+                revert InsufficientGasPayment(gasEstimate, msg.value);
             }
         }
 
