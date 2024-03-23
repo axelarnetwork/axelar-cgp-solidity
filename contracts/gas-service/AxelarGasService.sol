@@ -22,17 +22,6 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
 
     address public immutable gasCollector;
 
-    enum GasPaymentType {
-        NativeForContractCall,
-        NativeForContractCallWithToken,
-        TokenForContractCall,
-        TokenForContractCallWithToken,
-        NativeForExpressCall,
-        NativeForExpressCallWithToken,
-        TokenForExpressCall,
-        TokenForExpressCallWithToken
-    }
-
     /**
      * @notice Constructs the AxelarGasService contract.
      * @param gasCollector_ The address of the gas collector
@@ -73,19 +62,13 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
         address refundAddress,
         bytes calldata params
     ) external payable override {
-        GasPaymentType gasPaymentType = GasPaymentType.NativeForContractCall;
-
-        if (params.length >= 32) {
-            (gasPaymentType) = abi.decode(params, (GasPaymentType));
-        }
-
         if (estimateOnChain) {
             uint256 gasEstimate = estimateGasFee(
                 destinationChain,
                 destinationAddress,
                 payload,
                 executionGasLimit,
-                gasPaymentType >= GasPaymentType.NativeForExpressCall && gasPaymentType <= GasPaymentType.TokenForExpressCallWithToken
+                params
             );
 
             if (gasEstimate > msg.value) {
@@ -93,13 +76,7 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
             }
         }
 
-        if (gasPaymentType == GasPaymentType.NativeForContractCall) {
-            emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
-            return;
-        } else if (gasPaymentType == GasPaymentType.NativeForExpressCall) {
-            emit NativeGasPaidForExpressCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
-            return;
-        }
+        emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
     /**
