@@ -9,20 +9,16 @@ concurrency:
 
 jobs:
   test:
-    strategy:
-      matrix:
-        node-version:
-          - 18.x
-        os:
-          - ubuntu-22.04
-    runs-on: ${{ matrix.os }}
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Node.js
-        uses: actions/setup-node@v1
+        uses: useblacksmith/setup-node@v5
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 18.x
+          cache: 'npm'
 
       - name: Install Dependencies
         run: npm ci
