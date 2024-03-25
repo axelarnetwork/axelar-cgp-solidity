@@ -63,13 +63,7 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
         bytes calldata params
     ) external payable override {
         if (estimateOnChain) {
-            uint256 gasEstimate = estimateGasFee(
-                destinationChain,
-                destinationAddress,
-                payload,
-                executionGasLimit,
-                params
-            );
+            uint256 gasEstimate = estimateGasFee(destinationChain, destinationAddress, payload, executionGasLimit, params);
 
             if (gasEstimate > msg.value) {
                 revert InsufficientGasPayment(gasEstimate, msg.value);
