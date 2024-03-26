@@ -675,9 +675,7 @@ describe('AxelarGasService', () => {
                 const params = '0x';
 
                 // Set up the gas info for the destination chain
-                await gasService
-                    .connect(ownerWallet)
-                    .updateGasInfo(chains, gasUpdates);
+                await gasService.connect(ownerWallet).updateGasInfo(chains, gasUpdates);
 
                 // Estimate the gas fee
                 const gasEstimate = await gasService.estimateGasFee(
@@ -690,38 +688,40 @@ describe('AxelarGasService', () => {
 
                 expect(gasEstimate).to.be.equal(111288142881657);
 
-                await expectRevert((gasOptions)=>
-                    gasService
-                        .connect(userWallet)
-                        .payGas(
-                            userWallet.address,
-                            destinationChain,
-                            destinationAddress,
-                            payload,
-                            executionGasLimit,
-                            estimateOnChain,
-                            refundAddress,
-                            params,
-                            { ...gasOptions, value: gasEstimate - 1 },
-                        ),
+                await expectRevert(
+                    (gasOptions) =>
+                        gasService
+                            .connect(userWallet)
+                            .payGas(
+                                userWallet.address,
+                                destinationChain,
+                                destinationAddress,
+                                payload,
+                                executionGasLimit,
+                                estimateOnChain,
+                                refundAddress,
+                                params,
+                                { ...gasOptions, value: gasEstimate - 1 },
+                            ),
                     gasService,
                     'InsufficientGasPayment',
                 );
 
-               await expectRevert((gasOptions)=>
-                    gasService
-                        .connect(userWallet)
-                        .payGas(
-                            userWallet.address,
-                            destinationChain,
-                            destinationAddress,
-                            payload,
-                            executionGasLimit,
-                            estimateOnChain,
-                            refundAddress,
-                            '0x11',
-                            { ...gasOptions, value: gasEstimate },
-                        ),
+                await expectRevert(
+                    (gasOptions) =>
+                        gasService
+                            .connect(userWallet)
+                            .payGas(
+                                userWallet.address,
+                                destinationChain,
+                                destinationAddress,
+                                payload,
+                                executionGasLimit,
+                                estimateOnChain,
+                                refundAddress,
+                                '0x11',
+                                { ...gasOptions, value: gasEstimate },
+                            ),
                     gasService,
                     'InvalidParams',
                 );
