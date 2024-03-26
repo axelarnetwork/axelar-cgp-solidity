@@ -665,6 +665,35 @@ describe('AxelarGasService', () => {
                 }
             });
 
+            it('should allow paying gas without on-chain gas estimation using payGas', async () => {
+                const destinationChain = 'optimism';
+                const destinationAddress = ownerWallet.address;
+                const payload = defaultAbiCoder.encode(['address', 'address'], [ownerWallet.address, userWallet.address]);
+                const executionGasLimit = 1000000;
+                const estimateOnChain = false;
+                const refundAddress = userWallet.address;
+                const params = '0x';
+                const gasEstimate = 100;
+
+                await expect(
+                    gasService
+                        .connect(userWallet)
+                        .payGas(
+                            userWallet.address,
+                            destinationChain,
+                            destinationAddress,
+                            payload,
+                            executionGasLimit,
+                            estimateOnChain,
+                            refundAddress,
+                            params,
+                            { value: gasEstimate },
+                        ),
+                )
+                    .to.emit(gasService, 'NativeGasPaidForContractCall')
+                    .withArgs(userWallet.address, destinationChain, destinationAddress, keccak256(payload), gasEstimate, refundAddress);
+            });
+
             it('should allow paying gas with on-chain estimation', async () => {
                 const destinationChain = 'optimism';
                 const destinationAddress = ownerWallet.address;

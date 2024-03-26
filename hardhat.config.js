@@ -16,7 +16,6 @@ const chains = require(`@axelar-network/axelar-chains-config/info/${env}.json`);
 const keys = readJSON(`${__dirname}/keys.json`);
 const { networks, etherscan } = importNetworks(chains, keys);
 
-// Use 'merge' for hardhat EVM version to support RPC finalized tag
 networks.hardhat.hardfork = process.env.EVM_VERSION || 'merge';
 
 const optimizerSettings = {
