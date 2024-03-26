@@ -55,7 +55,7 @@
     "solidity-coverage": "^0.8.4"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "files": [
     "artifacts",

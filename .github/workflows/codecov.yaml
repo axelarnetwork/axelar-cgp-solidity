@@ -13,22 +13,16 @@ concurrency:
 
 jobs:
   coverage:
-    name: Code Coverage
-    strategy:
-      matrix:
-        node-version:
-          - 18.x
-        os:
-          - ubuntu-latest
-    runs-on: ${{ matrix.os }}
+    runs-on: blacksmith-2vcpu-ubuntu-2204
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Node.js
-        uses: actions/setup-node@v3
+        uses: useblacksmith/setup-node@v5
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 18.x
+          cache: 'npm'
 
       - name: Install Dependencies
         run: npm ci

@@ -8,8 +8,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  analyze:
-    runs-on: ubuntu-latest
+  slither:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+
     steps:
       - uses: actions/checkout@v4
 
