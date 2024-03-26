@@ -53,7 +53,7 @@ describe('AxelarGasService', () => {
         await testToken.mint(userWallet.address, 1e9).then((tx) => tx.wait());
     });
 
-    describe('gas receiver', () => {
+    describe('AxelarGasService', () => {
         it('should emit events when receives gas payment', async () => {
             const destinationChain = 'ethereum';
             const destinationAddress = ownerWallet.address;
@@ -628,6 +628,122 @@ describe('AxelarGasService', () => {
             }[EVM_VERSION];
 
             expect(proxyBytecodeHash).to.be.equal(expected);
+        });
+
+        describe('Gas Estimation', () => {
+            const chains = ['ethereum', 'optimism', 'base'];
+            const gasUpdates = [
+                [0, '110227069355211', '278470919016084', '3800724', '1395265596'],
+                [1, '110898281163494', '278128885876991', '3066', '0'],
+                [1, '123127735536005', '279194214965138', '30593', '0'],
+            ];
+
+            it('should allow the collector to update gas info', async () => {
+                await expectRevert(
+                    (gasOptions) => gasService.connect(userWallet).updateGasInfo(chains, gasUpdates, gasOptions),
+                    gasService,
+                    'NotCollector',
+                );
+
+                await expectRevert(
+                    (gasOptions) => gasService.connect(ownerWallet).updateGasInfo(chains, gasUpdates.slice(0, 2), gasOptions),
+                    gasService,
+                    'InvalidGasUpdates',
+                );
+
+                await expect(gasService.connect(ownerWallet).updateGasInfo(chains, gasUpdates))
+                    .to.emit(gasService, 'GasInfoUpdated')
+                    .withArgs(chains[0], gasUpdates[0]);
+
+                for (let i = 0; i < chains.length; i++) {
+                    const chain = chains[i];
+                    const gasInfo = gasUpdates[i];
+
+                    let result = await gasService.getGasInfo(chain);
+                    result = Array.from(result).map((x) => (x.toNumber ? x.toNumber().toString() : x));
+                    expect(result).to.be.deep.equal(gasInfo);
+                }
+            });
+
+            it('should allow paying gas with on-chain estimation', async () => {
+                const destinationChain = 'optimism';
+                const destinationAddress = ownerWallet.address;
+                const payload = defaultAbiCoder.encode(['address', 'address'], [ownerWallet.address, userWallet.address]);
+                const executionGasLimit = 1000000;
+                const estimateOnChain = true;
+                const refundAddress = userWallet.address;
+                const params = '0x';
+
+                // Set up the gas info for the destination chain
+                await gasService.connect(ownerWallet).updateGasInfo(chains, gasUpdates);
+
+                // Estimate the gas fee
+                const gasEstimate = await gasService.estimateGasFee(
+                    destinationChain,
+                    destinationAddress,
+                    payload,
+                    executionGasLimit,
+                    params,
+                );
+
+                expect(gasEstimate).to.be.equal(111288142881657);
+
+                await expectRevert(
+                    (gasOptions) =>
+                        gasService
+                            .connect(userWallet)
+                            .payGas(
+                                userWallet.address,
+                                destinationChain,
+                                destinationAddress,
+                                payload,
+                                executionGasLimit,
+                                estimateOnChain,
+                                refundAddress,
+                                params,
+                                { ...gasOptions, value: gasEstimate - 1 },
+                            ),
+                    gasService,
+                    'InsufficientGasPayment',
+                );
+
+                await expectRevert(
+                    (gasOptions) =>
+                        gasService
+                            .connect(userWallet)
+                            .payGas(
+                                userWallet.address,
+                                destinationChain,
+                                destinationAddress,
+                                payload,
+                                executionGasLimit,
+                                estimateOnChain,
+                                refundAddress,
+                                '0x11',
+                                { ...gasOptions, value: gasEstimate },
+                            ),
+                    gasService,
+                    'InvalidParams',
+                );
+
+                await expect(
+                    gasService
+                        .connect(userWallet)
+                        .payGas(
+                            userWallet.address,
+                            destinationChain,
+                            destinationAddress,
+                            payload,
+                            executionGasLimit,
+                            estimateOnChain,
+                            refundAddress,
+                            params,
+                            { value: gasEstimate },
+                        ),
+                )
+                    .to.emit(gasService, 'NativeGasPaidForContractCall')
+                    .withArgs(userWallet.address, destinationChain, destinationAddress, keccak256(payload), gasEstimate, refundAddress);
+            });
         });
     });
 });

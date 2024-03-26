@@ -3,10 +3,11 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
+import { IAxelarGasService } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol';
+import { InterchainGasEstimation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/gas-estimation/InterchainGasEstimation.sol';
+import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 import { SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeNativeTransfer.sol';
-import { IAxelarGasService } from '../interfaces/IAxelarGasService.sol';
-import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 
 /**
  * @title AxelarGasService
@@ -14,10 +15,12 @@ import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/up
  * @dev The owner address of this contract should be the microservice that pays for gas.
  * @dev Users pay gas for cross-chain calls, and the gasCollector can collect accumulated fees and/or refund users if needed.
  */
-contract AxelarGasService is Upgradable, IAxelarGasService {
+contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasService {
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
     using SafeNativeTransfer for address payable;
+
+    error InvalidParams();
 
     address public immutable gasCollector;
 
@@ -36,6 +39,44 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         if (msg.sender != gasCollector) revert NotCollector();
 
         _;
+    }
+
+    /**
+     * @notice Pay for gas for any type of contract execution on a destination chain.
+     * @dev This function is called on the source chain before calling the gateway to execute a remote contract.
+     * @dev If estimateOnChain is true, the function will estimate the gas cost and revert if the payment is insufficient.
+     * @param sender The address making the payment
+     * @param destinationChain The target chain where the contract call will be made
+     * @param destinationAddress The target address on the destination chain
+     * @param payload Data payload for the contract call
+     * @param executionGasLimit The gas limit for the contract call
+     * @param estimateOnChain Flag to enable on-chain gas estimation
+     * @param refundAddress The address where refunds, if any, should be sent
+     * @param params Additional parameters for gas payment
+     */
+    function payGas(
+        address sender,
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        bytes calldata payload,
+        uint256 executionGasLimit,
+        bool estimateOnChain,
+        address refundAddress,
+        bytes calldata params
+    ) external payable override {
+        if (params.length > 0) {
+            revert InvalidParams();
+        }
+
+        if (estimateOnChain) {
+            uint256 gasEstimate = estimateGasFee(destinationChain, destinationAddress, payload, executionGasLimit, params);
+
+            if (gasEstimate > msg.value) {
+                revert InsufficientGasPayment(gasEstimate, msg.value);
+            }
+        }
+
+        emit NativeGasPaidForContractCall(sender, destinationChain, destinationAddress, keccak256(payload), msg.value, refundAddress);
     }
 
     /**
@@ -346,6 +387,25 @@ contract AxelarGasService is Upgradable, IAxelarGasService {
         address refundAddress
     ) external payable override {
         emit NativeExpressGasAdded(txHash, logIndex, msg.value, refundAddress);
+    }
+
+    /**
+     * @notice Updates the gas price for a specific chain.
+     * @dev This function is called by the gas oracle to update the gas prices for a specific chains.
+     * @param chains Array of chain names
+     * @param gasUpdates Array of gas updates
+     */
+    function updateGasInfo(string[] calldata chains, GasInfo[] calldata gasUpdates) external onlyCollector {
+        uint256 chainsLength = chains.length;
+
+        if (chainsLength != gasUpdates.length) revert InvalidGasUpdates();
+
+        for (uint256 i; i < chainsLength; i++) {
+            string calldata chain = chains[i];
+            GasInfo calldata gasUpdate = gasUpdates[i];
+
+            _setGasInfo(chain, gasUpdate);
+        }
     }
 
     /**
