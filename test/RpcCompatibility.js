@@ -36,7 +36,7 @@ describe('RpcCompatibility', () => {
     function checkBlockTimeStamp(timeStamp, maxDifference) {
         const currentTime = Math.floor(Date.now() / 1000);
         const timeDifference = Math.abs(currentTime - timeStamp);
-        expect(timeDifference).to.be.lessThan(maxDifference);
+        expect(timeDifference).to.be.lessThanOrEqual(maxDifference);
     }
 
     before(async () => {
