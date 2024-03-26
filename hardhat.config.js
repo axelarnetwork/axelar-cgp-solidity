@@ -16,6 +16,8 @@ const chains = require(`@axelar-network/axelar-chains-config/info/${env}.json`);
 const keys = readJSON(`${__dirname}/keys.json`);
 const { networks, etherscan } = importNetworks(chains, keys);
 
+networks.hardhat.hardfork = process.env.EVM_VERSION || 'merge';
+
 const optimizerSettings = {
     enabled: true,
     runs: 1000,
@@ -41,6 +43,14 @@ const compilerSettings = {
     },
 };
 
+const gasServiceSettings = {
+    version: '0.8.23',
+    settings: {
+        evmVersion: process.env.EVM_VERSION || 'london',
+        optimizer: optimizerSettings,
+    },
+};
+
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
@@ -48,13 +58,16 @@ module.exports = {
     solidity: {
         compilers: [compilerSettings],
         // Fix the Proxy bytecodes
-        overrides: {
-            'contracts/AxelarGatewayProxy.sol': compilerSettings,
-            'contracts/BurnableMintableCappedERC20.sol': compilerSettings,
-            'contracts/DepositHandler.sol': compilerSettings,
-            'contracts/gas-service/AxelarGasServiceProxy.sol': compilerSettings,
-            'contracts/deposit-service/AxelarDepositServiceProxy.sol': compilerSettings,
-        },
+        overrides: process.env.NO_OVERRIDES
+            ? {}
+            : {
+                  'contracts/AxelarGatewayProxy.sol': compilerSettings,
+                  'contracts/BurnableMintableCappedERC20.sol': compilerSettings,
+                  'contracts/DepositHandler.sol': compilerSettings,
+                  'contracts/gas-service/AxelarGasServiceProxy.sol': compilerSettings,
+                  'contracts/deposit-service/AxelarDepositServiceProxy.sol': compilerSettings,
+                  'contracts/gas-service/AxelarGasService.sol': gasServiceSettings, // use optimized setting for the gas service
+              },
     },
     defaultNetwork: 'hardhat',
     networks,
