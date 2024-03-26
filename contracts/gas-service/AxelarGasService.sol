@@ -20,6 +20,8 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
     using SafeTokenTransferFrom for IERC20;
     using SafeNativeTransfer for address payable;
 
+    error InvalidParams();
+
     address public immutable gasCollector;
 
     /**
@@ -62,6 +64,10 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
         address refundAddress,
         bytes calldata params
     ) external payable override {
+        if (params.length > 0) {
+            revert InvalidParams();
+        }
+
         if (estimateOnChain) {
             uint256 gasEstimate = estimateGasFee(destinationChain, destinationAddress, payload, executionGasLimit, params);
 
