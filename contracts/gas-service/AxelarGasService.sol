@@ -20,6 +20,8 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
     using SafeTokenTransferFrom for IERC20;
     using SafeNativeTransfer for address payable;
 
+    error InvalidParams();
+
     address public immutable gasCollector;
 
     /**
