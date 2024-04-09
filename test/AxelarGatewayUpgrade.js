@@ -180,7 +180,7 @@ describe('AxelarGatewayUpgrade', () => {
 
         await waitFor(timeDelay);
 
-        const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue);
+        const tx = await interchainGovernance.executeProposal(target, calldata, nativeValue, getGasOptions());
         const receipt = await tx.wait();
         const executionTimestamp = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
 
