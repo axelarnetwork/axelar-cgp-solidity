@@ -21,3 +21,6 @@ jobs:
         uses: crytic/slither-action@v0.3.1
         env:
           NO_OVERRIDES: true
+        with:
+          node-version: 18
+          slither-version: 0.10.1
