@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
+import { IAxelarGasService } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarGateway } from '../../interfaces/IAxelarGateway.sol';
-import { IAxelarGasService } from '../../interfaces/IAxelarGasService.sol';
 
 contract SourceChainSwapCaller {
     IAxelarGateway public gateway;
