@@ -631,11 +631,32 @@ describe('AxelarGasService', () => {
         });
 
         describe('Gas Estimation', () => {
-            const chains = ['ethereum', 'optimism', 'base'];
+            const chains = ['ethereum', 'optimism', 'arbitrum'];
             const gasUpdates = [
-                [0, '110227069355211', '278470919016084', '3800724', '1395265596'],
-                [1, '110898281163494', '278128885876991', '3066', '0'],
-                [1, '123127735536005', '279194214965138', '30593', '0'],
+                {
+                    gasEstimationType: 0,
+                    l1FeeScalar: 0,
+                    axelarBaseFee: 90000000000,
+                    relativeGasPrice: 50000000000,
+                    relativeBlobBaseFee: 1,
+                    expressFee: 190000000000,
+                },
+                {
+                    gasEstimationType: 1,
+                    l1FeeScalar: 1500,
+                    axelarBaseFee: 90000,
+                    relativeGasPrice: 5000,
+                    relativeBlobBaseFee: 0,
+                    expressFee: 190000,
+                },
+                {
+                    gasEstimationType: 3,
+                    l1FeeScalar: 0,
+                    axelarBaseFee: 90000,
+                    relativeGasPrice: 5000,
+                    relativeBlobBaseFee: 0,
+                    expressFee: 190000,
+                },
             ];
 
             it('should allow the collector to update gas info', async () => {
@@ -653,7 +674,7 @@ describe('AxelarGasService', () => {
 
                 await expect(gasService.connect(ownerWallet).updateGasInfo(chains, gasUpdates))
                     .to.emit(gasService, 'GasInfoUpdated')
-                    .withArgs(chains[0], gasUpdates[0]);
+                    .withArgs(chains[0], Object.values(gasUpdates[0]));
 
                 for (let i = 0; i < chains.length; i++) {
                     const chain = chains[i];
@@ -661,7 +682,7 @@ describe('AxelarGasService', () => {
 
                     let result = await gasService.getGasInfo(chain);
                     result = Array.from(result).map((x) => (x.toNumber ? x.toNumber().toString() : x));
-                    expect(result).to.be.deep.equal(gasInfo);
+                    expect(result).to.be.deep.equal(Object.values(gasInfo));
                 }
             });
 
@@ -715,7 +736,7 @@ describe('AxelarGasService', () => {
                     params,
                 );
 
-                expect(gasEstimate).to.be.equal(111288142881657);
+                expect(gasEstimate).to.be.equal(374600090277);
 
                 await expectRevert(
                     (gasOptions) =>

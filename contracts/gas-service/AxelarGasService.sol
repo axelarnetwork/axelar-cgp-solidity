@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarGasService } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol';
-import { InterchainGasEstimation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/gas-estimation/InterchainGasEstimation.sol';
+import { InterchainGasEstimation, GasInfo } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/gas-estimation/InterchainGasEstimation.sol';
 import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 import { SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeNativeTransfer.sol';
@@ -19,8 +19,6 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
     using SafeNativeTransfer for address payable;
-
-    error InvalidParams();
 
     address public immutable gasCollector;
 
