@@ -127,7 +127,7 @@ describe('BurnableMintableCappedERC20', () => {
     });
 
     describe('ERC20 Permit', () => {
-        it('should should set allowance by verifying permit', async () => {
+        it('should set allowance by verifying permit', async () => {
             const deadline = (1000 + Date.now() / 1000) | 0;
             const allowance = 10000;
 
