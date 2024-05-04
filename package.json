@@ -19,10 +19,7 @@
     "type": "git",
     "url": "git+https://github.com/axelarnetwork/axelar-cgp-solidity.git"
   },
-  "keywords": [
-    "ethereum",
-    "axelar"
-  ],
+  "keywords": ["ethereum", "axelar"],
   "author": "axelar-network",
   "license": "MIT",
   "bugs": {
@@ -53,15 +50,5 @@
     "readline-sync": "^1.4.10",
     "solhint": "^4.5.2"
   },
-  "engines": {
-    "node": ">=18"
-  },
-  "files": [
-    "artifacts",
-    "contracts",
-    "interfaces",
-    "scripts",
-    "README.md",
-    "hardhat.config.js"
-  ]
+  "files": ["artifacts", "contracts", "interfaces", "scripts", "README.md", "hardhat.config.js"]
 }
