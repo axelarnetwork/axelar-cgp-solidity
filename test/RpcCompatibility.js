@@ -384,6 +384,33 @@ describe('RpcCompatibility', () => {
         });
     });
 
+    it('should match the fetched logIndex value', async function () {
+        const destinationChain = 'Ethereum';
+        const destinationContractAddress = '0x0000000000000000000000000000000000000001';
+        const payload = '0x01';
+        const payloadHash = keccak256(payload);
+        const symbol = 'TOKEN';
+        const amount = 100;
+
+        const receipt = await rpcCompatibilityContract.emitCallContractWithToken(destinationChain, destinationContractAddress, payloadHash, payload, symbol, amount).then((tx) => tx.wait());
+        const logsFromReceipt = receipt.result.logs;
+
+        const eventSignature = keccak256('ContractCallWithToken(address,string,string,bytes32,bytes,string,uint256)');
+        const expectedEvent = logsFromReceipt.find(log => log.topics[0] === eventSignature);
+        expect(expectedEvent).to.exist.and.to.not.be.null('ContractCallWithToken event not found in logs from tx receipt');
+
+        const blockNumber = receipt.result.blockNumber;
+        const logsFromGetLogs = await provider.send('eth_getLogs', [{
+        fromBlock: blockNumber,
+        toBlock: blockNumber,
+        }])
+
+        const matchingEvent = logsFromGetLogs.find(log => log.topics[0] === eventSignature);
+        expect(matchingEvent).to.exist.and.to.not.be.null('ContractCallWithToken event not found in logs from eth_getLogs');
+
+        expect(expectedEvent.logIndex).to.equal(matchingEvent.logIndex, 'Log index mismatch between tx receipt and eth_getLogs');
+    })
+
     describe('eip-1559 supported rpc methods', () => {
         if (!isHardhat) {
             it('should support RPC method eth_maxPriorityFeePerGas', async () => {
