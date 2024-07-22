@@ -3,7 +3,7 @@
 const chai = require('chai');
 const { ethers, network } = require('hardhat');
 const {
-    utils: { hexValue, getAddress, keccak256 },
+    utils: { hexValue, getAddress, keccak256, id },
     Wallet,
     BigNumber,
 } = ethers;
@@ -393,22 +393,22 @@ describe('RpcCompatibility', () => {
         const amount = 100;
 
         const receipt = await rpcCompatibilityContract.emitCallContractWithToken(destinationChain, destinationContractAddress, payloadHash, payload, symbol, amount).then((tx) => tx.wait());
-        const logsFromReceipt = receipt.result.logs;
+        const logsFromReceipt = receipt.logs;
 
-        const eventSignature = keccak256('ContractCallWithToken(address,string,string,bytes32,bytes,string,uint256)');
+        const eventSignature = id('ContractCallWithToken(address,string,string,bytes32,bytes,string,uint256)');
         const expectedEvent = logsFromReceipt.find(log => log.topics[0] === eventSignature);
-        expect(expectedEvent).to.exist.and.to.not.be.null('ContractCallWithToken event not found in logs from tx receipt');
+        expect(expectedEvent, 'ContractCallWithToken event not found in logs from tx receipt').to.exist.and.to.not.be.null;
 
-        const blockNumber = receipt.result.blockNumber;
+        const blockNumber = '0x' + parseInt(receipt.blockNumber).toString(16);;
         const logsFromGetLogs = await provider.send('eth_getLogs', [{
         fromBlock: blockNumber,
         toBlock: blockNumber,
         }])
 
         const matchingEvent = logsFromGetLogs.find(log => log.topics[0] === eventSignature);
-        expect(matchingEvent).to.exist.and.to.not.be.null('ContractCallWithToken event not found in logs from eth_getLogs');
+        expect(matchingEvent, 'ContractCallWithToken event not found in logs from eth_getLogs').to.not.be.null;
 
-        expect(expectedEvent.logIndex).to.equal(matchingEvent.logIndex, 'Log index mismatch between tx receipt and eth_getLogs');
+        expect(parseInt(expectedEvent.logIndex)).to.equal(parseInt(matchingEvent.logIndex), 'Log index mismatch between tx receipt and eth_getLogs');
     })
 
     describe('eip-1559 supported rpc methods', () => {
