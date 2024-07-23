@@ -7,15 +7,6 @@ contract TestRpcCompatibility {
 
     event ValueUpdated(uint256 indexed value);
     event ValueUpdatedForSubscribe(uint256 indexed value);
-    event ContractCallWithToken(
-        address indexed sender,
-        string destinationChain,
-        string destinationContractAddress,
-        bytes32 indexed payloadHash,
-        bytes payload,
-        string symbol,
-        uint256 amount
-    );
 
     function getValue() public view returns (uint256) {
         return value;
@@ -29,16 +20,5 @@ contract TestRpcCompatibility {
     function updateValueForSubscribe(uint256 newValue) external {
         subscribeValue = newValue;
         emit ValueUpdatedForSubscribe(newValue);
-    }
-
-    function emitCallContractWithToken(
-        string calldata destinationChain,
-        string calldata destinationContractAddress,
-        bytes32 payloadHash,
-        bytes calldata payload,
-        string calldata symbol,
-        uint256 amount
-    ) external {
-        emit ContractCallWithToken(msg.sender, destinationChain, destinationContractAddress, payloadHash, payload, symbol, amount);
     }
 }

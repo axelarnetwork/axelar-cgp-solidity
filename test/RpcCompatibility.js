@@ -385,21 +385,14 @@ describe('RpcCompatibility', () => {
     });
 
     it('should match the fetched logIndex value', async function () {
-        const destinationChain = 'Ethereum';
-        const destinationContractAddress = '0x0000000000000000000000000000000000000001';
-        const payload = '0x01';
-        const payloadHash = keccak256(payload);
-        const symbol = 'TOKEN';
         const amount = 100;
 
-        const receipt = await rpcCompatibilityContract
-            .emitCallContractWithToken(destinationChain, destinationContractAddress, payloadHash, payload, symbol, amount)
-            .then((tx) => tx.wait());
+        const receipt = await rpcCompatibilityContract.updateValue(amount).then((tx) => tx.wait());
         const logsFromReceipt = receipt.logs;
 
-        const eventSignature = id('ContractCallWithToken(address,string,string,bytes32,bytes,string,uint256)');
+        const eventSignature = id('ValueUpdated(uint256)');
         const expectedEvent = logsFromReceipt.find((log) => log.topics[0] === eventSignature);
-        expect(expectedEvent, 'ContractCallWithToken event not found in logs from tx receipt').to.exist.and.to.not.be.null;
+        expect(expectedEvent, 'ValueUpdated event not found in logs from tx receipt').to.exist.and.to.not.be.null;
 
         const blockNumber = '0x' + parseInt(receipt.blockNumber).toString(16);
         const logsFromGetLogs = await provider.send('eth_getLogs', [
@@ -410,7 +403,7 @@ describe('RpcCompatibility', () => {
         ]);
 
         const matchingEvent = logsFromGetLogs.find((log) => log.topics[0] === eventSignature);
-        expect(matchingEvent, 'ContractCallWithToken event not found in logs from eth_getLogs').to.not.be.null;
+        expect(matchingEvent, 'ValueUpdated event not found in logs from eth_getLogs').to.not.be.null;
 
         expect(parseInt(expectedEvent.logIndex)).to.equal(
             parseInt(matchingEvent.logIndex),
