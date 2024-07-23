@@ -384,7 +384,7 @@ describe('RpcCompatibility', () => {
         });
     });
 
-    it('should match the fetched logIndex value', async function () {
+    it('should return consistent logIndex values between eth_getLogs and eth_getTransactionReceipt', async () => {
         const amount = 100;
 
         const receipt = await rpcCompatibilityContract.updateValue(amount).then((tx) => tx.wait());
