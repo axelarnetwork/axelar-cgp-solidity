@@ -3,7 +3,7 @@
 const chai = require('chai');
 const { ethers, network } = require('hardhat');
 const {
-    utils: { hexValue, getAddress, keccak256 },
+    utils: { hexValue, getAddress, keccak256, id },
     Wallet,
     BigNumber,
 } = ethers;
@@ -382,6 +382,33 @@ describe('RpcCompatibility', () => {
         await waitFor(5, () => {
             expect(found).to.be.true;
         });
+    });
+
+    it('should return consistent logIndex values between eth_getLogs and eth_getTransactionReceipt', async () => {
+        const amount = 100;
+
+        const receipt = await rpcCompatibilityContract.updateValue(amount).then((tx) => tx.wait());
+        const logsFromReceipt = receipt.logs;
+
+        const eventSignature = id('ValueUpdated(uint256)');
+        const expectedEvent = logsFromReceipt.find((log) => log.topics[0] === eventSignature);
+        expect(expectedEvent, 'ValueUpdated event not found in logs from tx receipt').to.exist.and.to.not.be.null;
+
+        const blockNumber = '0x' + parseInt(receipt.blockNumber).toString(16);
+        const logsFromGetLogs = await provider.send('eth_getLogs', [
+            {
+                fromBlock: blockNumber,
+                toBlock: blockNumber,
+            },
+        ]);
+
+        const matchingEvent = logsFromGetLogs.find((log) => log.topics[0] === eventSignature);
+        expect(matchingEvent, 'ValueUpdated event not found in logs from eth_getLogs').to.not.be.null;
+
+        expect(parseInt(expectedEvent.logIndex)).to.equal(
+            parseInt(matchingEvent.logIndex),
+            'Log index mismatch between tx receipt and eth_getLogs',
+        );
     });
 
     describe('eip-1559 supported rpc methods', () => {
