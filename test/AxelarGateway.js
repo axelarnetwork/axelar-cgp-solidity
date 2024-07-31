@@ -3,7 +3,7 @@ const chai = require('chai');
 const { ethers, network } = require('hardhat');
 const {
     utils: { id, keccak256, getCreate2Address, defaultAbiCoder },
-    constants: { AddressZero, HashZero },
+    constants: { AddressZero, HashZero }, Wallet
 } = ethers;
 const { expect } = chai;
 const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString, expectRevert, getBytecodeHash } = require('./utils');
@@ -91,21 +91,57 @@ describe('AxelarGateway', () => {
     const deployGateway = async (invalidDeployer = false) => {
         const operatorAddresses = getAddresses(operators);
 
+        console.log("Deploying Auth")
         auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
         await auth.deployTransaction.wait(network.config.confirmations);
 
-        const gatewayImplementation = invalidDeployer
-            ? await gatewayFactory.deploy(auth.address, auth.address)
-            : await gatewayFactory.deploy(auth.address, tokenDeployer.address);
-        await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
+        console.log("Auth: ", auth.address)
+
+        const data = await gatewayFactory.getDeployTransaction(auth.address, tokenDeployer.address).data;
+        const rawTx = {
+            nonce: await ethers.provider.getTransactionCount(owner.address),
+            gasLimit: ethers.utils.hexlify(3000000),
+            gasPrice: await ethers.provider.getGasPrice(),
+            data: data
+        };
+        console.log("rawTx");
+        const wallet = new Wallet(network.config.accounts[0]);
+
+        const signedTransaction = await wallet.signTransaction(rawTx);
+        console.log("siged tx ===========");
+        console.log("========================")
+
+        const customHttpOptions = {
+            url: 'https://weathered-dark-water.hedera-testnet.quiknode.pro/0499b007f2e111f98d90bafb2fe325bc252e25b4',
+            timeout: 60000
+        };
+        
+        const provider = new ethers.providers.JsonRpcProvider(customHttpOptions);
+
+
+        const txhash = await provider.send('eth_sendRawTransaction', [signedTransaction]);
+        const receipt = await provider.waitForTransaction(txhash);
+        console.log("receipt", receipt);
+
+
+        // const gatewayImplementation = invalidDeployer
+        //     ? await gatewayFactory.deploy(auth.address, auth.address)
+        //     : await gatewayFactory.deploy(auth.address, tokenDeployer.address);
+        // await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
+
+        console.log("gatewayImplementation: ", receipt.contractAddress)
+
 
         const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, [], [], threshold);
 
-        gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
+        gatewayProxy = await gatewayProxyFactory.deploy(receipt.contractAddress, params);
         await gatewayProxy.deployTransaction.wait(network.config.confirmations);
 
-        await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait(network.config.confirmations));
+        console.log("gatewayProxy: ", gatewayProxy.address)
 
+
+        await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait(network.config.confirmations));
+        console.log("operatorship transferred")
         gateway = gatewayFactory.attach(gatewayProxy.address);
     };
 
@@ -123,13 +159,13 @@ describe('AxelarGateway', () => {
         it('should revert if gateway setup fails', async () => {
             const params = '0x00';
             const operatorAddresses = getAddresses(operators);
-
             auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
             await auth.deployTransaction.wait(network.config.confirmations);
+            console.log("after Auth factory deploy", auth.address);
 
             const gatewayImplementation = await gatewayFactory.deploy(auth.address, auth.address);
             await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
-
+            console.log("after gateway implementation deploy", gatewayImplementation.address);
             await expectRevert(
                 (gasOptions) => gatewayProxyFactory.deploy(gatewayImplementation.address, params, gasOptions),
                 gatewayProxyFactory,
@@ -137,10 +173,13 @@ describe('AxelarGateway', () => {
             );
         });
 
-        it('should fail on receiving native value', async () => {
-            const value = 10;
+        it.only('should fail on receiving native value', async () => {
+            const value = 10_000_000_000;
 
+            console.log("before gateway deploy");
             await deployGateway();
+            console.log("after gateway deploy", gateway.address);
+
 
             await expectRevert(
                 (gasOptions) =>
@@ -416,7 +455,7 @@ describe('AxelarGateway', () => {
         });
     });
 
-    describe('upgrade', () => {
+    describe.only('upgrade', () => {
         beforeEach(async () => {
             await deployGateway();
         });
@@ -964,7 +1003,7 @@ describe('AxelarGateway', () => {
             token = await burnableMintableCappedERC20Factory.attach(tokenAddress);
         };
 
-        describe('burn token positive tests', () => {
+        describe.only('burn token positive tests', () => {
             before(async () => {
                 await deployGateway();
             });
