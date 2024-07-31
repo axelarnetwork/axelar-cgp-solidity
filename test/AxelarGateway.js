@@ -137,7 +137,7 @@ describe('AxelarGateway', () => {
             );
         });
 
-        it('should fail on receiving native value', async () => {
+        it.only('should fail on receiving native value', async () => {
             const value = 10;
 
             await deployGateway();

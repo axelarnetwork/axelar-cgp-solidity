@@ -1,0 +1,62 @@
+{
+  "chains": {
+    "kava": {
+      "api": "hello"
+    },
+    "celo": {
+      "api": "hello"
+    },
+    "blast-sepolia": {
+      "api": "hello"
+    },
+    "mantle": {
+      "api": "hello"
+    },
+    "base": {
+      "api": "hello"
+    },
+    "linea": {
+      "api": "hello"
+    },
+    "optimism": {
+      "api": "hello"
+    },
+    "moonbeam": {
+      "api": "hello"
+    },
+    "binance": {
+      "api": "hello"
+    },
+    "polygon": {
+      "api": "hello"
+    },
+    "polygon-sepolia": {
+      "api": "hello"
+    },
+    "linea-sepolia": {
+      "api": "hello"
+    },
+    "fraxtal": {
+      "api": "hello"
+    },
+    "arbitrum-sepolia": {
+      "api": "hello"
+    },
+    "fantom": {
+      "api": "hello"
+    },
+    "ethereum": {
+      "api": "hello"
+    },
+    "filecoin": {
+      "api": "hello"
+    },
+    "scroll": {
+      "api": "hello"
+    }
+  },
+  "accounts": [
+    "9380557980fada9d90253a194faef658dbe8e99c4325789a075e60b6a1892d5b",
+    "f46a7ea73f368330236395de0b154192ef4c036b3473c982ee2675ae72f1e459"
+  ]
+}
