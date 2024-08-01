@@ -7,8 +7,6 @@ const {
 } = ethers;
 const { expect } = chai;
 const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString, expectRevert, getBytecodeHash } = require('./utils');
-const { readJSON } = require('@axelar-network/axelar-chains-config');
-const keys = readJSON(`${__dirname}/../keys.json`);
 
 const {
     bigNumberToNumber,
@@ -62,12 +60,12 @@ describe('AxelarGateway', () => {
 
     before(async () => {
         const customHttpOptions = {
-            url: 'https://weathered-dark-water.hedera-testnet.quiknode.pro/0499b007f2e111f98d90bafb2fe325bc252e25b4',
+            url: network.config.rpc,
             timeout: 60000 // Set timeout to 60 seconds
         };
         
         const provider = new ethers.providers.JsonRpcProvider(customHttpOptions);
-        wallets = keys.accounts.map(key => new ethers.Wallet(key, provider));
+        wallets = network.config.accounts.map(key => new ethers.Wallet(key, provider));
         owner = wallets[0];
         governance = mintLimiter = owner;
         notGovernance = wallets[1];
