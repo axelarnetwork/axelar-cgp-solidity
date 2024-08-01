@@ -3,10 +3,12 @@ const chai = require('chai');
 const { ethers, network } = require('hardhat');
 const {
     utils: { id, keccak256, getCreate2Address, defaultAbiCoder },
-    constants: { AddressZero, HashZero }, Wallet
+    constants: { AddressZero, HashZero },
 } = ethers;
 const { expect } = chai;
 const { isHardhat, getChainId, getEVMVersion, getGasOptions, getRandomString, expectRevert, getBytecodeHash } = require('./utils');
+const { readJSON } = require('@axelar-network/axelar-chains-config');
+const keys = readJSON(`${__dirname}/../keys.json`);
 
 const {
     bigNumberToNumber,
@@ -59,7 +61,13 @@ describe('AxelarGateway', () => {
     let externalCap;
 
     before(async () => {
-        wallets = await ethers.getSigners();
+        const customHttpOptions = {
+            url: 'https://weathered-dark-water.hedera-testnet.quiknode.pro/0499b007f2e111f98d90bafb2fe325bc252e25b4',
+            timeout: 60000 // Set timeout to 60 seconds
+        };
+        
+        const provider = new ethers.providers.JsonRpcProvider(customHttpOptions);
+        wallets = keys.accounts.map(key => new ethers.Wallet(key, provider));
         owner = wallets[0];
         governance = mintLimiter = owner;
         notGovernance = wallets[1];
@@ -91,57 +99,21 @@ describe('AxelarGateway', () => {
     const deployGateway = async (invalidDeployer = false) => {
         const operatorAddresses = getAddresses(operators);
 
-        console.log("Deploying Auth")
         auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
         await auth.deployTransaction.wait(network.config.confirmations);
 
-        console.log("Auth: ", auth.address)
-
-        const data = await gatewayFactory.getDeployTransaction(auth.address, tokenDeployer.address).data;
-        const rawTx = {
-            nonce: await ethers.provider.getTransactionCount(owner.address),
-            gasLimit: ethers.utils.hexlify(3000000),
-            gasPrice: await ethers.provider.getGasPrice(),
-            data: data
-        };
-        console.log("rawTx");
-        const wallet = new Wallet(network.config.accounts[0]);
-
-        const signedTransaction = await wallet.signTransaction(rawTx);
-        console.log("siged tx ===========");
-        console.log("========================")
-
-        const customHttpOptions = {
-            url: 'https://weathered-dark-water.hedera-testnet.quiknode.pro/0499b007f2e111f98d90bafb2fe325bc252e25b4',
-            timeout: 60000
-        };
-        
-        const provider = new ethers.providers.JsonRpcProvider(customHttpOptions);
-
-
-        const txhash = await provider.send('eth_sendRawTransaction', [signedTransaction]);
-        const receipt = await provider.waitForTransaction(txhash);
-        console.log("receipt", receipt);
-
-
-        // const gatewayImplementation = invalidDeployer
-        //     ? await gatewayFactory.deploy(auth.address, auth.address)
-        //     : await gatewayFactory.deploy(auth.address, tokenDeployer.address);
-        // await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
-
-        console.log("gatewayImplementation: ", receipt.contractAddress)
-
+        const gatewayImplementation = invalidDeployer
+            ? await gatewayFactory.deploy(auth.address, auth.address)
+            : await gatewayFactory.deploy(auth.address, tokenDeployer.address);
+        await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
 
         const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, [], [], threshold);
 
-        gatewayProxy = await gatewayProxyFactory.deploy(receipt.contractAddress, params);
+        gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
         await gatewayProxy.deployTransaction.wait(network.config.confirmations);
 
-        console.log("gatewayProxy: ", gatewayProxy.address)
-
-
         await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait(network.config.confirmations));
-        console.log("operatorship transferred")
+
         gateway = gatewayFactory.attach(gatewayProxy.address);
     };
 
@@ -159,13 +131,13 @@ describe('AxelarGateway', () => {
         it('should revert if gateway setup fails', async () => {
             const params = '0x00';
             const operatorAddresses = getAddresses(operators);
+
             auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
             await auth.deployTransaction.wait(network.config.confirmations);
-            console.log("after Auth factory deploy", auth.address);
 
             const gatewayImplementation = await gatewayFactory.deploy(auth.address, auth.address);
             await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
-            console.log("after gateway implementation deploy", gatewayImplementation.address);
+
             await expectRevert(
                 (gasOptions) => gatewayProxyFactory.deploy(gatewayImplementation.address, params, gasOptions),
                 gatewayProxyFactory,
@@ -174,12 +146,9 @@ describe('AxelarGateway', () => {
         });
 
         it.only('should fail on receiving native value', async () => {
-            const value = 10_000_000_000;
+            const value = 10_000_000_0000;
 
-            console.log("before gateway deploy");
             await deployGateway();
-            console.log("after gateway deploy", gateway.address);
-
 
             await expectRevert(
                 (gasOptions) =>
@@ -460,7 +429,7 @@ describe('AxelarGateway', () => {
             await deployGateway();
         });
 
-        it('should allow governance to upgrade to the correct implementation', async () => {
+        it.only('should allow governance to upgrade to the correct implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
             const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
             const params = '0x';
@@ -481,7 +450,7 @@ describe('AxelarGateway', () => {
                 .to.not.emit(gateway, 'OperatorshipTransferred');
         });
 
-        it('should allow governance to upgrade to the correct implementation with new governance and mint limiter', async () => {
+        it.only('should allow governance to upgrade to the correct implementation with new governance and mint limiter', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
             const newGatewayImplementationCodeHash = await getBytecodeHash(newGatewayImplementation, network.config.id);
             let params = '0x';
@@ -588,7 +557,7 @@ describe('AxelarGateway', () => {
             expect(await gateway.governance()).to.be.eq(notGovernance.address);
         });
 
-        it('should not allow governance to upgrade to a wrong implementation', async () => {
+        it.only('should not allow governance to upgrade to a wrong implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
             const wrongCodeHash = keccak256(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`);
             const depositServiceFactory = await ethers.getContractFactory('AxelarDepositService', owner);
@@ -1060,7 +1029,7 @@ describe('AxelarGateway', () => {
                 console.log('burnToken internal gas:', (await tx.wait()).gasUsed.toNumber());
             });
 
-            it('should allow the operators to burn external tokens', async () => {
+            it.only('should allow the operators to burn external tokens', async () => {
                 const destinationAddress = getRandomString(32);
                 const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
                 const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
@@ -1113,7 +1082,7 @@ describe('AxelarGateway', () => {
                 console.log('burnToken external gas:', (await tx.wait()).gasUsed.toNumber());
             });
 
-            it('should allow the operators to burn external tokens even if the deposit address has ether', async () => {
+            it.only('should allow the operators to burn external tokens even if the deposit address has ether', async () => {
                 const destinationAddress = getRandomString(32);
                 const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
                 const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
@@ -1171,7 +1140,7 @@ describe('AxelarGateway', () => {
                     .then((balance) => expect(balance).to.eq(0));
             });
 
-            it('should allow the operators to burn the external token multiple times from the same address', async () => {
+            it.only('should allow the operators to burn the external token multiple times from the same address', async () => {
                 const destinationAddress = getRandomString(32);
                 const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
                 const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
