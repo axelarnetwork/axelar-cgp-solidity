@@ -7,7 +7,7 @@ It is built on top of the Cosmos SDK. Users/Applications can use Axelar network 
 send arbitrary messages between EVM chains.
 
 Axelar network's decentralized validators confirm events emitted on EVM chains (such as deposit confirmation and message send),
-and sign off on commands submitted (by automated services) to the gateway smart contracts (such as minting token, and approving message on the destination).
+and sign off on commands submitted (by automated services) to the gateway smart contracts (such as minting token, and approving messages on the destination).
 
 See [this doc](./DESIGN.md) for more design info.
 
@@ -76,7 +76,7 @@ See the Axelar contract deployments [repository](https://github.com/axelarnetwor
 const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
 ```
 
-5. Create a `keys.json` file in this repo that contains the private keys for your accounts that will be used for testing. For some tests, such as the Axelar gateway tests, you may need to provide at least two private keys (you can refer the [test](https://github.com/axelarnetwork/axelar-cgp-solidity/blob/d0c040330d7498d52dee7eedbebf2aefeb5c87fb/test/BurnableMintableCappedERC20.js#L22) to find the number of accounts needed). At this point the `keys.json` file should resemble the example file below (`chains` can be left empty):
+5. Create a `keys.json` file in this repo that contains the private keys for your accounts that will be used for testing. For some tests, such as the Axelar gateway tests, you may need to provide at least two private keys (you can refer to the [test](https://github.com/axelarnetwork/axelar-cgp-solidity/blob/d0c040330d7498d52dee7eedbebf2aefeb5c87fb/test/BurnableMintableCappedERC20.js#L22) to find the number of accounts needed). At this point the `keys.json` file should resemble the example file below (`chains` can be left empty):
 
 ```json
 {
@@ -124,7 +124,7 @@ await sourceChainGateway
 
 -   Note that certain tests can require upto 3 accounts.
 
--   Transactions can fail if previous transactions are not mined and picked up by the provide, therefore wait for a transaction to be mined after broadcasting. See the code below for example
+-   Transactions can fail if previous transactions are not mined and picked up by the provider, therefore wait for a transaction to be mined after broadcasting. See the code below for example
 
 ```javascript
 await testToken.mint(userWallet.address, 1e9).then((tx) => tx.wait(network.config.confirmations));

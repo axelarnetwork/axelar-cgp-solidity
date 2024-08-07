@@ -202,7 +202,7 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
 
     /**
      * @notice Pay for gas using ERC20 tokens for an express contract call on a destination chain.
-     * @dev This function is called on the source chain before calling the gateway to express execute a remote contract.
+     * @dev This function is called on the source chain before calling the gateway to express and execute a remote contract.
      * @param sender The address making the payment
      * @param destinationChain The target chain where the contract call will be made
      * @param destinationAddress The target address on the destination chain
@@ -227,7 +227,7 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
 
     /**
      * @notice Pay for gas using ERC20 tokens for an express contract call with tokens on a destination chain.
-     * @dev This function is called on the source chain before calling the gateway to express execute a remote contract.
+     * @dev This function is called on the source chain before calling the gateway to express and execute a remote contract.
      * @param sender The address making the payment
      * @param destinationChain The target chain where the contract call with tokens will be made
      * @param destinationAddress The target address on the destination chain
@@ -353,7 +353,7 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
 
     /**
      * @notice Add additional gas payment using ERC20 tokens after initiating an express cross-chain call.
-     * @dev This function can be called on the source chain after calling the gateway to express execute a remote contract.
+     * @dev This function can be called on the source chain after calling the gateway to express and execute a remote contract.
      * @param txHash The transaction hash of the cross-chain call
      * @param logIndex The log index for the cross-chain call
      * @param gasToken The ERC20 token address used to add gas
@@ -374,7 +374,7 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
 
     /**
      * @notice Add additional gas payment using native currency after initiating an express cross-chain call.
-     * @dev This function can be called on the source chain after calling the gateway to express execute a remote contract.
+     * @dev This function can be called on the source chain after calling the gateway to express and execute a remote contract.
      * @param txHash The transaction hash of the cross-chain call
      * @param logIndex The log index for the cross-chain call
      * @param refundAddress The address where refunds, if any, should be sent
@@ -389,7 +389,7 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
 
     /**
      * @notice Updates the gas price for a specific chain.
-     * @dev This function is called by the gas oracle to update the gas prices for a specific chains.
+     * @dev This function is called by the gas oracle to update the gas prices for specific chains.
      * @param chains Array of chain names
      * @param gasUpdates Array of gas updates
      */

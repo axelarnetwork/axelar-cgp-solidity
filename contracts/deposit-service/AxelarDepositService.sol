@@ -20,7 +20,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
 
     // This public storage for ERC20 token intended to be refunded.
     // It triggers the DepositReceiver/ReceiverImplementation to switch into a refund mode.
-    // Address is stored and deleted withing the same refund transaction.
+    // Address is stored and deleted within the same refund transaction.
     address public refundToken;
 
     address public immutable receiverImplementation;

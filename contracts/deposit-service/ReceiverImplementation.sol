@@ -45,7 +45,7 @@ contract ReceiverImplementation is DepositServiceBase {
         // We expect allowance to always be 0 at this point
         // slither-disable-next-line unused-return
         IERC20(tokenAddress).approve(gateway, amount);
-        // Sending the token trough the gateway
+        // Sending the token through the gateway
         IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, symbol, amount);
     }
 
