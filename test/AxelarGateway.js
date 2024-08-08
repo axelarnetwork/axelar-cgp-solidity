@@ -849,7 +849,7 @@ describe('AxelarGateway', () => {
             const mintAmount = await gateway.tokenMintAmount(symbol);
             expect(mintAmount.toNumber()).to.eq(limit);
 
-            const amount = 1;
+            const amount = 100_000_000_000;
             const data2 = buildCommandBatch(
                 await getChainId(),
                 [getRandomID()],
@@ -928,7 +928,7 @@ describe('AxelarGateway', () => {
     describe('command burnToken', () => {
         const name = 'An Awesome Token';
         const symbol = 'AAT';
-        const burnAmount = 100;
+        const burnAmount = 100_000_000_000;
         const amount = 10 * burnAmount;
 
         let burnTestToken;
@@ -1051,6 +1051,7 @@ describe('AxelarGateway', () => {
                 );
 
                 const tx = await gateway.execute(firstInput, getGasOptions());
+                console.log(tx);
 
                 await expect(tx).to.emit(burnTestToken, 'Transfer').withArgs(depositHandlerAddress, gateway.address, burnAmount);
 
@@ -1085,7 +1086,7 @@ describe('AxelarGateway', () => {
                 const salt = id(`${destinationAddress}-${owner.address}-${getRandomInt(1e10)}`);
                 const depositHandlerAddress = getCreate2Address(gateway.address, salt, keccak256(depositHandlerFactory.bytecode));
 
-                await owner.sendTransaction({ to: depositHandlerAddress, value: '1' }).then((tx) => tx.wait());
+                await owner.sendTransaction({ to: depositHandlerAddress, value: '10000000000' }).then((tx) => tx.wait());
 
                 const burnAmount = amount / 10;
                 await burnTestToken.transfer(depositHandlerAddress, burnAmount).then((tx) => tx.wait());
