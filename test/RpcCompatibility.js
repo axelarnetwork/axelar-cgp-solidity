@@ -243,6 +243,19 @@ describe('RpcCompatibility', () => {
             checkBlock(block, false);
             checkBlockTimeStamp(parseInt(block.timestamp, 16), 12000);
         });
+
+        it('blocks have valid parent hashes', async () => {
+            const withTransaction = false;
+            const block = await provider.send('eth_getBlockByNumber', ['latest', withTransaction]);
+            const parentBlock = await provider.send('eth_getBlockByHash', [block.parentHash, withTransaction]);
+
+            console.log('Block:', block);
+            console.log('Parent block:', parentBlock);
+
+            checkBlock(parentBlock, withTransaction);
+
+            expect(parentBlock.hash).to.equal(block.parentHash);
+        });
     });
 
     it('should support RPC method eth_blockNumber', async () => {
