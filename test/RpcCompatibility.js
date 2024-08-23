@@ -39,6 +39,14 @@ describe('RpcCompatibility', () => {
         expect(timeDifference).to.be.lessThanOrEqual(maxDifference);
     }
 
+    async function validParentHashes(blockTag) {
+        const withTransaction = false;
+        const block = await provider.send('eth_getBlockByNumber', [blockTag, withTransaction]);
+        const parentBlock = await provider.send('eth_getBlockByHash', [block.parentHash, withTransaction]);
+
+        expect(parentBlock.hash).to.equal(block.parentHash);
+    }
+
     before(async () => {
         provider = ethers.provider;
         [signer] = await ethers.getSigners();
@@ -117,11 +125,20 @@ describe('RpcCompatibility', () => {
             await checkLog(filter);
         });
 
-        it('supports finalized tag', async () => {
-            let isLarger = false;
+        describe('supports finalized tag', () => {
+            let finalizedBlockNumber;
 
-            try {
-                const finalizedBlockNumber = await provider.send('eth_getBlockByNumber', ['finalized', false]);
+            before(async () => {
+                try {
+                    finalizedBlockNumber = await provider.send('eth_getBlockByNumber', ['finalized', false]);
+                } catch (error) {
+                    console.error('Failed to retrieve finalized block number:', error);
+                    throw error;
+                }
+            });
+
+            it('should return latest.number > finalized.number', async () => {
+                let isLarger = false;
 
                 if (finalizedBlockNumber && finalizedBlockNumber.number !== null) {
                     isLarger = finalizedBlockNumber.number >= blockNumber;
@@ -130,17 +147,19 @@ describe('RpcCompatibility', () => {
                         console.log('Achieved finality for the block instantly');
                     }
                 }
-            } catch (error) {
-                console.error('Failed to retrieve finalized block number:', error);
-            }
 
-            const fromBlock = isLarger ? blockNumber : 'finalized';
-            const toBlock = fromBlock === 'finalized' ? blockNumber : 'finalized';
-            const filter = {
-                fromBlock: isHardhat ? hexValue(0) : fromBlock,
-                toBlock,
-            };
-            await checkLog(filter);
+                const fromBlock = isLarger ? blockNumber : 'finalized';
+                const toBlock = fromBlock === 'finalized' ? blockNumber : 'finalized';
+                const filter = {
+                    fromBlock: isHardhat ? hexValue(0) : fromBlock,
+                    toBlock,
+                };
+                await checkLog(filter);
+            });
+        });
+
+        it('should have valid parent hash', async () => {
+            validParentHashes('finalized');
         });
     });
 
@@ -242,6 +261,11 @@ describe('RpcCompatibility', () => {
             block = await provider.send('eth_getBlockByNumber', ['finalized', false]);
             checkBlock(block, false);
             checkBlockTimeStamp(parseInt(block.timestamp, 16), 12000);
+        });
+
+        it('should have valid parent hashes', async () => {
+            // Note: If chain doesn't have instant finality, reorgs could cause this to fail
+            validParentHashes('latest');
         });
     });
 
