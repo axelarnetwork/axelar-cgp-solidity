@@ -263,7 +263,7 @@ describe('RpcCompatibility', () => {
         });
 
         it('should have valid parent hashes', async () => {
-            validParentHashes('latest')
+            validParentHashes('latest');
         });
     });
 
