@@ -39,9 +39,9 @@ describe('RpcCompatibility', () => {
         expect(timeDifference).to.be.lessThanOrEqual(maxDifference);
     }
 
-    async function validParentHashes(tag) {
+    async function validParentHashes(blockTag) {
         const withTransaction = false;
-        const block = await provider.send('eth_getBlockByNumber', ['latest', withTransaction]);
+        const block = await provider.send('eth_getBlockByNumber', [blockTag, withTransaction]);
         const parentBlock = await provider.send('eth_getBlockByHash', [block.parentHash, withTransaction]);
 
         expect(parentBlock.hash).to.equal(block.parentHash);
