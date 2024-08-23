@@ -264,6 +264,7 @@ describe('RpcCompatibility', () => {
         });
 
         it('should have valid parent hashes', async () => {
+            // Note: If chain doesn't have instant finality, reorgs could cause this to fail
             validParentHashes('latest');
         });
     });
