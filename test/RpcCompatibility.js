@@ -133,6 +133,7 @@ describe('RpcCompatibility', () => {
                     finalizedBlockNumber = await provider.send('eth_getBlockByNumber', ['finalized', false]);
                 } catch (error) {
                     console.error('Failed to retrieve finalized block number:', error);
+                    throw error;
                 }
             });
 
