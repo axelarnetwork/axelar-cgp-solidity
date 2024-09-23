@@ -92,7 +92,7 @@ const expectRevert = async (txFunc, contract, error) => {
     if (network.config.skipRevertTests) {
         await expect(txFunc(getGasOptions())).to.be.reverted;
     } else {
-        await expect(txFunc(null)).to.be.revertedWithCustomError(contract, error);
+        await expect(txFunc(null)).to.be.revertedWith(error);
     }
 };
 

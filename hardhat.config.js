@@ -1,5 +1,8 @@
-require('@nomicfoundation/hardhat-toolbox');
-require('solidity-coverage');
+require('@nomiclabs/hardhat-etherscan');
+require('@nomiclabs/hardhat-waffle');
+// require('@typechain/hardhat');
+// require('solidity-coverage');
+require('dotenv').config();
 
 if (process.env.STORAGE_LAYOUT) {
     require('hardhat-storage-layout');
