@@ -22,6 +22,8 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
 
     address public immutable gasCollector;
 
+    function _setup(bytes calldata data) internal override {}
+
     /**
      * @notice Constructs the AxelarGasService contract.
      * @param gasCollector_ The address of the gas collector
