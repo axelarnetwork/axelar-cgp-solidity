@@ -37,6 +37,8 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         receiverImplementation = address(new ReceiverImplementation(gateway_, wrappedSymbol_));
     }
 
+    function _setup(bytes calldata data) internal override {}
+
     // @dev This method is meant to be called directly by user to send native token cross-chain
     function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable {
         uint256 amount = msg.value;

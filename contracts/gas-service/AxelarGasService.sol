@@ -30,6 +30,8 @@ contract AxelarGasService is InterchainGasEstimation, Upgradable, IAxelarGasServ
         gasCollector = gasCollector_;
     }
 
+    function _setup(bytes calldata data) internal override {}
+
     /**
      * @notice Modifier that ensures the caller is the designated gas collector.
      */
