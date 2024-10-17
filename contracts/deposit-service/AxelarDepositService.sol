@@ -26,8 +26,6 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
     address public immutable receiverImplementation;
     address public immutable refundIssuer;
 
-    function _setup(bytes calldata data) internal override {}
-
     constructor(
         address gateway_,
         string memory wrappedSymbol_,
@@ -38,6 +36,8 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         refundIssuer = refundIssuer_;
         receiverImplementation = address(new ReceiverImplementation(gateway_, wrappedSymbol_));
     }
+
+    function _setup(bytes calldata data) internal override {}
 
     // @dev This method is meant to be called directly by user to send native token cross-chain
     function sendNative(string calldata destinationChain, string calldata destinationAddress) external payable {
