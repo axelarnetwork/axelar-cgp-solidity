@@ -26,6 +26,8 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
     address public immutable receiverImplementation;
     address public immutable refundIssuer;
 
+    function _setup(bytes calldata data) internal override {}
+
     constructor(
         address gateway_,
         string memory wrappedSymbol_,
