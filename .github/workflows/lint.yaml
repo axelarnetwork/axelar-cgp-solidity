@@ -1,7 +1,7 @@
 name: Linting
 
 on:
-  - pull_request
+  pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,22 +12,16 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install Node.js
-        uses: useblacksmith/setup-node@v5
+      - name: Setup tools
+        uses: ./.github/actions/setup-tools
         with:
-          node-version: 18.x
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
+          install-nodejs: 'true'
 
       - name: Lint
         run: npm run lint
-
-      - name: Flatten
-        run: npm run flatten
 
       - name: Prettier
         run: npm run prettier

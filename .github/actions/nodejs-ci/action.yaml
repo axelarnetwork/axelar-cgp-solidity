@@ -1,0 +1,24 @@
+name: Install node.js dependencues
+description: 'Setup node.js and install dependencies'
+
+inputs:
+  node-version:
+    description: 'The version of node.js CLI to install'
+    required: true
+    default: '18'
+
+runs:
+  using: 'composite'
+
+  steps:
+    - name: Setup Node
+      # TODO: consider while migrating the `setup-node` action later the usage of `blacksmith` actions
+      uses: useblacksmith/setup-node@v5
+      with:
+        node-version: '${{ inputs.node-version }}'
+        cache: 'npm'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci

@@ -1,83 +1,134 @@
+# This workflow creates a github release using changeset, and publishes it as an npm package.
+# It's triggered once a release PR (created by the pre-release workflow) gets merged to the `main` branch.
 name: Release
-
 on:
-  workflow_dispatch:
-    inputs:
-      bumpType:
-        description: Semver bump type to use ("major"/"minor"/"patch")
-        required: true
-        default: patch
+  # Once the PR gets merged to `main`
+  pull_request:
+    branches:
+      - main
+      - 'releases/**'
+    types: [closed]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
+  # Enable release process either with workflow dispatch or the automated PR process
   release:
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-    runs-on: ${{ matrix.os }}
+    name: Release
+    if: |
+      ((github.event.pull_request.merged == true) &&
+      startsWith(github.event.pull_request.title, 'chore(release)'))
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
-      - name: Checkout code
+      - name: Checkout Repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: '0'
-          submodules: recursive
+          persist-credentials: false
 
-      - id: release
-        uses: anothrNick/github-tag-action@1.39.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEFAULT_BUMP: ${{ github.event.inputs.bumpType }}
-          TAG_CONTEXT: branch
-          RELEASE_BRANCHES: main,releases.*
-          WITH_V: true
-          DRY_RUN: true
-
-      - id: parsed-release
-        uses: booxmedialtd/ws-action-parse-semver@v1
+      - name: Setup tools
+        uses: ./.github/actions/setup-tools
         with:
-          input_string: ${{ steps.release.outputs.tag }}
+          install-nodejs: 'true'
 
-      - name: Generate release
+      # Publishes a release in case the release isn't published
+      - name: Publish release
+        id: publish-release
+        uses: changesets/action@v1
+        with:
+          publish: npm run release
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Prepare the variables that will be used across the different next steps
+      - name: Prepare cross-steps variables
         run: |
-          new_release_branch=""
+          export PACKAGE_NAME=$(jq -r '.name' 'package.json');
+          export PACKAGE_VERSION=v$(echo '${{ steps.publish-release.outputs.publishedPackages }}' | jq -r ".[] | select(.name == \"${PACKAGE_NAME}\") | .version")
+          export BASE_ARTIFACTS_DIR="./artifacts"
+          export ARTIFACT_NAME="axelar-gmp-sdk-solidity-assets-${PACKAGE_VERSION}"
+          export BASE_ARTIFACTS_VERSIONED_DIR="$(dirname ${BASE_ARTIFACTS_DIR})/${ARTIFACT_NAME}" # Regardless of the dir type, relative or absolute
 
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            if [ "${{ github.event.inputs.bumpType }}" = "major" ]; then
-              let new_major=${{ steps.parsed-release.outputs.major }}+1
-              new_release_branch="releases/$new_major.0.x"
-            elif [ "${{ github.event.inputs.bumpType }}" = "minor" ]; then
-              let new_minor=${{ steps.parsed-release.outputs.minor }}+1
-              new_release_branch="releases/${{ steps.parsed-release.outputs.major }}.$new_minor.x"
-            else
-              echo "cannot make patch release from main branch"
-              exit 1
-            fi
-          elif [[ "${{ github.ref }}" = refs/heads/releases/* ]]; then
-            if [ "${{ github.event.inputs.bumpType }}" != "patch" ]; then
-              echo "cannot make major/minor release from release branch"
-              exit 1
-            fi
-          else
-            echo "can only release from main or releases/* branches"
-            exit 1
-          fi
+          # ex: @axelarnetwork/axelar-gmp-sdk-solidity
+          echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
 
-          git config --global user.email "cicd@axelar.network"
-          git config --global user.name "axelar-cicd-bot"
+          # ex: v2.1.0
+          echo "PACKAGE_VERSION=${PACKAGE_VERSION}" >> $GITHUB_ENV
 
-          git commit --allow-empty -m "${{ steps.release.outputs.new_tag }}"
-          git push
+          # ex: ./artifacts
+          echo "BASE_ARTIFACTS_DIR=${BASE_ARTIFACTS_DIR}" >> $GITHUB_ENV
 
-          if [ -n "$new_release_branch" ]; then
-            git checkout -b $new_release_branch
-            git push -u origin $new_release_branch
-          fi
+          # ex: axelar-gmp-sdk-solidity-assets-v2.1.0
+          echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_ENV
 
-      - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@1.39.0
+          # ex: ./axelar-gmp-sdk-solidity-assets-v2.1.0
+          echo "BASE_ARTIFACTS_VERSIONED_DIR=${BASE_ARTIFACTS_VERSIONED_DIR}" >> $GITHUB_ENV
+
+      # Create `zip` and `tar` archive files for contracts ABIs
+      - name: Create `zip` and `tar` archive files for contracts ABIs
+        run: |
+          # Renaming to keep the dir structure in the archive matching the release version defined in `BASE_ARTIFACTS_VERSIONED_DIR`
+          mv ${{ env.BASE_ARTIFACTS_DIR }} ${{ env.BASE_ARTIFACTS_VERSIONED_DIR }}
+
+          find "${{ env.BASE_ARTIFACTS_VERSIONED_DIR }}/contracts" -type f -name "*.json" -print | zip ${{ env.ARTIFACT_NAME }}.zip -@
+          find "${{ env.BASE_ARTIFACTS_VERSIONED_DIR }}/contracts" -type f -name "*.json" -print | tar -czvf ${{ env.ARTIFACT_NAME }}.tar.gz -T -
+
+          # Generate SHA-256 Checksums
+          for file in ${{ env.ARTIFACT_NAME }}.tar.gz ${{ env.ARTIFACT_NAME }}.zip; do
+            sha256sum "$file" > "$file.sha256"
+          done
+
+      # Publishing contracts ABIs to `R2`
+      - name: Configure CF credentials
+        run: |
+          cd $HOME; mkdir ~/.aws; touch ~/.aws/credentials; touch ~/.aws/config
+          echo "[default]
+          aws_access_key_id = ${{ secrets.CF_BUCKET_ACCESS_KEY_ID }}
+          aws_secret_access_key = ${{ secrets.CF_BUCKET_SECRET_ACCESS_KEY }}" > ~/.aws/credentials
+          echo "[default]
+          region=auto
+          output=json" > ~/.aws/config
+
+      - name: Publish files to CF R2
+        env:
+          S3_BUCKET_NAME: ${{ vars.CF_BUCKET_NAME }}
+          ENDPOINT_URL: ${{ secrets.CF_ENDPOINT_URL }}
+          CF_BUCKET_ROOT_KEY: ${{ vars.CF_BUCKET_ROOT_KEY }}
+        run: |
+          export CF_CONTRACTS_BUCKET_ROOT_KEY="${CF_BUCKET_ROOT_KEY}/${{ env.PACKAGE_VERSION }}"
+          export JSON_FILES=$(find "${{ env.BASE_ARTIFACTS_VERSIONED_DIR }}/contracts" -type f -name "*.json")
+
+          for json_file in "${JSON_FILES}"; do
+
+            echo "Uploading configs: ${json_file}"
+
+            for file in ${json_file}; do
+              if [[ -f "$file" ]]; then
+                FILE_KEY=$(echo $file | sed "s|^${{ env.BASE_ARTIFACTS_VERSIONED_DIR }}/||")
+                echo "Uploading config: $CF_CONTRACTS_BUCKET_ROOT_KEY/$FILE_KEY"
+                aws s3api put-object --bucket $S3_BUCKET_NAME --key "$CF_CONTRACTS_BUCKET_ROOT_KEY/$FILE_KEY" --body "$file" --acl public-read --endpoint-url $ENDPOINT_URL
+              fi
+            done
+          done
+
+          # Upload the created archives to R2
+          export CF_ARCHIVES_BUCKET_ROOT_KEY="${CF_BUCKET_ROOT_KEY}/${{ env.PACKAGE_VERSION }}/archives"
+          for file in ${{ env.ARTIFACT_NAME }}.tar.gz ${{ env.ARTIFACT_NAME }}.zip; do
+            aws s3api put-object --bucket $S3_BUCKET_NAME --key "$CF_ARCHIVES_BUCKET_ROOT_KEY/$file" --body "$file" --acl public-read --endpoint-url $ENDPOINT_URL
+            aws s3api put-object --bucket $S3_BUCKET_NAME --key "$CF_ARCHIVES_BUCKET_ROOT_KEY/$file.sha256" --body "$file.sha256" --acl public-read --endpoint-url $ENDPOINT_URL
+          done
+
+      # Update the existing release and upload the zip and tar archives to the specific tag
+      - name: Create and Upload Release
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 # v2.0.8
+        with:
+          tag_name: ${{ env.PACKAGE_VERSION }} # This uses the tag from the push
+          files: |
+            ${{ env.ARTIFACT_NAME }}.tar.gz
+            ${{ env.ARTIFACT_NAME }}.tar.gz.sha256
+            ${{ env.ARTIFACT_NAME }}.zip
+            ${{ env.ARTIFACT_NAME }}.zip.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEFAULT_BUMP: ${{ github.event.inputs.bumpType }}
-          TAG_CONTEXT: branch
-          RELEASE_BRANCHES: main,releases.*
-          WITH_V: true

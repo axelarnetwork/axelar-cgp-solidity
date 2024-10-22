@@ -1,0 +1,83 @@
+# This workflow concerns the preparation of the `changeset` PR and keeping it updated by tracking the changes on `main` branch.
+name: Create Release PR
+
+on:
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  create-release-pr:
+    name: Create Release PR
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      - name: Check if a branch is whitelisted and maintained
+        id: branch-check
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          WHITELISTED_BRANCHES=("main" "releases/*")
+
+          IS_WHITELISTED=false
+          # Check the branch against the whitelist using wildcard matching
+          for BRANCH in "${WHITELISTED_BRANCHES[@]}"; do
+            if [[ "$BRANCH_NAME" == $BRANCH ]]; then
+              IS_WHITELISTED=true;
+              break;
+            fi
+          done
+
+          if [ "$IS_WHITELISTED" == true ]; then
+            echo "Branch is whitelisted: $BRANCH_NAME"
+          else
+            echo "Branch $BRANCH_NAME is not whitelisted."
+            exit 1
+          fi
+
+          echo "branch_name=${BRANCH_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ steps.branch-check.outputs.branch_name }}
+
+      - name: Check for changeset files
+        run: |
+          if ! ls .changeset/*.md | grep -q '\.changeset\/[a-z-]\+\.md$'; then
+            echo "No changeset files found. Exiting workflow."
+            exit 1
+          fi
+
+          echo "Changeset files found. Continuing with the workflow."
+
+      - name: Setup tools
+        uses: ./.github/actions/setup-tools
+        with:
+          install-nodejs: 'true'
+
+      - name: Extract the old and new versions of the package
+        id: extract-package-versions
+        run: |
+          # Using `--since` flag in the `status` step on the same branch returns empty release file and doesn't reflect the upcoming changes, hence we override the `baseBranch` in the config file.
+          jq '.baseBranch = "${{ steps.branch-check.outputs.branch_name }}"' ./.changeset/config.json > temp.json
+          mv temp.json ./.changeset/config.json
+          npm run cs -- status --output=release.json
+
+          NEW_PACKAGE_VERSION=$(jq -r '.releases[0].newVersion' release.json)
+          OLD_PACKAGE_VERSION=$(jq -r '.releases[0].oldVersion' release.json)
+          rm release.json
+
+          echo "new_package_version=${NEW_PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "old_package_version=${OLD_PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+
+      # Keep the version of the PRs up-to-date
+      - name: Create Release Pull Request
+        id: release-pr
+        uses: changesets/action@aba318e9165b45b7948c60273e0b72fce0a64eb9 # v1.4.7
+        with:
+          # This branch context is ignored in this step: `https://github.com/changesets/action/blob/50750fa876cc1e54c7cb972db5e2f7271fc53d99/src/run.ts#L328`, therefore the usage of `branch` selection in the workflow trigger.
+          branch: ${{ steps.branch-check.outputs.branch_name }}
+          title: 'chore(release): bump version from `${{ steps.extract-package-versions.outputs.old_package_version }}` to `${{ steps.extract-package-versions.outputs.new_package_version }}`'
+          commit: 'chore(release): bump version from `${{ steps.extract-package-versions.outputs.old_package_version }}` to `${{ steps.extract-package-versions.outputs.new_package_version }}`'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
