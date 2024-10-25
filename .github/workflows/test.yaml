@@ -36,5 +36,5 @@ jobs:
 
       - name: Test
         env:
-          CHECK_CONTRACT_SIZE=true
+          CHECK_CONTRACT_SIZE: true
         run: npm run test -- --parallel
