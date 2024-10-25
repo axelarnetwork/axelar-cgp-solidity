@@ -34,8 +34,7 @@ jobs:
             exit 0;
           fi
 
-      - name: Set environment variable
-        run: export CHECK_CONTRACT_SIZE=true
-
       - name: Test
+        env:
+          CHECK_CONTRACT_SIZE=true
         run: npm run test -- --parallel
