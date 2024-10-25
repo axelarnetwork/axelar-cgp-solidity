@@ -48,10 +48,10 @@ jobs:
           export PACKAGE_NAME=$(jq -r '.name' 'package.json');
           export PACKAGE_VERSION=v$(echo '${{ steps.publish-release.outputs.publishedPackages }}' | jq -r ".[] | select(.name == \"${PACKAGE_NAME}\") | .version")
           export BASE_ARTIFACTS_DIR="./artifacts"
-          export ARTIFACT_NAME="axelar-gmp-sdk-solidity-assets-${PACKAGE_VERSION}"
+          export ARTIFACT_NAME="axelar-cgp-solidity-assets-${PACKAGE_VERSION}"
           export BASE_ARTIFACTS_VERSIONED_DIR="$(dirname ${BASE_ARTIFACTS_DIR})/${ARTIFACT_NAME}" # Regardless of the dir type, relative or absolute
 
-          # ex: @axelarnetwork/axelar-gmp-sdk-solidity
+          # ex: @axelarnetwork/axelar-cgp-solidity
           echo "PACKAGE_NAME=${PACKAGE_NAME}" >> $GITHUB_ENV
 
           # ex: v2.1.0
@@ -60,10 +60,10 @@ jobs:
           # ex: ./artifacts
           echo "BASE_ARTIFACTS_DIR=${BASE_ARTIFACTS_DIR}" >> $GITHUB_ENV
 
-          # ex: axelar-gmp-sdk-solidity-assets-v2.1.0
+          # ex: axelar-cgp-solidity-assets-v2.1.0
           echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_ENV
 
-          # ex: ./axelar-gmp-sdk-solidity-assets-v2.1.0
+          # ex: ./axelar-cgp-solidity-assets-v2.1.0
           echo "BASE_ARTIFACTS_VERSIONED_DIR=${BASE_ARTIFACTS_VERSIONED_DIR}" >> $GITHUB_ENV
 
       # Create `zip` and `tar` archive files for contracts ABIs
