@@ -14,11 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Setup tools
+        uses: ./.github/actions/setup-tools
+        with:
+          install-nodejs: 'true'
 
       - name: Run Slither
-        uses: crytic/slither-action@v0.3.1
+        uses: crytic/slither-action@v0.3.2
         env:
           NO_OVERRIDES: true
         with:

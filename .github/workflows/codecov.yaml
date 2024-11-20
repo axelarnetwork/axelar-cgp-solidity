@@ -1,4 +1,4 @@
-name: Coverage
+name: Code Coverage
 
 on:
   pull_request:
@@ -16,17 +16,15 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install Node.js
-        uses: useblacksmith/setup-node@v5
+      - name: Setup tools
+        uses: ./.github/actions/setup-tools
         with:
-          node-version: 18.x
-          cache: 'npm'
+          install-nodejs: 'true'
 
-      - name: Install Dependencies
-        run: npm ci
-
+      # Step to do builds and check for warnings
       - name: Build
         run: npm run build > build.log 2>&1
 
@@ -34,10 +32,8 @@ jobs:
         run: |
           if grep -q -i "error" build.log || grep -q -i "warning" build.log; then
             echo "Build contains following errors or warnings..."
-
             cat build.log
-
-            exit 1
+            exit 1;
           else
             exit 0;
           fi

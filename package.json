@@ -11,6 +11,9 @@
     "test-evm-versions": "bash test-evm-versions.bash",
     "lint": "solhint 'contracts/**/*.sol' && eslint 'test/**/*.js'",
     "prettier": "prettier --write 'contracts/**/*.sol' 'test/**/*.js' '*.js' 'package.json' '.solhint.json' '.prettierrc' 'slither.config.json' '.github/**/*.yaml'",
+    "release": "npm run build && npm run flatten && npm run clean:artifacts && changeset publish",
+    "release-snapshot": "npm run build && npm run flatten && npm run clean:artifacts && npm version 0.0.0-snapshot.$(git rev-parse --short HEAD) --git-tag-version=false && npm publish --no-git-checks --tag snapshot --access public",
+    "cs": "changeset",
     "flatten": "sh scripts/flatten-contracts.sh",
     "coverage": "cross-env COVERAGE=true hardhat coverage",
     "storage-layout": "cross-env STORAGE_LAYOUT=true npm run build && cross-env STORAGE_LAYOUT=true hardhat check"
@@ -35,6 +38,7 @@
   "devDependencies": {
     "@0xpolygonhermez/zkevm-commonjs": "github:0xpolygonhermez/zkevm-commonjs#v1.0.0",
     "@axelar-network/axelar-chains-config": "^1.2.0",
+    "@changesets/cli": "^2.27.9",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "chai": "^4.3.7",
     "cross-env": "^7.0.3",
@@ -55,6 +59,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "artifacts",
