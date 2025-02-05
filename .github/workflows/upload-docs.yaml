@@ -20,3 +20,13 @@ jobs:
         with:
           branches: main,ci/evm-docs-to-github-pages
           environment_name: github-pages
+  deploy:
+    needs: upload-docs
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
