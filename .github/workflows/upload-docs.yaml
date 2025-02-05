@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   upload-docs:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
       - name: Run Upload Docs Action
         uses: axelarnetwork/axelar-gmp-sdk-solidity/.github/actions/upload-docs@ci/evm-docs-to-github-pages
