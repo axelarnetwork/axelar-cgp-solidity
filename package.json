@@ -16,8 +16,7 @@
     "cs": "changeset",
     "flatten": "sh scripts/flatten-contracts.sh",
     "coverage": "cross-env COVERAGE=true hardhat coverage",
-    "storage-layout": "cross-env STORAGE_LAYOUT=true npm run build && cross-env STORAGE_LAYOUT=true hardhat check",
-    "generate-overview-docs": "node scripts/generateOverviewDocs.js"
+    "storage-layout": "cross-env STORAGE_LAYOUT=true npm run build && cross-env STORAGE_LAYOUT=true hardhat check"
   },
   "repository": {
     "type": "git",
@@ -34,7 +33,7 @@
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "5.10.0"
+    "@axelar-network/axelar-gmp-sdk-solidity": "^6.0.4"
   },
   "devDependencies": {
     "@0xpolygonhermez/zkevm-commonjs": "github:0xpolygonhermez/zkevm-commonjs#v1.0.0",

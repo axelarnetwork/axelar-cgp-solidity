@@ -15,6 +15,14 @@ jobs:
   upload-docs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup tools
+        uses: ./.github/actions/setup-tools
+        with:
+          install-nodejs: 'true'
+
       - name: Run Upload Docs Action
         uses: axelarnetwork/axelar-gmp-sdk-solidity/.github/actions/upload-docs@ci/evm-docs-to-github-pages
         with:
