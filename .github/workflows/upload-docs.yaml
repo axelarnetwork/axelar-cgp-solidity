@@ -23,11 +23,20 @@ jobs:
         with:
           install-nodejs: 'true'
 
+      - name: Create generate-docs.js script
+        run: |
+          SCRIPT_PATH=scripts/generate-docs.js
+          echo "const path = require('path');" > $SCRIPT_PATH
+          echo "const generateDocsIndex = require('@axelar-network/axelar-gmp-sdk-solidity').generateDocsIndex;" >> $SCRIPT_PATH
+          echo "generateDocsIndex('docs', 'docs/index.md');" >> $SCRIPT_PATH
+
       - name: Run Upload Docs Action
         uses: axelarnetwork/axelar-gmp-sdk-solidity/.github/actions/upload-docs@ci/evm-docs-to-github-pages
         with:
           branches: main,ci/evm-docs-to-github-pages
           environment_name: github-pages
+          script: scripts/generate-docs.js
+          
   deploy:
     needs: upload-docs
     environment:
