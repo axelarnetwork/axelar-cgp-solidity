@@ -5,7 +5,8 @@ pragma solidity ^0.8.0;
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IImplementation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IImplementation.sol';
 import { IContractIdentifier } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IContractIdentifier.sol';
-import { IAxelarGateway } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGateway.sol';
+import { IAxelarGatewayWithToken } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGatewayWithToken.sol';
+import { IGovernable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IGovernable.sol';
 import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { ContractAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/ContractAddress.sol';
 import { Implementation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Implementation.sol';
@@ -13,6 +14,7 @@ import { Implementation } from '@axelar-network/axelar-gmp-sdk-solidity/contract
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
+import { IAxelarGateway } from './interfaces/IAxelarGateway.sol';
 
 import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
@@ -26,13 +28,15 @@ import { EternalStorage } from './EternalStorage.sol';
  * The contract is managed via the decentralized governance mechanism on the Axelar network.
  * @dev EternalStorage is used to simplify storage for upgradability, and InterchainGovernance module is used for governance.
  */
-contract AxelarGateway is IAxelarGateway, Implementation, EternalStorage {
+contract AxelarGateway is IAxelarGateway, Implementation, EternalStorage, IGovernable, IAxelarGatewayWithToken {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
     using ContractAddress for address;
 
     error InvalidImplementation();
+
+    event ContractCallExecuted(bytes32 indexed commandId);
 
     enum TokenType {
         InternalBurnable,
@@ -448,7 +452,7 @@ contract AxelarGateway is IAxelarGateway, Implementation, EternalStorage {
      * @param params The encoded parameters containing the governance and mint limiter addresses, as well as the new operator data.
      * @dev Not publicly accessible as it's overshadowed in the proxy.
      */
-    function setup(bytes calldata params) external override(IImplementation, Implementation) onlyProxy {
+    function setup(bytes calldata params) external override(IAxelarGateway, Implementation) onlyProxy {
         (address governance_, address mintLimiter_, bytes memory newOperatorsData) = abi.decode(params, (address, address, bytes));
 
         if (governance_ != address(0)) _transferGovernance(governance_);

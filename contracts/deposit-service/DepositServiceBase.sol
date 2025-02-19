@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import { SafeTokenTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { StringToBytes32, Bytes32ToString } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/Bytes32String.sol';
-import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
+import { IAxelarGatewayWithToken } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGatewayWithToken.sol';
 import { IDepositServiceBase } from '../interfaces/IDepositServiceBase.sol';
 
 // This should be owned by the microservice that is paying for gas.
@@ -24,7 +24,7 @@ abstract contract DepositServiceBase is IDepositServiceBase {
         bool wrappedTokenEnabled = bytes(wrappedSymbol_).length > 0;
 
         gateway = gateway_;
-        wrappedTokenAddress = wrappedTokenEnabled ? IAxelarGateway(gateway_).tokenAddresses(wrappedSymbol_) : address(0);
+        wrappedTokenAddress = wrappedTokenEnabled ? IAxelarGatewayWithToken(gateway_).tokenAddresses(wrappedSymbol_) : address(0);
         wrappedSymbolBytes = wrappedTokenEnabled ? wrappedSymbol_.toBytes32() : bytes32(0);
 
         // Wrapped token symbol param is optional

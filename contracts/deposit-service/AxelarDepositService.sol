@@ -6,7 +6,7 @@ import { SafeTokenTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contr
 import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeNativeTransfer.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IAxelarDepositService } from '../interfaces/IAxelarDepositService.sol';
-import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
+import { IAxelarGatewayWithToken } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGatewayWithToken.sol';
 import { IWETH9 } from '../interfaces/IWETH9.sol';
 import { Upgradable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Upgradable.sol';
 import { DepositServiceBase } from './DepositServiceBase.sol';
@@ -52,7 +52,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         // slither-disable-next-line unused-return
         IWETH9(wrappedTokenAddress).approve(gateway, amount);
         // Sending the token trough the gateway
-        IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
+        IAxelarGatewayWithToken(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
     }
 
     // @dev Generates a deposit address for sending an ERC20 token cross-chain
@@ -142,7 +142,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         string calldata tokenSymbol,
         address[] calldata refundTokens
     ) external {
-        address intendedToken = IAxelarGateway(gateway).tokenAddresses(tokenSymbol);
+        address intendedToken = IAxelarGatewayWithToken(gateway).tokenAddresses(tokenSymbol);
 
         uint256 tokensLength = refundTokens.length;
         for (uint256 i; i < tokensLength; ++i) {
