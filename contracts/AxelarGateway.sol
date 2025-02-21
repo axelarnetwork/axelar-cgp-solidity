@@ -34,8 +34,6 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
 
     error InvalidImplementation();
 
-    event ContractCallExecuted(bytes32 indexed commandId);
-
     enum TokenType {
         InternalBurnable,
         InternalBurnableFrom,
@@ -450,7 +448,7 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
      * @param params The encoded parameters containing the governance and mint limiter addresses, as well as the new operator data.
      * @dev Not publicly accessible as it's overshadowed in the proxy.
      */
-    function setup(bytes calldata params) external override(IAxelarConsensusGateway, Implementation) onlyProxy {
+    function setup(bytes calldata params) external override(IImplementation, Implementation) onlyProxy {
         (address governance_, address mintLimiter_, bytes memory newOperatorsData) = abi.decode(params, (address, address, bytes));
 
         if (governance_ != address(0)) _transferGovernance(governance_);
