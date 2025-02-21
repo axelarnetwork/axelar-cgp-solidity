@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import { SafeTokenTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { SafeNativeTransfer } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeNativeTransfer.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
-import { IAxelarGatewayWithToken } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGatewayWithToken.sol';
+import { IAxelarGateway } from '../interfaces/IAxelarGateway.sol';
 import { IWETH9 } from '../interfaces/IWETH9.sol';
 import { IAxelarDepositService } from '../interfaces/IAxelarDepositService.sol';
 import { DepositServiceBase } from './DepositServiceBase.sol';
@@ -25,7 +25,7 @@ contract ReceiverImplementation is DepositServiceBase {
         string calldata destinationAddress,
         string calldata symbol
     ) external {
-        address tokenAddress = IAxelarGatewayWithToken(gateway).tokenAddresses(symbol);
+        address tokenAddress = IAxelarGateway(gateway).tokenAddresses(symbol);
         // Checking with AxelarDepositService if need to refund a token
         address refund = IAxelarDepositService(msg.sender).refundToken();
 
@@ -46,7 +46,7 @@ contract ReceiverImplementation is DepositServiceBase {
         // slither-disable-next-line unused-return
         IERC20(tokenAddress).approve(gateway, amount);
         // Sending the token trough the gateway
-        IAxelarGatewayWithToken(gateway).sendToken(destinationChain, destinationAddress, symbol, amount);
+        IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, symbol, amount);
     }
 
     // @dev This function is used for delegate call by DepositReceiver
@@ -77,7 +77,7 @@ contract ReceiverImplementation is DepositServiceBase {
         // slither-disable-next-line unused-return
         IWETH9(wrappedTokenAddress).approve(gateway, amount);
         // Sending the token trough the gateway
-        IAxelarGatewayWithToken(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
+        IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
     }
 
     // @dev This function is used for delegate call by DepositReceiver
