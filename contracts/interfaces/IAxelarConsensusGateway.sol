@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.0;
 
-interface IAxelarGateway {
+import { IGovernable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IGovernable.sol';
+import { IImplementation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IImplementation.sol';
+
+interface IAxelarConsensusGateway is IImplementation, IGovernable {
     /**********\
     |* Errors *|
     \**********/
 
     error NotSelf();
-    error NotProxy();
     error InvalidCodeHash();
     error SetupFailed();
     error InvalidAuthModule();
@@ -29,7 +31,13 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenSent(address indexed sender, string destinationChain, string destinationAddress, string symbol, uint256 amount);
+    event TokenSent(
+        address indexed sender,
+        string destinationChain,
+        string destinationAddress,
+        string symbol,
+        uint256 amount
+    );
 
     event ContractCall(
         address indexed sender,
@@ -74,6 +82,8 @@ interface IAxelarGateway {
         bytes32 sourceTxHash,
         uint256 sourceEventIndex
     );
+
+    event ContractCallExecuted(bytes32 indexed commandId);
 
     event TokenMintLimitUpdated(string symbol, uint256 limit);
 
@@ -162,15 +172,9 @@ interface IAxelarGateway {
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
 
-    function adminEpoch() external view returns (uint256);
-
-    function adminThreshold(uint256 epoch) external view returns (uint256);
-
-    function admins(uint256 epoch) external view returns (address[] memory);
-
-    /*******************\
-    |* Admin Functions *|
-    \*******************/
+    /************************\
+    |* Governance Functions *|
+    \************************/
 
     function setTokenMintLimits(string[] calldata symbols, uint256[] calldata limits) external;
 
@@ -183,8 +187,6 @@ interface IAxelarGateway {
     /**********************\
     |* External Functions *|
     \**********************/
-
-    function setup(bytes calldata params) external;
 
     function execute(bytes calldata input) external;
 }
