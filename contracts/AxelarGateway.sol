@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
 import { IImplementation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IImplementation.sol';
 import { IContractIdentifier } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IContractIdentifier.sol';
-import { IAxelarGateway } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGateway.sol';
 import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { ContractAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/ContractAddress.sol';
 import { Implementation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Implementation.sol';
@@ -13,6 +12,7 @@ import { Implementation } from '@axelar-network/axelar-gmp-sdk-solidity/contract
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
 import { ITokenDeployer } from './interfaces/ITokenDeployer.sol';
+import { IAxelarConsensusGateway } from './interfaces/IAxelarConsensusGateway.sol';
 
 import { ECDSA } from './ECDSA.sol';
 import { DepositHandler } from './DepositHandler.sol';
@@ -26,7 +26,7 @@ import { EternalStorage } from './EternalStorage.sol';
  * The contract is managed via the decentralized governance mechanism on the Axelar network.
  * @dev EternalStorage is used to simplify storage for upgradability, and InterchainGovernance module is used for governance.
  */
-contract AxelarGateway is IAxelarGateway, Implementation, EternalStorage {
+contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorage {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
