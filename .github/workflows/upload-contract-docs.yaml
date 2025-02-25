@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - ci/evm-docs-to-github-pages
 
 permissions:
   contents: read
@@ -33,7 +32,7 @@ jobs:
       - name: Run Upload Docs Action
         uses: axelarnetwork/axelar-gmp-sdk-solidity/.github/actions/upload-docs@main
         with:
-          branches: main,ci/evm-docs-to-github-pages
+          branches: main
           environment_name: github-pages
           script: scripts/generate-docs.js
 
