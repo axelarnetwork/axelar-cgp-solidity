@@ -31,12 +31,12 @@ jobs:
           echo "generateDocsIndex('docs', 'docs/index.md');" >> $SCRIPT_PATH
 
       - name: Run Upload Docs Action
-        uses: axelarnetwork/axelar-gmp-sdk-solidity/.github/actions/upload-docs@ci/evm-docs-to-github-pages
+        uses: axelarnetwork/axelar-gmp-sdk-solidity/.github/actions/upload-docs@ci/main
         with:
           branches: main,ci/evm-docs-to-github-pages
           environment_name: github-pages
           script: scripts/generate-docs.js
-          
+
   deploy:
     needs: upload-docs
     environment:
