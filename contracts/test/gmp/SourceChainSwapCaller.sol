@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 
 import { IAxelarGasService } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGasService.sol';
 import { IERC20 } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IERC20.sol';
-import { IAxelarGateway } from '../../interfaces/IAxelarGateway.sol';
+import { IAxelarGatewayWithToken } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IAxelarGatewayWithToken.sol';
 
 contract SourceChainSwapCaller {
-    IAxelarGateway public gateway;
+    IAxelarGatewayWithToken public gateway;
     IAxelarGasService public gasService;
     string public destinationChain;
     string public executableAddress;
@@ -18,7 +18,7 @@ contract SourceChainSwapCaller {
         string memory destinationChain_,
         string memory executableAddress_
     ) {
-        gateway = IAxelarGateway(gateway_);
+        gateway = IAxelarGatewayWithToken(gateway_);
         gasService = IAxelarGasService(gasService_);
         destinationChain = destinationChain_;
         executableAddress = executableAddress_;
