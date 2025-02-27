@@ -26,7 +26,7 @@ jobs:
         run: |
           SCRIPT_PATH=scripts/generate-docs.js
           echo "const path = require('path');" > $SCRIPT_PATH
-          echo "const generateDocsIndex = require('@axelar-network/axelar-gmp-sdk-solidity').generateDocsIndex;" >> $SCRIPT_PATH
+          echo "const { generateDocsIndex } = require('@axelar-network/axelar-gmp-sdk-solidity');" >> $SCRIPT_PATH
           echo "generateDocsIndex('docs', 'docs/index.md');" >> $SCRIPT_PATH
 
       - name: Run Upload Docs Action
