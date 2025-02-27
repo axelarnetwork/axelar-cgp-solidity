@@ -1,0 +1,48 @@
+name: Upload Docs
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  upload-docs:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup tools
+        uses: ./.github/actions/setup-tools
+        with:
+          install-nodejs: 'true'
+
+      - name: Create generate-docs.js script
+        run: |
+          SCRIPT_PATH=scripts/generate-docs.js
+          echo "const path = require('path');" > $SCRIPT_PATH
+          echo "const { generateDocsIndex } = require('@axelar-network/axelar-gmp-sdk-solidity');" >> $SCRIPT_PATH
+          echo "generateDocsIndex('docs', 'docs/index.md');" >> $SCRIPT_PATH
+
+      - name: Run Upload Docs Action
+        uses: axelarnetwork/axelar-gmp-sdk-solidity/.github/actions/upload-docs@main
+        with:
+          branches: main
+          environment_name: github-pages
+          script: scripts/generate-docs.js
+
+  deploy:
+    needs: upload-docs
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

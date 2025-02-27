@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/axelarnetwork/axelar-cgp-solidity#readme",
   "dependencies": {
-    "@axelar-network/axelar-gmp-sdk-solidity": "6.0.4"
+    "@axelar-network/axelar-gmp-sdk-solidity": "6.0.6"
   },
   "devDependencies": {
     "@0xpolygonhermez/zkevm-commonjs": "github:0xpolygonhermez/zkevm-commonjs#v1.0.0",
@@ -55,7 +55,8 @@
     "prettier": "^2.8.8",
     "prettier-plugin-solidity": "1.0.0-beta.19",
     "readline-sync": "^1.4.10",
-    "solhint": "^4.5.2"
+    "solhint": "^4.5.2",
+    "solidity-docgen": "^0.6.0-beta.36"
   },
   "engines": {
     "node": ">=18"
