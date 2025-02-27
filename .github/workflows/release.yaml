@@ -46,7 +46,7 @@ jobs:
       - name: Prepare cross-steps variables
         run: |
           export PACKAGE_NAME=$(jq -r '.name' 'package.json');
-          export PACKAGE_VERSION=v$(echo '${{ steps.publish-release.outputs.publishedPackages }}' | jq -r ".[] | select(.name == \"${PACKAGE_NAME}\") | .version")
+          export PACKAGE_VERSION=v$(jq -r '.version' 'package.json')
           export BASE_ARTIFACTS_DIR="./artifacts"
           export ARTIFACT_NAME="axelar-cgp-solidity-assets-${PACKAGE_VERSION}"
           export BASE_ARTIFACTS_VERSIONED_DIR="$(dirname ${BASE_ARTIFACTS_DIR})/${ARTIFACT_NAME}" # Regardless of the dir type, relative or absolute
