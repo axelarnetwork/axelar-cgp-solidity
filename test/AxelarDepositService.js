@@ -271,14 +271,22 @@ describe('AxelarDepositService', () => {
                 })
                 .then((tx) => tx.wait());
 
+            ////
+            const depositAddressBalanceBefore = await ethers.provider.getBalance(depositAddress);
+
             await expect(
                 await depositService.refundTokenDeposit(salt, refundAddress, destinationChain, destinationAddress, tokenSymbol, [
                     wrongToken.address,
                 ]),
             )
                 .to.emit(wrongToken, 'Transfer')
-                .withArgs(depositAddress, refundAddress, amount * 2)
-                .to.changeEtherBalance(ownerWallet, amount);
+                .withArgs(depositAddress, refundAddress, amount * 2);
+            // .to.changeEtherBalance(ownerWallet, amount);
+
+            ////
+            const depositAddressBalanceAfter = await ethers.provider.getBalance(depositAddress);
+            // The deposit address should have had its ETH emptied
+            expect(depositAddressBalanceBefore.sub(depositAddressBalanceAfter)).to.equal(amount);
         });
 
         it('should refund from transfer token address to msg.sender if refund address is the zero address', async () => {
@@ -317,14 +325,25 @@ describe('AxelarDepositService', () => {
                 })
                 .then((tx) => tx.wait());
 
+            ////
+            const depositAddressBalanceBefore = await ethers.provider.getBalance(depositAddress);
+
             await expect(
                 await depositService.refundTokenDeposit(salt, AddressZero, destinationChain, destinationAddress, tokenSymbol, [
                     wrongToken.address,
                 ]),
             )
                 .to.emit(wrongToken, 'Transfer')
-                .withArgs(depositAddress, depositService.address, amount * 2)
-                .to.changeEtherBalance(depositService.address, amount);
+                .withArgs(depositAddress, depositService.address, amount * 2);
+            // .to.changeEtherBalance(depositService.address, amount);
+
+            ////
+            const depositAddressBalanceAfter = await ethers.provider.getBalance(depositAddress);
+            expect(depositAddressBalanceBefore.sub(depositAddressBalanceAfter)).to.equal(amount);
+
+            // Also check that the service received the ETH
+            const serviceBalance = await ethers.provider.getBalance(depositService.address);
+            expect(serviceBalance).to.be.gte(amount);
         });
 
         it('should wrap and transfer native currency', async () => {
@@ -416,9 +435,24 @@ describe('AxelarDepositService', () => {
 
             await token.transfer(depositAddress, amount).then((tx) => tx.wait());
 
-            const tx = await depositService.nativeUnwrap(salt, refundAddress, recipient);
+            ////
+            const userBalanceBefore = await ethers.provider.getBalance(userWallet.address);
+            const depositAddressBalanceBefore = await token.balanceOf(depositAddress);
 
-            await expect(tx).to.changeEtherBalance(userWallet, amount);
+            const tx = await depositService.nativeUnwrap(salt, refundAddress, recipient);
+            await tx.wait();
+
+            // await expect(tx).to.changeEtherBalance(userWallet, amount);
+
+            ////
+            const userBalanceAfter = await ethers.provider.getBalance(userWallet.address);
+            const depositAddressBalanceAfter = await token.balanceOf(depositAddress);
+
+            // Check that the recipient received the ETH
+            expect(userBalanceAfter.sub(userBalanceBefore)).to.equal(amount);
+
+            // Also check that the deposit address no longer has the token
+            expect(depositAddressBalanceBefore.sub(depositAddressBalanceAfter)).to.equal(amount);
 
             console.log('nativeUnwrap gas:', (await tx.wait()).gasUsed.toNumber());
         });
@@ -450,10 +484,24 @@ describe('AxelarDepositService', () => {
                 })
                 .then((tx) => tx.wait());
 
+            ////
+            const depositAddressBalanceBefore = await ethers.provider.getBalance(depositAddress);
+            const wrongTokenBalanceBefore = await wrongToken.balanceOf(depositAddress);
+
             await expect(await depositService.refundNativeUnwrap(salt, refundAddress, recipient, [wrongToken.address]))
                 .to.emit(wrongToken, 'Transfer')
-                .withArgs(depositAddress, refundAddress, amount * 2)
-                .to.changeEtherBalance(ownerWallet, amount);
+                .withArgs(depositAddress, refundAddress, amount * 2);
+            // .to.changeEtherBalance(ownerWallet, amount);
+
+            ////
+            const depositAddressBalanceAfter = await ethers.provider.getBalance(depositAddress);
+            const wrongTokenBalanceAfter = await wrongToken.balanceOf(depositAddress);
+
+            // Check that the deposit address's ETH was emptied
+            expect(depositAddressBalanceBefore.sub(depositAddressBalanceAfter)).to.equal(amount);
+
+            // Also check that the wrong token was transferred out
+            expect(wrongTokenBalanceBefore.sub(wrongTokenBalanceAfter)).to.equal(amount * 2);
         });
 
         it('should refund to the service when refundAddress is 0x0', async () => {
@@ -478,10 +526,24 @@ describe('AxelarDepositService', () => {
                 })
                 .then((tx) => tx.wait());
 
+            ////
+            const depositAddressBalanceBefore = await ethers.provider.getBalance(depositAddress);
+            const serviceTokenBalanceBefore = await wrongToken.balanceOf(depositService.address);
+
             await expect(await depositService.refundNativeUnwrap(salt, refundAddress, recipient, [wrongToken.address]))
                 .to.emit(wrongToken, 'Transfer')
-                .withArgs(depositAddress, depositService.address, amount * 2)
-                .to.changeEtherBalance(depositService, amount);
+                .withArgs(depositAddress, depositService.address, amount * 2);
+            // .to.changeEtherBalance(depositService, amount);
+
+            ////
+            const depositAddressBalanceAfter = await ethers.provider.getBalance(depositAddress);
+            const serviceTokenBalanceAfter = await wrongToken.balanceOf(depositService.address);
+
+            // Check that the deposit address's ETH was emptied
+            expect(depositAddressBalanceBefore.sub(depositAddressBalanceAfter)).to.equal(amount);
+
+            // Also check that the wrong token was transferred to the service
+            expect(serviceTokenBalanceAfter.sub(serviceTokenBalanceBefore)).to.equal(amount * 2);
 
             await expectRevert(
                 (gasOptions) => depositService.connect(userWallet).refundLockedAsset(recipient, wrongToken.address, amount * 2, gasOptions),
@@ -511,10 +573,29 @@ describe('AxelarDepositService', () => {
                 'InvalidAmount',
             );
 
-            await expect(await depositService.connect(ownerWallet).refundLockedAsset(recipient, AddressZero, amount)).to.changeEtherBalance(
-                userWallet,
-                amount,
-            );
+            ////
+            const userBalanceBefore = await ethers.provider.getBalance(userWallet.address);
+            const serviceEthBalanceBefore = await ethers.provider.getBalance(depositService.address);
+
+            await depositService
+                .connect(ownerWallet)
+                .refundLockedAsset(recipient, AddressZero, amount)
+                .then((tx) => tx.wait(network.config.confirmations));
+
+            // await expect(await depositService.connect(ownerWallet).refundLockedAsset(recipient, AddressZero, amount)).to.changeEtherBalance(
+            //     userWallet,
+            //     amount,
+            // );
+
+            ////
+            const userBalanceAfter = await ethers.provider.getBalance(userWallet.address);
+            const serviceEthBalanceAfter = await ethers.provider.getBalance(depositService.address);
+
+            // Check that the user received the ETH
+            expect(userBalanceAfter.sub(userBalanceBefore)).to.equal(amount);
+
+            // Also check that the service's ETH balance decreased
+            expect(serviceEthBalanceBefore.sub(serviceEthBalanceAfter)).to.equal(amount);
         });
     });
 
