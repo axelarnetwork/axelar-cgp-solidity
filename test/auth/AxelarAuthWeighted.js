@@ -30,7 +30,6 @@ describe('AxelarAuthWeighted', () => {
         wallets = await ethers.getSigners();
 
         owner = wallets[0];
-        // console.log('owner: ', owner);
         operators = sortBy(wallets.slice(1, 3), (wallet) => wallet.address.toLowerCase());
         previousOperators.push(sortBy(wallets.slice(0, 2), (wallet) => wallet.address.toLowerCase()));
 
