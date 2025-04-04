@@ -117,7 +117,6 @@ describe('AxelarGasService', () => {
                 .and.to.emit(testToken, 'Transfer')
                 .withArgs(userWallet.address, gasService.address, gasFeeAmount);
 
-            ////
             const balanceBefore1 = await ethers.provider.getBalance(gasService.address);
 
             await expect(
@@ -129,13 +128,10 @@ describe('AxelarGasService', () => {
             )
                 .to.emit(gasService, 'NativeGasPaidForContractCall')
                 .withArgs(userWallet.address, destinationChain, destinationAddress, payloadHash, nativeGasFeeAmount, userWallet.address);
-            // .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
 
-            ////
             const balanceAfter1 = await ethers.provider.getBalance(gasService.address);
             expect(balanceAfter1.sub(balanceBefore1)).to.equal(nativeGasFeeAmount);
 
-            ////
             const balanceBefore2 = await ethers.provider.getBalance(gasService.address);
 
             await expect(
@@ -163,9 +159,7 @@ describe('AxelarGasService', () => {
                     nativeGasFeeAmount,
                     userWallet.address,
                 );
-            // .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
 
-            ////
             const balanceAfter2 = await ethers.provider.getBalance(gasService.address);
             expect(balanceAfter2.sub(balanceBefore2)).to.equal(nativeGasFeeAmount);
 
@@ -217,7 +211,6 @@ describe('AxelarGasService', () => {
                 .and.to.emit(testToken, 'Transfer')
                 .withArgs(userWallet.address, gasService.address, gasFeeAmount);
 
-            ////
             const balanceBefore3 = await ethers.provider.getBalance(gasService.address);
 
             await expect(
@@ -229,13 +222,10 @@ describe('AxelarGasService', () => {
             )
                 .to.emit(gasService, 'NativeGasPaidForExpressCall')
                 .withArgs(userWallet.address, destinationChain, destinationAddress, payloadHash, nativeGasFeeAmount, userWallet.address);
-            // .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
 
-            ////
             const balanceAfter3 = await ethers.provider.getBalance(gasService.address);
             expect(balanceAfter3.sub(balanceBefore3)).to.equal(nativeGasFeeAmount);
 
-            ////
             const balanceBefore4 = await ethers.provider.getBalance(gasService.address);
 
             await expect(
@@ -263,8 +253,7 @@ describe('AxelarGasService', () => {
                     nativeGasFeeAmount,
                     userWallet.address,
                 );
-            // .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
-            ////
+
             const balanceAfter4 = await ethers.provider.getBalance(gasService.address);
             expect(balanceAfter4.sub(balanceBefore4)).to.equal(nativeGasFeeAmount);
         });
@@ -334,7 +323,6 @@ describe('AxelarGasService', () => {
                 'NotCollector',
             );
 
-            ////
             const userBalanceBefore = await ethers.provider.getBalance(userWallet.address);
 
             await expect(
@@ -344,9 +332,7 @@ describe('AxelarGasService', () => {
             )
                 .to.emit(gasService, 'Refunded')
                 .withArgs(HashZero, 0, userWallet.address, AddressZero, nativeGasFeeAmount);
-            // .to.changeEtherBalance(userWallet, nativeGasFeeAmount)
 
-            ////
             const userBalanceAfter = await ethers.provider.getBalance(userWallet.address);
             expect(userBalanceAfter.sub(userBalanceBefore)).to.equal(nativeGasFeeAmount);
 
@@ -378,7 +364,6 @@ describe('AxelarGasService', () => {
                 'NotCollector',
             );
 
-            ////
             const gasServiceNativeBefore = await ethers.provider.getBalance(gasService.address);
             const ownerTokenBalanceBefore = await testToken.balanceOf(ownerWallet.address);
 
@@ -389,9 +374,7 @@ describe('AxelarGasService', () => {
             )
                 .to.emit(testToken, 'Transfer')
                 .withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
-            // .to.changeEtherBalance(ownerWallet, nativeGasFeeAmount)
 
-            ////
             const gasServiceNativeAfter = await ethers.provider.getBalance(gasService.address);
             const ownerTokenBalanceAfter = await testToken.balanceOf(ownerWallet.address);
 
@@ -490,7 +473,6 @@ describe('AxelarGasService', () => {
                 'InvalidAddress',
             );
 
-            ////
             const userBalanceBefore = await ethers.provider.getBalance(userWallet.address);
 
             await expect(
@@ -506,9 +488,7 @@ describe('AxelarGasService', () => {
             )
                 .to.emit(gasService, 'Refunded')
                 .withArgs(txHash, logIndex, userWallet.address, AddressZero, nativeGasFeeAmount);
-            // .to.changeEtherBalance(userWallet, nativeGasFeeAmount)
 
-            ////
             const userBalanceAfter = await ethers.provider.getBalance(userWallet.address);
             expect(userBalanceAfter.sub(userBalanceBefore)).to.equal(nativeGasFeeAmount);
 
@@ -582,7 +562,6 @@ describe('AxelarGasService', () => {
 
             const balance = await testToken.balanceOf(gasService.address);
 
-            ////
             const gasServiceBalanceBefore = await ethers.provider.getBalance(gasService.address);
             const ownerTokenBalanceBefore = await testToken.balanceOf(ownerWallet.address);
 
@@ -591,17 +570,13 @@ describe('AxelarGasService', () => {
                     .connect(ownerWallet)
                     .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount + 1, balance + 1]),
             ).not.to.emit(testToken, 'Transfer');
-            // .not.to.changeEtherBalance(ownerWallet, nativeGasFeeAmount)
 
-            ////
             const gasServiceBalanceAfter = await ethers.provider.getBalance(gasService.address);
             const ownerTokenBalanceAfter = await testToken.balanceOf(ownerWallet.address);
 
-            // Verify balances didn't change as expected
-            expect(gasServiceBalanceAfter).to.equal(gasServiceBalanceBefore); // No ETH transferred
-            expect(ownerTokenBalanceAfter).to.equal(ownerTokenBalanceBefore); // No tokens transferred
+            expect(gasServiceBalanceAfter).to.equal(gasServiceBalanceBefore);
+            expect(ownerTokenBalanceAfter).to.equal(ownerTokenBalanceBefore);
 
-            ////
             const gasServiceNativeBefore = await ethers.provider.getBalance(gasService.address);
             const ownerTokenBalanceBefore2 = await testToken.balanceOf(ownerWallet.address);
 
@@ -612,9 +587,7 @@ describe('AxelarGasService', () => {
             )
                 .to.emit(testToken, 'Transfer')
                 .withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
-            // .to.changeEtherBalance(ownerWallet, nativeGasFeeAmount)
 
-            ////
             const gasServiceNativeAfter = await ethers.provider.getBalance(gasService.address);
             const ownerTokenBalanceAfter2 = await testToken.balanceOf(ownerWallet.address);
 
@@ -657,15 +630,12 @@ describe('AxelarGasService', () => {
                 .and.to.emit(testToken, 'Transfer')
                 .withArgs(userWallet.address, gasService.address, gasFeeAmount);
 
-            ////
             const gasServiceBalanceBefore = await ethers.provider.getBalance(gasService.address);
 
             await expect(gasService.connect(userWallet).addNativeGas(txHash, logIndex, userWallet.address, { value: nativeGasFeeAmount }))
                 .to.emit(gasService, 'NativeGasAdded')
                 .withArgs(txHash, logIndex, nativeGasFeeAmount, userWallet.address);
-            // .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
 
-            ////
             const gasServiceBalanceAfter = await ethers.provider.getBalance(gasService.address);
             expect(gasServiceBalanceAfter.sub(gasServiceBalanceBefore)).to.equal(nativeGasFeeAmount);
         });
@@ -687,7 +657,6 @@ describe('AxelarGasService', () => {
                 .and.to.emit(testToken, 'Transfer')
                 .withArgs(userWallet.address, gasService.address, gasFeeAmount);
 
-            ////
             const gasServiceBalanceBefore = await ethers.provider.getBalance(gasService.address);
 
             await expect(
@@ -695,9 +664,7 @@ describe('AxelarGasService', () => {
             )
                 .to.emit(gasService, 'NativeExpressGasAdded')
                 .withArgs(txHash, logIndex, nativeGasFeeAmount, userWallet.address);
-            // .and.to.changeEtherBalance(gasService, nativeGasFeeAmount);
 
-            ////
             const gasServiceBalanceAfter = await ethers.provider.getBalance(gasService.address);
             expect(gasServiceBalanceAfter.sub(gasServiceBalanceBefore)).to.equal(nativeGasFeeAmount);
         });
