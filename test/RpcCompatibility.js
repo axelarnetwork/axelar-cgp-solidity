@@ -484,4 +484,26 @@ describe('RpcCompatibility', () => {
             await checkReceipt(receipt, newValue);
         });
     });
+
+    it('should throw error when querying eth_getLogs for a future block', async () => {
+        const currentBlockNumber = await provider.getBlockNumber();
+        
+        const futureBlockNumber = currentBlockNumber + 1000;
+        const futureBlockHex = ethers.utils.hexValue(futureBlockNumber);
+
+        const params = [{
+            fromBlock: futureBlockHex,
+            toBlock: futureBlockHex
+        }];
+
+        try {
+            await provider.send('eth_getLogs', params);
+            expect.fail('Expected eth_getLogs to throw an error for future block');
+        } catch (error) {
+            expect(error).to.have.property('error');
+            const errorResponse = error.error || error; 
+            expect(errorResponse).to.have.property('code', -32000);
+            expect(errorResponse).to.have.property('message');
+        }
+    });
 });
