@@ -502,10 +502,8 @@ describe('RpcCompatibility', () => {
             await provider.send('eth_getLogs', params);
             expect.fail('Expected eth_getLogs to throw an error for future block');
         } catch (error) {
-            expect(error).to.have.property('error');
-            const errorResponse = error.error || error;
-            expect(errorResponse).to.have.property('code', -32000);
-            expect(errorResponse).to.have.property('message');
+            expect(error).to.have.property('code', -32000);
+            expect(error).to.have.property('message');
         }
     });
 });
