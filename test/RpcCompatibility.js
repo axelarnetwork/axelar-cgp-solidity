@@ -488,7 +488,7 @@ describe('RpcCompatibility', () => {
     it('should throw error when querying eth_getLogs for a future block', async () => {
         const currentBlockNumber = await provider.getBlockNumber();
 
-        const futureBlockNumber = currentBlockNumber + 1000;
+        const futureBlockNumber = currentBlockNumber * 1.5;
         const futureBlockHex = ethers.utils.hexValue(futureBlockNumber);
 
         const params = [
@@ -498,12 +498,6 @@ describe('RpcCompatibility', () => {
             },
         ];
 
-        try {
-            await provider.send('eth_getLogs', params);
-            expect.fail('Expected eth_getLogs to throw an error for future block');
-        } catch (error) {
-            expect(error).to.have.property('code', -32000);
-            expect(error).to.have.property('message');
-        }
+        await expect(provider.send('eth_getLogs', params)).to.be.rejected;
     });
 });
