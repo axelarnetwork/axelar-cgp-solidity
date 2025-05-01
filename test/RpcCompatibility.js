@@ -497,7 +497,6 @@ describe('RpcCompatibility', () => {
                 toBlock: futureBlockHex,
             },
         ];
-        if(!isHardhat)
-            await expect(provider.send('eth_getLogs', params)).to.be.rejected;
+        if (!isHardhat) await expect(provider.send('eth_getLogs', params)).to.be.rejected;
     });
 });
