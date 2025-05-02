@@ -485,18 +485,20 @@ describe('RpcCompatibility', () => {
         });
     });
 
-    it('should throw error when querying eth_getLogs for a future block', async () => {
+    it('should throw error when querying eth_getLogs with a future blockHash', async () => {
         const currentBlockNumber = await provider.getBlockNumber();
-
         const futureBlockNumber = currentBlockNumber + 1000;
-        const futureBlockHex = ethers.utils.hexValue(futureBlockNumber);
+
+        const fakeFutureBlockHash = ethers.utils.hexZeroPad(ethers.utils.hexlify(futureBlockNumber), 32);
 
         const params = [
             {
-                fromBlock: futureBlockHex,
-                toBlock: futureBlockHex,
+                blockHash: fakeFutureBlockHash,
             },
         ];
-        if (!isHardhat) await expect(provider.send('eth_getLogs', params)).to.be.rejected;
+
+        if (!isHardhat) {
+            await expect(provider.send('eth_getLogs', params)).to.be.rejected;
+        }
     });
 });
