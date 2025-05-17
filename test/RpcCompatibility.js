@@ -3,7 +3,7 @@
 const chai = require('chai');
 const { ethers, network } = require('hardhat');
 const {
-    utils: { hexValue, getAddress, keccak256, id },
+    utils: { hexValue, getAddress, keccak256, id, hexlify, randomBytes },
     Wallet,
     BigNumber,
 } = ethers;
@@ -160,6 +160,18 @@ describe('RpcCompatibility', () => {
 
         it('should have valid parent hash', async () => {
             validParentHashes('finalized');
+        });
+
+        it('should fail on querying eth_getLogs with a random blockHash', async () => {
+            const randomBlockHash = hexlify(randomBytes(32));
+
+            const params = [
+                {
+                    blockHash: randomBlockHash,
+                },
+            ];
+
+            await expect(provider.send('eth_getLogs', params)).to.be.rejected;
         });
     });
 
