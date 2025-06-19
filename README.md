@@ -101,8 +101,11 @@ describe.only();
 it.only();
 ```
 
+There are two basic test groups that should be checked for the EVM-compatible chains:
+
 ```bash
 npx hardhat test --network example --grep 'AxelarGateway'
+npx hardhat test --network example --grep 'RpcCompatibility'
 ```
 
 ## Debugging Steps
