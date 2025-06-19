@@ -76,7 +76,7 @@ See the Axelar contract deployments [repository](https://github.com/axelarnetwor
 const chains = require(`/path/to/axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
 ```
 
-5. Create a `keys.json` file in this repo that contains the private keys for your accounts that will be used for testing. For some tests, such as the Axelar gateway tests, you may need to provide at least two private keys (you can refer the [test](https://github.com/axelarnetwork/axelar-cgp-solidity/blob/d0c040330d7498d52dee7eedbebf2aefeb5c87fb/test/BurnableMintableCappedERC20.js#L22) to find the number of accounts needed). At this point the `keys.json` file should resemble the example file below (`chains` can be left empty):
+5. Create a `keys.json` file in this repo that contains the private keys for your accounts that will be used for testing. For some tests, such as the `AxelarGateway` tests, you need to provide at least **two private keys** (you can refer the [test](https://github.com/axelarnetwork/axelar-cgp-solidity/blob/d0c040330d7498d52dee7eedbebf2aefeb5c87fb/test/BurnableMintableCappedERC20.js#L22) to find the number of accounts needed). At this point the `keys.json` file should resemble the example file below (`chains` can be left empty):
 
 ```json
 {
@@ -101,8 +101,11 @@ describe.only();
 it.only();
 ```
 
+There are two basic test groups that should be checked for the EVM-compatible chains:
+
 ```bash
 npx hardhat test --network example --grep 'AxelarGateway'
+npx hardhat test --network example --grep 'RpcCompatibility'
 ```
 
 ## Debugging Steps
