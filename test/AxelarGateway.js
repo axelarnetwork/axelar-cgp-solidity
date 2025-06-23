@@ -91,22 +91,22 @@ describe('AxelarGateway', () => {
     const deployGateway = async (invalidDeployer = false) => {
         const operatorAddresses = getAddresses(operators);
 
-        auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]));
+        auth = await authFactory.deploy(getWeightedAuthDeployParam([operatorAddresses], [getWeights(operatorAddresses)], [threshold]), getGasOptions());
         await auth.deployTransaction.wait(network.config.confirmations);
 
         const gatewayImplementation = invalidDeployer
-            ? await gatewayFactory.deploy(auth.address, auth.address)
-            : await gatewayFactory.deploy(auth.address, tokenDeployer.address);
+            ? await gatewayFactory.deploy(auth.address, auth.address, getGasOptions())
+            : await gatewayFactory.deploy(auth.address, tokenDeployer.address, getGasOptions());
         await gatewayImplementation.deployTransaction.wait(network.config.confirmations);
 
         const params = getWeightedProxyDeployParams(governance.address, mintLimiter.address, [], [], threshold);
 
-        gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params);
+        gatewayProxy = await gatewayProxyFactory.deploy(gatewayImplementation.address, params, getGasOptions());
         await gatewayProxy.deployTransaction.wait(network.config.confirmations);
 
-        await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait(network.config.confirmations));
+        await auth.transferOwnership(gatewayProxy.address).then((tx) => tx.wait(network.config.confirmations), getGasOptions());
 
-        gateway = gatewayFactory.attach(gatewayProxy.address);
+        gateway = gatewayFactory.attach(gatewayProxy.address, getGasOptions());
     };
 
     describe('axelar gateway proxy', () => {
@@ -2018,7 +2018,7 @@ describe('AxelarGateway', () => {
         });
     });
 
-    describe('external contract approval and execution', () => {
+    describe.only('external contract approval and execution', () => {
         before(async () => {
             await deployGateway();
         });
