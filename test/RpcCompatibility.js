@@ -23,14 +23,15 @@ describe('RpcCompatibility', () => {
     let rpcCompatibilityContract;
 
     async function checkReceipt(receipt, value) {
-        const topic = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
+        const expectedTopic = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
 
         expect(receipt).to.not.be.null;
         expect(receipt.from).to.equal(signer.address);
         expect(receipt.to).to.equal(rpcCompatibilityContract.address);
         expect(receipt.status).to.equal(1);
-        expect(receipt.logs[0].topics[0]).to.equal(topic);
-        expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(value);
+        const foundLog = receipt.logs.find((log) => log.topics && log.topics[0] === expectedTopic);
+        expect(foundLog).to.exist;
+        expect(parseInt(foundLog.topics[1], 16)).to.equal(value);
     }
 
     function checkBlockTimeStamp(timeStamp, maxDifference) {
