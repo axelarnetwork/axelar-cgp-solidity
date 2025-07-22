@@ -1,0 +1,57 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/Users/socrates/Axelar/axelar-cgp-solidity/contracts/test/TestRpcCompatibility.sol": {
+      "lastModificationDate": 1751361366960,
+      "contentHash": "b9fa94f0a006045e5e2e8b016c0dba48",
+      "sourceName": "contracts/test/TestRpcCompatibility.sol",
+      "solcConfig": {
+        "version": "0.8.9",
+        "settings": {
+          "evmVersion": "london",
+          "optimizer": {
+            "enabled": true,
+            "mode": "3"
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          },
+          "libraries": {}
+        },
+        "zksolc": {
+          "version": "1.4.1",
+          "compilerSource": "binary",
+          "settings": {
+            "optimizer": {
+              "enabled": true,
+              "mode": "3"
+            },
+            "compilerPath": "/Users/socrates/Library/Caches/hardhat-nodejs/compilers-v2/zksolc/zksolc-v1.4.1",
+            "missingLibrariesPath": "./.zksolc-libraries-cache/missingLibraryDependencies.json",
+            "areLibrariesMissing": false,
+            "experimental": {},
+            "libraries": {},
+            "enableEraVMExtensions": true,
+            "forceEVMLA": false
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.9"
+      ],
+      "artifacts": [
+        "TestRpcCompatibility"
+      ]
+    }
+  }
+}

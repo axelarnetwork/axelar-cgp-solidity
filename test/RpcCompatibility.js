@@ -1,9 +1,9 @@
 'use strict';
 
 const chai = require('chai');
-const { ethers, network } = require('hardhat');
+const { hre, ethers, network } = require('hardhat');
 const {
-    utils: { hexValue, getAddress, keccak256, id },
+    getAddress, keccak256, id,
     Wallet,
     BigNumber,
 } = ethers;
@@ -11,7 +11,7 @@ const { expect } = chai;
 
 const { isHardhat, getRandomInt, waitFor, getGasOptions } = require('./utils');
 
-const TestRpcCompatibility = require('../artifacts/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
+const TestRpcCompatibility = require('../artifacts-zk/contracts/test/TestRpcCompatibility.sol/TestRpcCompatibility.json');
 
 describe('RpcCompatibility', () => {
     const maxTransferAmount = 100;
@@ -51,9 +51,9 @@ describe('RpcCompatibility', () => {
         provider = ethers.provider;
         [signer] = await ethers.getSigners();
 
-        rpcCompatibilityFactory = await ethers.getContractFactory('TestRpcCompatibility', signer);
+        rpcCompatibilityFactory = await hre.zksyncEthers.getContractFactory('TestRpcCompatibility');
         rpcCompatibilityContract = await rpcCompatibilityFactory.deploy();
-        await rpcCompatibilityContract.deployTransaction.wait(network.config.confirmations);
+        await rpcCompatibilityContract.waitForDeployment();
 
         transferAmount = getRandomInt(maxTransferAmount);
     });
@@ -75,8 +75,9 @@ describe('RpcCompatibility', () => {
         }
 
         before(async () => {
-            const receipt = await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
-            blockNumber = hexValue(receipt.blockNumber);
+            const tx = await rpcCompatibilityContract.updateValue(newValue);
+            const receipt = await tx.wait();
+            blockNumber = ethers.toBeHex(receipt.blockNumber);
         });
 
         it('should support RPC method eth_getLogs', async () => {
@@ -151,7 +152,7 @@ describe('RpcCompatibility', () => {
                 const fromBlock = isLarger ? blockNumber : 'finalized';
                 const toBlock = fromBlock === 'finalized' ? blockNumber : 'finalized';
                 const filter = {
-                    fromBlock: isHardhat ? hexValue(0) : fromBlock,
+                    fromBlock: isHardhat ? ethers.toBeHex(0) : fromBlock,
                     toBlock,
                 };
                 await checkLog(filter);
@@ -280,7 +281,8 @@ describe('RpcCompatibility', () => {
 
     it('should support RPC method eth_call', async () => {
         const newValue = 200;
-        await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
+        const tx = await rpcCompatibilityContract.updateValue(newValue);
+        await tx.wait();
         const callResult = await provider.send('eth_call', [
             {
                 to: rpcCompatibilityContract.address,
@@ -318,10 +320,11 @@ describe('RpcCompatibility', () => {
 
         it('should send tx with estimated gas', async () => {
             const newValue = 300;
-            const tx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue));
+            const populatedTx = await signer.populateTransaction(await rpcCompatibilityContract.populateTransaction.updateValue(newValue));
 
-            const estimatedGas = await provider.estimateGas(tx);
-            const receipt = await rpcCompatibilityContract.updateValue(newValue, { gasLimit: estimatedGas }).then((tx) => tx.wait());
+            const estimatedGas = await provider.estimateGas(populatedTx);
+            const tx = await rpcCompatibilityContract.updateValue(newValue, { gasLimit: estimatedGas });
+            const receipt = await tx.wait();
 
             await checkReceipt(receipt, newValue);
         });
@@ -361,7 +364,7 @@ describe('RpcCompatibility', () => {
     });
 
     it('should support RPC method eth_sendRawTransaction [ @skip-on-coverage ]', async () => {
-        const wallet = isHardhat ? Wallet.fromMnemonic(network.config.accounts.mnemonic) : new Wallet(network.config.accounts[0]);
+        const wallet = isHardhat ? Wallet.fromPhrase(network.config.accounts.mnemonic) : new Wallet(network.config.accounts[0]);
 
         const gasOptions = getGasOptions(network.config.chainId);
         const newValue = 400;
@@ -402,7 +405,8 @@ describe('RpcCompatibility', () => {
             found = true;
         });
 
-        await rpcCompatibilityContract.updateValueForSubscribe(newValue).then((tx) => tx.wait());
+        const tx = await rpcCompatibilityContract.updateValueForSubscribe(newValue);
+        await tx.wait();
         await waitFor(5, () => {
             expect(found).to.be.true;
         });
@@ -411,7 +415,8 @@ describe('RpcCompatibility', () => {
     it('should return consistent logIndex values between eth_getLogs and eth_getTransactionReceipt', async () => {
         const amount = 100;
 
-        const receipt = await rpcCompatibilityContract.updateValue(amount).then((tx) => tx.wait());
+        const tx = await rpcCompatibilityContract.updateValue(amount);
+        const receipt = await tx.wait();
         const logsFromReceipt = receipt.logs;
 
         const eventSignature = id('ValueUpdated(uint256)');
@@ -444,7 +449,8 @@ describe('RpcCompatibility', () => {
                 expect(BigNumber.from(maxPriorityFeePerGas).toNumber()).to.be.at.least(0);
 
                 const newValue = 600;
-                const receipt = await rpcCompatibilityContract.updateValue(newValue).then((tx) => tx.wait());
+                const tx = await rpcCompatibilityContract.updateValue(newValue);
+                const receipt = await tx.wait();
                 await checkReceipt(receipt, newValue);
             });
         }
@@ -480,7 +486,8 @@ describe('RpcCompatibility', () => {
             gasOptions.maxFeePerGas = baseFeePerGas.add(gasOptions.maxPriorityFeePerGas);
 
             const newValue = 700;
-            const receipt = await rpcCompatibilityContract.updateValue(newValue, gasOptions).then((tx) => tx.wait());
+            const tx = await rpcCompatibilityContract.updateValue(newValue, gasOptions);
+            const receipt = await tx.wait();
             await checkReceipt(receipt, newValue);
         });
     });

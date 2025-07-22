@@ -2,7 +2,7 @@
 
 const { config, ethers } = require('hardhat');
 const {
-    utils: { defaultAbiCoder, id, arrayify, keccak256, toUtf8Bytes, concat },
+    defaultAbiCoder, id, arrayify, keccak256, toUtf8Bytes, concat 
 } = ethers;
 const { network } = require('hardhat');
 const { sortBy } = require('lodash');

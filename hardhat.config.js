@@ -1,4 +1,6 @@
 require('@nomicfoundation/hardhat-toolbox');
+require('@matterlabs/hardhat-zksync-solc');
+require('@matterlabs/hardhat-zksync-ethers');
 require('solidity-coverage');
 
 if (process.env.STORAGE_LAYOUT) {
@@ -12,9 +14,17 @@ if (process.env.CHECK_CONTRACT_SIZE) {
 const { importNetworks, readJSON } = require('@axelar-network/axelar-chains-config');
 
 const env = process.env.ENV || 'testnet';
-const chains = require(`@axelar-network/axelar-chains-config/info/${env}.json`);
-const keys = readJSON(`${__dirname}/keys.json`);
+const chains = require(`../axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
+const keys = readJSON(`../axelar-contract-deployments/keys.json`);
 const { networks, etherscan } = importNetworks(chains, keys);
+
+// Add zkSync testnet configuration
+networks.zkTestnet = {
+    url: "https://sepolia.era.zksync.dev",
+    ethNetwork: "https://sepolia.infura.io/v3/your-api-key", // Replace with actual API key if needed
+    zksync: true,
+    accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+};
 
 networks.hardhat.hardfork = process.env.EVM_VERSION || 'merge';
 
@@ -55,6 +65,17 @@ const gasServiceSettings = {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
+    zksolc: {
+        version: "1.4.1",
+        compilerSource: "binary",
+        settings: {
+            isSystem: true,
+            forceEvmla: false,
+            optimizer: {
+                enabled: true,
+            },
+        },
+    },
     solidity: {
         compilers: [compilerSettings],
         // Fix the Proxy bytecodes
