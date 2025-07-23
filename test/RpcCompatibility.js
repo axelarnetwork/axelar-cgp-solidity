@@ -30,8 +30,9 @@ describe('RpcCompatibility', () => {
         expect(receipt.to).to.equal(rpcCompatibilityContract.address);
         expect(receipt.status).to.equal(1);
         const foundLog = receipt.logs.find((log) => log.topics && log.topics[0] === expectedTopic);
-        expect(foundLog).to.exist;
-        expect(parseInt(foundLog.topics[1], 16)).to.equal(value);
+        expect(foundLog, 'ValueUpdated event not found in logs from tx receipt').to.exist;
+        expect(parseInt(foundLog.topics[1], 16), 'ValueUpdated event log mismatch').to.equal(value);
+        expect(receipt.logs[0].topics[0], "ValueUpdated found, but it's expected to be the first log").to.equal(expectedTopic);
     }
 
     function checkBlockTimeStamp(timeStamp, maxDifference) {
