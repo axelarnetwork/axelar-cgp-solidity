@@ -13,8 +13,8 @@ if (process.env.CHECK_CONTRACT_SIZE) {
 const { importNetworks, readJSON } = require('@axelar-network/axelar-chains-config');
 
 const env = process.env.ENV || 'testnet';
-const chains = require(`@axelar-network/axelar-chains-config/info/${env}.json`);
-const keys = readJSON(`${__dirname}/keys.json`);
+const chains = require(`../axelar-contract-deployments/axelar-chains-config/info/${env}.json`);
+const keys = readJSON(`../axelar-contract-deployments/keys.json`);
 const { networks, etherscan } = importNetworks(chains, keys);
 
 networks.hardhat.hardfork = process.env.EVM_VERSION || 'merge';
