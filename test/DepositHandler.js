@@ -56,13 +56,16 @@ describe('DepositHandler', function () {
 
         it('should revert if locked (no reentrancy)', async function () {
             const data = depositHandler.interface.encodeFunctionData('destroy', [user.address]);
-
             await depositHandler.execute(depositHandler.address, data);
-
             await owner.sendTransaction({ to: test.address, value: 10 }).then((tx) => tx.wait());
             await test.destroy(depositHandler.address).then((tx) => tx.wait());
 
-            await expect(depositHandler.execute(depositHandler.address, data)).to.not.changeEtherBalance(user, 10);
+            const userBalanceBefore = await ethers.provider.getBalance(user.address);
+
+            await depositHandler.execute(depositHandler.address, data);
+
+            const userBalanceAfter = await ethers.provider.getBalance(user.address);
+            expect(userBalanceAfter).to.equal(userBalanceBefore);
 
             expect(await ethers.provider.getCode(depositHandler.address)).to.not.equal('0x');
         });
