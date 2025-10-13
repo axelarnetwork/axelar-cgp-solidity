@@ -138,7 +138,7 @@ const txExecute = await interchainGovernance.execute(commandIdGateway, governanc
 const receiptExecute = await txExecute.wait(network.config.confirmations);
 ```
 
--   The `changeEtherBalance` check expects one tx in a block so change in balances might need to be tested explicitly for unit tests using `changeEtherBalance`.
+-   The `selfdestruct` opcode behavior changed with the Dencun (Cancun) upgrade in March 2024: it will only destroy contract code when called in the same transaction in which the contract was created. In separate transactions, it will only transfer ETH without removing the contract code (this affects tests like `DepositHandler.js` 'should destroy the contract and send ETH to destination').
 
 ## Example flows
 
