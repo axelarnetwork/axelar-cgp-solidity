@@ -69,7 +69,7 @@ describe('AxelarAuthWeighted', () => {
             expect(isCurrentOperators).to.be.equal(true);
         });
 
-        it('reject the proof for a non-existant epoch hash', async () => {
+        it('reject the proof for a non-existent epoch hash', async () => {
             const data = '0x123abc123abc';
 
             const message = hashMessage(arrayify(keccak256(data)));

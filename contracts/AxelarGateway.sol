@@ -540,7 +540,7 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
     /**
      * @notice Deploys a new token or registers an existing token in the gateway contract itself.
      * @param params Encoded parameters including the token name, symbol, decimals, cap, token address, and mint limit
-     * @dev If the token address is not specified, a new token is deployed and registed as InternalBurnableFrom
+     * @dev If the token address is not specified, a new token is deployed and registered as InternalBurnableFrom
      * @dev If the token address is specified, the token is marked as External.
      * @dev Emits a TokenDeployed event with the symbol and token address.
      */

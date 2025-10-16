@@ -51,7 +51,7 @@ contract AxelarDepositService is Upgradable, DepositServiceBase, IAxelarDepositS
         // We expect allowance to always be 0 at this point
         // slither-disable-next-line unused-return
         IWETH9(wrappedTokenAddress).approve(gateway, amount);
-        // Sending the token trough the gateway
+        // Sending the token through the gateway
         IAxelarGateway(gateway).sendToken(destinationChain, destinationAddress, wrappedSymbol(), amount);
     }
 
