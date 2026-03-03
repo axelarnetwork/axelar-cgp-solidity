@@ -124,23 +124,6 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
     \******************/
 
     /**
-     * @notice Send the specified token to the destination chain and address.
-     * @param destinationChain The chain to send tokens to. A registered chain name on Axelar must be used here
-     * @param destinationAddress The address on the destination chain to send tokens to
-     * @param symbol The symbol of the token to send
-     * @param amount The amount of tokens to send
-     */
-    function sendToken(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        string calldata symbol,
-        uint256 amount
-    ) external {
-        _burnTokenFrom(msg.sender, symbol, amount);
-        emit TokenSent(msg.sender, destinationChain, destinationAddress, symbol, amount);
-    }
-
-    /**
      * @notice Calls a contract on the specified destination chain with a given payload.
      * This function is the entry point for general message passing between chains.
      * @param destinationChain The chain where the destination contract exists. A registered chain name on Axelar must be used here
@@ -275,6 +258,30 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
 
             _mintToken(symbol, msg.sender, amount);
         }
+    }
+
+    /**
+     * @notice DEPRECATED — DO NOT USE
+     *
+     * @dev This function is deprecated and MUST NOT be called. Calling this function will permanently burn the tokens.
+     * Tokens sent through this method are irrecoverable and cannot be bridged or refunded.
+     *
+     * @deprecated This method is disabled and will be removed in a future release.
+     * Use `callContractWithToken` instead.
+     *
+     * @param destinationChain Ignored. Previously the destination chain name.
+     * @param destinationAddress Ignored. Previously the destination address.
+     * @param symbol Ignored. Previously the symbol of the token to burn.
+     * @param amount Ignored. Previously the amount of tokens to burn (PERMANENTLY LOST).
+     */
+    function sendToken(
+        string calldata destinationChain,
+        string calldata destinationAddress,
+        string calldata symbol,
+        uint256 amount
+    ) external {
+        _burnTokenFrom(msg.sender, symbol, amount);
+        emit TokenSent(msg.sender, destinationChain, destinationAddress, symbol, amount);
     }
 
     /***********\
