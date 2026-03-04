@@ -398,6 +398,40 @@ describe('AxelarAuthWeighted', () => {
         });
     });
 
+    describe('ABI malleability', () => {
+        it('should store canonical hash so non-canonical params do not brick validateProof', async () => {
+            const newOperators = sortBy(wallets.slice(3, 5), (wallet) => wallet.address.toLowerCase());
+            const newOps = getAddresses(newOperators);
+            const newWeights = newOperators.map(() => 1);
+            const newThreshold = threshold;
+
+            const canonicalParams = defaultAbiCoder.encode(
+                ['address[]', 'uint256[]', 'uint256'],
+                [newOps, newWeights, newThreshold],
+            );
+
+            const nonCanonicalParams = canonicalParams + '0'.repeat(64);
+
+            await auth.transferOperatorship(nonCanonicalParams);
+
+            const data = '0x123abc123abc';
+            const message = hashMessage(arrayify(keccak256(data)));
+
+            const isCurrentOperators = await auth.validateProof(
+                message,
+                getWeightedSignaturesProof(
+                    data,
+                    newOperators,
+                    newOperators.map(() => 1),
+                    threshold,
+                    newOperators.slice(0, threshold),
+                ),
+            );
+
+            expect(isCurrentOperators).to.be.equal(true);
+        });
+    });
+
     describe('hashForEpoch and epochForHash', () => {
         it('should expose correct hashes and epoch', async () => {
             const operatorsHistory = [...previousOperators, operators];
