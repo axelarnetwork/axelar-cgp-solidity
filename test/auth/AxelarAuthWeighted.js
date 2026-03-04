@@ -405,10 +405,7 @@ describe('AxelarAuthWeighted', () => {
             const newWeights = newOperators.map(() => 1);
             const newThreshold = threshold;
 
-            const canonicalParams = defaultAbiCoder.encode(
-                ['address[]', 'uint256[]', 'uint256'],
-                [newOps, newWeights, newThreshold],
-            );
+            const canonicalParams = defaultAbiCoder.encode(['address[]', 'uint256[]', 'uint256'], [newOps, newWeights, newThreshold]);
 
             const nonCanonicalParams = canonicalParams + '0'.repeat(64);
 
