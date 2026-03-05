@@ -3,7 +3,7 @@
 const chai = require('chai');
 const { ethers, network } = require('hardhat');
 const {
-    utils: { hexValue, getAddress, keccak256, id },
+    utils: { hexValue, getAddress, keccak256, id, hexlify, randomBytes },
     Wallet,
     BigNumber,
 } = ethers;
@@ -23,14 +23,16 @@ describe('RpcCompatibility', () => {
     let rpcCompatibilityContract;
 
     async function checkReceipt(receipt, value) {
-        const topic = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
+        const expectedTopic = keccak256(ethers.utils.toUtf8Bytes('ValueUpdated(uint256)'));
 
         expect(receipt).to.not.be.null;
         expect(receipt.from).to.equal(signer.address);
         expect(receipt.to).to.equal(rpcCompatibilityContract.address);
         expect(receipt.status).to.equal(1);
-        expect(receipt.logs[0].topics[0]).to.equal(topic);
-        expect(parseInt(receipt.logs[0].topics[1], 16)).to.equal(value);
+        const foundLog = receipt.logs.find((log) => log.topics && log.topics[0] === expectedTopic);
+        expect(foundLog, 'ValueUpdated event not found in logs from tx receipt').to.exist;
+        expect(parseInt(foundLog.topics[1], 16), 'ValueUpdated event log mismatch').to.equal(value);
+        expect(receipt.logs[0].topics[0], "ValueUpdated found, but it's expected to be the first log").to.equal(expectedTopic);
     }
 
     function checkBlockTimeStamp(timeStamp, maxDifference) {
@@ -160,6 +162,18 @@ describe('RpcCompatibility', () => {
 
         it('should have valid parent hash', async () => {
             validParentHashes('finalized');
+        });
+
+        it('should fail on querying eth_getLogs with a random blockHash', async () => {
+            const randomBlockHash = hexlify(randomBytes(32));
+
+            const params = [
+                {
+                    blockHash: randomBlockHash,
+                },
+            ];
+
+            await expect(provider.send('eth_getLogs', params)).to.be.rejected;
         });
     });
 

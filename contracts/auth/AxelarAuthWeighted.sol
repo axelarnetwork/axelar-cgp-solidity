@@ -75,7 +75,7 @@ contract AxelarAuthWeighted is Ownable, IAxelarAuthWeighted {
         }
         if (newThreshold == 0 || totalWeight < newThreshold) revert InvalidThreshold();
 
-        bytes32 newOperatorsHash = keccak256(params);
+        bytes32 newOperatorsHash = keccak256(abi.encode(newOperators, newWeights, newThreshold));
 
         if (epochForHash[newOperatorsHash] != 0) revert DuplicateOperators();
 

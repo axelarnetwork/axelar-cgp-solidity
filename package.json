@@ -3,6 +3,9 @@
   "version": "6.4.0",
   "description": "EVM Smart Contracts for Axelar Network",
   "main": "index.js",
+  "overrides": {
+    "elliptic": "^6.6.1"
+  },
   "scripts": {
     "build": "hardhat clean && hardhat compile && npm run copy:interfaces",
     "copy:interfaces": "rm -rf interfaces/ && mkdir interfaces && cp artifacts/contracts/interfaces/*/*.json interfaces/ && rm interfaces/*.dbg.json",
@@ -43,6 +46,7 @@
     "chai": "^4.3.7",
     "cross-env": "^7.0.3",
     "dotenv": "^16.0.1",
+    "elliptic": "^6.6.1",
     "eslint": "^8.57.0",
     "eslint-config-richardpringle": "^2.0.0",
     "ethers": "^5.7.2",
