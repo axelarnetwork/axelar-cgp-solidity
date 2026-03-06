@@ -533,6 +533,7 @@ describe('AxelarDepositService', () => {
 
             const depositAddressBalanceBefore = await ethers.provider.getBalance(depositAddress);
             const serviceTokenBalanceBefore = await wrongToken.balanceOf(depositService.address);
+            const serviceEthBalanceBeforeRefund = await ethers.provider.getBalance(depositService.address);
 
             await expect(await depositService.refundNativeUnwrap(salt, refundAddress, recipient, [wrongToken.address]))
                 .to.emit(wrongToken, 'Transfer')
@@ -540,10 +541,12 @@ describe('AxelarDepositService', () => {
 
             const depositAddressBalanceAfter = await ethers.provider.getBalance(depositAddress);
             const serviceTokenBalanceAfter = await wrongToken.balanceOf(depositService.address);
+            const serviceEthBalanceAfterRefund = await ethers.provider.getBalance(depositService.address);
 
             expect(depositAddressBalanceBefore.sub(depositAddressBalanceAfter)).to.equal(amount);
 
             expect(serviceTokenBalanceAfter.sub(serviceTokenBalanceBefore)).to.equal(amount * 2);
+            expect(serviceEthBalanceAfterRefund.sub(serviceEthBalanceBeforeRefund)).to.equal(amount);
 
             await expectRevert(
                 (gasOptions) => depositService.connect(userWallet).refundLockedAsset(recipient, wrongToken.address, amount * 2, gasOptions),
