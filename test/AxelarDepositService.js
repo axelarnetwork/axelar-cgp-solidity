@@ -290,10 +290,9 @@ describe('AxelarDepositService', () => {
             expect(depositAddressBalanceBefore.sub(depositAddressBalanceAfter)).to.equal(amount);
 
             const txReceipt = await tx.wait();
-            const gasCost = txReceipt.gasUsed.mul(tx.gasPrice);
+            const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)
             const expectedBalance = ownerWalletBalanceBefore.add(amount).sub(gasCost);
-            const difference = ownerWalletBalanceAfter.sub(expectedBalance).abs();
-            expect(difference).to.be.lt(ethers.utils.parseEther('0.0001'));
+            expect(ownerWalletBalanceAfter).to.equal(expectedBalance);
         });
 
         it('should refund from transfer token address to msg.sender if refund address is the zero address', async () => {
@@ -505,10 +504,9 @@ describe('AxelarDepositService', () => {
             expect(wrongTokenBalanceBefore.sub(wrongTokenBalanceAfter)).to.equal(amount * 2);
 
             const txReceipt = await tx.wait();
-            const gasCost = txReceipt.gasUsed.mul(tx.gasPrice);
+            const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)
             const expectedBalance = refundAddressBalanceBefore.add(amount).sub(gasCost);
-            const difference = refundAddressBalanceAfter.sub(expectedBalance).abs();
-            expect(difference).to.be.lt(ethers.utils.parseEther('0.0001'));
+            expect(refundAddressBalanceAfter).to.equal(expectedBalance);
         });
 
         it('should refund to the service when refundAddress is 0x0', async () => {

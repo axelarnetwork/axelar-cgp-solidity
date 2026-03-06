@@ -57,6 +57,7 @@ describe('DepositHandler', function () {
             expect(balanceAfter.sub(balanceBefore)).to.equal(10);
 
             const code = await ethers.provider.getCode(depositHandler.address);
+
             if (code !== "0x") {
               // Post-dencun code SELFDESTRUCT doesn't deletes code.
               const data = test.interface.encodeFunctionData('test');
