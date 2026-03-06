@@ -365,21 +365,26 @@ describe('AxelarGasService', () => {
             );
 
             const gasServiceNativeBefore = await ethers.provider.getBalance(gasService.address);
+            const ownerNativeBefore = await ethers.provider.getBalance(ownerWallet.address);
             const ownerTokenBalanceBefore = await testToken.balanceOf(ownerWallet.address);
 
-            await expect(
-                gasService
-                    .connect(ownerWallet)
-                    .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount]),
-            )
+            const tx = await gasService
+                .connect(ownerWallet)
+                .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount]);
+
+            await expect(tx)
                 .to.emit(testToken, 'Transfer')
                 .withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
 
+            const txReceipt = await tx.wait();
+            const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
             const gasServiceNativeAfter = await ethers.provider.getBalance(gasService.address);
+            const ownerNativeAfter = await ethers.provider.getBalance(ownerWallet.address);
             const ownerTokenBalanceAfter = await testToken.balanceOf(ownerWallet.address);
 
             expect(ownerTokenBalanceAfter.sub(ownerTokenBalanceBefore)).to.equal(gasFeeAmount);
             expect(gasServiceNativeBefore.sub(gasServiceNativeAfter)).to.equal(nativeGasFeeAmount);
+            expect(ownerNativeAfter).to.equal(ownerNativeBefore.add(nativeGasFeeAmount).sub(gasCost));
         });
 
         it('should allow to collect accumulated payments and refund with the new method', async () => {
@@ -578,21 +583,26 @@ describe('AxelarGasService', () => {
             expect(ownerTokenBalanceAfter).to.equal(ownerTokenBalanceBefore);
 
             const gasServiceNativeBefore = await ethers.provider.getBalance(gasService.address);
+            const ownerNativeBefore = await ethers.provider.getBalance(ownerWallet.address);
             const ownerTokenBalanceBefore2 = await testToken.balanceOf(ownerWallet.address);
 
-            await expect(
-                gasService
-                    .connect(ownerWallet)
-                    .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount]),
-            )
+            const tx = await gasService
+                .connect(ownerWallet)
+                .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount]);
+
+            await expect(tx)
                 .to.emit(testToken, 'Transfer')
                 .withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
 
+            const txReceipt = await tx.wait();
+            const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
             const gasServiceNativeAfter = await ethers.provider.getBalance(gasService.address);
+            const ownerNativeAfter = await ethers.provider.getBalance(ownerWallet.address);
             const ownerTokenBalanceAfter2 = await testToken.balanceOf(ownerWallet.address);
 
             expect(ownerTokenBalanceAfter2.sub(ownerTokenBalanceBefore2)).to.equal(gasFeeAmount);
             expect(gasServiceNativeBefore.sub(gasServiceNativeAfter)).to.equal(nativeGasFeeAmount);
+            expect(ownerNativeAfter).to.equal(ownerNativeBefore.add(nativeGasFeeAmount).sub(gasCost));
         });
 
         it('should upgrade the gas receiver implementation', async () => {
