@@ -49,9 +49,19 @@ describe('DepositHandler', function () {
             await owner.sendTransaction({ to: test.address, value: 10 }).then((tx) => tx.wait());
             await test.destroy(depositHandler.address).then((tx) => tx.wait());
 
-            await expect(depositHandler.destroy(user.address)).to.changeEtherBalance(user, 10);
+            const balanceBefore = await ethers.provider.getBalance(user.address);
 
-            expect(await ethers.provider.getCode(depositHandler.address)).to.equal('0x');
+            await depositHandler.destroy(user.address).then((tx) => tx.wait());
+
+            const balanceAfter = await ethers.provider.getBalance(user.address);
+            expect(balanceAfter.sub(balanceBefore)).to.equal(10);
+
+            const code = await ethers.provider.getCode(depositHandler.address);
+            if (code !== "0x") {
+              // Post-dencun code SELFDESTRUCT doesn't deletes code.
+              const data = test.interface.encodeFunctionData('test');
+              await expect(depositHandler.execute(test.address, data)).to.be.reverted;
+            }
         });
 
         it('should revert if locked (no reentrancy)', async function () {
