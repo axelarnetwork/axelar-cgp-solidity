@@ -282,14 +282,13 @@ describe('AxelarDepositService', () => {
                 .to.emit(wrongToken, 'Transfer')
                 .withArgs(depositAddress, refundAddress, amount * 2);
 
-            await tx.wait();
+            const txReceipt = await tx.wait();
 
             const depositAddressBalanceAfter = await ethers.provider.getBalance(depositAddress);
             const ownerWalletBalanceAfter = await ethers.provider.getBalance(ownerWallet.address);
 
             expect(depositAddressBalanceBefore.sub(depositAddressBalanceAfter)).to.equal(amount);
 
-            const txReceipt = await tx.wait();
             const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)
             const expectedBalance = ownerWalletBalanceBefore.add(amount).sub(gasCost);
             expect(ownerWalletBalanceAfter).to.equal(expectedBalance);
@@ -493,7 +492,7 @@ describe('AxelarDepositService', () => {
                 .to.emit(wrongToken, 'Transfer')
                 .withArgs(depositAddress, refundAddress, amount * 2);
 
-            await tx.wait();
+            const txReceipt = await tx.wait();
 
             const depositAddressBalanceAfter = await ethers.provider.getBalance(depositAddress);
             const wrongTokenBalanceAfter = await wrongToken.balanceOf(depositAddress);
@@ -503,7 +502,6 @@ describe('AxelarDepositService', () => {
 
             expect(wrongTokenBalanceBefore.sub(wrongTokenBalanceAfter)).to.equal(amount * 2);
 
-            const txReceipt = await tx.wait();
             const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)
             const expectedBalance = refundAddressBalanceBefore.add(amount).sub(gasCost);
             expect(refundAddressBalanceAfter).to.equal(expectedBalance);
