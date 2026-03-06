@@ -72,7 +72,7 @@ describe('DepositHandler', function () {
 
             const userBalanceBefore = await ethers.provider.getBalance(user.address);
 
-            await depositHandler.execute(depositHandler.address, data);
+            await depositHandler.execute(depositHandler.address, data).then((tx) => tx.wait());
 
             const userBalanceAfter = await ethers.provider.getBalance(user.address);
             expect(userBalanceAfter).to.equal(userBalanceBefore);
