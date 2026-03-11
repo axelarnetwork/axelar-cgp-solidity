@@ -138,8 +138,6 @@ const txExecute = await interchainGovernance.execute(commandIdGateway, governanc
 const receiptExecute = await txExecute.wait(network.config.confirmations);
 ```
 
--   The `changeEtherBalance` check expects one tx in a block so change in balances might need to be tested explicitly for unit tests using `changeEtherBalance`.
-
 ## Example flows
 
 See Axelar [examples](https://github.com/axelarnetwork/axelar-examples) for concrete examples.
