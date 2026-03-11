@@ -372,9 +372,7 @@ describe('AxelarGasService', () => {
                 .connect(ownerWallet)
                 .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount]);
 
-            await expect(tx)
-                .to.emit(testToken, 'Transfer')
-                .withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
+            await expect(tx).to.emit(testToken, 'Transfer').withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
 
             const txReceipt = await tx.wait();
             const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
@@ -590,9 +588,7 @@ describe('AxelarGasService', () => {
                 .connect(ownerWallet)
                 .collectFees(ownerWallet.address, [AddressZero, testToken.address], [nativeGasFeeAmount, gasFeeAmount]);
 
-            await expect(tx)
-                .to.emit(testToken, 'Transfer')
-                .withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
+            await expect(tx).to.emit(testToken, 'Transfer').withArgs(gasService.address, ownerWallet.address, gasFeeAmount);
 
             const txReceipt = await tx.wait();
             const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);

@@ -289,7 +289,7 @@ describe('AxelarDepositService', () => {
 
             expect(depositAddressBalanceBefore.sub(depositAddressBalanceAfter)).to.equal(amount);
 
-            const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)
+            const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
             const expectedBalance = ownerWalletBalanceBefore.add(amount).sub(gasCost);
             expect(ownerWalletBalanceAfter).to.equal(expectedBalance);
         });
@@ -502,7 +502,7 @@ describe('AxelarDepositService', () => {
 
             expect(wrongTokenBalanceBefore.sub(wrongTokenBalanceAfter)).to.equal(amount * 2);
 
-            const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice)
+            const gasCost = txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice);
             const expectedBalance = refundAddressBalanceBefore.add(amount).sub(gasCost);
             expect(refundAddressBalanceAfter).to.equal(expectedBalance);
         });

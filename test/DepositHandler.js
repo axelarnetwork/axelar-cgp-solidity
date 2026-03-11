@@ -58,10 +58,10 @@ describe('DepositHandler', function () {
 
             const code = await ethers.provider.getCode(depositHandler.address);
 
-            if (code !== "0x") {
-              // Post-dencun code SELFDESTRUCT doesn't deletes code.
-              const data = test.interface.encodeFunctionData('test');
-              await expect(depositHandler.execute(test.address, data)).to.be.reverted;
+            if (code !== '0x') {
+                // Post-dencun code SELFDESTRUCT doesn't deletes code.
+                const data = test.interface.encodeFunctionData('test');
+                await expect(depositHandler.execute(test.address, data)).to.be.reverted;
             }
         });
 
