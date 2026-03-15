@@ -260,30 +260,6 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
         }
     }
 
-    /**
-     * @notice DEPRECATED — DO NOT USE
-     *
-     * @dev This function is deprecated and MUST NOT be called. Calling this function will permanently burn the tokens.
-     * Tokens sent through this method are irrecoverable and cannot be bridged or refunded.
-     *
-     * @deprecated This method is disabled and will be removed in a future release.
-     * Use `callContractWithToken` instead.
-     *
-     * @param destinationChain Ignored. Previously the destination chain name.
-     * @param destinationAddress Ignored. Previously the destination address.
-     * @param symbol Ignored. Previously the symbol of the token to burn.
-     * @param amount Ignored. Previously the amount of tokens to burn (PERMANENTLY LOST).
-     */
-    function sendToken(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        string calldata symbol,
-        uint256 amount
-    ) external {
-        _burnTokenFrom(msg.sender, symbol, amount);
-        emit TokenSent(msg.sender, destinationChain, destinationAddress, symbol, amount);
-    }
-
     /***********\
     |* Getters *|
     \***********/

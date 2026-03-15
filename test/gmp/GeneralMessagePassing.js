@@ -30,7 +30,7 @@ describe('GeneralMessagePassing', () => {
     let sourceChainGateway;
     let destinationChainGateway;
     let sourceChainGasService;
-    let sourceChainSwapCaller;
+    let sourceChainSwapContract;
     let destinationChainSwapExecutable;
     let destinationChainTokenSwapper;
     let tokenA;
@@ -41,7 +41,7 @@ describe('GeneralMessagePassing', () => {
     let tokenDeployerFactory;
     let gatewayProxyFactory;
     let mintableCappedERC20Factory;
-    let sourceChainSwapCallerFactory;
+    let sourceChainSwapContractFactory;
     let destinationChainSwapExecutableFactory;
     let destinationChainTokenSwapperFactory;
 
@@ -79,7 +79,7 @@ describe('GeneralMessagePassing', () => {
         tokenDeployerFactory = await ethers.getContractFactory('TokenDeployer', ownerWallet);
         gatewayProxyFactory = await ethers.getContractFactory('AxelarGatewayProxy', ownerWallet);
         mintableCappedERC20Factory = await ethers.getContractFactory('MintableCappedERC20', ownerWallet);
-        sourceChainSwapCallerFactory = await ethers.getContractFactory('SourceChainSwapCaller', ownerWallet);
+        sourceChainSwapContractFactory = await ethers.getContractFactory('SourceChainSwapContract', ownerWallet);
         destinationChainSwapExecutableFactory = await ethers.getContractFactory('DestinationChainSwapExecutable', ownerWallet);
         destinationChainTokenSwapperFactory = await ethers.getContractFactory('DestinationChainTokenSwapper', ownerWallet);
     });
@@ -163,7 +163,7 @@ describe('GeneralMessagePassing', () => {
         destinationChainSwapExecutable = await destinationChainSwapExecutableFactory
             .deploy(destinationChainGateway.address, destinationChainTokenSwapper.address)
             .then((d) => d.deployed());
-        sourceChainSwapCaller = await sourceChainSwapCallerFactory
+        sourceChainSwapContract = await sourceChainSwapContractFactory
             .deploy(sourceChainGateway.address, sourceChainGasService.address, destinationChain, destinationChainSwapExecutable.address)
             .then((d) => d.deployed());
 
@@ -187,6 +187,8 @@ describe('GeneralMessagePassing', () => {
 
     describe('general message passing', () => {
         it('should swap tokens on remote chain', async () => {
+            // Source chain.
+
             const swapAmount = 1e6;
             const gasFeeAmount = 1e3;
             const convertedAmount = 2 * swapAmount;
@@ -197,17 +199,17 @@ describe('GeneralMessagePassing', () => {
                 .attach(await sourceChainGateway.tokenAddresses(symbolA))
                 .connect(userWallet);
             await sourceChainTokenA
-                .approve(sourceChainSwapCaller.address, swapAmount + gasFeeAmount)
+                .approve(sourceChainSwapContract.address, swapAmount + gasFeeAmount)
                 .then((tx) => tx.wait(network.config.confirmations));
 
             await expect(
-                sourceChainSwapCaller
+                sourceChainSwapContract
                     .connect(userWallet)
                     .swapToken(symbolA, symbolB, swapAmount, userWallet.address.toString(), { value: gasFeeAmount }),
             )
                 .to.emit(sourceChainGasService, 'NativeGasPaidForContractCallWithToken')
                 .withArgs(
-                    sourceChainSwapCaller.address,
+                    sourceChainSwapContract.address,
                     destinationChain,
                     destinationChainSwapExecutable.address.toString(),
                     payloadHash,
@@ -218,7 +220,7 @@ describe('GeneralMessagePassing', () => {
                 )
                 .and.to.emit(sourceChainGateway, 'ContractCallWithToken')
                 .withArgs(
-                    sourceChainSwapCaller.address.toString(),
+                    sourceChainSwapContract.address.toString(),
                     destinationChain,
                     destinationChainSwapExecutable.address.toString(),
                     payloadHash,
@@ -226,6 +228,8 @@ describe('GeneralMessagePassing', () => {
                     symbolA,
                     swapAmount,
                 );
+
+            // Destination chain
 
             const approveCommandId = getRandomID();
             const sourceTxHash = keccak256('0x123abc123abc');
@@ -243,7 +247,7 @@ describe('GeneralMessagePassing', () => {
                                 ['string', 'string', 'address', 'bytes32', 'string', 'uint256', 'bytes32', 'uint256'],
                                 [
                                     sourceChain,
-                                    sourceChainSwapCaller.address.toString(),
+                                    sourceChainSwapContract.address.toString(),
                                     destinationChainSwapExecutable.address,
                                     payloadHash,
                                     symbolA,
@@ -267,7 +271,7 @@ describe('GeneralMessagePassing', () => {
                 .withArgs(
                     approveCommandId,
                     sourceChain,
-                    sourceChainSwapCaller.address.toString(),
+                    sourceChainSwapContract.address.toString(),
                     destinationChainSwapExecutable.address,
                     payloadHash,
                     symbolA,
@@ -279,12 +283,15 @@ describe('GeneralMessagePassing', () => {
             const swap = await destinationChainSwapExecutable.executeWithToken(
                 approveCommandId,
                 sourceChain,
-                sourceChainSwapCaller.address.toString(),
+                sourceChainSwapContract.address.toString(),
                 payload,
                 symbolA,
                 swapAmount,
                 getGasOptions(),
             );
+
+            const returnPayload = defaultAbiCoder.encode(['string'], [userWallet.address.toString()]);
+            const returnPayloadHash = keccak256(returnPayload);
 
             await expect(swap)
                 .to.emit(tokenA, 'Transfer')
@@ -293,8 +300,85 @@ describe('GeneralMessagePassing', () => {
                 .withArgs(destinationChainTokenSwapper.address, destinationChainSwapExecutable.address, convertedAmount)
                 .and.to.emit(tokenB, 'Transfer')
                 .withArgs(destinationChainSwapExecutable.address, destinationChainGateway.address, convertedAmount)
-                .and.to.emit(destinationChainGateway, 'TokenSent')
-                .withArgs(destinationChainSwapExecutable.address, sourceChain, userWallet.address.toString(), symbolB, convertedAmount);
+                .and.to.emit(destinationChainGateway, 'ContractCallWithToken')
+                .withArgs(
+                    destinationChainSwapExecutable.address,
+                    sourceChain,
+                    sourceChainSwapContract.address.toString(),
+                    returnPayloadHash,
+                    returnPayload,
+                    symbolB,
+                    convertedAmount,
+                );
+
+            // Source chain
+
+            const returnApproveCommandId = getRandomID();
+            const returnSourceTxHash = keccak256('0x456def456def');
+            const returnSourceEventIndex = 18;
+
+            const returnApproveWithMintData = arrayify(
+                defaultAbiCoder.encode(
+                    ['uint256', 'bytes32[]', 'string[]', 'bytes[]'],
+                    [
+                        await getChainId(),
+                        [returnApproveCommandId],
+                        ['approveContractCallWithMint'],
+                        [
+                            defaultAbiCoder.encode(
+                                ['string', 'string', 'address', 'bytes32', 'string', 'uint256', 'bytes32', 'uint256'],
+                                [
+                                    destinationChain,
+                                    destinationChainSwapExecutable.address.toString(),
+                                    sourceChainSwapContract.address,
+                                    returnPayloadHash,
+                                    symbolB,
+                                    convertedAmount,
+                                    returnSourceTxHash,
+                                    returnSourceEventIndex,
+                                ],
+                            ),
+                        ],
+                    ],
+                ),
+            );
+
+            const returnApproveExecute = await sourceChainGateway.execute(
+                await getSignedWeightedExecuteInput(returnApproveWithMintData, [operatorWallet], [1], 1, [operatorWallet]),
+                getGasOptions(),
+            );
+
+            await expect(returnApproveExecute)
+                .to.emit(sourceChainGateway, 'ContractCallApprovedWithMint')
+                .withArgs(
+                    returnApproveCommandId,
+                    destinationChain,
+                    destinationChainSwapExecutable.address.toString(),
+                    sourceChainSwapContract.address,
+                    returnPayloadHash,
+                    symbolB,
+                    convertedAmount,
+                    returnSourceTxHash,
+                    returnSourceEventIndex,
+                );
+
+            const sourceChainTokenB = mintableCappedERC20Factory.attach(await sourceChainGateway.tokenAddresses(symbolB));
+
+            const returnSwap = await sourceChainSwapContract.executeWithToken(
+                returnApproveCommandId,
+                destinationChain,
+                destinationChainSwapExecutable.address.toString(),
+                returnPayload,
+                symbolB,
+                convertedAmount,
+                getGasOptions(),
+            );
+
+            await expect(returnSwap)
+                .to.emit(sourceChainTokenB, 'Transfer')
+                .withArgs(ethers.constants.AddressZero, sourceChainSwapContract.address, convertedAmount)
+                .and.to.emit(sourceChainTokenB, 'Transfer')
+                .withArgs(sourceChainSwapContract.address, userWallet.address, convertedAmount);
         });
     });
 });

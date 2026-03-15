@@ -66,7 +66,6 @@ module.exports = {
                   'contracts/BurnableMintableCappedERC20.sol': compilerSettings,
                   'contracts/DepositHandler.sol': compilerSettings,
                   'contracts/gas-service/AxelarGasServiceProxy.sol': compilerSettings,
-                  'contracts/deposit-service/AxelarDepositServiceProxy.sol': compilerSettings,
                   'contracts/gas-service/AxelarGasService.sol': gasServiceSettings, // use optimized setting for the gas service
               },
     },

@@ -85,13 +85,6 @@ interface IAxelarGateway {
     |* Public Functions *|
     \********************/
 
-    function sendToken(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        string calldata symbol,
-        uint256 amount
-    ) external;
-
     function callContract(
         string calldata destinationChain,
         string calldata contractAddress,
