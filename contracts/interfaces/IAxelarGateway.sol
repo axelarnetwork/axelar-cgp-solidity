@@ -29,8 +29,6 @@ interface IAxelarGateway {
     |* Events *|
     \**********/
 
-    event TokenSent(address indexed sender, string destinationChain, string destinationAddress, string symbol, uint256 amount);
-
     event ContractCall(
         address indexed sender,
         string destinationChain,
@@ -84,13 +82,6 @@ interface IAxelarGateway {
     /********************\
     |* Public Functions *|
     \********************/
-
-    function sendToken(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        string calldata symbol,
-        uint256 amount
-    ) external;
 
     function callContract(
         string calldata destinationChain,

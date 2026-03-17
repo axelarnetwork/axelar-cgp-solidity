@@ -89,11 +89,6 @@ Storage contract for the proxy.
 
 Modified version of OpenZeppelin ECDSA signature authentication check.
 
-#### AxelarDepositService.sol
-
-This service is used to generate deposit addresses for an ERC20 token or native currency transfer.
-The third type of deposit address is for unwrapping native currency from a wrapped ECR20 token.
-
 #### AxelarGasService.sol
 
 This contract is used for cross-chain gas payment.

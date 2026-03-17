@@ -16,21 +16,29 @@ contract DestinationChainSwapExecutable is AxelarExecutableWithToken {
     function _executeWithToken(
         bytes32, /*commandId*/
         string calldata sourceChain,
-        string calldata, /*sourceAddress*/
+        string calldata sourceAddress,
         bytes calldata payload,
         string calldata tokenSymbolA,
         uint256 amount
     ) internal override {
         (string memory tokenSymbolB, string memory recipient) = abi.decode(payload, (string, string));
 
-        address tokenA = gatewayWithToken().tokenAddresses(tokenSymbolA);
-        address tokenB = gatewayWithToken().tokenAddresses(tokenSymbolB);
+        // swap
+        uint256 convertedAmount;
+        address tokenB;
+        {
+            address tokenA = gatewayWithToken().tokenAddresses(tokenSymbolA);
+            tokenB = gatewayWithToken().tokenAddresses(tokenSymbolB);
+            IERC20(tokenA).approve(address(swapper), amount);
+            convertedAmount = swapper.swap(tokenA, tokenB, amount, address(this));
+        }
 
-        IERC20(tokenA).approve(address(swapper), amount);
-        uint256 convertedAmount = swapper.swap(tokenA, tokenB, amount, address(this));
-
-        IERC20(tokenB).approve(address(gateway()), convertedAmount);
-        gatewayWithToken().sendToken(sourceChain, recipient, tokenSymbolB, convertedAmount);
+        // send back
+        {
+            bytes memory returnPayload = abi.encode(recipient);
+            IERC20(tokenB).approve(address(gateway()), convertedAmount);
+            gatewayWithToken().callContractWithToken(sourceChain, sourceAddress, returnPayload, tokenSymbolB, convertedAmount);
+        }
     }
 
     function _execute(

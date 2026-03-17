@@ -245,7 +245,7 @@ describe('AxelarGateway', () => {
             const expected = {
                 istanbul: '0x6905e9ed2ee714532275d658b7cc3e3186acc52da48ffd499a2705a1185b8dde',
                 berlin: '0x374b511f48e03dfc872c49b1f3234785b50e4db2fb5eb135ef0c3f58b20c8b7a',
-                london: '0xcac4f10cb12909b2256570ae01df6fee5830b78afb230097fc401a69efa896cd',
+                london: '0xdf29c2348694f9d8dbfd52b1b3a1ff2e1a9aaf7f355bb86fbce01a71e6cca085',
             }[getEVMVersion()];
 
             expect(proxyBytecodeHash).to.be.equal(expected);
@@ -258,7 +258,7 @@ describe('AxelarGateway', () => {
             const expected = {
                 istanbul: '0xb95e207998541b443f7653b3fb7158b4fdd04308343381e56f824668323029a8',
                 berlin: '0x527ccc01bb1072d7af437ae3ed50e6e5d47d347181e8ff51b49ee3199d052dce',
-                london: '0x47da99c917de589b85f28db91176de68813e2eb44e73e14dde3c06db14b73a30',
+                london: '0xb79a6b76abe0eac90f0732a68371a2853c1340a1a5ad9d2f6a70bde17a2e258a',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -280,7 +280,7 @@ describe('AxelarGateway', () => {
             const expectedToken = {
                 istanbul: '0xfc2522491a56af4f3519968ed49c9ba82abc79798afe8f763f601e7d5e14bdbf',
                 berlin: '0x81f6049561587bf700c0af132c504b22d696a6acfa606eee0257f92fd4ebd865',
-                london: '0x37be59a866fd46ec4179e243e5d5e2639ca1e842b152e45a34628dad6494b94b',
+                london: '0xc8945af5c0a84d6dfc01a6cb306a3fcd180cd32425cfcefc81e099c3c9f230b8',
             }[getEVMVersion()];
 
             expect(keccak256(tokenFactory.bytecode)).to.be.equal(expectedToken);
@@ -288,7 +288,7 @@ describe('AxelarGateway', () => {
             const expectedDeployer = {
                 istanbul: '0x69ca30c837541c2c0b9ee44c255c860dc62a07a5936cc5b7155ac38b4031f9b2',
                 berlin: '0x2cf6c3a8fca17066e3b9e3d256fafef50b8befb10260cbbc7b75a649161498d5',
-                london: '0xe113ef8264c69cdd78ebc6e641ade15af175cd3dd0e339c4f64c327554870d02',
+                london: '0x4e14e95664aafd5412f93951b107eaf77cf2b34d1d1660ec36224194e55e1606',
             }[getEVMVersion()];
 
             expect(keccak256(tokenDeployerFactory.bytecode)).to.be.equal(expectedDeployer);
@@ -552,8 +552,9 @@ describe('AxelarGateway', () => {
         it('should not allow governance to upgrade to a wrong implementation', async () => {
             const newGatewayImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address).then((d) => d.deployed());
             const wrongCodeHash = keccak256(`0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`);
-            const depositServiceFactory = await ethers.getContractFactory('AxelarDepositService', owner);
-            const wrongImplementation = await depositServiceFactory.deploy(gateway.address, '', owner.address).then((d) => d.deployed());
+            const gasServiceFactory = await ethers.getContractFactory('AxelarGasService', owner);
+            const wrongImplementation = await gasServiceFactory.deploy(owner.address);
+            await wrongImplementation.deployTransaction.wait(network.config.confirmations);
             const wrongImplementationCodeHash = await getBytecodeHash(wrongImplementation, network.config.id);
 
             const newOperatorAddresses = getAddresses(operators.slice(0, 2));
@@ -779,6 +780,40 @@ describe('AxelarGateway', () => {
 
             await expect(executeTx).to.not.emit(gateway, 'Executed');
             await expect(executeTx).to.not.emit(gateway, 'TokenDeployed');
+        });
+
+        describe('deployToken failure', () => {
+            const tokenName = 'Test Token';
+            const tokenDecimals = 18;
+            const tokenCap = 1e9;
+
+            before(async () => {
+                await deployGateway(true);
+            });
+
+            it('should fail if token deployment fails', async () => {
+                const tokenSymbol = `TEST${getRandomString(10)}`;
+
+                const deployAndMintData = buildCommandBatch(
+                    await getChainId(),
+                    [getRandomID()],
+                    ['deployToken'],
+                    [getDeployCommand(tokenName, tokenSymbol, tokenDecimals, tokenCap, ethers.constants.AddressZero, 0)],
+                );
+
+                const input = await getSignedWeightedExecuteInput(
+                    deployAndMintData,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
+
+                const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
+                expect(tokenAddress).to.equal(AddressZero);
+            });
         });
     });
 
@@ -1531,129 +1566,13 @@ describe('AxelarGateway', () => {
     });
 
     describe('sendToken', () => {
-        const tokenName = 'Test Token';
-        const decimals = 18;
-        const cap = 1e9;
-
-        describe('send token negative tests', () => {
-            before(async () => {
-                await deployGateway(true);
-            });
-
-            it('should fail if token deployment fails', async () => {
-                const tokenSymbol = `TEST${getRandomString(10)}`;
-
-                const deployAndMintData = buildCommandBatch(
-                    await getChainId(),
-                    [getRandomID()],
-                    ['deployToken'],
-                    [getDeployCommand(tokenName, tokenSymbol, decimals, cap, ethers.constants.AddressZero, 0)],
-                );
-
-                const input = await getSignedWeightedExecuteInput(
-                    deployAndMintData,
-                    operators,
-                    getWeights(operators),
-                    threshold,
-                    operators.slice(0, threshold),
-                );
-
-                await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
-
-                const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
-                expect(tokenAddress).to.equal(AddressZero);
-            });
+        it('should not have sendToken function', () => {
+            expect(gateway.sendToken).to.be.undefined;
         });
 
-        describe('send token positive tests', () => {
-            before(async () => {
-                await deployGateway();
-            });
-
-            it('should burn internal token and emit an event', async () => {
-                const tokenSymbol = `TEST${getRandomString(10)}`;
-
-                const deployAndMintData = buildCommandBatch(
-                    await getChainId(),
-                    [getRandomID(), getRandomID()],
-                    ['deployToken', 'mintToken'],
-                    [
-                        getDeployCommand(tokenName, tokenSymbol, decimals, cap, ethers.constants.AddressZero, 0),
-                        getMintCommand(tokenSymbol, owner.address, 1e6),
-                    ],
-                );
-
-                const input = await getSignedWeightedExecuteInput(
-                    deployAndMintData,
-                    operators,
-                    getWeights(operators),
-                    threshold,
-                    operators.slice(0, threshold),
-                );
-
-                await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
-
-                const tokenAddress = await gateway.tokenAddresses(tokenSymbol);
-                const token = burnableMintableCappedERC20Factory.attach(tokenAddress);
-
-                const issuer = owner.address;
-                const spender = gateway.address;
-                const amount = 1000;
-                const destination = operators[1].address;
-
-                const approveTx = await token.approve(spender, amount);
-                await expect(approveTx).to.emit(token, 'Approval').withArgs(issuer, spender, amount);
-
-                const tx = await gateway.sendToken('Polygon', destination, tokenSymbol, amount);
-                await expect(tx)
-                    .to.emit(token, 'Transfer')
-                    .withArgs(issuer, ethers.constants.AddressZero, amount)
-                    .to.emit(gateway, 'TokenSent')
-                    .withArgs(issuer, 'Polygon', destination, tokenSymbol, amount);
-
-                console.log('sendToken internal gas:', (await tx.wait()).gasUsed.toNumber());
-            });
-
-            it('should lock external token and emit an event', async () => {
-                const tokenSymbol = externalSymbol;
-                const token = externalToken;
-                const amount = 1000;
-
-                await token.mint(owner.address, amount).then((tx) => tx.wait());
-
-                const deployData = buildCommandBatch(
-                    await getChainId(),
-                    [getRandomID()],
-                    ['deployToken'],
-                    [getDeployCommand(tokenName, tokenSymbol, decimals, cap, token.address, 0)],
-                );
-
-                const input = await getSignedWeightedExecuteInput(
-                    deployData,
-                    operators,
-                    getWeights(operators),
-                    threshold,
-                    operators.slice(0, threshold),
-                );
-
-                await gateway.execute(input, getGasOptions()).then((tx) => tx.wait());
-
-                const issuer = owner.address;
-                const locker = gateway.address;
-                const destination = operators[1].address;
-
-                await expect(token.approve(locker, amount)).to.emit(token, 'Approval').withArgs(issuer, locker, amount);
-
-                const tx = await gateway.sendToken('Polygon', destination, tokenSymbol, amount);
-
-                await expect(tx)
-                    .to.emit(token, 'Transfer')
-                    .withArgs(issuer, locker, amount)
-                    .to.emit(gateway, 'TokenSent')
-                    .withArgs(issuer, 'Polygon', destination, tokenSymbol, amount);
-
-                console.log('sendNative external gas:', (await tx.wait()).gasUsed.toNumber());
-            });
+        it('should not have sendToken in ABI', () => {
+            const hasSendToken = gateway.interface.fragments.some((f) => f.name === 'sendToken');
+            expect(hasSendToken).to.be.false;
         });
     });
 

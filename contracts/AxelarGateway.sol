@@ -124,23 +124,6 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
     \******************/
 
     /**
-     * @notice Send the specified token to the destination chain and address.
-     * @param destinationChain The chain to send tokens to. A registered chain name on Axelar must be used here
-     * @param destinationAddress The address on the destination chain to send tokens to
-     * @param symbol The symbol of the token to send
-     * @param amount The amount of tokens to send
-     */
-    function sendToken(
-        string calldata destinationChain,
-        string calldata destinationAddress,
-        string calldata symbol,
-        uint256 amount
-    ) external {
-        _burnTokenFrom(msg.sender, symbol, amount);
-        emit TokenSent(msg.sender, destinationChain, destinationAddress, symbol, amount);
-    }
-
-    /**
      * @notice Calls a contract on the specified destination chain with a given payload.
      * This function is the entry point for general message passing between chains.
      * @param destinationChain The chain where the destination contract exists. A registered chain name on Axelar must be used here
