@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import { AxelarExecutableWithToken } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/executable/AxelarExecutableWithToken.sol';
 import { IERC20 } from '../../interfaces/IERC20.sol';
-import { IAxelarGateway } from '../../interfaces/IAxelarGateway.sol';
 import { DestinationChainTokenSwapper } from './DestinationChainTokenSwapper.sol';
 
 contract DestinationChainSwapExecutable is AxelarExecutableWithToken {
@@ -38,13 +37,7 @@ contract DestinationChainSwapExecutable is AxelarExecutableWithToken {
         {
             bytes memory returnPayload = abi.encode(recipient);
             IERC20(tokenB).approve(address(gateway()), convertedAmount);
-            IAxelarGateway(address(gateway())).callContractWithToken(
-                sourceChain,
-                sourceAddress,
-                returnPayload,
-                tokenSymbolB,
-                convertedAmount
-            );
+            gatewayWithToken().callContractWithToken(sourceChain, sourceAddress, returnPayload, tokenSymbolB, convertedAmount);
         }
     }
 
