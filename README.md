@@ -42,7 +42,7 @@ See the Axelar contract deployments [repository](https://github.com/axelarnetwor
 
 1. [Gateway deployment](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#axelargateway)
 2. [Gateway upgrade](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#gateway-upgrade)
-3. [Gas service and deposit service deployment and upgrades](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#axelargasservice-and-axelardepositservice)
+3. [Gas service deployment and upgrades](https://github.com/axelarnetwork/axelar-contract-deployments/tree/main/evm#axelargasservice)
 
 ## Live network testing
 
