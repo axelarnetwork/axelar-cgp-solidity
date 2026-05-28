@@ -2410,6 +2410,19 @@ describe('AxelarGateway', () => {
                     .withArgs(commandId);
             });
 
+            it('reverts validateContractCallAndMint for non-governance while paused', async () => {
+                expect(await gateway.paused()).to.eq(true);
+
+                await expectRevert(
+                    (gasOptions) =>
+                        gateway
+                            .connect(notAuthorized)
+                            .validateContractCallAndMint(id('any'), 'src', 'srcAddr', keccak256('0x'), 'SYM', 1, gasOptions),
+                    gateway,
+                    'Pause',
+                );
+            });
+
             it('reverts validateContractCall for non-governance while paused', async () => {
                 const otherCommandId = id('command-2');
                 const chainId = await getChainId();
