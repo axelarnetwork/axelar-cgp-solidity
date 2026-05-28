@@ -3,7 +3,7 @@
 const chai = require('chai');
 const { ethers } = require('hardhat');
 const {
-    utils: { id, keccak256, defaultAbiCoder },
+    utils: { keccak256, defaultAbiCoder },
 } = ethers;
 const { expect } = chai;
 const { expectRevert } = require('./utils');
@@ -61,11 +61,7 @@ describe('BrickedAxelarGateway', () => {
         );
     });
 
-    it('reverts with Bricked on receive', async () => {
-        await expectRevert(
-            (gasOptions) => owner.sendTransaction({ to: bricked.address, value: 1, ...gasOptions }),
-            bricked,
-            'Bricked',
-        );
+    it('rejects native value (contract does not accept ETH)', async () => {
+        await expect(owner.sendTransaction({ to: bricked.address, value: 1 })).to.be.reverted;
     });
 });

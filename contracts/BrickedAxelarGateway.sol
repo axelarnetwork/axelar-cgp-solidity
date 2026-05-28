@@ -39,11 +39,7 @@ contract BrickedAxelarGateway {
      */
     function setup(bytes calldata /* setupParams */) external pure {}
 
-    fallback() external payable {
-        revert Bricked();
-    }
-
-    receive() external payable {
+    fallback() external {
         revert Bricked();
     }
 }
