@@ -37,7 +37,9 @@ contract BrickedAxelarGateway {
      * @notice No-op `setup` so the upgrade tx does not revert during the
      * post-implementation-swap `delegatecall(setup, setupParams)` step.
      */
-    function setup(bytes calldata /* setupParams */) external pure {}
+    function setup(
+        bytes calldata /* setupParams */
+    ) external pure {}
 
     fallback() external {
         revert Bricked();

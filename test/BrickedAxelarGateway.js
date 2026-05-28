@@ -31,18 +31,24 @@ describe('BrickedAxelarGateway', () => {
 
     it('reverts with Bricked on an unknown selector', async () => {
         const unknownCalldata = '0xdeadbeef';
-        await expectRevert((gasOptions) => owner.sendTransaction({ to: bricked.address, data: unknownCalldata, ...gasOptions }), bricked, 'Bricked');
+        await expectRevert(
+            (gasOptions) => owner.sendTransaction({ to: bricked.address, data: unknownCalldata, ...gasOptions }),
+            bricked,
+            'Bricked',
+        );
     });
 
     it('reverts with Bricked on governance() call', async () => {
         const calldata = ethers.utils.id('governance()').slice(0, 10);
-        await expectRevert((gasOptions) => owner.sendTransaction({ to: bricked.address, data: calldata, ...gasOptions }), bricked, 'Bricked');
+        await expectRevert(
+            (gasOptions) => owner.sendTransaction({ to: bricked.address, data: calldata, ...gasOptions }),
+            bricked,
+            'Bricked',
+        );
     });
 
     it('reverts with Bricked on callContract', async () => {
-        const calldata = ethers.utils.defaultAbiCoder
-            .encode(['string', 'string', 'bytes'], ['dst', 'addr', '0x'])
-            .slice(2);
+        const calldata = ethers.utils.defaultAbiCoder.encode(['string', 'string', 'bytes'], ['dst', 'addr', '0x']).slice(2);
         const selector = ethers.utils.id('callContract(string,string,bytes)').slice(0, 10);
         await expectRevert(
             (gasOptions) => owner.sendTransaction({ to: bricked.address, data: selector + calldata, ...gasOptions }),
