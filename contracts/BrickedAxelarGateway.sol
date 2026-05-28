@@ -41,6 +41,7 @@ contract BrickedAxelarGateway {
         bytes calldata /* setupParams */
     ) external pure {}
 
+    // solhint-disable-next-line payable-fallback
     fallback() external {
         revert Bricked();
     }
