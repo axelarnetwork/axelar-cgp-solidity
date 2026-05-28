@@ -8,6 +8,7 @@ import { IContractIdentifier } from '@axelar-network/axelar-gmp-sdk-solidity/con
 import { SafeTokenCall, SafeTokenTransfer, SafeTokenTransferFrom } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/SafeTransfer.sol';
 import { ContractAddress } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/libs/ContractAddress.sol';
 import { Implementation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/upgradable/Implementation.sol';
+import { Pausable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/utils/Pausable.sol';
 
 import { IAxelarAuth } from './interfaces/IAxelarAuth.sol';
 import { IBurnableMintableCappedERC20 } from './interfaces/IBurnableMintableCappedERC20.sol';
@@ -26,7 +27,7 @@ import { EternalStorage } from './EternalStorage.sol';
  * The contract is managed via the decentralized governance mechanism on the Axelar network.
  * @dev EternalStorage is used to simplify storage for upgradability, and InterchainGovernance module is used for governance.
  */
-contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorage {
+contract AxelarGateway is IAxelarConsensusGateway, Pausable, Implementation, EternalStorage {
     using SafeTokenCall for IERC20;
     using SafeTokenTransfer for IERC20;
     using SafeTokenTransferFrom for IERC20;
@@ -60,6 +61,11 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
      * @dev Storage slot with the address of the current mint limiter. keccak256('mint-limiter')) - 1
      */
     bytes32 internal constant KEY_MINT_LIMITER = bytes32(0x627f0c11732837b3240a2de89c0b6343512886dd50978b99c76a68c6416a4d92);
+
+    /**
+     * @dev Storage slot with the address of the current pauser. keccak256('AxelarGateway.pauser')) - 1
+     */
+    bytes32 internal constant KEY_PAUSER = bytes32(uint256(keccak256('AxelarGateway.pauser')) - 1);
 
     bytes32 internal constant PREFIX_COMMAND_EXECUTED = keccak256('command-executed');
     bytes32 internal constant PREFIX_TOKEN_ADDRESS = keccak256('token-address');
@@ -119,6 +125,24 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
         _;
     }
 
+    /**
+     * @notice Ensures that the caller of the function is either the pauser or governance.
+     */
+    modifier onlyPauserOrGovernance() {
+        if (msg.sender != getAddress(KEY_GOVERNANCE) && msg.sender != getAddress(KEY_PAUSER)) revert NotAuthorized();
+
+        _;
+    }
+
+    /**
+     * @notice Ensures the gateway is not paused, unless the caller is the governance address.
+     */
+    modifier whenNotPausedExceptForGovernance() {
+        if (paused() && msg.sender != getAddress(KEY_GOVERNANCE)) revert Pause();
+
+        _;
+    }
+
     /******************\
     |* Public Methods *|
     \******************/
@@ -134,7 +158,7 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
         string calldata destinationChain,
         string calldata destinationContractAddress,
         bytes calldata payload
-    ) external {
+    ) external whenNotPaused {
         emit ContractCall(msg.sender, destinationChain, destinationContractAddress, keccak256(payload), payload);
     }
 
@@ -153,7 +177,7 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
         bytes calldata payload,
         string calldata symbol,
         uint256 amount
-    ) external {
+    ) external whenNotPaused {
         _burnTokenFrom(msg.sender, symbol, amount);
         emit ContractCallWithToken(msg.sender, destinationChain, destinationContractAddress, keccak256(payload), payload, symbol, amount);
     }
@@ -218,7 +242,7 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
         string calldata sourceChain,
         string calldata sourceAddress,
         bytes32 payloadHash
-    ) external override returns (bool valid) {
+    ) external override whenNotPausedExceptForGovernance returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash);
         valid = getBool(key);
         if (valid) {
@@ -247,7 +271,7 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
         bytes32 payloadHash,
         string calldata symbol,
         uint256 amount
-    ) external override returns (bool valid) {
+    ) external override whenNotPausedExceptForGovernance returns (bool valid) {
         bytes32 key = _getIsContractCallApprovedWithMintKey(commandId, sourceChain, sourceAddress, msg.sender, payloadHash, symbol, amount);
         valid = getBool(key);
         if (valid) {
@@ -278,6 +302,14 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
      */
     function mintLimiter() public view override returns (address) {
         return getAddress(KEY_MINT_LIMITER);
+    }
+
+    /**
+     * @notice Gets the address of the pauser. The pauser is an emergency EOA that can pause/unpause the gateway without going through the governance timelock.
+     * @return address The address of the pauser.
+     */
+    function pauser() public view override returns (address) {
+        return getAddress(KEY_PAUSER);
     }
 
     /**
@@ -419,6 +451,30 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
 
             if (!success) revert SetupFailed();
         }
+    }
+
+    /**
+     * @notice Pauses or unpauses the gateway.
+     * @param isPaused True to pause, false to unpause.
+     * @dev Only the pauser or the governance address can call this function.
+     */
+    function setPauseStatus(bool isPaused) external override onlyPauserOrGovernance {
+        if (isPaused) {
+            _pause();
+        } else {
+            _unpause();
+        }
+    }
+
+    /**
+     * @notice Transfers the pauser role to a new address.
+     * @param newPauser The address to transfer the pauser role to.
+     * @dev Only the current pauser or the governance address can call this function.
+     */
+    function transferPauser(address newPauser) external override onlyPauserOrGovernance {
+        if (newPauser == address(0)) revert InvalidPauser();
+
+        _transferPauser(newPauser);
     }
 
     /**********************\
@@ -862,5 +918,11 @@ contract AxelarGateway is IAxelarConsensusGateway, Implementation, EternalStorag
         emit MintLimiterTransferred(getAddress(KEY_MINT_LIMITER), newMintLimiter);
 
         _setAddress(KEY_MINT_LIMITER, newMintLimiter);
+    }
+
+    function _transferPauser(address newPauser) internal {
+        emit PauserTransferred(getAddress(KEY_PAUSER), newPauser);
+
+        _setAddress(KEY_PAUSER, newPauser);
     }
 }

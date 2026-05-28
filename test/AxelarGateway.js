@@ -258,7 +258,7 @@ describe('AxelarGateway', () => {
             const expected = {
                 istanbul: '0xb95e207998541b443f7653b3fb7158b4fdd04308343381e56f824668323029a8',
                 berlin: '0x527ccc01bb1072d7af437ae3ed50e6e5d47d347181e8ff51b49ee3199d052dce',
-                london: '0xb79a6b76abe0eac90f0732a68371a2853c1340a1a5ad9d2f6a70bde17a2e258a',
+                london: '0x3b24f0481d469952146ed007f3bb35406372b8a8639b5cbadf0f50a9ebe257a9',
             }[getEVMVersion()];
 
             expect(implementationBytecodeHash).to.be.equal(expected);
@@ -2138,6 +2138,315 @@ describe('AxelarGateway', () => {
         it('should return correct value for tokenFrozen', async () => {
             const token = 'Token';
             expect(await gateway.tokenFrozen(token)).to.be.false;
+        });
+    });
+
+    describe('pausability', () => {
+        let pauserEoa;
+        let notAuthorized;
+
+        before(() => {
+            pauserEoa = wallets[5];
+            notAuthorized = wallets[6];
+        });
+
+        describe('initial pauser state', () => {
+            before(async () => {
+                await deployGateway();
+            });
+
+            it('pauser defaults to address(0) after deployment (setup unchanged)', async () => {
+                expect(await gateway.pauser()).to.eq(AddressZero);
+            });
+
+            it('starts unpaused', async () => {
+                expect(await gateway.paused()).to.eq(false);
+            });
+
+            it('callContract works normally before any pauser is set', async () => {
+                await expect(gateway.connect(notAuthorized).callContract('test-chain', '0xdead', '0xbeef')).to.emit(gateway, 'ContractCall');
+            });
+        });
+
+        describe('transferPauser', () => {
+            before(async () => {
+                await deployGateway();
+            });
+
+            it('governance can set the initial pauser', async () => {
+                await expect(gateway.connect(governance).transferPauser(pauserEoa.address))
+                    .to.emit(gateway, 'PauserTransferred')
+                    .withArgs(AddressZero, pauserEoa.address);
+
+                expect(await gateway.pauser()).to.eq(pauserEoa.address);
+            });
+
+            it('current pauser can rotate the role to another address', async () => {
+                await expect(gateway.connect(pauserEoa).transferPauser(notAuthorized.address))
+                    .to.emit(gateway, 'PauserTransferred')
+                    .withArgs(pauserEoa.address, notAuthorized.address);
+
+                expect(await gateway.pauser()).to.eq(notAuthorized.address);
+
+                await gateway.connect(governance).transferPauser(pauserEoa.address).then((tx) => tx.wait(network.config.confirmations));
+            });
+
+            it('reverts when an unauthorized caller tries to transfer the pauser', async () => {
+                await expectRevert(
+                    (gasOptions) => gateway.connect(notAuthorized).transferPauser(notAuthorized.address, gasOptions),
+                    gateway,
+                    'NotAuthorized',
+                );
+            });
+
+            it('reverts on zero address', async () => {
+                await expectRevert(
+                    (gasOptions) => gateway.connect(governance).transferPauser(AddressZero, gasOptions),
+                    gateway,
+                    'InvalidPauser',
+                );
+            });
+        });
+
+        describe('setPauseStatus', () => {
+            before(async () => {
+                await deployGateway();
+                await gateway.connect(governance).transferPauser(pauserEoa.address).then((tx) => tx.wait(network.config.confirmations));
+            });
+
+            it('pauser can pause the gateway', async () => {
+                await expect(gateway.connect(pauserEoa).setPauseStatus(true)).to.emit(gateway, 'Paused').withArgs(pauserEoa.address);
+                expect(await gateway.paused()).to.eq(true);
+            });
+
+            it('pauser can unpause the gateway', async () => {
+                await expect(gateway.connect(pauserEoa).setPauseStatus(false)).to.emit(gateway, 'Unpaused').withArgs(pauserEoa.address);
+                expect(await gateway.paused()).to.eq(false);
+            });
+
+            it('governance can pause the gateway', async () => {
+                await expect(gateway.connect(governance).setPauseStatus(true)).to.emit(gateway, 'Paused').withArgs(governance.address);
+                expect(await gateway.paused()).to.eq(true);
+                await gateway.connect(governance).setPauseStatus(false).then((tx) => tx.wait(network.config.confirmations));
+            });
+
+            it('reverts when an unauthorized caller tries to pause', async () => {
+                await expectRevert(
+                    (gasOptions) => gateway.connect(notAuthorized).setPauseStatus(true, gasOptions),
+                    gateway,
+                    'NotAuthorized',
+                );
+            });
+        });
+
+        describe('callContract blocked while paused', () => {
+            before(async () => {
+                await deployGateway();
+                await gateway.connect(governance).transferPauser(pauserEoa.address).then((tx) => tx.wait(network.config.confirmations));
+            });
+
+            it('reverts callContract for everyone while paused (no governance bypass)', async () => {
+                await gateway.connect(pauserEoa).setPauseStatus(true).then((tx) => tx.wait(network.config.confirmations));
+
+                await expectRevert(
+                    (gasOptions) => gateway.connect(notAuthorized).callContract('test-chain', '0xdead', '0xbeef', gasOptions),
+                    gateway,
+                    'Pause',
+                );
+
+                await expectRevert(
+                    (gasOptions) => gateway.connect(governance).callContract('test-chain', '0xdead', '0xbeef', gasOptions),
+                    gateway,
+                    'Pause',
+                );
+            });
+
+            it('callContract resumes after unpause', async () => {
+                await gateway.connect(pauserEoa).setPauseStatus(false).then((tx) => tx.wait(network.config.confirmations));
+
+                await expect(gateway.connect(notAuthorized).callContract('test-chain', '0xdead', '0xbeef')).to.emit(gateway, 'ContractCall');
+            });
+
+            it('reverts callContractWithToken while paused (before any token bookkeeping runs)', async () => {
+                await gateway.connect(pauserEoa).setPauseStatus(true).then((tx) => tx.wait(network.config.confirmations));
+
+                await expectRevert(
+                    (gasOptions) =>
+                        gateway
+                            .connect(notAuthorized)
+                            .callContractWithToken('test-chain', '0xdead', '0xbeef', 'UNKNOWN', 1, gasOptions),
+                    gateway,
+                    'Pause',
+                );
+
+                await gateway.connect(pauserEoa).setPauseStatus(false).then((tx) => tx.wait(network.config.confirmations));
+            });
+        });
+
+        describe('upgrade still works while paused', () => {
+            before(async () => {
+                await deployGateway();
+                await gateway.connect(governance).transferPauser(pauserEoa.address).then((tx) => tx.wait(network.config.confirmations));
+                await gateway.connect(pauserEoa).setPauseStatus(true).then((tx) => tx.wait(network.config.confirmations));
+            });
+
+            it('non-governance cannot upgrade even while paused', async () => {
+                expect(await gateway.paused()).to.eq(true);
+
+                const newImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address);
+                await newImplementation.deployTransaction.wait(network.config.confirmations);
+
+                const newImplementationCodeHash = keccak256(await ethers.provider.getCode(newImplementation.address));
+
+                for (const caller of [pauserEoa, notAuthorized]) {
+                    await expectRevert(
+                        (gasOptions) =>
+                            gateway
+                                .connect(caller)
+                                .upgrade(newImplementation.address, newImplementationCodeHash, '0x', gasOptions),
+                        gateway,
+                        'NotGovernance',
+                    );
+                }
+
+                expect(await gateway.implementation()).to.not.eq(newImplementation.address);
+            });
+
+            it('governance can upgrade the gateway while paused', async () => {
+                expect(await gateway.paused()).to.eq(true);
+
+                const newImplementation = await gatewayFactory.deploy(auth.address, tokenDeployer.address);
+                await newImplementation.deployTransaction.wait(network.config.confirmations);
+
+                const newImplementationCodeHash = keccak256(await ethers.provider.getCode(newImplementation.address));
+
+                await expect(gateway.connect(governance).upgrade(newImplementation.address, newImplementationCodeHash, '0x'))
+                    .to.emit(gateway, 'Upgraded')
+                    .withArgs(newImplementation.address);
+
+                expect(await gateway.implementation()).to.eq(newImplementation.address);
+                expect(await gateway.paused()).to.eq(true);
+            });
+        });
+
+        describe('validateContractCall: governance bypass while paused', () => {
+            let commandId;
+            let sourceChain;
+            let sourceAddress;
+            let payloadHash;
+
+            before(async () => {
+                await deployGateway();
+                await gateway.connect(governance).transferPauser(pauserEoa.address).then((tx) => tx.wait(network.config.confirmations));
+
+                commandId = id('command-1');
+                sourceChain = 'src';
+                sourceAddress = 'srcAddr';
+                payloadHash = keccak256('0xdeadbeef');
+
+                const chainId = await getChainId();
+                const approveData = getApproveContractCall(sourceChain, sourceAddress, governance.address, payloadHash, HashZero, 0);
+                const data = buildCommandBatch(chainId, [commandId], ['approveContractCall'], [approveData]);
+                const input = await getSignedWeightedExecuteInput(
+                    data,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                await gateway.execute(input).then((tx) => tx.wait(network.config.confirmations));
+
+                expect(await gateway.isContractCallApproved(commandId, sourceChain, sourceAddress, governance.address, payloadHash)).to.eq(
+                    true,
+                );
+            });
+
+            it('governance can consume an approval while paused', async () => {
+                await gateway.connect(pauserEoa).setPauseStatus(true).then((tx) => tx.wait(network.config.confirmations));
+
+                expect(await gateway.paused()).to.eq(true);
+
+                await expect(gateway.connect(governance).validateContractCall(commandId, sourceChain, sourceAddress, payloadHash))
+                    .to.emit(gateway, 'ContractCallExecuted')
+                    .withArgs(commandId);
+            });
+
+            it('reverts validateContractCall for non-governance while paused', async () => {
+                const otherCommandId = id('command-2');
+                const chainId = await getChainId();
+                const approveData = getApproveContractCall(sourceChain, sourceAddress, notAuthorized.address, payloadHash, HashZero, 0);
+                const data = buildCommandBatch(chainId, [otherCommandId], ['approveContractCall'], [approveData]);
+                const input = await getSignedWeightedExecuteInput(
+                    data,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                await gateway.execute(input).then((tx) => tx.wait(network.config.confirmations));
+
+                await expectRevert(
+                    (gasOptions) =>
+                        gateway
+                            .connect(notAuthorized)
+                            .validateContractCall(otherCommandId, sourceChain, sourceAddress, payloadHash, gasOptions),
+                    gateway,
+                    'Pause',
+                );
+            });
+        });
+
+        describe('execute still lands signed batches while paused', () => {
+            before(async () => {
+                await deployGateway();
+                await gateway.connect(governance).transferPauser(pauserEoa.address).then((tx) => tx.wait(network.config.confirmations));
+                await gateway.connect(pauserEoa).setPauseStatus(true).then((tx) => tx.wait(network.config.confirmations));
+            });
+
+            it('approves a contract call via signed batch while paused', async () => {
+                const commandId = id('command-while-paused');
+                const sourceChain = 'src';
+                const sourceAddress = 'srcAddr';
+                const payloadHash = keccak256('0x1234');
+
+                const chainId = await getChainId();
+                const approveData = getApproveContractCall(sourceChain, sourceAddress, notAuthorized.address, payloadHash, HashZero, 0);
+                const data = buildCommandBatch(chainId, [commandId], ['approveContractCall'], [approveData]);
+                const input = await getSignedWeightedExecuteInput(
+                    data,
+                    operators,
+                    getWeights(operators),
+                    threshold,
+                    operators.slice(0, threshold),
+                );
+
+                await expect(gateway.execute(input)).to.emit(gateway, 'ContractCallApproved');
+
+                expect(await gateway.isContractCallApproved(commandId, sourceChain, sourceAddress, notAuthorized.address, payloadHash)).to.eq(
+                    true,
+                );
+            });
+        });
+
+        describe('pauser unset blocks fast pause but governance can still pause', () => {
+            before(async () => {
+                await deployGateway();
+            });
+
+            it('a random caller cannot pause when no pauser is set', async () => {
+                await expectRevert(
+                    (gasOptions) => gateway.connect(notAuthorized).setPauseStatus(true, gasOptions),
+                    gateway,
+                    'NotAuthorized',
+                );
+            });
+
+            it('governance can still pause when no pauser is set', async () => {
+                await expect(gateway.connect(governance).setPauseStatus(true)).to.emit(gateway, 'Paused').withArgs(governance.address);
+                expect(await gateway.paused()).to.eq(true);
+            });
         });
     });
 });

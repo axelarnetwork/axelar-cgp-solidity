@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 
 import { IGovernable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IGovernable.sol';
 import { IImplementation } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IImplementation.sol';
+import { IPausable } from '@axelar-network/axelar-gmp-sdk-solidity/contracts/interfaces/IPausable.sol';
 
-interface IAxelarConsensusGateway is IImplementation, IGovernable {
+interface IAxelarConsensusGateway is IImplementation, IGovernable, IPausable {
     /**********\
     |* Errors *|
     \**********/
@@ -26,6 +27,8 @@ interface IAxelarConsensusGateway is IImplementation, IGovernable {
     error MintFailed(string symbol);
     error InvalidSetMintLimitsParams();
     error ExceedMintLimit(string symbol);
+    error NotAuthorized();
+    error InvalidPauser();
 
     /**********\
     |* Events *|
@@ -82,6 +85,8 @@ interface IAxelarConsensusGateway is IImplementation, IGovernable {
     event OperatorshipTransferred(bytes newOperatorsData);
 
     event Upgraded(address indexed implementation);
+
+    event PauserTransferred(address indexed previousPauser, address indexed newPauser);
 
     /********************\
     |* Public Functions *|
@@ -157,6 +162,8 @@ interface IAxelarConsensusGateway is IImplementation, IGovernable {
 
     function isCommandExecuted(bytes32 commandId) external view returns (bool);
 
+    function pauser() external view returns (address);
+
     /************************\
     |* Governance Functions *|
     \************************/
@@ -168,6 +175,10 @@ interface IAxelarConsensusGateway is IImplementation, IGovernable {
         bytes32 newImplementationCodeHash,
         bytes calldata setupParams
     ) external;
+
+    function setPauseStatus(bool isPaused) external;
+
+    function transferPauser(address newPauser) external;
 
     /**********************\
     |* External Functions *|
