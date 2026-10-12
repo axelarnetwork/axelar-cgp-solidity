@@ -20,14 +20,6 @@
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05",
       "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "WETH",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
-    },
     "explorer": {
       "url": "https://etherscan.io",
       "api": "https://api.etherscan.io/api"
@@ -53,14 +45,6 @@
       "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05",
       "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
-    },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "WAVAX",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     },
     "explorer": {
       "url": "https://snowtrace.io",
@@ -88,14 +72,6 @@
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05",
       "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "WFTM",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
-    },
     "explorer": {
       "url": "https://ftmscan.com",
       "api": "https://api.ftmscan.com/api"
@@ -121,14 +97,6 @@
       "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05",
       "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
-    },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "WMATIC",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     },
     "explorer": {
       "url": "https://polygonscan.com",
@@ -159,14 +127,6 @@
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05",
       "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "WGLMR",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
-    },
     "explorer": {
       "url": "https://moonbeam.moonscan.io",
       "api": "https://api-moonbeam.moonscan.io/api"
@@ -192,14 +152,6 @@
       "implementation": "0xE622B1D44F5061DB10ABa2594F1A8eb2DC1fC1d4",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05",
       "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
-    },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "WBNB",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     },
     "explorer": {
       "url": "https://bscscan.com",
@@ -227,14 +179,6 @@
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05",
       "collector": "0x345662ABfE0E257E23552A434D02Ef274cCb6A90"
     },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
-    },
     "explorer": {
       "url": "https://aurorascan.dev",
       "api": "https://api.aurorascan.dev/api"
@@ -259,14 +203,6 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xfEF5c90d84a1C93804496f5e7fbf98ec0C85243C",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
-    },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xBeE52844E35985c1B6729A6B88980209358F9979",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     },
     "explorer": {
       "url": "https://arbiscan.io",
@@ -296,14 +232,6 @@
       "implementation": "0xfEF5c90d84a1C93804496f5e7fbf98ec0C85243C",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
     },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xb6241272C569767072e0587098415DF6BA0aaEe9",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
-    },
     "explorer": {
       "url": "https://celoscan.io",
       "api": "https://api.celoscan.io/api"
@@ -328,14 +256,6 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xfEF5c90d84a1C93804496f5e7fbf98ec0C85243C",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
-    },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     },
     "explorer": {
       "url": "https://explorer.kava.io",
@@ -365,14 +285,6 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xfEF5c90d84a1C93804496f5e7fbf98ec0C85243C",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
-    },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "WFIL",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     },
     "explorer": {
       "url": "https://www.filfox.info"
@@ -404,14 +316,6 @@
       "address": "0x2d5d7d31F671F86C782533cc367F14109a082712",
       "implementation": "0xfEF5c90d84a1C93804496f5e7fbf98ec0C85243C",
       "deployer": "0x6f24A47Fc8AE5441Eb47EFfC3665e70e69Ac3F05"
-    },
-    "AxelarDepositService": {
-      "salt": "AxelarDepositService",
-      "wrappedSymbol": "",
-      "refundIssuer": "0x4f671f34d2d23fec3eE3087E3A0221f8D314D9dF",
-      "address": "0xc1DCb196BA862B337Aa23eDA1Cb9503C0801b955",
-      "implementation": "0xd883C8bA523253c93d97b6C7a5087a7B5ff23d79",
-      "deployer": "0xd55cd98cdE61c3CcE1286F9aF50cDbF16f5dba5b"
     },
     "explorer": {
       "url": "https://optimistic.etherscan.io",
